@@ -44,7 +44,7 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "preview_publish", annotations: READ, access: req("translation:write", null) },
   { name: "preview_sync", annotations: READ, access: req("project:settings", null) },
   { name: "preview_revert", annotations: READ, access: req("project:settings", null) },
-  { name: "preview_source_removal", annotations: READ, access: req("project:settings", null) },
+  { name: "preview_source_detach", annotations: READ, access: req("project:settings", null) },
   // 제거와 추가 취소 둘 다의 미리보기다 — 실행(`remove_locale`)이 이 지문을 돌려받는다(locale-add design §6).
   { name: "preview_locale_removal", annotations: READ, access: req("project:settings", null) },
   { name: "list_events", annotations: READ, access: req("translation:write", null) },
@@ -62,7 +62,7 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "update_project", annotations: WRITE, access: req("project:settings", "project:settings") },
   { name: "set_base_locale", annotations: WRITE, access: req("project:settings", "project:settings") },
   // 편집 폐기는 재추가 때 일어나지만 승인은 여기서 받는다 — 확인창 근거로 destructive다(`sync_repository`와 같다).
-  { name: "remove_source", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
+  { name: "detach_source", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
   // 언어 변경 셋(locale-add) — 제거는 그 언어의 미전달 편집을 버리므로 destructive다. 추가·제거 취소는 아무것도 버리지 않는다.
   { name: "add_locale", annotations: WRITE, access: req("project:settings", "project:settings") },
   { name: "remove_locale", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },

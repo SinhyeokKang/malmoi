@@ -15,7 +15,7 @@ import { planSurfaceRemoval, type RemovalRefusal, type SourceRemovalError } from
 
 /**
  * **소스 제거의 공유 코어** (sources-add-remove — ARCHITECTURE §5.9). 편집 UI의 `removeSource`·`previewSourceRemoval`과 MCP
- * `remove_source`·`preview_source_removal`이 같은 인가·잠금 tx·사건을 지난다. 인가는 `project:settings`다.
+ * `detach_source`·`preview_source_detach`이 같은 인가·잠금 tx·사건을 지난다. 인가는 `project:settings`다.
  *
  * ⚠️ **번역을 건드리지 않는다** — 편집 폐기는 그 소스를 다시 추가할 때의 첫 적재가 한다(`createSurfaces`의 revive 갈래).
  * 그래서 미전달이 있으면 승인을 **제거 시점에** 받는다(지문).

@@ -1570,7 +1570,7 @@ export const en = {
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} added the {source} source</>,
         /** 소스 제거 (sources-add-remove). 되살림은 `added`와 같은 사건이라 문장이 따로 없다. */
-        removed: (who: ReactNode, source: string): ReactNode => <>{who} removed the {source} source</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} detached the {source} source</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} changed the base language of {source}</>
         ),
@@ -1713,7 +1713,7 @@ export const en = {
       "repo-replaced": "The connected repository changed.",
       "not-installed": "The app wasn't connected to the repository.",
       /** 제거된 소스로 온 CI — 처방은 워크플로에서 그 step을 지우는 것이다(ACTIONS). */
-      "surface-removed": "This source was removed from the project. Remove its step from your GitHub workflow.",
+      "surface-removed": "This source was detached from the project. Remove its step from your GitHub workflow.",
       fallback: "The run was refused before it started.",
     },
     /** GitLab 프로젝트의 Logs 문장 — merge request · GitLab · `.gitlab-ci.yml`(gitlab-repositories). 연결 끊김(`not-installed`)은 App이 아니라 GitLab 연결이다. */
@@ -1752,7 +1752,7 @@ export const en = {
         "not-installed": "This project's GitLab connection was removed or can't be used. A project owner can reconnect it in Settings.",
       },
       refusals: {
-        "surface-removed": "This source was removed from the project. Remove its job from your .gitlab-ci.yml.",
+        "surface-removed": "This source was detached from the project. Remove its job from your .gitlab-ci.yml.",
         "not-installed": "This project's GitLab connection was removed or can't be used.",
       },
     },
@@ -3402,12 +3402,15 @@ export const en = {
       reasons: {
         "last-source": "A project needs at least one source.",
         importing: "This source is syncing. Try again when it finishes.",
-        "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was removed. Open Remove again to review.",
+        "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was detached. Open Detach again to review.",
       },
-      /** [Remove source] — 트리거와 확인 창 확정이 같은 낱말이다(시안 R4). */
-      action: "Remove source",
+      /**
+       * [Detach source] — 트리거와 확인 창 확정이 같은 낱말이다(시안 R4). ⚠️ **Remove가 아니다**(2026-10-16 사용자) — 리포 파일은 그대로이고
+       * 다시 더하면 돌아온다. 리포 파일을 실제로 지우는 언어 제거만 Remove다. `Disconnect`도 아니다 — 자격증명 연결과 `Disconnected` 상태의 낱말이다.
+       */
+      action: "Detach source",
       /** 멤버 `confirmRemove`와 같은 골격(§10). 대상은 slug다. */
-      title: (slug: string): string => `Remove ${slug} from this project?`,
+      title: (slug: string): string => `Detach ${slug} from this project?`,
       /** 늘 선다 — 어디까지 사라지나의 경계(여기서 멈춘다 / 리포는 그대로 / 다시 더하면 돌아온다). */
       body: "It stops syncing here. Files in the repository aren't changed. Add it again anytime to bring its translations back.",
       /**
@@ -3423,11 +3426,11 @@ export const en = {
       /** 늘 선다 — 앱은 대상 리포 워크플로에 그 step이 있는지 알 수 없다(PRODUCT §7.1). */
       workflowLine: "Remove its step from your GitHub workflow — otherwise the next run fails and stops the sources after it.",
       /** 지문 발급 실패 — Sync와 달리 확정을 막고 [Try again]이 다시 받는다(시안 R6 · 닫힌 결정 1). */
-      previewFailed: "We couldn't check its unsent edits. Try again before you remove it.",
+      previewFailed: "We couldn't check its unsent edits. Try again before you detach it.",
       /** 응답 유실 — 서버가 끝냈을 수 있다. 다시 실행하지 않고 화면을 다시 읽는다. */
-      unconfirmed: "We couldn't confirm whether it was removed. The list shows the current state.",
+      unconfirmed: "We couldn't confirm whether it was detached. The list shows the current state.",
       /** 성공 배너 첫 줄(시안 R8). */
-      removed: (slug: string): string => `Removed ${slug}.`,
+      removed: (slug: string): string => `Detached ${slug}.`,
       /** 성공 배너 둘째 줄 — `link`는 Settings 링크다. */
       workflowStep: (link: ReactNode): ReactNode => <>Remove its step from the workflow in {link}.</>,
     },
@@ -4166,7 +4169,7 @@ export const en = {
       preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, fileChanges (new, updated, or removed files), and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
       preview_sync: "Preview a sync from the repository, how many unsent edits it would discard, and which pending language changes it would drop. Returns an approval to pass to sync_repository.",
       preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
-      preview_source_removal: "Preview removing a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown — mergeRequest for a GitLab project). Returns an approval to pass to remove_source when there are unsent edits.",
+      preview_source_detach: "Preview detaching a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown — mergeRequest for a GitLab project). Returns an approval to pass to detach_source when there are unsent edits.",
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
       get_workflow: "Get the CI file for the project's repository: the GitHub Actions workflow, or .gitlab-ci.yml for a GitLab project. It reads the push token from PUSH_TOKEN (a GitHub secret or a GitLab CI/CD variable).",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
@@ -4179,7 +4182,7 @@ export const en = {
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
-      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
+      detach_source: "Detach a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_detach first and pass its approval. The last source can't be detached.",
       preview_locale_removal: "Preview removing a language from a source, or stopping a language that's being added: how many translations it has, how many unsent edits it has, and whether the change was already sent. Returns an approval to pass to remove_locale.",
       add_locale: "Add a language to a source. Only JSON catalog and Chrome extension messages sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
       remove_locale: "Remove a language from a source, or stop adding it. Call preview_locale_removal first and pass its approval. A removal deletes the language's file in the next Publish, and until then its translations can't be edited; its unsent edits go back to the last sent version. The base language can't be removed.",
@@ -4254,9 +4257,9 @@ export const en = {
         ? "Synced from the repository."
         : `Synced from the repository. ${kept.toLocaleString("en-US")} unsent ${kept === 1 ? "edit remains" : "edits remain"}, so automatic updates stay held.`,
       sourceRemovalPreview: (unsent: number): string => unsent === 0
-        ? "The source can be removed. It has no unsent edits."
-        : `The source can be removed. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Remove it with this approval.`,
-      sourceRemoved: (slug: string): string => `Removed ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
+        ? "The source can be detached. It has no unsent edits."
+        : `The source can be detached. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Detach it with this approval.`,
+      sourceRemoved: (slug: string): string => `Detached ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
       guidePages: (n: number): string => `${n.toLocaleString("en-US")} guide ${n === 1 ? "page" : "pages"}.`,
       guidePage: (title: string): string => `Guide page ${title}.`,
       guideMatches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "guide section matches" : "guide sections match"}.`,
@@ -4299,7 +4302,7 @@ export const en = {
         sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Get the updated .gitlab-ci.yml with get_workflow and replace the Malmoi jobs with it.`,
         sourcesAddedWithoutCi: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. The GitLab CI file isn't available yet, so sync from Malmoi to load repository changes.`,
         // 소스마다 job이 따로 있어 병렬이다 — 남긴 job만 실패하고 다른 소스는 계속 들어온다(GitHub의 "뒤 step이 멈춘다"와 다르다).
-        sourceRemoved: (slug: string): string => `Removed ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still sync.`,
+        sourceRemoved: (slug: string): string => `Detached ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still sync.`,
       },
       syncPreview: (unsent: number, languageChanges = 0): string => (unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."

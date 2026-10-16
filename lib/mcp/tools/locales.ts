@@ -15,7 +15,7 @@ import { coreSubject, defineTool, ok } from "./define";
 
 /**
  * **언어 추가·제거·취소 넷** (locale-add design §6 — tasks §7). 웹 Action과 같은 코어(`lib/locales/change.ts`)의 형제 껍데기이고 Action을 부르지 않는다.
- * 소스 제거(`preview_source_removal` → `remove_source`)와 같은 미리보기 → 실행 형이다 — 제거·추가 취소는 미리보기의 서버 지문을 되돌려 받아야 하고,
+ * 소스 제거(`preview_source_detach` → `detach_source`)와 같은 미리보기 → 실행 형이다 — 제거·추가 취소는 미리보기의 서버 지문을 되돌려 받아야 하고,
  * 코어가 잠금 뒤 다시 계산해 대조한다. 파일 경로는 받지 않는다 — 서버가 소스 `pathTemplate`에서 계산한다(design §2).
  *
  * ⚠️ 입력 스키마는 코어의 것을 쓰고 길이 상한만 더한다(다른 도구의 slug 상한과 같은 값) — 복제하면 한쪽만 좁아진다. 코드 판정(`__proto__`·`../x`)은

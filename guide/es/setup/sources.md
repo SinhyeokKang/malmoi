@@ -1,6 +1,6 @@
 # Añade fuentes
 
-Añade más archivos de traducción más adelante, cambia el idioma base de una fuente o quita una fuente que ya no gestionas.
+Añade más archivos de traducción más adelante, cambia el idioma base de una fuente o desvincula una fuente que ya no gestionas.
 
 Cada fuente es un conjunto de archivos de traducción de tu repositorio. Los propietarios del proyecto pueden añadir una fuente y declarar su idioma base; los traductores (rol Editor) pueden ver el estado de las fuentes, pero no cambiar la configuración del proyecto.
 
@@ -18,19 +18,19 @@ Abre **Fuentes** desde la navegación del proyecto. Cada fila muestra el estado 
 
 ![El paso Elige los idiomas base de Añadir fuentes, con la ruta de una fuente y sus idiomas como opciones de radio, el paso 2 de 2 y los botones Atrás y Añadir las fuentes seleccionadas](/guide/add-sources.webp "Elige el idioma base de cada fuente nueva y luego añade las fuentes seleccionadas.")
 
-## Quita una fuente {#remove-source}
+## Desvincula una fuente {#remove-source}
 
-1. Abre los detalles de la fuente desde **Fuentes** y elige **Quitar fuente**. Solo está disponible para los propietarios del proyecto, y no para la última fuente de un proyecto.
-2. Lee la confirmación y elige **Quitar fuente** otra vez. Si la fuente tiene ediciones sin enviar, el cuadro dice cuántas; si la vuelves a añadir más adelante, se reemplazarán con los valores del repositorio. Si hay una pull request de Malmoi abierta, avisa de que los cambios de esa fuente en ella quedarán fuera en la próxima publicación.
+1. Abre los detalles de la fuente desde **Fuentes** y elige **Desvincular fuente**. Solo está disponible para los propietarios del proyecto, y no para la última fuente de un proyecto.
+2. Lee la confirmación y elige **Desvincular fuente** otra vez. Si la fuente tiene ediciones sin enviar, el cuadro dice cuántas; si la vuelves a añadir más adelante, se reemplazarán con los valores del repositorio. Si hay una pull request de Malmoi abierta, avisa de que los cambios de esa fuente en ella quedarán fuera en la próxima publicación.
 3. Quita el paso de la fuente del archivo de workflow de tu repositorio. Hasta que lo hagas, la próxima ejecución falla y detiene las fuentes que vienen después. En GitLab, quita el job de la fuente de `.gitlab-ci.yml`; hasta que lo hagas, solo falla ese job, y los jobs de las demás fuentes siguen actualizándolas.
 
-Quitar una fuente detiene su sincronización. Los archivos de tu repositorio no cambian, y la fuente desaparece de **Fuentes**, de Publicar y de la actualización nocturna. Sus claves, traducciones e historial se conservan.
+Desvincular una fuente detiene su sincronización. Los archivos de tu repositorio no cambian, y la fuente desaparece de **Fuentes**, de Publicar y de la actualización nocturna. Sus claves, traducciones e historial se conservan.
 
-![La confirmación para quitar la fuente sobre sus detalles, con un aviso para quitar el paso de la fuente del workflow](/guide/source-remove.webp "Lee el aviso y luego elige de nuevo Quitar fuente.")
+![La confirmación para desvincular la fuente sobre sus detalles, con un aviso para quitar el paso de la fuente del workflow](/guide/source-remove.webp "Lee el aviso y luego elige de nuevo Desvincular fuente.")
 
-## Vuelve a añadir una fuente quitada {#re-add}
+## Vuelve a añadir una fuente desvinculada {#re-add}
 
-Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de archivo. La fuente quitada vuelve con sus traducciones. La primera sincronización posterior reemplaza sus ediciones sin enviar con los valores del repositorio allí donde el repositorio tiene uno; las ediciones sin valor en el repositorio siguen sin enviar. Si eliges otro formato de archivo para la ruta, Malmoi añade una fuente nueva; actualiza el workflow como con cualquier fuente nueva.
+Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de archivo. La fuente desvinculada vuelve con sus traducciones. La primera sincronización posterior reemplaza sus ediciones sin enviar con los valores del repositorio allí donde el repositorio tiene uno; las ediciones sin valor en el repositorio siguen sin enviar. Si eliges otro formato de archivo para la ruta, Malmoi añade una fuente nueva; actualiza el workflow como con cualquier fuente nueva.
 
 ## Cambia el idioma base {#base-language}
 
@@ -44,4 +44,4 @@ Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de arc
 
 ## Qué pasa después {#next}
 
-La siguiente ejecución correcta del workflow lee la fuente con el idioma base declarado. Tras quitar una fuente, una ejecución que aún incluya su paso se rechaza como fuente quitada y no carga nada, así que elimina ese paso.
+La siguiente ejecución correcta del workflow lee la fuente con el idioma base declarado. Tras desvincular una fuente, una ejecución que aún incluya su paso se rechaza y no carga nada, así que elimina ese paso.

@@ -88,7 +88,7 @@ export async function loadSourceDetail(raw: { slug: string; surfaceSlug: string 
 export type RemoveSourceResult = { ok: true } | { ok: false; error: SourceRemovalError | "invalid input" };
 
 /**
- * 소스 제거 (sources-add-remove — ARCHITECTURE §5.9). 본체는 공유 코어 `removeSurface`다(MCP `remove_source`와 같다).
+ * 소스 제거 (sources-add-remove — ARCHITECTURE §5.9). 본체는 공유 코어 `removeSurface`다(MCP `detach_source`와 같다).
  * ⚠️ **미전달이 있으면 `approval`이 `previewSourceRemoval`이 낸 지문이어야 한다** — 없거나 낡으면 `stale-approval`이고 아무것도 안 바뀐다.
  */
 export async function removeSource(raw: { slug: string; surfaceSlug: string; approval: string | null }): Promise<RemoveSourceResult> {

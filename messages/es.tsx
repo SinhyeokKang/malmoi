@@ -647,7 +647,7 @@ export const es = {
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} añadió la fuente {source}</>,
-        removed: (who: ReactNode, source: string): ReactNode => <>{who} quitó la fuente {source}</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} desvinculó la fuente {source}</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} cambió el idioma base de {source}</>
         ),
@@ -748,7 +748,7 @@ export const es = {
       "wrong-format": "El repositorio ya no coincide con el formato guardado.",
       "repo-replaced": "El repositorio conectado cambió.",
       "not-installed": "La app no estaba conectada al repositorio.",
-      "surface-removed": "Esta fuente se quitó del proyecto. Quita su paso de tu workflow de GitHub.",
+      "surface-removed": "Esta fuente se desvinculó del proyecto. Quita su paso de tu workflow de GitHub.",
       fallback: "La ejecución se rechazó antes de empezar.",
     },
     onGitLab: {
@@ -781,7 +781,7 @@ export const es = {
         "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar. Un propietario del proyecto puede volver a conectarla en Configuración.",
       },
       refusals: {
-        "surface-removed": "Esta fuente se quitó del proyecto. Quita su job de tu .gitlab-ci.yml.",
+        "surface-removed": "Esta fuente se desvinculó del proyecto. Quita su job de tu .gitlab-ci.yml.",
         "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar.",
       },
     },
@@ -1787,18 +1787,18 @@ export const es = {
       reasons: {
         "last-source": "Un proyecto necesita al menos una fuente.",
         importing: "Esta fuente se está sincronizando. Vuelve a intentarlo cuando termine.",
-        "stale-approval": "No pudimos confirmar que lo que revisaste siga vigente, así que no se quitó nada. Vuelve a abrir la confirmación para revisarlo.",
+        "stale-approval": "No pudimos confirmar que lo que revisaste siga vigente, así que no se desvinculó nada. Vuelve a abrir la confirmación para revisarlo.",
       },
-      action: "Quitar fuente",
-      title: (slug: string): string => `¿Quitar ${slug} de este proyecto?`,
+      action: "Desvincular fuente",
+      title: (slug: string): string => `¿Desvincular ${slug} de este proyecto?`,
       body: "Deja de sincronizarse aquí. Los archivos del repositorio no cambian. Vuelve a añadirla cuando quieras para recuperar sus traducciones.",
       unsent: (n: number, count: ReactNode): ReactNode => <>Si la vuelves a añadir, {count} {n === 1 ? "se reemplazará" : "se reemplazarán"} con los valores del repositorio.</>,
       openPr: "Si la pull request abierta cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
       prUnknown: "No se pudo comprobar si hay una pull request abierta. Si alguna cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
       workflowLine: "Quita su paso (step) del flujo de trabajo de GitHub; si no, la próxima ejecución fallará y detendrá las fuentes que vienen después.",
-      previewFailed: "No se pudieron comprobar sus ediciones sin enviar. Inténtalo de nuevo antes de quitarla.",
-      unconfirmed: "No se pudo confirmar si se quitó. La lista muestra el estado actual.",
-      removed: (slug: string): string => `Se quitó ${slug}.`,
+      previewFailed: "No se pudieron comprobar sus ediciones sin enviar. Inténtalo de nuevo antes de desvincularla.",
+      unconfirmed: "No se pudo confirmar si se desvinculó. La lista muestra el estado actual.",
+      removed: (slug: string): string => `Se desvinculó ${slug}.`,
       workflowStep: (link: ReactNode): ReactNode => <>Quita su paso del flujo de trabajo en {link}.</>,
     },
     files: "Archivos",

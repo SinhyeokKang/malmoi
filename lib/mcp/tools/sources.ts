@@ -11,7 +11,8 @@ import { checkProjectTool } from "./access";
 import { coreSubject, defineTool, ok } from "./define";
 
 /**
- * **소스 제거 둘** (sources-add-remove — ARCHITECTURE §5.9). 웹 `previewSourceRemoval`·`removeSource`와 같은 코어의 형제 껍데기이고,
+ * **소스 제거 둘** (sources-add-remove — ARCHITECTURE §5.9). 도구 이름·요약은 화면과 같은 detach다(2026-10-16 사용자 — 리포 파일은 그대로다).
+ * 웹 `previewSourceRemoval`·`removeSource`와 같은 코어의 형제 껍데기이고,
  * 수동 Sync 도구(`preview_sync` → `sync_repository`)와 같은 미리보기 → 실행 형이다 — 미전달이 있으면 미리보기의 지문을 되돌려 받는다.
  */
 const SourceInput = z.object({ slug: z.string().min(1).max(200), surfaceSlug: z.string().min(1).max(200) });
@@ -23,10 +24,10 @@ function refused(error: SourceRemovalError) {
 }
 
 export const previewSourceRemovalTool = defineTool({
-  name: "preview_source_removal",
+  name: "preview_source_detach",
   inputSchema: SourceInput,
   async run({ prisma, subject }, input) {
-    const gate = await checkProjectTool(prisma, subject, { name: "preview_source_removal", slug: input.slug });
+    const gate = await checkProjectTool(prisma, subject, { name: "preview_source_detach", slug: input.slug });
     if (gate.status !== "ok") return gate;
     const preview = await previewSurfaceRemoval(prisma, coreSubject(subject), input);
     if (!preview.ok) return refused(preview.error);
@@ -37,11 +38,11 @@ export const previewSourceRemovalTool = defineTool({
 });
 
 export const removeSourceTool = defineTool({
-  name: "remove_source",
+  name: "detach_source",
   // ⚠️ `approval`을 optional로 두지 않는다 — 미전달이 없으면 `null`을 명시한다(수동 Sync처럼 "보냈나"를 서버가 추측하지 않는다).
   inputSchema: SourceInput.extend({ approval: z.string().min(1).max(128).nullable() }),
   async run({ prisma, subject }, input) {
-    const gate = await checkProjectTool(prisma, subject, { name: "remove_source", slug: input.slug });
+    const gate = await checkProjectTool(prisma, subject, { name: "detach_source", slug: input.slug });
     if (gate.status !== "ok") return gate;
     const result = await removeSurface(prisma, coreSubject(subject), input);
     if (!result.ok) return redrawIfArchived(input.slug, result.error, refused(result.error));
@@ -52,6 +53,6 @@ export const removeSourceTool = defineTool({
     });
     // 요약은 리포 호스트의 어휘다(D26) — GitLab은 워크플로 step이 아니라 `.gitlab-ci.yml`의 job이다.
     const summary = gate.repoHost === "gitlab" ? en.mcp.summary.gitlab.sourceRemoved : en.mcp.summary.sourceRemoved;
-    return ok({ removed: input.surfaceSlug }, summary(input.surfaceSlug));
+    return ok({ detached: input.surfaceSlug }, summary(input.surfaceSlug));
   },
 });

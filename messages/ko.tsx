@@ -654,7 +654,7 @@ export const ko = {
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} — {source} 소스를 추가했습니다</>,
-        removed: (who: ReactNode, source: string): ReactNode => <>{who} — {source} 소스를 제거했습니다</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} — {source} 소스의 연결을 해제했습니다</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} — {source} 소스의 기준 언어를 바꿨습니다</>
         ),
@@ -755,7 +755,7 @@ export const ko = {
       "wrong-format": "리포지토리의 파일 형식이 설정과 더 이상 맞지 않습니다.",
       "repo-replaced": "연결된 리포지토리가 바뀌었습니다.",
       "not-installed": "앱이 리포지토리에 연결되어 있지 않았습니다.",
-      "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. GitHub 워크플로에서 이 소스의 단계(step)를 지우세요.",
+      "surface-removed": "이 소스는 프로젝트와의 연결이 해제되었습니다. GitHub 워크플로에서 이 소스의 단계(step)를 지우세요.",
       fallback: "실행이 시작되기 전에 거부되었습니다.",
     },
     onGitLab: {
@@ -788,7 +788,7 @@ export const ko = {
         "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다. 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다.",
       },
       refusals: {
-        "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. .gitlab-ci.yml에서 이 소스의 작업을 지우세요.",
+        "surface-removed": "이 소스는 프로젝트와의 연결이 해제되었습니다. .gitlab-ci.yml에서 이 소스의 작업을 지우세요.",
         "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다.",
       },
     },
@@ -1789,18 +1789,18 @@ export const ko = {
       reasons: {
         "last-source": "프로젝트에는 소스가 하나 이상 있어야 합니다.",
         importing: "이 소스는 동기화 중입니다. 끝난 뒤 다시 시도하세요.",
-        "stale-approval": "검토한 내용이 여전히 최신인지 확인하지 못해 아무것도 제거하지 않았습니다. 제거 창을 다시 열어 확인하세요.",
+        "stale-approval": "검토한 내용이 여전히 최신인지 확인하지 못해 연결을 해제하지 않았습니다. 연결 해제 창을 다시 열어 확인하세요.",
       },
-      action: "소스 제거",
-      title: (slug: string): string => `${slug} 소스를 이 프로젝트에서 제거할까요?`,
+      action: "소스 연결 해제",
+      title: (slug: string): string => `이 프로젝트에서 ${slug} 소스의 연결을 해제할까요?`,
       body: "이 소스의 동기화가 멈춥니다. 리포지토리의 파일은 바뀌지 않습니다. 언제든 다시 추가하면 번역이 돌아옵니다.",
       unsent: (n: number, count: ReactNode): ReactNode => <>나중에 다시 추가하면 {count} 중 리포지토리에 값이 있는 항목은 그 값으로 바뀝니다.</>,
       openPr: "열린 PR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
       prUnknown: "열린 PR을 확인하지 못했습니다. PR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
       workflowLine: "GitHub 워크플로에서 이 소스의 단계(step)를 지우세요. 그대로 두면 다음 실행이 실패하고 이후 단계의 소스도 동기화되지 않습니다.",
-      previewFailed: "이 소스의 미전송 변경 사항을 확인하지 못했습니다. 제거하기 전에 다시 시도하세요.",
-      unconfirmed: "제거되었는지 확인하지 못했습니다. 목록이 현재 상태입니다.",
-      removed: (slug: string): string => `${slug} 소스를 제거했습니다.`,
+      previewFailed: "이 소스의 미전송 변경 사항을 확인하지 못했습니다. 연결을 해제하기 전에 다시 시도하세요.",
+      unconfirmed: "연결이 해제되었는지 확인하지 못했습니다. 목록이 현재 상태입니다.",
+      removed: (slug: string): string => `${slug} 소스의 연결을 해제했습니다.`,
       workflowStep: (link: ReactNode): ReactNode => <>{link}의 워크플로에서 이 소스에 해당하는 단계를 지우세요.</>,
     },
     files: "파일",
