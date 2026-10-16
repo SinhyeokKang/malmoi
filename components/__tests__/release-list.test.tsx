@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from "react";
+import { act, StrictMode, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -219,6 +219,20 @@ describe("ReleaseList — 진입 해시", () => {
    */
   it("`PublicScroller` 안에서도 같다", async () => {
     await landsOnHidden((node) => <PublicScroller>{node}</PublicScroller>);
+  });
+
+  /**
+   * ⚠️ **`next dev`는 StrictMode다** — 마운트 effect가 같은 플러시에서 한 번 더 돈다. 재실행된 "렌더 뒤 할 일"이 막 심은 착지를 리렌더 전에
+   * 집으면 숨은 대상으로 헛 스크롤이 한 번 나고 착지가 두 번 돈다(batch B 리뷰 ⚪1). 대상이 드러난 뒤 한 번만 착지해야 한다.
+   */
+  it("StrictMode에서도 착지는 대상이 드러난 뒤 한 번뿐이다", async () => {
+    history.replaceState(null, "", `#${tagAt(17)}`);
+    const { container } = await render(<StrictMode><PublicScroller>{list(TOTAL)}</PublicScroller></StrictMode>);
+    expect(shown(container)).toBe(20);
+    expect(document.activeElement?.id).toBe(tagAt(17));
+    expect(landing.calls).toEqual([tagAt(17)]);
+    expect(scrolls).toHaveLength(1);
+    expect(scrolls[0]?.targetHidden).toBe(false);
   });
 
   /** 이미 보이는 판은 `PublicScroller`가 지금처럼 처리한다 — `ReleaseList`가 착지를 다시 부르지 않는다. */
