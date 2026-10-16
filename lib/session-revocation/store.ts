@@ -55,6 +55,14 @@ export async function finishRevocation(prisma: PrismaClient, input: Proof): Prom
       if (consumed.count !== 1) return "invalid";
       await tx.verificationToken.deleteMany({ where: { identifier: { startsWith: challengePrefix(challenge.userId) } } });
       await tx.session.deleteMany({ where: { userId: challenge.userId } });
+      /**
+       * ⚠️ **세션으로 만든 장기 자격증명도 함께 끝낸다** (2026-10-17 보안 감사). 세션 하나면 MCP 개인 토큰(최대 365일)을 발급하거나 OAuth
+       * 동의를 승인할 수 있다 — 세션만 지우면 잃어버린 기기에서 만든 그 자격증명이 회수 뒤에도 `/api/mcp`에서 쓰기를 계속한다.
+       * 미교환 code는 동의의 산물이라 같이 지운다(60초 안에 연결로 바뀔 수 있다). refresh 이력은 연결을 따라 cascade다.
+       */
+      await tx.apiToken.deleteMany({ where: { userId: challenge.userId } });
+      await tx.oAuthConnection.deleteMany({ where: { userId: challenge.userId } });
+      await tx.oAuthCode.deleteMany({ where: { userId: challenge.userId } });
       return "revoked";
     });
   } catch (error) { logCaught("session-revocation", "finish", error); return "unavailable"; }

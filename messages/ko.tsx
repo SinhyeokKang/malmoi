@@ -961,7 +961,7 @@ export const ko = {
     sessions: {
       title: "모든 기기에서 로그아웃",
       confirmTitle: "모든 기기에서 로그아웃할까요?",
-      confirmHint: "로그인 계정으로 본인 확인을 마치면 이 기기를 포함한 모든 기기에서 로그아웃됩니다.",
+      confirmHint: "로그인 계정으로 본인 확인을 마치면 이 기기를 포함한 모든 기기에서 로그아웃됩니다. 개인 토큰과 연결된 앱도 더 이상 쓸 수 없습니다.",
       // provider 이름 뒤 조사를 피하려고 "~에서 계속"으로 쓴다(DESIGN §10.0).
       confirmAction: (provider: string): string => `${provider}에서 계속`,
       confirmDetail: {

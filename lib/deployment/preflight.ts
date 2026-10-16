@@ -82,6 +82,10 @@ export type PreflightReason =
   | "incomplete-group"
   /** 완전한 로그인 공급자 쌍이 하나도 없다 — 두 ID 이름으로 낸다. */
   | "no-login-provider"
+  /** 서명·인가 비밀이 `MIN_SECRET_LENGTH`보다 짧다. */
+  | "too-short"
+  /** `APP_SIGNING_SECRET`이 `AUTH_SECRET`과 같다 — 한 회전이 로그인·연결·온보딩을 함께 무효로 만든다. */
+  | "reused"
   | OriginRejection;
 
 export type PreflightProblem = { name: string; reason: PreflightReason };
@@ -93,6 +97,14 @@ export type UploadDirProbe = (path: string) => "ok" | "missing" | "not-directory
 
 /** Resend API 키 모양 — 유효성은 공급자만 안다. */
 const RESEND_KEY = /^re_\S+$/;
+/**
+ * 서명·인가 비밀의 하한 (2026-10-17 보안 감사). `CRON_SECRET`은 공개된 `/api/pull`의 유일한 인가이고 나머지 둘은 HMAC 키다 — 있는지만 보면
+ * `changeme`가 통과한다. 가이드의 생성 명령(`openssl rand -base64 32` 등)은 전부 43자 이상이라 그 명령을 따른 설치는 걸리지 않는다.
+ * 암호화 키 셋은 `validateCredentialKeys`가 따로 본다.
+ */
+const MIN_SECRET_LENGTH = 32;
+const SECRETS = ["AUTH_SECRET", "APP_SIGNING_SECRET", "CRON_SECRET"] as const;
+
 /** GitHub App slug — 설치 링크(`apps/<slug>/installations/new`)의 경로 조각이다. */
 const APP_SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -189,6 +201,14 @@ export function preflight(env: Record<string, string | undefined>, probeUploadDi
   const from = present(env.INVITATION_EMAIL_FROM);
   if (from !== undefined && !INVITATION_FROM.test(from)) report("INVITATION_EMAIL_FROM", "invalid-format");
   if (present(env.INVITATION_EMAIL_ORIGIN) !== undefined) report("INVITATION_EMAIL_ORIGIN", "present");
+
+  for (const name of SECRETS) {
+    const value = present(env[name]);
+    if (value !== undefined && value.length < MIN_SECRET_LENGTH) report(name, "too-short");
+  }
+  // sec-audit-3 #14가 둘을 갈랐다 — 같은 값이면 그 분리가 조용히 무너진다.
+  const signing = present(env.APP_SIGNING_SECRET);
+  if (signing !== undefined && signing.length >= MIN_SECRET_LENGTH && signing === present(env.AUTH_SECRET)) report("APP_SIGNING_SECRET", "reused");
 
   const appSlug = present(env.GITHUB_APP_SLUG);
   if (appSlug !== undefined && !APP_SLUG.test(appSlug)) report("GITHUB_APP_SLUG", "invalid-format");

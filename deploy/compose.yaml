@@ -18,7 +18,7 @@ name: malmoi
 
 services:
   postgres:
-    image: postgres:17.6
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -125,7 +125,7 @@ services:
       start_period: 30s
 
   proxy:
-    image: nginx:1.27.5-alpine
+    image: nginx:1.27.5-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     restart: unless-stopped
     depends_on:
       web:

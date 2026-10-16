@@ -953,7 +953,7 @@ export const es = {
     sessions: {
       title: "Cerrar sesión en todas partes",
       confirmTitle: "¿Cerrar sesión en todas partes?",
-      confirmHint: "Lo confirmarás con la cuenta con la que inicias sesión y después se cerrará la sesión en todos los dispositivos, incluido este.",
+      confirmHint: "Lo confirmarás con la cuenta con la que inicias sesión y después se cerrará la sesión en todos los dispositivos, incluido este. Tu token personal y tus apps conectadas también dejarán de funcionar.",
       confirmAction: (provider: string): string => `Continuar a ${provider}`,
       confirmDetail: {
         github: "GitHub te pedirá que lo confirmes antes de que cambie nada.",
