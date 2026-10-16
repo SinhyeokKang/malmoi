@@ -441,7 +441,10 @@ components/
                         READING_ARTICLE · READING_TOC_SLOT — 선언 @container/reading은 호출부 리터럴, 질의는 이 상수라 부모/자식이 갈린다)
   changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 버전 h1 = 그 판의 GitHub Release 링크 · formatDay, UTC 고정) ·
                         release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
-                        rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
+                        rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다) ·
+                        release-list("use client" 잎 — ReleaseList · RevealItem: 서버가 렌더한 전 항목의 숨김만 10개씩 푼다.
+                        Show older releases 버튼 · 새 첫 h1로 포커스 · 진입 해시는 landDocumentHeading으로 착지 · 끝 문장은 다 드러난 뒤.
+                        import는 lib/changelog/reveal · lib/public-doc/landing · ui/button 셋 — 본문 렌더는 서버에 남는다)
   public-doc-toc.tsx · public-doc-table.tsx
                         두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
                         lib/public-doc/toc의 currentSection, 클릭·검색 착지는 lib/public-doc/landing의 공통48 오프셋 + 절 h2 포커스 + 목차 현재 절 고정)와 표
@@ -1050,10 +1053,13 @@ lib/
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
                         계정(publicAccount — 로그인이면 아바타 메뉴의 이름·사진)도 그 파일이다
-  changelog/            `/changelog`의 원문 읽기. parse(parseReleases — Zod 검증 · 앱 태그 v<x.y.z>만 · published_at 내림차순, 같은
-                        시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
-                        imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
-                        남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
+  changelog/            `/changelog`의 원문 읽기. parse(parseReleasePage — 한 페이지 Zod 검증 · 앱 태그 v<x.y.z>만 · full = 거르기 전
+                        100칸 / mergeReleasePages — 태그로 중복을 걷고 합친 뒤 한 번 정렬: published_at 내림차순, 같은 시각은 semver 숫자순) ·
+                        markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog · imagesToLinks) · load(server-only 껍데기 — 페이지를
+                        최대 3장 따라 읽는다 · revalidate 3600 · 전체 3초 타임아웃 하나 · 둘째 페이지부터 실패는 읽은 데까지 + truncated ·
+                        ⚠️ 던지지 않는다, 로그엔 page·status·남은 한도만) · reveal(import 0 잎 — REVEAL_STEP · nextVisible · visibleToInclude,
+                        components/changelog/release-list가 값으로 읽어 client-graph의 정확한 목록에 든다).
+                        ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
   inbox/                Inbox(attention-inbox, 2026-10-05 · inbox-page, 2026-10-09 — ARCHITECTURE §6.365). plan(순수 — planInbox · isUnread · badgeLabel ·
                         clampSeenAt(페이지가 보낸 at을 toISOString 왕복 형만 받아 서버 시각으로 자른다), projectId를 입력에 두지 않는다.
                         클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
