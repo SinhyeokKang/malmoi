@@ -515,7 +515,7 @@ components/
                         repoInputOf — ① 리포 행 → Action 입력(GitHub { owner, repo } · GitLab 숫자 id 하나). 모달의 다섯 호출이 이 함수 하나로 입력을 만든다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         remove-source-dialog · sources-archived 일곱 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
-                        remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
+                        remove-source-dialog는 상세 모달 바닥 왼쪽 [Detach source]의 확인 창이다(Sync 확인 창 형 — 지문은
                         여는 순간 받는다). 성공·응답 유실은 목록 소유자(sources-screen)가 상세를 닫고 배너로 받는다.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
                         sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
