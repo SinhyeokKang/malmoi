@@ -1589,7 +1589,7 @@ namespace `"unresolved"`와 지역 이름 `unsupported`도 정상 사용자 문�
   기존 `Project` 관계와 같은 **Restrict**다: 삭제가 조용히 번지면 **마지막 OWNER가 사라진 프로젝트를
   되살릴 수 없다.**
 - **`Session`·`VerificationToken`·`ProjectMember`에 PRIMARY KEY가 없다.** 각자의 unique 제약이 Prisma의
-  식별자 역할을 한다. 단일 행은 unique로 조회하며 전체 세션 회수는 `Session.userId`와 `VerificationToken.identifier` 목적 접두로 조회·삭제 범위를 제한한다.
+  식별자 역할을 한다. 단일 행은 unique로 조회하며 전체 세션 회수는 `Session.userId`와 `VerificationToken.identifier` 목적 접두로 조회·삭제 범위를 제한한다(같은 tx의 `ApiToken`·`OAuthConnection`·`OAuthCode` 삭제도 `userId`로 좁힌다 — §6).
 - **`ProjectInvitation`의 `(projectId, emailLookup)`은 index이지 unique가 아니다.** `acceptedAt`을 남기는 설계라
   수락·만료된 행이 이메일을 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이
   된다. 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가른다.
@@ -2890,7 +2890,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 **`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image,uiLocale,timeZone,colorScheme}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
-**전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
+**전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. ⚠️ **같은 트랜잭션이 그 사용자의 `ApiToken`·`OAuthConnection`(refresh 이력은 cascade)·`OAuthCode`도 지운다** (2026-10-17 보안 감사) — 세션 하나로 MCP 개인 토큰(최대 365일)을 발급하거나 OAuth 동의를 승인할 수 있어서, 세션만 지우면 탈취한 세션으로 만든 장기 자격증명이 회수 뒤에도 `/api/mcp`에서 쓰기를 계속했다. 삭제는 소비 뒤에만 일어난다(`store.test.ts`). 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
 
 `lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/signin`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 실물 확인은 Google 왕복·취소 경로·키보드/포커스다.
 
