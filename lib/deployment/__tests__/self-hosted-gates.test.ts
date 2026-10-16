@@ -709,3 +709,47 @@ describe("nginx 예제 — Host 전달·HSTS 덮어쓰기·rate limit", () => {
     for (const body of proxied) expect(body).toContain("include /etc/nginx/snippets/proxy-common.conf;");
   });
 });
+
+// ── ③ 서드파티 이미지는 digest로 고정한다 ───────────────────────────────────────────────────────
+
+/**
+ * 태그만으로는 같은 태그의 재빌드가 발행 이미지의 베이스·설치의 DB·프록시를 조용히 바꾼다 (2026-10-17 보안 감사) — GitLab CI 이미지
+ * (`GITLAB_CI_IMAGE`)는 이미 `tag@sha256:…`이다. 우리가 만드는 이미지(`${MALMOI_IMAGE}`·`*:local`)는 대상이 아니다.
+ */
+const DIGEST_PINNED = /^[\w./-]+:[\w.-]+@sha256:[0-9a-f]{64}$/;
+
+function unpinnedImages(input: { dockerfiles: Record<string, string>; compose: string }): string[] {
+  const problems: string[] = [];
+  for (const [file, source] of Object.entries(input.dockerfiles)) {
+    const syntax = /^#\s*syntax=(\S+)/m.exec(source)?.[1];
+    if (syntax !== undefined && !DIGEST_PINNED.test(syntax)) problems.push(`${file} syntax ${syntax}`);
+    for (const m of source.matchAll(/^FROM\s+(?:--platform=\S+\s+)?(\S+)/gim)) if (!DIGEST_PINNED.test(m[1]!)) problems.push(`${file} FROM ${m[1]}`);
+  }
+  for (const [name, def] of Object.entries(composeServices(input.compose))) {
+    const image = def.image;
+    if (image === undefined || image.startsWith("${") || image.endsWith(":local")) continue;
+    if (!DIGEST_PINNED.test(image)) problems.push(`compose ${name} ${image}`);
+  }
+  return problems;
+}
+
+describe("SH-15 ③ — 서드파티 이미지는 tag@sha256으로 고정한다", () => {
+  const current = () => ({
+    dockerfiles: {
+      Dockerfile: readFileSync(join(ROOT, "Dockerfile"), "utf8"),
+      "deploy/scheduler/Dockerfile": readFileSync(join(ROOT, "deploy/scheduler/Dockerfile"), "utf8"),
+    },
+    compose: readFileSync(join(ROOT, "deploy/compose.yaml"), "utf8"),
+  });
+
+  it("현재 트리가 맞는다", () => {
+    expect(unpinnedImages(current())).toEqual([]);
+  });
+
+  it("태그만 남으면 red다 — 우리가 만드는 이미지는 세지 않는다", () => {
+    expect(unpinnedImages({ dockerfiles: { D: "# syntax=docker/dockerfile:1\nFROM node:24-bookworm-slim\n" }, compose: "services: {}\n" }))
+      .toEqual(["D syntax docker/dockerfile:1", "D FROM node:24-bookworm-slim"]);
+    const compose = "services:\n  db:\n    image: postgres:17.6\n  web:\n    image: \"${MALMOI_IMAGE}\"\n  cron:\n    image: malmoi-scheduler:local\n";
+    expect(unpinnedImages({ dockerfiles: {}, compose })).toEqual(["compose db postgres:17.6"]);
+  });
+});

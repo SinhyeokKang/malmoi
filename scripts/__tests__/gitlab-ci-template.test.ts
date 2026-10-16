@@ -48,6 +48,19 @@ describe("push.sh", () => {
     expect(body).toContain("packageManager");
   });
 
+  /**
+   * 의존성 설치는 push 토큰을 보지 않는다 (2026-10-17 보안 감사) — 빌드 스크립트를 허용한 의존성의 설치 스크립트가 job 환경을 그대로 읽는다.
+   * GitHub composite action은 `PUSH_TOKEN`을 마지막 스텝 env에만 넣으므로 두 호스트의 노출 범위를 맞춘다. 실행(`run.ts`)만 토큰을 받는다.
+   */
+  it("설치 두 줄(npm 전역 pnpm · pnpm install)은 PUSH_TOKEN·CI_JOB_TOKEN을 지운 환경에서 돈다", () => {
+    const lines = code(sh).split("\n");
+    const installs = lines.filter((l) => /\b(npm install|pnpm install)\b/.test(l));
+    expect(installs).toHaveLength(2);
+    for (const l of installs) expect(l.trim()).toMatch(/^env -u PUSH_TOKEN -u CI_JOB_TOKEN (npm|pnpm) install /);
+    // 실행 줄은 그대로 env를 받는다 — run.ts가 PUSH_TOKEN으로 /api/push를 부른다.
+    expect(lines.find((l) => l.includes("run.ts"))).not.toMatch(/env -u/);
+  });
+
   it("run.ts를 tsx로 부른다", () => {
     expect(code(sh)).toMatch(/pnpm exec tsx \.gitlab\/malmoi-i18n-push\/run\.ts/);
   });

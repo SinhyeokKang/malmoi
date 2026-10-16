@@ -14,19 +14,19 @@ const VALID: Record<string, string> = {
   MALMOI_PRIVACY_URL: "https://example.com/privacy",
   AUTH_URL: "https://malmoi.example.com",
   AUTH_TRUST_HOST: "true",
-  AUTH_SECRET: "secret-auth-SENTINEL1",
+  AUTH_SECRET: "secret-auth-SENTINEL1-0123456789abcdef",
   AUTH_GITHUB_ID: "Iv1.SENTINEL2",
   AUTH_GITHUB_SECRET: "secret-SENTINEL3",
   AUTH_GOOGLE_ID: "google-SENTINEL4",
   AUTH_GOOGLE_SECRET: "secret-SENTINEL5",
-  APP_SIGNING_SECRET: "secret-SENTINEL6",
+  APP_SIGNING_SECRET: "secret-signing-SENTINEL6-0123456789ab",
   DATABASE_URL: "postgresql://malmoi_app:pw-SENTINEL7@postgres:5432/malmoi",
   GITHUB_APP_ID: "123456",
   GITHUB_APP_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----SENTINEL8",
   GITHUB_APP_CLIENT_ID: "Iv23.SENTINEL9",
   GITHUB_APP_CLIENT_SECRET: "secret-SENTINEL10",
   GITHUB_APP_SLUG: "malmoi-acme",
-  CRON_SECRET: "secret-SENTINEL11",
+  CRON_SECRET: "secret-cron-SENTINEL11-0123456789abcd",
   TOKEN_ENCRYPTION_KEYS: '{"k1":"SENTINEL12"}',
   TOKEN_ENCRYPTION_ACTIVE_KEY_ID: "k1",
   PII_ENCRYPTION_KEYS: '{"p1":"SENTINEL13"}',
@@ -175,6 +175,28 @@ describe("preflight — MALMOI_UPLOAD_DIR", () => {
     const seen: string[] = [];
     preflight(VALID, (path) => { seen.push(path); return "ok"; });
     expect(seen).toEqual(["/var/lib/malmoi/uploads"]);
+  });
+});
+
+/**
+ * 서명·인가 비밀의 강도 (2026-10-17 보안 감사). 있는지만 보면 `CRON_SECRET=changeme`가 공개된 `/api/pull`을 열고, `AUTH_SECRET`과
+ * `APP_SIGNING_SECRET`이 같으면 한 회전이 로그인·연결·온보딩을 함께 무효로 만든다(sec-audit-3 #14가 둘을 가른 이유). 가이드의 생성 명령은
+ * 전부 43자 이상을 낸다 — 하한 32자는 그 명령을 따른 설치를 거부하지 않는다.
+ */
+describe("preflight — 서명·인가 비밀", () => {
+  it("32자 미만은 too-short다 — 값은 싣지 않는다", () => {
+    for (const name of ["AUTH_SECRET", "APP_SIGNING_SECRET", "CRON_SECRET"]) {
+      expect(reasons({ ...VALID, [name]: "changeme-SENTINEL" })).toEqual({ [name]: "too-short" });
+      expect(reasons({ ...VALID, [name]: "x".repeat(32) })).toEqual({});
+    }
+  });
+
+  it("APP_SIGNING_SECRET이 AUTH_SECRET과 같으면 reused다", () => {
+    expect(reasons({ ...VALID, APP_SIGNING_SECRET: VALID.AUTH_SECRET })).toEqual({ APP_SIGNING_SECRET: "reused" });
+  });
+
+  it("누락은 missing 하나만 낸다 — 길이 판정을 겹쳐 내지 않는다", () => {
+    expect(reasons({ ...VALID, CRON_SECRET: "" })).toEqual({ CRON_SECRET: "missing" });
   });
 });
 

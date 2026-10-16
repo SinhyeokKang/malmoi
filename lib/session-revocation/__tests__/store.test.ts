@@ -9,7 +9,7 @@ const input = { nonce, sessionToken: "raw", state: "state", provider: "github" a
 function fixture() {
   const context = { userId: "u", provider: "github" as const, providerAccountId: "gh", sessionDigest: hashSessionToken("raw"), stateDigest: stateHash("state") };
   const row = { identifier: challengeIdentifier(context), token: nonceHash(nonce), expires: new Date(Date.now() + 300000) };
-  const tx = { $queryRaw: vi.fn().mockResolvedValue([{ id: "u" }]), account: { findMany: vi.fn().mockResolvedValue([{ provider: "github", providerAccountId: "gh", userId: "u" }]), findFirst: vi.fn().mockResolvedValue({ userId: "u" }) }, session: { findFirst: vi.fn().mockResolvedValue({ userId: "u" }), deleteMany: vi.fn().mockResolvedValue({ count: 2 }) }, verificationToken: { findFirst: vi.fn().mockResolvedValue(row), create: vi.fn(), deleteMany: vi.fn().mockResolvedValue({ count: 1 }) } };
+  const tx = { $queryRaw: vi.fn().mockResolvedValue([{ id: "u" }]), account: { findMany: vi.fn().mockResolvedValue([{ provider: "github", providerAccountId: "gh", userId: "u" }]), findFirst: vi.fn().mockResolvedValue({ userId: "u" }) }, session: { findFirst: vi.fn().mockResolvedValue({ userId: "u" }), deleteMany: vi.fn().mockResolvedValue({ count: 2 }) }, verificationToken: { findFirst: vi.fn().mockResolvedValue(row), create: vi.fn(), deleteMany: vi.fn().mockResolvedValue({ count: 1 }) }, apiToken: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) }, oAuthConnection: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) }, oAuthCode: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) } };
   const db = { ...tx, $transaction: vi.fn(async fn => fn(tx)) } as unknown as PrismaClient;
   return { db, tx, row };
 }
@@ -74,6 +74,20 @@ it("finish consumes request before deleting only that user's sessions", async ()
   expect(tx.session.deleteMany).toHaveBeenCalledWith({ where: { userId: "u" } });
   expect(tx.verificationToken.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(tx.session.deleteMany.mock.invocationCallOrder[0]!);
 });
+/**
+ * 회수는 **그 세션들로 만든 장기 자격증명**까지 끝낸다 (2026-10-17 보안 감사) — 세션만 지우면 탈취한 세션으로 발급한 MCP 개인 토큰(최대
+ * 365일)·OAuth 연결이 "Sign out everywhere" 뒤에도 `/api/mcp`에서 쓰기를 계속한다. 미교환 code도 같은 동의의 산물이라 함께 지운다.
+ */
+it("finish also deletes that user's MCP token, OAuth connections and unexchanged codes in the same transaction", async () => {
+  const { db, tx } = fixture();
+  expect(await finishRevocation(db, input)).toBe("revoked");
+  expect(tx.apiToken.deleteMany).toHaveBeenCalledWith({ where: { userId: "u" } });
+  expect(tx.oAuthConnection.deleteMany).toHaveBeenCalledWith({ where: { userId: "u" } });
+  expect(tx.oAuthCode.deleteMany).toHaveBeenCalledWith({ where: { userId: "u" } });
+  // 소비가 먼저다 — 증명이 확정되기 전에는 아무 자격증명도 지우지 않는다.
+  const consumedAt = tx.verificationToken.deleteMany.mock.invocationCallOrder[0]!;
+  for (const spy of [tx.apiToken.deleteMany, tx.oAuthConnection.deleteMany, tx.oAuthCode.deleteMany]) expect(consumedAt).toBeLessThan(spy.mock.invocationCallOrder[0]!);
+});
 it.each(["wrong-account", "wrong-state", "expired", "consumed", "session-gone", "account-gone"])("finish rejects %s without deleting sessions", async failure => {
   const { db, tx, row } = fixture();
   const attempt = { ...input };
@@ -85,6 +99,9 @@ it.each(["wrong-account", "wrong-state", "expired", "consumed", "session-gone", 
   if (failure === "account-gone") tx.account.findFirst.mockResolvedValue(null);
   expect(await finishRevocation(db, attempt)).not.toBe("revoked");
   expect(tx.session.deleteMany).not.toHaveBeenCalled();
+  expect(tx.apiToken.deleteMany).not.toHaveBeenCalled();
+  expect(tx.oAuthConnection.deleteMany).not.toHaveBeenCalled();
+  expect(tx.oAuthCode.deleteMany).not.toHaveBeenCalled();
 });
 it("database failures return fixed unavailable, never exception details", async () => {
   const { db, tx } = fixture();

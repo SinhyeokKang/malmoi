@@ -311,6 +311,23 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
   });
 
   /**
+   * **잠금 대기 중에 보관되면 잠금 뒤 판정이 막는다** (2026-10-17 보안 감사 — POSTMORTEM 2026-09-23 패턴). 앞의 판정은 tx 밖에서 한 번
+   * 읽은 값이라, 보관 Action이 `Project`를 잠그고 커밋하는 동안 기다린 수락이 보관된 프로젝트에 멤버 행을 만들었다.
+   */
+  it("수락이 Project 잠금을 기다리는 사이 보관되면 archived — 멤버가 들지 않고 초대도 소비되지 않는다", async () => {
+    const project = db.projects.find((p) => p.id === "pA")!;
+    invite();
+    db.spies.executeRaw.mockImplementation(async (strings: TemplateStringsArray) => {
+      // 잠금이 풀린 순간 보관이 커밋돼 있다.
+      if (strings.join("?").includes(`"Project"`)) project.archivedAt = new Date("2026-10-17T00:00:00Z");
+      return 0;
+    });
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "archived" });
+    expect(db.members.some((m) => m.userId === "u-guest")).toBe(false);
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+  });
+
+  /**
    * **동시 수락의 진 쪽은 `already-member`다** (sec-audit-3 #8). 같은 사용자가 같은 프로젝트의 초대 둘을 동시에
    * 수락하면 "이미 멤버인가" 조회는 둘 다 통과하고 진 쪽의 `projectMember.create`가 P2002를 던진다 — 전에는
    * 그것이 `unavailable`이었다. 조회를 트랜잭션 안에 둬도 read committed는 경합을 못 막으므로 최종 판정은
