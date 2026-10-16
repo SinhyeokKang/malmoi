@@ -162,16 +162,122 @@ describe("ReleaseList — 더 보기", () => {
     expect(document.activeElement).not.toBe(document.body);
     expect(button(container)).toBeNull();
   });
+});
 
-  it("스크롤만으로는 드러나지 않는다", async () => {
+/**
+ * 관찰자 가짜 — 실물처럼 **교차 상태가 바뀔 때만** 알린다고 보고, 알림은 테스트가 `fire`로 직접 낸다.
+ * 실물은 `observe()` 직후 첫 알림을 한 번 보낸다 — 그래서 `ReleaseList`가 묶음마다 관찰자를 새로 만들면, 감지 요소가 계속 보이는
+ * 동안에도 다음 묶음이 이어서 드러난다. 끊긴(`disconnect`) 관찰자는 더 알리지 않는다.
+ */
+class FakeObserver {
+  static instances: FakeObserver[] = [];
+  readonly targets: Element[] = [];
+  disconnected = false;
+  constructor(
+    readonly callback: IntersectionObserverCallback,
+    readonly options: IntersectionObserverInit = {},
+  ) {
+    FakeObserver.instances.push(this);
+  }
+  observe(target: Element) { this.targets.push(target); }
+  unobserve() {}
+  disconnect() { this.disconnected = true; }
+  takeRecords() { return []; }
+  async fire(isIntersecting: boolean) {
+    const entries = this.targets.map((target) => ({ target, isIntersecting }) as IntersectionObserverEntry);
+    await act(async () => this.callback(entries, this as unknown as IntersectionObserver));
+  }
+}
+/** 지금 살아 있는 관찰자 — 많아야 하나여야 한다. */
+const live = () => FakeObserver.instances.filter((observer) => !observer.disconnected && observer.targets.length > 0);
+const observer = () => {
+  const all = live();
+  expect(all).toHaveLength(1);
+  return all[0]!;
+};
+
+describe("ReleaseList — 스크롤로 드러내기", () => {
+  beforeEach(() => {
+    FakeObserver.instances = [];
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+  });
+
+  /** 셸은 문서가 아니라 `[data-public-scroller]`가 스크롤한다 — 기본 root(뷰포트)로 두면 판정이 틀린다. 바닥 한 화면 전에 미리 드러낸다. */
+  it("스크롤러 바닥 근처의 버튼 그릇을 본다", async () => {
     const { container } = await render(inScroller(list(TOTAL)));
-    const scroller = find<HTMLElement>(container, "[data-public-scroller]");
-    await act(async () => {
-      scroller.scrollTop = 10_000;
-      scroller.dispatchEvent(new Event("scroll"));
-      window.dispatchEvent(new Event("scroll"));
-    });
+    const current = observer();
+    expect(current.options.root).toBe(find(container, "[data-public-scroller]"));
+    expect(current.options.rootMargin).toBe("0px 0px 100% 0px");
+    expect(current.targets).toEqual([button(container)!.parentElement]);
+  });
+
+  it("교차 알림이면 다음 10개가 드러나고 포커스는 움직이지 않는다", async () => {
+    const { container } = await render(inScroller(list(TOTAL)));
+    const before = document.activeElement;
+    await observer().fire(true);
+    expect(shown(container)).toBe(20);
+    expect(document.activeElement).toBe(before);
+  });
+
+  it("교차가 아니면 바뀌지 않는다", async () => {
+    const { container } = await render(inScroller(list(TOTAL)));
+    await observer().fire(false);
     expect(shown(container)).toBe(10);
+  });
+
+  /**
+   * ⚠️ **관찰자는 교차 상태가 바뀔 때만 알린다** — 드러낸 뒤에도 감지 요소가 계속 보이면(항목이 짧거나 화면이 세로로 길 때) 같은 관찰자는
+   * 다시 알리지 않아 거기서 멈춘다. 묶음마다 관찰자를 새로 만들어 첫 알림을 다시 받는다.
+   */
+  it("드러낼 때마다 다시 관찰한다 — 감지 요소가 계속 보여도 끝까지 이어진다", async () => {
+    const { container } = await render(inScroller(list(TOTAL)));
+    const first = observer();
+    await first.fire(true);
+    expect(first.disconnected).toBe(true);
+    const second = observer();
+    expect(second).not.toBe(first);
+    await second.fire(true);
+    expect(shown(container)).toBe(25);
+    // 다 드러나면 감지 요소가 사라지고 관찰도 끝난다.
+    expect(live()).toHaveLength(0);
+    expect(button(container)).toBeNull();
+  });
+
+  /**
+   * ⚠️ **버튼에 포커스가 있으면 클릭과 같은 경로다** — Tab으로 버튼에 닿는 순간 감지가 걸리면 항목이 버튼 위에 끼어들어, 다음 Enter가
+   * 묶음 하나를 건너뛰고 마지막 묶음에선 버튼이 사라져 포커스가 body로 빠진다. 새로 드러난 첫 `h1`로 옮긴다.
+   */
+  it("버튼에 포커스가 있을 때 드러나면 새 첫 `h1`로 포커스가 간다 — 마지막 묶음에서도 body로 빠지지 않는다", async () => {
+    const { container } = await render(inScroller(list(TOTAL)));
+    button(container)!.focus();
+    await observer().fire(true);
+    expect(shown(container)).toBe(20);
+    expect(document.activeElement?.id).toBe(tagAt(10));
+    button(container)!.focus();
+    await observer().fire(true);
+    expect(shown(container)).toBe(25);
+    expect(document.activeElement?.id).toBe(tagAt(20));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("10개 이하면 관찰하지 않는다", async () => {
+    await render(inScroller(list(10)));
+    expect(live()).toHaveLength(0);
+  });
+
+  it("버튼으로 다 드러내면 관찰이 끝난다", async () => {
+    const { container } = await render(inScroller(list(TOTAL)));
+    await click(button(container)!);
+    await click(button(container)!);
+    expect(live()).toHaveLength(0);
+  });
+
+  /** 관찰자가 없는 환경에서도 버튼은 그대로 동작한다. */
+  it("`IntersectionObserver`가 없으면 버튼만으로 동작한다", async () => {
+    vi.stubGlobal("IntersectionObserver", undefined);
+    const { container } = await render(inScroller(list(TOTAL)));
+    await click(button(container)!);
+    expect(shown(container)).toBe(20);
   });
 });
 
