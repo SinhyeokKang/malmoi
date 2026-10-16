@@ -41,13 +41,16 @@ export function ReleaseList({ total, showOlder, trailing, children }: { total: n
   const [visible, setVisible] = useState(() => nextVisible(0, total));
   const pending = useRef<Pending | null>(null);
 
-  // ⚠️ **이 effect가 진입 해시 effect보다 먼저 선언돼야 한다** — 마운트 때 둘이 선언 순서로 같은 플러시에서 돈다. 뒤에 서면 해시 effect가
-  // 막 심은 착지를 같은 플러시에서 집어 들어, 대상이 아직 `hidden`인 채로 스크롤·포커스한다(브라우저에서는 둘 다 아무 일도 안 한다).
+  // ⚠️ **대상이 아직 `hidden` 안이면 할 일을 남겨 두고 다음 렌더를 기다린다** — 숨은 대상에는 브라우저가 스크롤·포커스를 주지 않는다.
+  // 진입 해시 effect가 같은 플러시에서 착지를 심을 때(마운트, 그리고 `next dev` StrictMode의 effect 재실행)가 그 경우다.
   useEffect(() => {
     const task = pending.current;
+    if (!task) return;
+    const target = task.kind === "land" ? document.getElementById(task.id) : document.querySelector<HTMLElement>(`[data-reveal-index="${task.index}"] [id][tabindex="-1"]`);
+    if (target?.closest("[hidden]")) return;
     pending.current = null;
-    if (task?.kind === "land") landDocumentHeading(task.id);
-    if (task?.kind === "focus") document.querySelector<HTMLElement>(`[data-reveal-index="${task.index}"] [id][tabindex="-1"]`)?.focus();
+    if (task.kind === "land") landDocumentHeading(task.id);
+    else target?.focus();
   }, [visible]);
 
   useEffect(() => {
