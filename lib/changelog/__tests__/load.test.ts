@@ -100,7 +100,7 @@ describe("loadReleases — 요청 모양", () => {
 
 describe("loadReleases — 페이지 따라 읽기", () => {
   it("100칸이면 page=2를 부르고 100칸 미만에서 멈춘다", async () => {
-    fetchMock.mockResolvedValueOnce(json(fullPage(0))).mockResolvedValueOnce(json([V1_0_1]));
+    fetchMock.mockResolvedValueOnce(json(fullPage(0))).mockResolvedValueOnce(json([{ ...V1_0_1, tag_name: "v2.0.0" }]));
     const result = await loadReleases();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(requests()[1]?.url).toContain("page=2");
