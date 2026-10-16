@@ -34,6 +34,8 @@ Si ya has autorizado Malmoi en GitLab, GitLab puede devolverte aquí sin mostrar
 
 Esto también cierra la sesión del dispositivo que estás usando.
 
+También termina tu token personal y tus apps conectadas. Los agentes de IA pierden el acceso hasta que [crees un token nuevo](../ai-agents/token.md) o [los vuelvas a conectar](../ai-agents/browser.md).
+
 ![El diálogo para cerrar sesión en todas partes con los botones Cancelar y Continuar en GitHub](/guide/sign-out-everywhere.webp "Continúa en tu proveedor de inicio de sesión para confirmar.")
 
 ## Qué pasa después {#next}

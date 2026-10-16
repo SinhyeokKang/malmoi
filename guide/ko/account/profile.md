@@ -34,6 +34,8 @@ GitLab에서 Malmoi를 이미 승인했다면 GitLab 화면 없이 바로 돌아
 
 지금 사용 중인 기기에서도 로그아웃됩니다.
 
+개인 토큰과 연결된 앱도 함께 끊깁니다. AI 에이전트는 [새 토큰을 만들거나](../ai-agents/token.md) [다시 연결할](../ai-agents/browser.md) 때까지 Malmoi에 접근할 수 없습니다.
+
 ![모든 기기에서 로그아웃 확인창에 취소와 GitHub로 계속 버튼이 보이는 모습](/guide/sign-out-everywhere.webp "로그인에 쓰는 서비스로 이동해 본인을 확인합니다.")
 
 ## 다음 단계 {#next}
