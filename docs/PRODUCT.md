@@ -834,7 +834,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
 /changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
-                               수집 = GitHub 페이지를 따라 읽는다(최대 3페이지 · 전체 3초 · 둘째 페이지부터 실패하면 읽은 데까지 + 끝 문장) · 표시 = 처음 10개, 버튼으로 10개씩, 끝 문장은 다 드러난 뒤 (2026-10-16, changelog-pagination)
+                               수집 = GitHub 페이지를 따라 읽는다(최대 3페이지 · 전체 3초 · 둘째 페이지부터 실패하면 읽은 데까지 + 끝 문장) · 표시 = 처음 10개, 스크롤(또는 버튼)로 10개씩, 끝 문장은 다 드러난 뒤 (2026-10-16, changelog-pagination)
                                원문 = 사용자 체감 변화 + `/merge` 9-b가 붙이는 `**Self-hosting image:**` 문단 하나(끝의 Full changelog 줄은 걷힌다) (2026-10-12, image-publish-workflow)
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences·/inbox 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
                                self-hosted는 Vercel이 아니라 `VERCEL_ENV`가 비어 늘 Disallow: / — 거기에 middleware가 모든 페이지에 noindex, sitemap·llms 세 경로를 404로 더한다(색인 계약은 hosted만의 것) ← self-hosting (2026-10-09)
@@ -877,8 +877,8 @@ GitHub Release**라 소스에 사본이 없고, 본문 이미지는 `<img>`가 �
 하루 약 1.9개씩 쌓여 2026년 11월 말이면 GitHub 한 요청 상한(100건)에 닿고, 그 뒤 옛 판은 앱 안에서 볼 수 없다. 판정은 둘로 나눈다.
 **수집**: GitHub Releases를 다음 페이지까지 따라 읽는다 — 최대 3페이지(원 배열 300건), 콜드 캐시 첫 진입의 총 대기 상한은 페이지 수와
 무관하게 3초 하나, 첫 페이지가 실패하면 지금과 같은 안내이고 둘째 페이지부터 실패·타임아웃이면 읽은 데까지 보인다. 상한에 닿거나
-부분 실패면 목록 끝에 `Older releases are on GitHub Releases.` 문장이 선다. **표시**: 처음 10개만 보이고 버튼으로 10개씩 더 드러낸다 —
-스크롤만으로는 드러나지 않고, 끝 문장은 모든 항목이 드러난 뒤에만 선다. 서버가 받은 전 목록을 렌더하므로 추가 요청·새 진입점은 없다.
+부분 실패면 목록 끝에 `Older releases are on GitHub Releases.` 문장이 선다. **표시**: 처음 10개만 보이고, 목록 끝 근처로 스크롤하면 다음 10개가 자동으로
+드러난다(키보드·스크린리더용 버튼이 같은 자리에 있다). 끝 문장은 모든 항목이 드러난 뒤에만 선다. 서버가 받은 전 목록을 렌더하므로 추가 요청·새 진입점은 없다.
 비범위: 버전별 하위 페이지 · 검색·필터 · RSS·구독·새 버전 배지(§4.2 알림
 비범위 인접) · 앱 안 작성 UI · `/merge` 직후 즉시 반영.
 ⚠️ **새 버전 배지는 계속 비범위다** — 릴리스 사건 기반 알림이라 현재 상태를 모으는 Attention inbox의 예외에 들지 않는다.
