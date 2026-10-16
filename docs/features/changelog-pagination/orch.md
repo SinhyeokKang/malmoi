@@ -32,3 +32,5 @@
 - A 완료(3커밋, worker gate ok · 15406 tests). 독립 리뷰(Opus 5.5 medium) 🔴0 🟡0 ⚪5 — 통합 가능. 지휘자 판단 — ⚪는 받지 않는다(이름·IA 행 낱말·red 테스트 커밋 squash·커밋 경계·선택 케이스; red 커밋은 이 리포 TDD 흐름의 형이라 그대로 둔다).
 - A 통합 `59cf55f1` push · dev CI green(run 38830478238). A 워크트리·터미널 정리.
 - B 완료(3커밋, worker gate ok · 15406 tests · 변형 red 확인). 독립 리뷰(Opus 5.5 medium) 🔴0 🟡0 ⚪3 — 통합 가능. 지휘자 판단 — ⚪1(StrictMode에서 숨은 대상에 첫 착지가 헛돈다 — `next dev` QA를 흐린다)은 C 첫 항목으로 받는다(대상이 `[hidden]` 안이면 착지를 미룬다). ⚪3(`ReleaseList` 빠뜨림)은 C의 페이지 테스트 "11번째가 hidden" 단언이 덮는다. ⚪2는 받지 않는다.
+- B 통합 `6addccb4` push · dev CI green(run 38831370513).
+- C 완료(B 터미널, 6커밋 — StrictMode 수정·페이지 테스트·배선·사전 셋·DESIGN·DIRECTORY · worker gate ok · 15432 tests · 가이드 en 네 줄 그대로 참). 독립 리뷰(Opus 5.5 medium) 🔴0 🟡0 ⚪2 — 통합 가능(변형 4종 red/green 재확인). 지휘자 판단 — ⚪(문자열 hydration 비교·DESIGN 1207행 기존 괄호 중복)는 받지 않는다.
