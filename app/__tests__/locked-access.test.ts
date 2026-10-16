@@ -41,7 +41,7 @@ const SITES = [
   "app/(edit)/projects/[slug]/settings/actions.ts#deleteProjectImage",
   // updateBaseLocale (MCP set_base_locale)
   "lib/sources/base-locale.ts#declareBaseLocale",
-  // removeSource (MCP remove_source)
+  // removeSource (MCP detach_source)
   "lib/surfaces/remove.ts#removeSurface",
   // 언어 추가·제거(추가 취소)·제거 취소 (locale-add — Action·MCP 공통 코어)
   "lib/locales/change.ts#addLocale",

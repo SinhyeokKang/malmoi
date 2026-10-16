@@ -15,7 +15,7 @@ const text = (subtype: string) => renderToStaticMarkup(eventSentence(en, "en", {
 
 describe("eventSentence — surface.removed", () => {
   it("제거는 removed 문장이다", () => {
-    expect(text("surface.removed")).toBe("Owner removed the web source");
+    expect(text("surface.removed")).toBe("Owner detached the web source");
   });
 
   it("추가·기준 언어는 그대로다 (위 대조)", () => {

@@ -15,9 +15,9 @@ import { TOKEN_GRANTS, type TokenGrant } from "../grant";
  */
 
 const READ = ["whoami", "list_projects", "get_project", "list_repositories", "list_branches", "detect_formats", "list_keys", "get_key",
-  "preview_publish", "preview_sync", "preview_revert", "preview_source_removal", "preview_locale_removal", "list_events", "get_workflow", "list_members", "read_docs"];
+  "preview_publish", "preview_sync", "preview_revert", "preview_source_detach", "preview_locale_removal", "list_events", "get_workflow", "list_members", "read_docs"];
 const WRITE = ["create_project", "add_sources", "set_translations", "publish", "sync_repository", "revert_to_last_sent", "update_project",
-  "set_base_locale", "remove_source", "add_locale", "remove_locale", "cancel_locale_removal", "rotate_push_token", "invite_members", "revoke_invitation", "change_member", "archive_project", "unarchive_project"];
+  "set_base_locale", "detach_source", "add_locale", "remove_locale", "cancel_locale_removal", "rotate_push_token", "invite_members", "revoke_invitation", "change_member", "archive_project", "unarchive_project"];
 
 const read = { readOnlyHint: true, destructiveHint: false } as const;
 const write = { readOnlyHint: false, destructiveHint: false } as const;
@@ -41,7 +41,7 @@ const EXPECTED: readonly ToolSpec[] = [
   { name: "preview_publish", annotations: read, access: { rolePermission: "translation:write", tokenGrant: null } },
   { name: "preview_sync", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
   { name: "preview_revert", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
-  { name: "preview_source_removal", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
+  { name: "preview_source_detach", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
   { name: "preview_locale_removal", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
   { name: "list_events", annotations: read, access: { rolePermission: "translation:write", tokenGrant: null } },
   { name: "get_workflow", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
@@ -55,7 +55,7 @@ const EXPECTED: readonly ToolSpec[] = [
   { name: "revert_to_last_sent", annotations: destructive, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
   { name: "update_project", annotations: write, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
   { name: "set_base_locale", annotations: write, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
-  { name: "remove_source", annotations: destructive, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
+  { name: "detach_source", annotations: destructive, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
   { name: "add_locale", annotations: write, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
   { name: "remove_locale", annotations: destructive, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
   { name: "cancel_locale_removal", annotations: write, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },

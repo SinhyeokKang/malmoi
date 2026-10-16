@@ -85,7 +85,7 @@ const WRITES: [string, Record<string, unknown>][] = [
   ["revert_to_last_sent", { ...S, keyId: "k1", confirmation: "c".repeat(64) }],
   ["update_project", { slug: "acme", name: "New" }],
   ["set_base_locale", { ...S, baseLocale: "en" }],
-  ["remove_source", { ...S, approval: null }],
+  ["detach_source", { ...S, approval: null }],
   ["rotate_push_token", { slug: "acme" }],
   ["invite_members", { slug: "acme", recipients: [{ email: "x@y.com", role: "EDITOR" }] }],
   ["revoke_invitation", { slug: "acme", invitationId: "i1" }],
@@ -420,28 +420,28 @@ describe("preview_publish — 열린 PR 세 상태", () => {
 });
 
 /** 소스 제거 (sources-add-remove B-T8) — 웹 `removeSource`와 같은 코어. 거부 문장은 화면의 `removalReason`이다. */
-describe("remove_source", () => {
+describe("detach_source", () => {
   it("성공은 그 프로젝트 레이아웃과 목록을 무효화하고 워크플로 처방을 말한다", async () => {
-    expect(await run("remove_source", subject("owner"), { ...S, approval: "f" })).toMatchObject({ status: "ok", summary: en.mcp.summary.sourceRemoved("default") });
+    expect(await run("detach_source", subject("owner"), { ...S, approval: "f" })).toMatchObject({ status: "ok", summary: en.mcp.summary.sourceRemoved("default") });
     expect(h.core).toHaveBeenCalledWith("remove", prisma, { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, { ...S, approval: "f" });
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"], ["/projects"]]);
   });
 
   it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다 (POSTMORTEM 2026-09-24)", async () => {
     h.core.mockResolvedValue({ ok: false, error: "archived" });
-    expect(code(await run("remove_source", subject("owner"), { ...S, approval: null }))).toBe("archived");
+    expect(code(await run("detach_source", subject("owner"), { ...S, approval: null }))).toBe("archived");
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"]]);
   });
 
   it.each(["stale-approval", "last-source", "importing"] as const)("%s는 거부이고 화면과 같은 문장이며 무효화하지 않는다", async error => {
     h.core.mockResolvedValue({ ok: false, error });
-    expect(await run("remove_source", subject("owner"), { ...S, approval: null })).toEqual({ status: "refused", code: error, message: en.sources.removal.reasons[error] });
+    expect(await run("detach_source", subject("owner"), { ...S, approval: null })).toEqual({ status: "refused", code: error, message: en.sources.removal.reasons[error] });
     expect(h.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("approval은 생략할 수 없다 — 미전달이 없으면 null을 명시한다", async () => {
     // 입력 검증은 SDK 서버가 이 스키마로 한다(도구 본문 전).
-    const schema = TOOLS.find(t => t.name === "remove_source")!.inputSchema;
+    const schema = TOOLS.find(t => t.name === "detach_source")!.inputSchema;
     expect(schema.safeParse(S).success).toBe(false);
     expect(schema.safeParse({ ...S, approval: null }).success).toBe(true);
   });
