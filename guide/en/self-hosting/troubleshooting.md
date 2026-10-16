@@ -12,6 +12,8 @@ The web container starts with `pnpm preflight && next start`. When the check fai
 | `incomplete-pair` | A sign-in provider has only one of its two values; the line names the missing one (such as `AUTH_GITLAB_SECRET`) | Fill in the missing value, or empty both values to turn that provider off |
 | `no-login-provider` | No sign-in provider is on; three lines name `AUTH_GITHUB_ID`, `AUTH_GITLAB_ID`, and `AUTH_GOOGLE_ID` | Fill in at least one complete pair ([settings](install.md#settings)) |
 | `incomplete-group` | Only some of the five `GITHUB_APP_*` values are set | Set all five for GitHub repositories, or clear all five for GitLab only |
+| `too-short` | `AUTH_SECRET`, `APP_SIGNING_SECRET`, or `CRON_SECRET` is shorter than 32 characters | Generate it again with the command in [settings](install.md#settings) |
+| `reused` | `APP_SIGNING_SECRET` has the same value as `AUTH_SECRET` | Generate a different value for `APP_SIGNING_SECRET` |
 | `invalid-format` | Wrong shape: `RESEND_API_KEY` must start with `re_`, `INVITATION_EMAIL_FROM` must be `Name <address>` or an address, `GITHUB_APP_SLUG` is `[a-z0-9-]`, `AUTH_TRUST_HOST` must be `true` | That value |
 | `malformed` · `not-https` · `userinfo` | A shape problem in `MALMOI_ORIGIN` or `MALMOI_PRIVACY_URL`: spaces or backslashes or an unparsable URL, `http://`, `user:pw@` | An `https://` URL without user info |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN` only (a path or query in the privacy URL is fine): a path, `?`, `#`, an IPv6 literal, a non-ASCII domain | `MALMOI_ORIGIN=https://<domain>` |

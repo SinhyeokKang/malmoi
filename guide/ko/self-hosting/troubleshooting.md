@@ -12,6 +12,8 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 �
 | `incomplete-pair` | 로그인 공급자의 두 값 중 하나만 있습니다. 로그에 빠진 변수의 이름(예: `AUTH_GITLAB_SECRET`)이 찍힙니다 | 빠진 값을 채우거나, 그 공급자를 끄려면 두 값을 모두 비웁니다 |
 | `no-login-provider` | 켜진 로그인 공급자가 없습니다. 세 줄이 `AUTH_GITHUB_ID`, `AUTH_GITLAB_ID`, `AUTH_GOOGLE_ID`를 가리킵니다 | 완전한 쌍을 하나 이상 채웁니다([설정](install.md#settings)) |
 | `incomplete-group` | `GITHUB_APP_*` 다섯 중 일부만 채웠습니다 | GitHub 리포지토리를 쓰면 다섯을 모두 채우고, GitLab만 쓰면 모두 비웁니다 |
+| `too-short` | `AUTH_SECRET`·`APP_SIGNING_SECRET`·`CRON_SECRET` 중 하나가 32자보다 짧습니다 | [설정](install.md#settings)의 명령으로 다시 만듭니다 |
+| `reused` | `APP_SIGNING_SECRET`이 `AUTH_SECRET`과 같은 값입니다 | `APP_SIGNING_SECRET`을 다른 값으로 새로 만듭니다 |
 | `invalid-format` | 형식이 맞지 않습니다. `RESEND_API_KEY`는 `re_`로 시작, `INVITATION_EMAIL_FROM`은 `이름 <주소>`나 주소, `GITHUB_APP_SLUG`는 `[a-z0-9-]`, `AUTH_TRUST_HOST`는 `true`만 | 해당 값 |
 | `malformed` · `not-https` · `userinfo` | `MALMOI_ORIGIN`이나 `MALMOI_PRIVACY_URL`의 형식 문제입니다. 공백·역슬래시나 읽을 수 없는 URL, `http://`, `user:pw@` | 사용자 정보 없는 `https://` URL로 |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN`에만 해당합니다(방침 URL의 경로·query는 괜찮습니다). 경로, `?`, `#`, IPv6 리터럴, 비ASCII 도메인 | `MALMOI_ORIGIN=https://<domain>` 꼴로 |

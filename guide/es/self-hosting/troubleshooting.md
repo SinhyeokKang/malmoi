@@ -12,6 +12,8 @@ El contenedor web arranca con `pnpm preflight && next start`. Cuando la comproba
 | `incomplete-pair` | Un proveedor de inicio de sesión tiene solo uno de sus dos valores; la línea nombra el que falta (como `AUTH_GITLAB_SECRET`) | Rellena el valor que falta, o vacía los dos para desactivar ese proveedor |
 | `no-login-provider` | No hay ningún proveedor de inicio de sesión activo; tres líneas nombran `AUTH_GITHUB_ID`, `AUTH_GITLAB_ID` y `AUTH_GOOGLE_ID` | Rellena al menos un par completo ([configuración](install.md#settings)) |
 | `incomplete-group` | Solo están definidos algunos de los cinco valores `GITHUB_APP_*` | Completa los cinco para repositorios de GitHub o vacía los cinco si solo usas GitLab |
+| `too-short` | `AUTH_SECRET`, `APP_SIGNING_SECRET` o `CRON_SECRET` tiene menos de 32 caracteres | Vuelve a generarlo con el comando de la [configuración](install.md#settings) |
+| `reused` | `APP_SIGNING_SECRET` tiene el mismo valor que `AUTH_SECRET` | Genera un valor distinto para `APP_SIGNING_SECRET` |
 | `invalid-format` | Formato incorrecto: `RESEND_API_KEY` debe empezar por `re_`, `INVITATION_EMAIL_FROM` debe ser `Nombre <dirección>` o una dirección, `GITHUB_APP_SLUG` es `[a-z0-9-]`, `AUTH_TRUST_HOST` debe ser `true` | Ese valor |
 | `malformed` · `not-https` · `userinfo` | Un problema de forma en `MALMOI_ORIGIN` o `MALMOI_PRIVACY_URL`: espacios, barras invertidas o una URL ilegible, `http://`, `user:pw@` | Una URL `https://` sin datos de usuario |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | Solo `MALMOI_ORIGIN` (una ruta o query en la URL de privacidad está bien): una ruta, `?`, `#`, un literal IPv6, un dominio no ASCII | `MALMOI_ORIGIN=https://<domain>` |
