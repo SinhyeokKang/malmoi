@@ -443,7 +443,8 @@ components/
                         release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
                         rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다) ·
                         release-list("use client" 잎 — ReleaseList · RevealItem: 서버가 렌더한 전 항목의 숨김만 10개씩 푼다.
-                        Show older releases 버튼 · 새 첫 h1로 포커스 · 진입 해시는 landDocumentHeading으로 착지 · 끝 문장은 다 드러난 뒤.
+                        스크롤러 바닥 근처를 IntersectionObserver로 보고 자동으로 드러낸다(묶음마다 새 관찰자) · Show older releases 버튼은
+                        키보드 폴백(새 첫 h1로 포커스) · 진입 해시는 landDocumentHeading으로 착지 · 끝 문장은 다 드러난 뒤.
                         import는 lib/changelog/reveal · lib/public-doc/landing · ui/button 셋 — 본문 렌더는 서버에 남는다)
   public-doc-toc.tsx · public-doc-table.tsx
                         두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
