@@ -324,6 +324,7 @@ export const es = {
     failed: (releases: ReactNode): ReactNode => <>No pudimos cargar las novedades desde GitHub en este momento. Léelas en {releases}.</>,
     empty: (releases: ReactNode): ReactNode => <>Todavía no se ha publicado ninguna versión. Las nuevas versiones aparecen aquí y en {releases}.</>,
     truncated: (releases: ReactNode): ReactNode => <>Las versiones anteriores están en {releases}.</>,
+    showOlder: "Ver versiones anteriores",
   },
 
   home: {

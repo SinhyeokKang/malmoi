@@ -329,6 +329,7 @@ export const ko = {
     failed: (releases: ReactNode): ReactNode => <>지금은 GitHub에서 변경 기록을 불러올 수 없습니다. {releases}에서 확인하세요.</>,
     empty: (releases: ReactNode): ReactNode => <>아직 게시된 릴리스가 없습니다. 새 버전이 나오면 이곳과 {releases}에 표시됩니다.</>,
     truncated: (releases: ReactNode): ReactNode => <>이전 릴리스는 {releases}에 있습니다.</>,
+    showOlder: "이전 릴리스 더 보기",
   },
 
   home: {

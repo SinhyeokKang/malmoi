@@ -1051,8 +1051,12 @@ export const en = {
     /** 시안 1c의 "Read them"은 단수 changelog를 받지 못해 고쳤다. 재시도 버튼은 없다 — 성공만 캐시되니 새로고침이 곧 재시도다. */
     failed: (releases: ReactNode): ReactNode => <>The changelog couldn&apos;t be loaded from GitHub just now. Read it on {releases}.</>,
     empty: (releases: ReactNode): ReactNode => <>No releases have been published yet. New versions appear here and on {releases}.</>,
-    /** GitHub 한 요청 상한(100건)에 닿았을 때 목록 끝 — 페이지네이션은 없다. */
+    /**
+     * 읽지 못한 옛 판이 있을 수 있을 때(페이지 상한 3에 닿았거나 둘째 페이지부터 실패) 목록 끝 — **모든 항목이 드러난 뒤에만** 버튼 자리에 선다.
+     */
     truncated: (releases: ReactNode): ReactNode => <>Older releases are on {releases}.</>,
+    /** 목록 끝의 드러내기 버튼 — 다음 10개를 보인다(`lib/changelog/reveal.ts`). */
+    showOlder: "Show older releases",
   },
 
   /**

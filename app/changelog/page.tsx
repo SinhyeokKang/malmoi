@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ENTRY_BLOCK, ReleaseEntry } from "@/components/changelog/release-entry";
+import { ReleaseList, RevealItem } from "@/components/changelog/release-list";
 import { PAGE_TITLE, PROSE } from "@/components/docs/classes";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
@@ -39,6 +40,7 @@ function Sentence({ children }: { children: ReactNode }) {
 /**
  * **공개 셸 안의 릴리스 노트** (시안 `Changelog.dc.html` 1a–1d). 원문의 정본은 GitHub Release이고 소스에 사본이 없다 —
  * `loadReleases`가 1시간 캐시로 읽는다.
+ * ⚠️ **전 항목을 렌더하고 10개씩 드러낸다** — 본문은 여기(서버)서 그리고, `ReleaseList`(클라이언트)는 `RevealItem`의 숨김만 푼다(DESIGN §6.617).
  *
  * ⚠️ **본문은 사전을 지나지 않는다** — 화면 문구가 아니라 외부 데이터라서다(그 원문의 계약은 `/merge` 5단계 ② 양식).
  * ⚠️ **인가를 지나지 않는다** — 로그인 없이 읽혀야 한다(`entry-points.test.ts`의 `EXEMPT`). 세션은 헤더 primary 하나 때문이다.
@@ -63,19 +65,28 @@ export default async function Changelog() {
           <div className="mt-8">
             {!loaded.ok ? (
               <Sentence>{m.changelog.failed(releases)}</Sentence>
-            ) : (
+            ) : loaded.releases.length === 0 ? (
               <>
-                {loaded.releases.length === 0 ? (
-                  <Sentence>{m.changelog.empty(releases)}</Sentence>
-                ) : (
-                  loaded.releases.map((release, index) => <ReleaseEntry key={release.tag} m={m} uiLocale={uiLocale} release={release} latest={index === 0} />)
-                )}
+                <Sentence>{m.changelog.empty(releases)}</Sentence>
                 {/*
-                  ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가
-                  있을 수 있다(`truncated`는 거르기 전 길이다).
+                  ⚠️ 빈 목록에도 선다 — 읽은 페이지를 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가
+                  있을 수 있다(`truncated`는 페이지 상한·부분 실패이고 거르기 전 길이로 판정한다).
                 */}
                 {loaded.truncated ? <Sentence>{m.changelog.truncated(releases)}</Sentence> : null}
               </>
+            ) : (
+              // 끝 문장은 `trailing`이다 — 숨은 판이 남은 동안은 서지 않고, 다 드러난 뒤 버튼 자리에 선다.
+              <ReleaseList
+                total={loaded.releases.length}
+                showOlder={m.changelog.showOlder}
+                trailing={loaded.truncated ? <Sentence>{m.changelog.truncated(releases)}</Sentence> : null}
+              >
+                {loaded.releases.map((release, index) => (
+                  <RevealItem key={release.tag} index={index}>
+                    <ReleaseEntry m={m} uiLocale={uiLocale} release={release} latest={index === 0} />
+                  </RevealItem>
+                ))}
+              </ReleaseList>
             )}
           </div>
         </div>
