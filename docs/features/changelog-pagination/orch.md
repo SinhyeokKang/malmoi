@@ -30,3 +30,5 @@
 
 - 2026-10-16 Run `run_876f768af6af`. A 시작(Sonnet 5.5 high, 워크트리 `clp-a`, Dispatch `ctx_a9f4968014cb`) · B 시작(Opus 5.5 high, 워크트리 `clp-b`, Dispatch `ctx_7fcef484e678`). 브리프는 main `.scratch/orch-changelog-pagination/brief-{A,B}.md`.
 - A 완료(3커밋, worker gate ok · 15406 tests). 독립 리뷰(Opus 5.5 medium) 🔴0 🟡0 ⚪5 — 통합 가능. 지휘자 판단 — ⚪는 받지 않는다(이름·IA 행 낱말·red 테스트 커밋 squash·커밋 경계·선택 케이스; red 커밋은 이 리포 TDD 흐름의 형이라 그대로 둔다).
+- A 통합 `59cf55f1` push · dev CI green(run 38830478238). A 워크트리·터미널 정리.
+- B 완료(3커밋, worker gate ok · 15406 tests · 변형 red 확인). 독립 리뷰(Opus 5.5 medium) 🔴0 🟡0 ⚪3 — 통합 가능. 지휘자 판단 — ⚪1(StrictMode에서 숨은 대상에 첫 착지가 헛돈다 — `next dev` QA를 흐린다)은 C 첫 항목으로 받는다(대상이 `[hidden]` 안이면 착지를 미룬다). ⚪3(`ReleaseList` 빠뜨림)은 C의 페이지 테스트 "11번째가 hidden" 단언이 덮는다. ⚪2는 받지 않는다.
