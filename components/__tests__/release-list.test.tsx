@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReleaseList, RevealItem } from "@/components/changelog/release-list";
@@ -98,6 +99,16 @@ describe("ReleaseList — 첫 렌더", () => {
     expect(all.map((item) => item.dataset.revealIndex)).toEqual(Array.from({ length: 25 }, (_, index) => String(index)));
     expect(all.slice(0, 10).every((item) => !item.hidden)).toBe(true);
     expect(all.slice(10).every((item) => item.hidden)).toBe(true);
+  });
+
+  /** 서버는 해시를 모른다 — 서버 렌더가 첫 클라이언트 렌더와 같아야 hydration이 어긋나지 않는다(design §3). 해시가 있어도 서버 HTML은 같다. */
+  it("서버 렌더도 1~10번째만 보이고 버튼 하나를 싣는다", () => {
+    history.replaceState(null, "", `#${tagAt(17)}`);
+    const html = renderToStaticMarkup(list(TOTAL));
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    expect(items(host).map((item) => item.hidden)).toEqual(Array.from({ length: 25 }, (_, index) => index >= 10));
+    expect(button(host)).not.toBeNull();
   });
 
   /** 감싸는 `div`에는 이름이 없다 — 랜드마크가 아니다. 이름은 안쪽 `section`의 `aria-labelledby`가 그대로 든다(POSTMORTEM 2026-09-15). */
