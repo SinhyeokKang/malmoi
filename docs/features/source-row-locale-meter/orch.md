@@ -17,6 +17,7 @@
 | D4 | B(화면)·DS·리뷰는 Claude Opus 5.5 high | 지휘자 판단 — 시안 정밀도·DOM 테스트·DesignSync는 Claude Code 쪽이 든다 |
 | D5 | A → B 직렬 | 지휘자 판단 — 파일 겹침은 없지만 B가 A의 `LocaleMeterValue`·`loadSources().meters`를 소비한다. 타입을 미리 박아 병렬로 돌리면 인터페이스가 두 곳에서 정의된다 |
 | D6 | DS 행을 둔다(기존 화면이지만 이 변경용으로 받은 시안이 있다) | 지휘자 판단 — 선례(search-ux-unify 2026-10-03, orchestrate §0 4.5) |
+| D8 | 행 막대는 **작업 언어**(`localeRole === "work"` — orphaned와 제거 예정 REMOVE를 뺀다, ADD는 포함)만 그린다. 기존 `progress`도 지금처럼 작업 언어만 더한다 | 지휘자 판단 — 같은 행의 `N languages`(`loadSurfaceCounts`)가 작업 언어를 세고, `work-locale.ts`가 "진행률·Sources 수는 작업 언어 술어로 센다"를 정본으로 둔다. spec(2026-10-15)은 locale-add의 REMOVE 의도 이전 서술이었다. 상세 모달은 Removing 행을 상태와 함께 계속 보여 준다 (A 질문 msg_6d0651a8bada) |
 | D7 | T9(정본 갱신)는 B 워커의 후속 Task, 기능 디렉터리 삭제는 지휘자가 마지막 리포트 직전에 | 지휘자 판단 — 정본 문서는 구현을 아는 워커가 쓰고, orch.md는 런이 끝날 때까지 필요하다 |
 
 ## 배치

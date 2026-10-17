@@ -43,7 +43,7 @@ export function sourceRowMeters(languages: readonly LocaleProgress[]): { shown: 
 ```
 
 - `meterValue`: `done = min(total, translated)` · `review = min(max(0, total − done), needsReview)` · `percent`는 입력값 그대로. 모달의 인라인 clamp(`languages-card.tsx:170`)를 이 함수로 옮겨 두 화면의 폭이 같은 식에서 나온다.
-- `sourceRowMeters`: orphaned를 빼고(순서는 `localeProgress`의 base → 코드순 그대로 — 다시 정렬하지 않는다) 앞 5개를 `shown`, 나머지 수를 `hidden`. **키가 0이면(`total === 0`) `{ shown: [], hidden: 0 }`** — 막대 줄이 서지 않는다(spec 완료 조건 5). 상한 5는 모듈 상수이고 인자가 아니다(설정 가능성 선반영 금지).
+- `sourceRowMeters`: 작업 언어만 남기고(orphaned·제거 예정 REMOVE를 뺀다 — `localeRole`, 행의 `N languages`와 같은 집합, orch D8. 순서는 `localeProgress`의 base → 코드순 그대로 — 다시 정렬하지 않는다) 앞 5개를 `shown`, 나머지 수를 `hidden`. **키가 0이면(`total === 0`) `{ shown: [], hidden: 0 }`** — 막대 줄이 서지 않는다(spec 완료 조건 5). 상한 5는 모듈 상수이고 인자가 아니다(설정 가능성 선반영 금지).
 - `loadSources`는 소스마다 `sourceRowMeters(localeProgress({ locales, total: keys, cells }))`를 `meters`로 싣는다. 서버가 자르므로 RSC 페이로드는 행마다 최대 5개 + 수 하나다.
 
 ## 4.1 행 시각 (시안 [`Source Row Locale Meter.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Source+Row+Locale+Meter.dc.html), 2026-10-17 수령)

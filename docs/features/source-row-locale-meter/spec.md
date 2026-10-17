@@ -26,7 +26,7 @@
 
 ## 완료 조건 (검증 가능한 문장)
 
-1. **소스 행마다 그 소스의 살아 있는 로케일 막대가 선다** — orphaned 로케일은 빠지고, 순서는 상세 모달 Languages 카드의 비-orphaned 행 순서와 같다(base 맨 앞 → 코드순). 순수 함수 테스트가 고정한다.
+1. **소스 행마다 그 소스의 작업 언어 막대가 선다** — orphaned와 제거 예정(REMOVE) 언어는 빠지고(같은 행 `N languages`와 같은 집합 — `localeRole === "work"`, 2026-10-17 orch D8), 순서는 상세 모달 Languages 카드의 해당 행 순서와 같다(base 맨 앞 → 코드순). 순수 함수 테스트가 고정한다.
 2. **행 막대와 상세 모달의 수가 같다** — 같은 소스·같은 로케일의 `percent`·완료 폭·검토 폭이 두 화면에서 같다. 두 화면이 **같은 생산자**(`localeProgress`)의 값을 쓴다. 격리 PostgreSQL 테스트가 `loadSources`의 행 값과 `loadSource`의 `languages`를 같은 DB 상태에서 대조한다.
 3. **퍼센트는 완료 + 검토 대기다** — `localeProgress`의 `percent`가 `floor((translated + needsReview) / total * 100)`(0분모는 0, 100 clamp)이고, 상세 모달의 오른쪽 수치(`m.sources.translatedOfTotal`)도 같은 분자를 쓴다(`222 of 248` 옆에 `89%` — 둘이 같은 비율을 말한다). 단위 테스트가 내림(902+0/903 → 99)·검토 포함(84+8 → 92)·clamp를 센다.
 4. **최대 5개이고 남은 수가 보인다** — 살아 있는 로케일이 6개 이상이면 앞 5개 + `+N`(N = 나머지 수)이 선다. `+N`의 접근 이름은 `N more languages`다. 서버가 자르고 행마다 5개 + N만 직렬화한다(RSC 페이로드 — `rowLocaleProgress` 주석과 같은 이유). 단위 테스트(경계 5·6·59)와 DOM 테스트.
