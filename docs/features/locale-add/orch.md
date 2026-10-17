@@ -99,6 +99,7 @@
 | D13 | 언어 이름은 **standard형**(`English (Australia)`)으로 전역 전환 — `languageName` 한 줄, 온보딩·Add sources·Logs·추가 Dialog가 같이 바뀐다 | 사용자 2026-10-17(R-E1 ⚪3) |
 | D14 | 소스 상세 모달의 설명 줄 언어 수도 Languages 카드 머리처럼 **목록 행 수**(Adding·Removing·Inactive 포함) — 시안대로 두 자리가 같은 수. Sources 목록 행·Home·서버 `locales`는 작업 언어 수 그대로 | 사용자 2026-10-17(DS2 #277 — 지휘자 추천은 "두 수를 둔다"였다) |
 | D15 | 지휘 마무리 후 `/merge` **patch**. 단 **G(`/guide`)·GS(`/guide-shots`)는 머지 전에 한다** — 로케일 관리는 별개 가이드 페이지로 추가해도 된다. RT4는 머지 뒤 | 사용자 2026-10-17 |
+| D16 | **RT4는 preview(`dev.mal-moi.com`)에서** 돌리고 문제없으면 `/merge`(patch). **배포 뒤 prod에서 이번 머지에 든 것 전부 `/runtime-test`**(locale-add + 보안 감사 후속) | 사용자 2026-10-17 |
 
 ## 1차 런 배치 (2026-10-14 — 완료)
 
@@ -264,3 +265,4 @@
 - 착수: **DS2**(main 체크아웃, #268~#276 재실측·닫기) ∥ **TR**(워크트리, `/translate` 모드②).
 - **DS2 완료**(`ds2-report.md`) — #268~#276 아홉 건 실측 통과·닫음(실제 wheel 입력·375 CDP·AX·라이트/다크). 새 이탈 **#277**(모달 설명 줄 작업 언어 수 vs 카드 머리 행 수) → **D14 사용자 결정**(둘 다 행 수) → **E1 fix4**. 못 함: VoiceOver 실청취 · T 패널 머리 `3 of 3` 시안 대조 미판정(RT4로). dev DB 전후 동일. DS2 해제.
 - 사용자: 마무리하고 `/merge` patch → G·GS는 머지 전(D15). **G** 착수(Sonnet high, `lo-G`, 새 페이지 `setup/languages.md` 권장). RT4는 머지 뒤로(런 밖). TR 통합 1회차 gate 실패 2건(`mcp-connected-apps` 포커스 · `translation-workspace` 세션 만료 문구 — 단독 60 green, load 39) → 재실행 중.
+- **D16** — 순서: E1 fix4·D2 fix2·G 통합 → GS(main 체크아웃 로컬, ego 단독) → gate → **P4 push**(locale-add 전체 + 보안 후속 7커밋 첫 push) → CI·preview 배포 확인 → **RT4 preview**(+ 보안 ④) → 수정 시 재push → `/merge` patch(+ 보안 ⑤) → **RT5 prod**(이번 머지 전부 + 보안 ⑥). `api-contract` 타임아웃은 부하 flake(단독 green) — 최종 gate는 워커가 빠진 뒤 한 번.
