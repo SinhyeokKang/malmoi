@@ -54,6 +54,13 @@ it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
   expect(planPublishButton(en, { count: 0, paused: true, otherPending: true, publishPending: true })).toMatchObject({ mode: "progress", disabled: false, badge: null });
   expect(planPublishButton(en, { count: 2, paused: false, otherPending: true, publishPending: false }).disabled).toBe(true);
 });
+/** 언어 변경이 뺀 언어의 편집(`withheld.language`)은 파일 복구 권유에서 빠진다 — 언어 줄(Held)이 이유를 말한다(R-E3 Y1). */
+it("보류 줄은 언어 보류를 빼고 센다", () => {
+  const w = en.translations.publish.withheld;
+  expect(planWithheldLines(en, { status: "committed", pr: "created", prUrl: "u", commitSha: "c", changedValues: null, delivered: 1, changed: [], withheld: { file: 1, key: 0, language: 1 } }, "OWNER")).toEqual([]);
+  expect(planWithheldLines(en, { status: "committed", pr: "created", prUrl: "u", commitSha: "c", changedValues: null, delivered: 1, changed: [], withheld: { file: 3, key: 0, language: 1 } }, "EDITOR"))
+    .toEqual([`${w.file(2)} ${w.editor}`]);
+});
 /** 셀 편집 0 · 언어 작업만 (locale-add 시안 P1 ①④) — 켜지고 배지는 없으며(셀 수) 켜진 이유를 hint가 sr로 말한다. 멈춤 사유가 그보다 앞선다. */
 it("언어 작업만 있으면 켜지고 배지 없이 이유를 말한다", () => {
   expect(planPublishButton(en, { count: 0, languageWork: 1, paused: false, otherPending: false, publishPending: false }))

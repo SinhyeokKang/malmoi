@@ -43,7 +43,9 @@ export function planWithheldLines(m: Messages, outcome: PullOutcome, role: "OWNE
   const lines: string[] = [];
   // ⚠️ **Revert는 보류 셀 전부에 기준이 있을 때만 가리킨다** (#129) — 없으면 그 키의 Revert가 꺼져 있다. 그때는 파일·키 복구와 폐기 승인 Sync뿐이다.
   const revert = withheld.revertable === true;
-  if (withheld.file > 0) lines.push(`${w.file(withheld.file)} ${role === "OWNER" ? (revert ? w.owner.file : w.owner.fileNoRevert) : w.editor}`);
+  // 언어 변경이 뺀 언어(보류된 ADD 등)의 편집은 빼고 센다 — 파일을 만들거나 되돌릴 일이 아니라 언어 줄(Held)이 이유를 말한다(R-E3 Y1).
+  const file = withheld.file - (withheld.language ?? 0);
+  if (file > 0) lines.push(`${w.file(file)} ${role === "OWNER" ? (revert ? w.owner.file : w.owner.fileNoRevert) : w.editor}`);
   if (withheld.key > 0) lines.push(`${w.key(withheld.key)} ${role === "OWNER" ? (revert ? w.owner.key : w.owner.keyNoRevert) : w.editor}`);
   return lines;
 }

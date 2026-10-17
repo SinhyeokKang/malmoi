@@ -151,6 +151,8 @@ export type PullWarning = { surfaceSlug: string } & AdapterError;
 export type Withheld = {
   file: number;
   key: number;
+  /** `file` 중 언어 변경 계획이 뺀 언어(보류된 ADD 등)의 편집 수 — 있을 때만. 결과 화면이 파일 복구 권유에서 뺀다(R-E3 Y1). `SyncRun.withheld`는 그대로 `file + key`다. */
+  language?: number;
   /** 보류 셀 전부가 Revert로 풀린다(#129 — `withheldRevertable`). 그럴 때만 있다 — 없으면 안내가 Revert를 가리키지 않는다. `SyncRun.withheld`(수)에는 안 실린다. */
   revertable?: true;
 };
@@ -371,7 +373,11 @@ export function planDelivery(
   const keyById = new Map(resolved.flatMap(({ surface }) => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
   const coordinates = withheldCoordinates(rendered);
   // 렌더에서 뺀 언어(REMOVE · 경로가 이미 있는 ADD · 값 0개 ADD)의 편집은 파일에 닿지 않는다 — 언어 통째로 보류한다(토큰 유지, design §4).
-  for (const plan of locales.surfaces) for (const code of plan.exclude) coordinates.locales.add(`${plan.surfaceId}\0${code}`);
+  coordinates.languages = new Set();
+  for (const plan of locales.surfaces) for (const code of plan.exclude) {
+    coordinates.locales.add(`${plan.surfaceId}\0${code}`);
+    coordinates.languages.add(`${plan.surfaceId}\0${code}`);
+  }
   // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
   //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
   //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.

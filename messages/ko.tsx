@@ -1747,6 +1747,7 @@ export const ko = {
         updatedDescription: (n: number): string =>
           `#${n}이(가) 아직 열려 있어 두 번째 PR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
         ready: "게시할 언어 변경이 있습니다.",
+        inSource: (code: string, source: string): string => `${code}(${source})`,
       },
 
       progressTitle: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건 게시 중`,

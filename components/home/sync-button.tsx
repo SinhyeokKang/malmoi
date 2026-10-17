@@ -338,12 +338,20 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
                 : pr !== null ? <p>{m.repositorySync.openPr(pr.number, branch)}</p> : null}
           </div>
         </Alert>
+      </>}
+      {/*
+        ⚠️ **언어 변경은 셀 편집과 다른 블록이다** (시안 P4) — 편집은 "값이 바뀐다", 언어 변경은 "요청이 없어진다"라 한 수로 합치면("14 changes")
+        무엇을 잃는지 안 읽힌다. 손실이 큰 편집 블록 다음이고, 같은 amber · `compact` 형이다. 권유 줄(`Publish first`)은 편집을 위한 길이라 여기엔 없다.
+      */}
+      {languages.length > 0 && <LanguageBlock id={languagesId} languages={languages} />}
+      {plan.atRisk && <>
         {/*
           ⚠️ **권유는 링크이고 확인 버튼과 두 축으로 떨어진다** — 누르면 다른 라우트로 떠나므로 바닥
           오른쪽(= 이 질문에 답하는 자리)에 서면 세 번째 답으로 읽힌다.
           ⚠️ 미발송이 0이면 `Publish first`가 **거짓**이라 열린 PR 링크로 갈린다 (시안 `4c` 오른쪽).
           조회 중·실패(`undefined`)에는 권할 다음 행동이 없어 줄 자체가 없다 (`4d`).
         */}
+        {/* 권유는 두 블록(편집 → 언어 변경)을 다 읽은 뒤의 다음 행동이다 — 언어 블록 뒤에 선다(시안 P4 · R-E3 Y2). */}
         {plan.recommendSend
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(shownUnsent,
               <InlineLink href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} >{m.repositorySync.sendFirst}</InlineLink>,
@@ -355,11 +363,6 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
                 </InlineLink></p>
             : null}
       </>}
-      {/*
-        ⚠️ **언어 변경은 셀 편집과 다른 블록이다** (시안 P4) — 편집은 "값이 바뀐다", 언어 변경은 "요청이 없어진다"라 한 수로 합치면("14 changes")
-        무엇을 잃는지 안 읽힌다. 손실이 큰 편집 블록 다음이고, 같은 amber · `compact` 형이다. 권유 줄(`Publish first`)은 편집을 위한 길이라 여기엔 없다.
-      */}
-      {languages.length > 0 && <LanguageBlock id={languagesId} languages={languages} />}
       {/* 지연 문구는 Dialog 안이다 — 띠가 걷혔다(DESIGN §6.644). 둘 다 판정이 아니다. */}
       {slow && <SlowLine />}
       {/* ⚠️ `status`다 — 포커스는 도는 확정 버튼에 머물러 있어, 알리지 않으면 스크린리더 사용자는 [Close]가 돌아온 것을 모른다. */}

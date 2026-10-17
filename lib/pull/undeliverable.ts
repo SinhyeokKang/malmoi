@@ -16,7 +16,11 @@ import type { PendingEdit } from "./run";
 
 export type RenderedSurface = { surfaceId: string; surfaceSlug: string; baseLocale: string; files: readonly LocalFile[] };
 /** 로케일 통째(`${surfaceId}\0${locale}`)와 셀(`${surfaceId}\0${locale}\0${key}`). */
-export type WithheldCoordinates = { locales: Set<string>; cells: Set<string> };
+/**
+ * `languages` — `locales` 중 언어 변경 계획이 뺀 언어(`ProjectLocalePlan.exclude` — 보류된 ADD 등)다. 파일 보류로 세되 따로도 센다: 화면이 그 수를
+ * "언어 파일이 아직 없다" 문장에서 빼고 언어 행(Held · Not included)이 이유를 말한다(R-E3 Y1). 없으면 비어 있는 것과 같다.
+ */
+export type WithheldCoordinates = { locales: Set<string>; cells: Set<string>; languages?: Set<string> };
 
 type Classified = { kind: "locale"; coordinate: string } | { kind: "cell"; coordinate: string } | { kind: "blocking" };
 
@@ -116,14 +120,18 @@ export function splitEdits(
   edits: readonly PendingEdit[],
   withheld: WithheldCoordinates,
   keyOf: (keyId: string) => string | undefined,
-): { delivered: PendingEdit[]; withheld: PendingEdit[]; withheldBy: { file: number; key: number } } {
-  const out = { delivered: [] as PendingEdit[], withheld: [] as PendingEdit[], withheldBy: { file: 0, key: 0 } };
+): { delivered: PendingEdit[]; withheld: PendingEdit[]; withheldBy: { file: number; key: number; language?: number } } {
+  const out = { delivered: [] as PendingEdit[], withheld: [] as PendingEdit[], withheldBy: { file: 0, key: 0 } as { file: number; key: number; language?: number } };
   const none = withheld.locales.size === 0 && withheld.cells.size === 0;
   for (const edit of edits) {
     if (none) { out.delivered.push(edit); continue; }
     const cell = edit.cell;
     if (cell === undefined) { out.withheld.push(edit); out.withheldBy.file += 1; continue; }
-    if (withheld.locales.has(`${cell.surfaceId}\0${cell.localeCode}`)) { out.withheld.push(edit); out.withheldBy.file += 1; continue; }
+    if (withheld.locales.has(`${cell.surfaceId}\0${cell.localeCode}`)) {
+      out.withheld.push(edit); out.withheldBy.file += 1;
+      if (withheld.languages?.has(`${cell.surfaceId}\0${cell.localeCode}`)) out.withheldBy.language = (out.withheldBy.language ?? 0) + 1;
+      continue;
+    }
     const key = keyOf(cell.keyId);
     if (key !== undefined && withheld.cells.has(`${cell.surfaceId}\0${cell.localeCode}\0${key}`)) { out.withheld.push(edit); out.withheldBy.key += 1; continue; }
     out.delivered.push(edit);

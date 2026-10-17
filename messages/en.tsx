@@ -3308,8 +3308,13 @@ export const en = {
         createdDescription: "The language changes are in a pull request. They reach the product once someone on the team merges it.",
         updatedDescription: (n: number): string =>
           `#${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
-        /** 셀 편집 0 · 언어 작업만 있을 때 켜진 [Publish]의 sr 설명 — 배지는 셀 수라 서지 않는다. */
-        ready: "Language changes are ready to publish.",
+        /**
+         * 셀 편집 0 · 언어 작업만 있을 때 켜진 [Publish]의 sr 설명 — 배지는 셀 수라 서지 않는다. ⚠️ **준비됐다고 단정하지 않는다** — 작업이 보류된 추가뿐이어도
+         * 켜진다(버튼은 base를 읽지 않는다). 그때는 모달이 Held 행으로 이유를 말한다(R-E3 ⚪2).
+         */
+        ready: "There are language changes to publish.",
+        /** 만료 안내가 여러 소스에 걸칠 때 언어에 소스를 붙인다(`fr (web)`) — "this source"가 어느 소스인지. */
+        inSource: (code: string, source: string): string => `${code} (${source})`,
       },
 
       /**

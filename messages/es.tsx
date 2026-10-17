@@ -1746,7 +1746,8 @@ export const es = {
         createdDescription: "Los cambios de idioma están en una pull request. Llegan al producto cuando alguien del equipo la fusione.",
         updatedDescription: (n: number): string =>
           `#${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
-        ready: "Hay cambios de idioma listos para publicar.",
+        ready: "Hay cambios de idioma por publicar.",
+        inSource: (code: string, source: string): string => `${code} (${source})`,
       },
 
       progressTitle: (n: number): string => `Publicando ${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"}`,

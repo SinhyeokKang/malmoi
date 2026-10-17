@@ -14,6 +14,8 @@ import type { PublishDiff } from "./diff";
  */
 export type PublishPreview = PublishDiff & {
   openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number;
+  /** `withoutFile` 중 언어 변경 계획이 뺀 언어(보류된 ADD 등)의 셀 — 화면이 "파일이 아직 없다" 줄에서 빼고 언어 행이 설명한다(R-E3 Y1). 실행의 `withheld.language`와 같은 판정이다. */
+  withoutFileLanguage?: number;
   /**
    * **이 Publish가 바꾸는 파일** (#128) — 실행과 같은 렌더·blob 비교(`renderProject`)의 결과라 결과 화면의 "N files changed"와 같다. `groups`는 편집이
    * 사는 파일이라 이보다 적을 수 있다 — 토큰 없이 바뀌는 파일(orphan 줄 제거, 앞서 닫힌 PR에 실렸던 값)이 여기에만 있다.

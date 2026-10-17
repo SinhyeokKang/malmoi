@@ -308,11 +308,13 @@ const FILE_ICON = { new: FilePlus2, updated: FileJson2, removed: FileMinus2 } as
  * 만료될(된) 언어 요청을 그 언어 이름으로 말한다 (#267 — R-F2b). 리포가 요청대로인지(`reachedRepository`)가 문장을 가른다. 미리보기 표 아래와
  * 결과의 Not sent 둘이 같은 줄이다.
  */
-function expiringLine(m: Messages, request: ExpiredLocaleRequest): string {
-  const e = m.translations.publish.language.expiring;
+function expiringLine(m: Messages, request: ExpiredLocaleRequest, withSource: boolean): string {
+  const l = m.translations.publish.language;
+  const e = l.expiring;
+  const code = withSource ? l.inSource(request.localeCode, request.surfaceSlug) : request.localeCode;
   const reached = reachedRepository(request);
-  return request.operation === "ADD" ? (reached ? e.addReached(request.localeCode) : e.addNotReached(request.localeCode))
-    : reached ? e.removeReached(request.localeCode) : e.removeNotReached(request.localeCode);
+  return request.operation === "ADD" ? (reached ? e.addReached(code) : e.addNotReached(code))
+    : reached ? e.removeReached(code) : e.removeNotReached(code);
 }
 
 function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: string }) {
@@ -327,6 +329,9 @@ function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: st
   const language = [...kinds.values()].some(kind => kind !== "updated") || preview.locales !== undefined || (preview.withdrawnLocales?.length ?? 0) > 0;
   const kindLabel = (kind: "new" | "updated" | "removed") => kind === "new" ? l.label.newFile : kind === "removed" ? l.label.removed : l.label.updated;
   const pr = preview.openPr ? m.home.meta.pr(preview.openPr.number) : null;
+  const withoutFile = preview.withoutFile - (preview.withoutFileLanguage ?? 0);
+  // 만료 안내가 여러 소스에 걸치면 줄이 소스를 함께 말한다 — "It stays in this source."가 어느 소스인지(R-E3 ⚪6).
+  const expiringSources = new Set((preview.expiringLocales ?? []).map(request => request.surfaceSlug)).size;
   return <TableShell>
     {/*
       ⚠️ **좁으면 표가 가로로 스크롤한다** (#232) — `table-fixed`에 Key 220 · 언어 84를 고정한 채 모달이 341로 줄면 Value가 37로 눌려 값이 글자 단위로 세로 감겼다.
@@ -397,9 +402,10 @@ function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: st
       </table>
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
       {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
-      {preview.withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(preview.withoutFile)}</p>}
+      {/* 보류된 언어의 셀은 빼고 센다 — 그 이유는 언어 행(Held · Not included)이 말한다. "파일이 아직 없다"로 또 세면 "이미 main에 있다"와 모순이다(R-E3 Y1). */}
+      {withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(withoutFile)}</p>}
       {preview.withoutKey > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutKey(preview.withoutKey)}</p>}
-      {preview.expiringLocales?.map(request => <p key={`expiring:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground px-3.5 py-[11px] text-xs">{expiringLine(m, request)}</p>)}
+      {preview.expiringLocales?.map(request => <p key={`expiring:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground px-3.5 py-[11px] text-xs">{expiringLine(m, request, expiringSources > 1)}</p>)}
     </div>
   </TableShell>;
 }
@@ -654,8 +660,10 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
       const total = outcome.status === "committed" ? outcome.delivered : result?.total ?? count;
       const withheld = planWithheldLines(m, outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
       // 이 실행이 정리한 언어 요청을 그 언어 이름으로 말한다(#267 — R-F2b). "Not sent"만으로는 무엇이 안 나갔는지 모른다.
-      const expired = (outcome.status === "skipped" && outcome.reason === "no-edits" ? outcome.expired ?? [] : [])
-        .map(request => <p key={`expired:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground text-xs">{expiringLine(m, request)}</p>);
+      const expiredRequests = outcome.status === "skipped" && outcome.reason === "no-edits" ? outcome.expired ?? [] : [];
+      const expiredSources = new Set(expiredRequests.map(request => request.surfaceSlug)).size;
+      const expired = expiredRequests
+        .map(request => <p key={`expired:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground text-xs">{expiringLine(m, request, expiredSources > 1)}</p>);
       // no-changes 실행이 닫은 PR (B1 r3) — 조용히 닫힌 채 두지 않고 이유와 링크를 보인다. 보류가 섞여 Not sent 틀이어도 같은 줄이다.
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">

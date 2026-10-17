@@ -79,6 +79,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const base: BaseValues = Object.create(null);
   const cells: PublishCell[] = [];
   let withoutFile = 0;
+  /** `withoutFile` 중 언어 변경 계획이 뺀 언어의 셀 — 실행의 `withheld.language`와 같은 판정이다(R-E3 Y1). */
+  let withoutFileLanguage = 0;
   let withoutKey = 0;
   /** 보류된 셀이 하나라도 있는 키 — 실린 셀이 하나도 없으면 "보낼 수 있는 키"에서 빠진다(#84). */
   const heldKeys = new Set<string>();
@@ -131,7 +133,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     for (const row of surfaceRows) {
       if (!surface.localeCodes.includes(row.localeCode)) throw new Error("Preview path unavailable");
       // 실행의 `planDelivery`와 같은 판정이다 — 언어 통째 보류는 파일 보류로 센다(결과의 `withheld.file`).
-      if (excluded.has(`${surface.id}\0${row.localeCode}`)) { withoutFile++; heldKeys.add(row.keyId); continue; }
+      if (excluded.has(`${surface.id}\0${row.localeCode}`)) { withoutFile++; withoutFileLanguage++; heldKeys.add(row.keyId); continue; }
       // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다. 실행은 그 셀을 보류한다.
       if (surgicalPerLocale) {
         const target = paths.find(p => p.locale === row.localeCode);
@@ -160,7 +162,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   }
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
   const sent = idle ? [] : changes;
-  return { ...buildPublishDiff(cells, base), total: sendTotal, keys: sendKeys, truncated: Math.max(0, sendTotal - shownRows.length), withoutFile, withoutKey,
+  return { ...buildPublishDiff(cells, base), total: sendTotal, keys: sendKeys, truncated: Math.max(0, sendTotal - shownRows.length), withoutFile, withoutFileLanguage, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
     changedFiles: sent.map(c => c.path),
