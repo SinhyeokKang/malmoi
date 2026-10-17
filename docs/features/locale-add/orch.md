@@ -224,3 +224,4 @@
 - E0 fix1 `worker_done` — Y1~Y4 + W5(변이 M4·M3 이제 red, `locales.orphaned.badge` 키 제거 → `stateLabel`, `gate: ok` 15469 · PG 883). 재리뷰 생략(지휘자 판단 — 테스트 위주, 코드는 배지 한 줄). **E0 통합**(cherry-pick 5: `c77c9760`..`5a81c48d`) → main 체크아웃 `pnpm gate` 진행.
 - R-E2 완료(🔴 0 · 🟡 4 · ⚪ 6, 변이 8 중 7 — `review-E2.md`). 🟡2·🟡3 → **D11·D12 사용자 결정**(둘 다 지금대로). **E2 fix1**: 🟡1(저장 가능 0이면 Alert 없음) · 🟡4(es 수 일치) · M7 단언 · `Removing` 배지(E0 통합 뒤). R-E2 해제·정리.
 - main 체크아웃 `pnpm gate` **ok**(15469 · PG 883). tasks §6 새 넷 체크. E0 해제·워크트리 정리. wave ⑦ 착수: E1 · E3 + E2 fix1.
+- wave ⑦ — **E1** `ctx_e14f9f6656c2` · **E3** `ctx_3e30e41ce60f`(Opus high, base `01cc042d`) · **E2 fix1** `ctx_5d39562474c8`(같은 터미널).
