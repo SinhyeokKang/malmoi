@@ -2451,7 +2451,8 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
      빠지고, 만료 뒤 보낼 것이 없으면 파일 변경을 약속하지 않는다. 정리할 요청은 `expiringLocales`로 싣는다. ⚠️ **열린 PR 조회는 "열림/없음"만 안다** —
      머지와 미머지 종료는 base 관측이 가른다(`reachedRepository`, `lib/locales/reached.ts` — 제거는 orphan, 추가는 active면 리포가 요청대로다). presence를 버리면
      머지된 제거가 지운 파일을 new로, 머지 없이 닫힌 추가가 버린 파일을 new로 약속한다(review-F2 R1·R2). 리포에 닿지 못한 요청을 정리한 `no-edits`는
-     화면 결과 갈래가 Not sent 틀이다(`planPublishView` — 그 언어의 편집은 나가지 않았다).
+     결과 갈래가 `request-closed`다(`planPublishView` — 그 언어의 편집은 나가지 않았지만 보류도 아니다, #289). `No changes`(파일이 같았다)도 Held back(보류)도 거짓이라
+     웹은 요청을 닫았다 틀(DESIGN §6.646), MCP `publish`는 `result: "request-closed"`다. 보류 편집이 남은 `withheld` + `expired`는 그대로 `partial`이다.
 - **base 관측 함수는 하나다** — `observeLocaleFiles`(`lib/pull/locales.ts`). 어댑터 읽기(`localeFromPath`)가 읽는 경로 + **정규 파일(모드 100644·100755)만** 센다. 링크(120000)·하위 모듈(160000)은 관측이 아니고,
   템플릿에 맞는 경로의 mode를 모르거나 언어 변경을 받지 않는 어댑터·경로 미정이면 `unreadable`(fail-closed)이다. Publish(`observedLocalesOf`)·같은 head 야간(`observeSurfaceLocales`, `lib/import/observe.ts`)·야간 적재 만료가 모두 이 함수에 위임한다.
   CI `/api/push`는 트리가 없어 페이로드의 `locales`가 유일한 관측이다.
