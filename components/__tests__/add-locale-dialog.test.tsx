@@ -348,3 +348,46 @@ describe("R-E1 fix1", () => {
     expect(dialog()!.querySelector("[data-add-file]")!.textContent).not.toContain("de.json");
   });
 });
+
+/**
+ * DS #268·#269·#273 — 시안 A1·A3·A4의 행·파일 블록 형. 깃발이 없는 코드도 16 자리를 남겨 코드 열이 한 선에 선다.
+ */
+describe("DS fix2 — 행 깃발 · 파일 블록", () => {
+  const flagSlot = (node: Element) => node.querySelector<HTMLElement>("[data-option-flag]");
+  it("#268 json 목록 행은 깃발 자리 · 코드 · 이름 순이고, 깃발이 있는 코드는 그 깃발을 든다", async () => {
+    await open();
+    await openAdd();
+    const de = option("de")!;
+    expect(flagSlot(de)).not.toBeNull();
+    expect(flagSlot(de)!.querySelector("[style*='/flags/']")).not.toBeNull();
+    // 깃발 자리가 코드보다 앞이다.
+    expect(flagSlot(de)!.compareDocumentPosition(de.querySelector("[data-option-code]")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(flagSlot(option("es")!)).not.toBeNull();
+  });
+
+  it("#273 Chrome Select 항목도 같은 깃발 열이다 — 깃발이 없는 코드도 자리를 남긴다", async () => {
+    await open(detail([row("de")], { connection: chrome }));
+    await openAdd();
+    await act(async () => { await user().click(dialog()!.querySelector<HTMLElement>('button[role="combobox"]')!); });
+    const items = [...document.querySelectorAll('[role="option"]')];
+    const fr = items.find(node => node.textContent?.startsWith("fr"))!;
+    expect(flagSlot(fr)!.querySelector("[style*='/flags/']")).not.toBeNull();
+    const enAu = items.find(node => node.textContent?.startsWith("en_AU"))!;
+    expect(flagSlot(enAu)).not.toBeNull();
+  });
+
+  it("#269 파일 블록은 테두리 없는 muted 면 · radius 10 · 라벨 muted · 경로 앞 file-plus 글리프", async () => {
+    await open();
+    await openAdd();
+    await choose("fr");
+    const block = dialog()!.querySelector<HTMLElement>("[data-add-file]")!;
+    const classes = block.className.split(/\s+/);
+    expect(classes).toContain("bg-muted");
+    expect(classes).toContain("rounded-md");
+    expect(classes.some(name => name === "border" || name.startsWith("border-"))).toBe(false);
+    expect(block.firstElementChild!.className).toContain("text-muted-foreground");
+    const path = block.querySelector("[data-add-file-path]")!;
+    expect(path.querySelector("svg")?.getAttribute("class")).toContain("lucide-file-plus");
+    expect(path.textContent).toBe("apps/web/locales/fr.json");
+  });
+});

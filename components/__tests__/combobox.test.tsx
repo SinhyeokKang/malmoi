@@ -109,3 +109,25 @@ it("M6 IME 조합 중 Esc는 목록을 닫지 않는다 — 조합 취소다", a
   expect(input().getAttribute("aria-expanded")).toBe("true");
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 });
+
+/**
+ * DS #270·#271·#272 — 목록 레이어의 자리·역할·첫 높이. jsdom은 휠 차단·배치를 재지 못하므로 그 원인이 되는 **구조**를 단언한다(실측은 DS 재실측).
+ */
+it("#270 Dialog 안에서는 목록이 그 DialogContent 아래로 portal된다 — Dialog의 스크롤 잠금 밖이 아니다", async () => {
+  await render(<Harness onSelect={() => {}} inDialog />);
+  await act(async () => { input().focus(); });
+  const content = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')].find(node => node.textContent?.includes("Add"))!;
+  expect(content.contains(listbox())).toBe(true);
+});
+
+it("#271 목록의 그릇은 이름 없는 dialog가 아니다 — ARIA는 combobox + listbox뿐이다", async () => {
+  await render(<Harness onSelect={() => {}} />);
+  await act(async () => { input().focus(); });
+  expect(listbox()!.closest('[role="dialog"]')).toBeNull();
+});
+
+it("#272 높이 상한이 첫 배치 전부터 선다 — 가용 높이 변수가 아직 없을 때의 폴백이 300px다", async () => {
+  await render(<Harness onSelect={() => {}} />);
+  await act(async () => { input().focus(); });
+  expect(listbox()!.parentElement!.className).toContain("max-h-[min(300px,var(--radix-popover-content-available-height,300px))]");
+});
