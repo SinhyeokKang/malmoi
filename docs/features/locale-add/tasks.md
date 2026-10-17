@@ -79,10 +79,10 @@
 - [x] Server Action: 추가·미리보기·제거·제거 취소, 값 오류 코드와 성공 뒤 revalidate. 검증: 인증/권한/진입점 테스트 green, 미리보기에는 revalidate 없음.
 - [x] design-brief 프레임 1~25의 로컬 핸드오프를 확보한다. 검증: 브리프의 모든 프레임이 핸드오프에 존재(권한·좁은 화면·라이트/다크·포커스 포함). — 2026-10-17 Claude Design 캔버스(허브 + L·A·D·P·T)가 1~25 전부 + L7·P4를 덮는다. 4차 검토(design-feedback.md), 위치는 design-brief "시안".
 - **위 핸드오프가 확보되기 전에는 아래 UI 퍼블리싱 태스크(Dialog·배지·번역 화면 DOM·Publish 표시·화면 문구·`/design-sync`)에 착수하지 않는다.** Server Action·reducer·`summary.ts`·집계는 핸드오프 없이 진행한다.
-- [ ] 추가 미리보기(읽기 전용) — 코어 + `previewSourceLocaleAdd` Server Action(design §6 2026-10-17). 검증: `addSourceLocale`과 같은 입력이면 같은 `action`·`path`·거부 코드(표 테스트), `revive` = 실행의 `reissued`(격리 PG), 쓰기 0, `revalidatePath` 없음, 인증·권한·진입점 테스트 green.
-- [ ] `loadSourceDetail`에 `pullRequestUrl`(저장된 `Project.lastPrUrl`). 검증: 호스트 호출 0, 프로젝트로 좁힘, 없으면 `null`.
-- [ ] 사건 payload — `surface.localeAdded.reissued`(되살림) · `surface.localeChangeResolved`의 PR/MR 번호. 검증: 옛 payload 읽기 유지(필드 없음 → `null`), 만료 세 경로(야간·Publish·CI)가 같은 필드를 쓴다.
-- [ ] `STATE`에 `adding`(soft-neutral)·`removing`(soft-amber), `removedFromRepository` 낱말 → `Inactive`. 검증: `canon`·cross-screen 테스트 green, 세 사전 같은 커밋.
+- [x] 추가 미리보기(읽기 전용) — 코어 + `previewSourceLocaleAdd` Server Action(design §6 2026-10-17). 검증: `addSourceLocale`과 같은 입력이면 같은 `action`·`path`·거부 코드(표 테스트), `revive` = 실행의 `reissued`(격리 PG), 쓰기 0, `revalidatePath` 없음, 인증·권한·진입점 테스트 green.
+- [x] `loadSourceDetail`에 `pullRequestUrl`(저장된 `Project.lastPrUrl`). 검증: 호스트 호출 0, 프로젝트로 좁힘, 없으면 `null`.
+- [x] 사건 payload — `surface.localeAdded.reissued`(되살림) · `surface.localeChangeResolved`의 PR/MR 번호. 검증: 옛 payload 읽기 유지(필드 없음 → `null`), 만료 세 경로(야간·Publish·CI)가 같은 필드를 쓴다.
+- [x] `STATE`에 `adding`(soft-neutral)·`removing`(soft-amber), `removedFromRepository` 낱말 → `Inactive`. 검증: `canon`·cross-screen 테스트 green, 세 사전 같은 커밋.
 - [ ] Sources Add Dialog(json 프리셋 + 자유 입력 · Chrome Select · 미리보기 받는 중/실패 · 재추가)·행 동작·확인 Dialog·취소 결과 notice·상태 배지(시안 L1–L7·A1–A5·D1–D5). 검증(DOM): 시안의 상태별 배지·톤·버튼, base/EDITOR/비지원/미확정 비활성 이유(`aria-disabled` + 설명), 정확한 파일 경로·미전달 수·앱 코드 정리 경고, Inactive danger 톤·Open 비활성·재추가 안내, 프리셋의 이름(화면 언어 · 밑줄 코드 이름 표시)·구분자 규칙·`Use this code`·IME, 정렬과 `role="status"` 알림·포커스 규칙. 클릭 전 enabled 대기(POSTMORTEM 2829).
 - [ ] 언어 변경 때문에 막힌 기준 언어 선언(소스 상세 Base language 카드)·기준 브랜치 변경(Settings Repository 카드) 안내(시안 P2). 검증(DOM): `locale-change-pending`이 일반 실패 문구로 접히지 않는다.
 - [x] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.

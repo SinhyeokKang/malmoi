@@ -83,6 +83,8 @@
 | O11 | E1·E2·E3는 `messages/{en,ko,es}.tsx`를 **각자 자기 절에서만** 고친다(E1 `sources.*` · E2 `translations.*` · E3 `publish`·`sync`·`logs`·`settings` 절). cherry-pick 텍스트 충돌은 지휘자가 양쪽 키 합집합으로만 푼다(1차 런 `harness.ts` 선례) — 내용 판단이 필요한 충돌은 소유 워커로 돌린다 | 스킬 §0-4 핫스팟. 지휘자 판단 |
 | O12 | ko·es는 각 배치가 초안을 넣고(세 사전 같은 커밋), 일괄 검수는 TR(`/translate` 모드②)이 DS 수정 라운드 뒤에 한다 — 1차 런 초안(`logs.deferReasons`·`logs.sentence.import.held`·`logs.reasons["locale-plan-refused"]`)도 TR 범위. ko 최종은 사용자가 `/merge` 전에 본다 | CLAUDE.md 번역 규칙. 지휘자 판단 |
 | O13 | DS·RT·GS(ego 쓰는 셋)는 한 워커씩 직렬 — ego 태스크 스페이스가 세션을 공유한다 | 메모리(2026-10-11 사용자). 지휘자 판단 |
+| D11 | 번역 화면 저장 거부 Alert(`removal-pending`)는 시안 T1(저장 줄 안)과 달리 **저장 줄 위** — 같은 푸터의 형제 Alert와 같은 자리 | 사용자 2026-10-17(R-E2 🟡2) |
+| D12 | 번역 화면 미저장 문장은 시안 T1 ③(`2 languages not saved`)과 달리 **기존 `N unsaved changes` 유지** — 일반 상태는 이 기능 범위가 아니다 | 사용자 2026-10-17(R-E2 🟡3) |
 
 ## 1차 런 배치 (2026-10-14 — 완료)
 
@@ -132,7 +134,7 @@
 
 | 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
 |---|---|---|---|---|---|---|
-| **E0** 서버 보강·상태 낱말 | §6 새 넷: 추가 미리보기 · `pullRequestUrl` · 사건 payload · `STATE` | `lib/locales/change.ts`(읽기 전용 미리보기 코어) · `app/(edit)/projects/[slug]/sources/actions.ts`(`previewSourceLocaleAdd`) · `lib/sources/query.ts` · `lib/locales/expire.ts` · `lib/events/{payload,record}.ts`(필드·파서만 — 문장은 E3) · `lib/status/canon.ts`(+`status-badge` 테스트) · `messages/*`의 `sources.missingRepo`·`orphanStrip`·`orphanReason`·`STATE` 라벨만(세 사전) · 그 소비자의 시그니처 맞춤 한 줄(`source-detail-modal.tsx`·`workspace.tsx`) · 격리 PG 시나리오 | — | Opus 5.5 · medium — 기존 판정 재사용, 새 판단 적음 | 워크트리 | ⏳ |
+| **E0** 서버 보강·상태 낱말 | §6 새 넷: 추가 미리보기 · `pullRequestUrl` · 사건 payload · `STATE` | `lib/locales/change.ts`(읽기 전용 미리보기 코어) · `app/(edit)/projects/[slug]/sources/actions.ts`(`previewSourceLocaleAdd`) · `lib/sources/query.ts` · `lib/locales/expire.ts` · `lib/events/{payload,record}.ts`(필드·파서만 — 문장은 E3) · `lib/status/canon.ts`(+`status-badge` 테스트) · `messages/*`의 `sources.missingRepo`·`orphanStrip`·`orphanReason`·`STATE` 라벨만(세 사전) · 그 소비자의 시그니처 맞춤 한 줄(`source-detail-modal.tsx`·`workspace.tsx`) · 격리 PG 시나리오 | — | Opus 5.5 · medium — 기존 판정 재사용, 새 판단 적음 | 워크트리 | ✅ dev(fix1) |
 | **E1** Sources 화면 | §6 Sources Dialog·행·배지 · P2의 기준 언어 안내 · 문구(sources 절) | `components/sources/*`(신규 `add-locale-dialog.tsx`·`remove-locale-dialog.tsx` 등 — 이름은 워커가 정하고 인계에 적는다, `base-language-form.tsx` 포함) · 프리셋 상수 신규 `lib/locales/presets.ts`(클라이언트 잎 — `client-graph` 등록) · `messages/*`의 `sources` 절 · DOM 테스트 | **E0 통합** | Opus 5.5 · high — 상태 조합·접근성·포커스 규칙이 많다 | 워크트리 | ⏳ |
 | **E2** 번역 화면 | §6 셀 얼리기 DOM · 문구(translations 절) | `components/translations/workspace/{locale-panel,workspace}.tsx` · `use-leave-guard.ts` · `lib/translations/draft.ts`(필요한 맞춤만 — reducer는 1차 런 완료) · `messages/*`의 `translations` 절 · DOM 테스트 | **E0 통합** (E1·E3와 병렬) | Opus 5.5 · medium — reducer가 이미 있다 | 워크트리 | ⏳ |
 | **E3** Publish·Sync·Logs·Settings | §6 Publish 표시 · 수동 Sync 구획 · Logs 문장 · P2의 기준 브랜치 안내 · 문구(해당 절) | `components/publish-button.tsx` · `components/home/sync-button.tsx` · `components/logs/{event-row,glyph}.tsx` · `lib/events/view.ts`(문장) · `components/settings/repository-form.tsx` · `messages/*`의 `publish`·`sync`·`logs`·`settings` 절 · DOM 테스트 | **E0 통합** (E1·E2와 병렬) | Opus 5.5 · high — Publish 모달 상태 갈래가 넓다 | 워크트리 | ⏳ |
@@ -219,3 +221,6 @@
 - **지휘자 판단**: E2는 E0 산출물에 기대지 않는다(번역 화면이 `orphanStrip`·`STATE` 새 키를 안 쓴다) → R-E0와 병렬로 **E2** `ctx_40d14f7fc218`(Opus medium, `lo-E2`) 착수. E1·E3는 E0 통합 뒤.
 - R-E0 완료(🔴 0 · 🟡 4 · ⚪ 5, 변이 9 중 7 — `.scratch/orch-locale-add/review-E0.md`). **E0 fix1** `ctx_c16d47c984f8` — Y1(PR 번호의 목록 조건 테스트) · Y2(확인 뒤 요청 → null 테스트) · Y3(미리보기 표 네 행 + 인계 `removal-pending`) · Y4(번역 화면 sr-only `locales.orphaned.badge` → Inactive, O10이라 E0). **E1 브리프로**: W4(`lastPrUrl`은 마지막 Publish 주소 — 링크 조건은 행 상태로). **E3 브리프로**: W3(Logs의 PR 귀속 문장은 단정을 약하게). R-E0 해제·워크트리 정리.
 - E2 `worker_done` — 6커밋 `8524f1f0..46a9e025`(`gate: ok` 15461, PG 미트리거). 계획과 다른 점: Alert 제목/본문 분리 · Alert가 저장 줄 위 · 시안 ③ 푸터 `2 languages not saved` 미채택 · 소유 밖 최소 수정 4(페이지 매핑 1줄 등). 미룬 것: `Removing` 배지 한 줄(E0 `STATE.removing` 통합 뒤). E2 retain. **R-E2** `ctx_5c253fcbe2fa`(Opus medium).
+- E0 fix1 `worker_done` — Y1~Y4 + W5(변이 M4·M3 이제 red, `locales.orphaned.badge` 키 제거 → `stateLabel`, `gate: ok` 15469 · PG 883). 재리뷰 생략(지휘자 판단 — 테스트 위주, 코드는 배지 한 줄). **E0 통합**(cherry-pick 5: `c77c9760`..`5a81c48d`) → main 체크아웃 `pnpm gate` 진행.
+- R-E2 완료(🔴 0 · 🟡 4 · ⚪ 6, 변이 8 중 7 — `review-E2.md`). 🟡2·🟡3 → **D11·D12 사용자 결정**(둘 다 지금대로). **E2 fix1**: 🟡1(저장 가능 0이면 Alert 없음) · 🟡4(es 수 일치) · M7 단언 · `Removing` 배지(E0 통합 뒤). R-E2 해제·정리.
+- main 체크아웃 `pnpm gate` **ok**(15469 · PG 883). tasks §6 새 넷 체크. E0 해제·워크트리 정리. wave ⑦ 착수: E1 · E3 + E2 fix1.
