@@ -19,6 +19,7 @@
 | D6 | DS 행을 둔다(기존 화면이지만 이 변경용으로 받은 시안이 있다) | 지휘자 판단 — 선례(search-ux-unify 2026-10-03, orchestrate §0 4.5) |
 | D8 | 행 막대는 **작업 언어**(`localeRole === "work"` — orphaned와 제거 예정 REMOVE를 뺀다, ADD는 포함)만 그린다. 기존 `progress`도 지금처럼 작업 언어만 더한다 | 지휘자 판단 — 같은 행의 `N languages`(`loadSurfaceCounts`)가 작업 언어를 세고, `work-locale.ts`가 "진행률·Sources 수는 작업 언어 술어로 센다"를 정본으로 둔다. spec(2026-10-15)은 locale-add의 REMOVE 의도 이전 서술이었다. 상세 모달은 Removing 행을 상태와 함께 계속 보여 준다 (A 질문 msg_6d0651a8bada) |
 | D9 | #289: 보류할 것이 없는 요청 정리 실행은 **요청을 닫았다 틀**(제목 후보 `Language request closed` · 본문 `Nothing was written to the repository.` + 기존 만료 줄)로 낸다. 보류가 실제로 있으면 Held back 틀 그대로. DESIGN §6.646 개정 | 2026-10-17 사용자(추천안 승인) |
+| D10 | QA-P(prod)는 `bugshot-i18n-test`(PR #15 포함)를 자유롭게 쓰고, GitLab 픽스처 `malmoi-gitlab-test`로도 시험한다. 상주 픽스처는 보관·삭제하지 않는다 | 2026-10-17 사용자 |
 | D7 | T9(정본 갱신)는 B 워커의 후속 Task, 기능 디렉터리 삭제는 지휘자가 마지막 리포트 직전에 | 지휘자 판단 — 정본 문서는 구현을 아는 워커가 쓰고, orch.md는 런이 끝날 때까지 필요하다 |
 
 ## 배치
@@ -52,7 +53,7 @@
 |---|---|
 | ko 검수 | **사용자가 직접 한다**(2026-10-17) — 지휘자는 묻지 않는다 |
 | RT6 잔여(GitLab판 `merge request` 문장 · #287 EDITOR·비지원 갈래 · 정리 모달 다크·341 폭) | QA 행에 합친다 |
-| RT5 prod 잔여(GitHub 실제 Publish · 기준 언어/브랜치 거부 문구 · Held·머지 갈래) | QA-P 행 — prod, 사용자 PR #15 처리 결정 필요 |
+| RT5 prod 잔여(GitHub 실제 Publish · 기준 언어/브랜치 거부 문구 · Held·머지 갈래) | QA-P 행 — prod, D10 |
 | `/merge` 뒤 prod #282·#283 한 번 | QA-P 행 — 사용자가 `/merge`를 부른 뒤 |
 | prod MCP OAuth·개인 토큰 재인가 | 사용자 몫 — 리포트에 남긴다 |
 
