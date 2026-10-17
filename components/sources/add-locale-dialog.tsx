@@ -165,8 +165,11 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
       <div className="space-y-3">
         {initialCode === null && (chrome
           ? <FormGroup label={m.sources.locale.chromeLabel} labelId="add-locale-code-label" htmlFor="add-locale-code" error={fieldError}>
-            {describe => <Select value={code ?? ""} disabled={saving} onValueChange={value => run(value)}>
-              <SelectTrigger id="add-locale-code" data-initial-focus width="full" aria-labelledby="add-locale-code-label add-locale-code" aria-describedby={describe()} aria-invalid={fieldError !== undefined || undefined}>
+            {/* ⚠️ 저장 중엔 진짜 `disabled`가 아니라 잠근다 — 꺼지면 트리거의 포커스가 `body`로 빠진다(POSTMORTEM 2026-09-24 · `base-language-form.tsx`의 형). Tab만 통과한다. */}
+            {describe => <Select value={code ?? ""} onValueChange={value => { if (!saving) run(value); }}>
+              <SelectTrigger id="add-locale-code" data-initial-focus width="full" aria-labelledby="add-locale-code-label add-locale-code" aria-describedby={describe()} aria-invalid={fieldError !== undefined || undefined}
+                aria-disabled={saving || undefined} onPointerDown={event => { if (saving) event.preventDefault(); }} onClick={event => { if (saving) event.preventDefault(); }}
+                onKeyDown={event => { if (saving && event.key !== "Tab") event.preventDefault(); }}>
                 <SelectValue placeholder={m.sources.locale.chromePlaceholder} />
               </SelectTrigger>
               <SelectContent>{CHROME_LOCALE_CODES.map(value => {

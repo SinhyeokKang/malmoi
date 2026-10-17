@@ -73,6 +73,16 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
     if (wanted.detail !== detail) { focus.current = null; header(card)?.focus(); }
   });
   const landOn = (pick: Focus["pick"]) => { focus.current = { pick, detail }; };
+  /*
+    ⚠️ **사람이 먼저 움직이면 예약을 버린다** — 다시 읽기가 실패하면 호스트가 같은 `detail`을 들고 있어 위 "머리로" 판정이 서지 않는다. 남은 예약은
+    한참 뒤의 다음 다시 읽기에서 대상이 서는 순간 사람이 보던 자리의 포커스를 빼앗는다.
+  */
+  useEffect(() => {
+    const drop = () => { focus.current = null; };
+    document.addEventListener("pointerdown", drop, true);
+    document.addEventListener("keydown", drop, true);
+    return () => { document.removeEventListener("pointerdown", drop, true); document.removeEventListener("keydown", drop, true); };
+  }, []);
   // 결과로 닫히는 창은 연 자리로 돌아가지 않는다 — 위 규칙이 옮긴다.
   const keepFocus = (event: Event) => { if (focus.current !== null) event.preventDefault(); };
 
