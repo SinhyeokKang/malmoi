@@ -42,3 +42,12 @@
 ## 진행 기록
 
 (배치별 push 해시 · 라운드 · 미완을 여기에 쌓는다)
+
+## 인수 — 다른 세션(malmoi-8e) 잔여, 2026-10-17
+
+원문: `.scratch/followups/handoff-malmoi-8e-to-d4.md`(gitignore — 이 머신만). 이 런의 배치가 아니며 다음 `/merge` 전에 사용자에게 꺼낸다.
+
+- 다음 `/merge` 실을 것(v1.4.3 `325ae01a` 이후 dev, 마이그레이션 없음): GitLab CI 원본 v2 상수 · #287 · #282·#283 요청 정리 — 이 런의 결과와 함께 나간다.
+- **ko 사용자 검수 미완**(`/merge` 전): 보안 후속 ② 문구 · locale-add TR 후보 넷 · E2b `revert.frozen` · #282 새 키. 확정되면 DESIGN §10.1 `언어 상태 낱말` 행의 ko `초안` 표시를 뗀다.
+- 미측정: RT6 GitLab판 문장·#287 EDITOR 갈래·정리 모달 다크/341 · RT5 prod 잔여 · `/merge` 뒤 prod에서 #282·#283 한 번(`malmoi-gitlab-test` MR 닫기).
+- 사용자 몫: prod Claude Code malmoi MCP OAuth·개인 토큰 재인가(RT5 Sign out everywhere로 폐기).
