@@ -86,6 +86,8 @@ Si hay una pull request de Malmoi abierta, Publicar reemplaza lo que contiene po
 
 Malmoi se entera de lo que pasó con una pull request en la siguiente publicación o ejecución nocturna, así que una fusión puede tardar hasta un día en verse.
 
+No tienes que esperar a la ejecución nocturna. Cuando la pull request deja de estar abierta, **Publicar** se activa aunque no haya nada más por enviar, y su vista previa cierra la solicitud de idioma al momento.
+
 - Eliminación fusionada: el idioma pasa a **Inactivo**. Sus traducciones, su historial y su fila se conservan.
 - Eliminación cerrada sin fusionar: el archivo sigue en el repositorio, así que el idioma sigue activo y la solicitud de eliminación desaparece. Vuelve a pedirla si aún quieres quitarlo. Registros anota el cierre.
 - Incorporación fusionada: el idioma es un idioma normal de la fuente.
