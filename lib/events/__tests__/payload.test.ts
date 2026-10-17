@@ -122,14 +122,33 @@ describe("readPayload — 빠지거나 모양이 틀린 필드는 폴백이다",
 describe("readPayload — SURFACE localeChange", () => {
   it("locale·operation·결과 필드를 읽는다", () => {
     expect(readPayload("SURFACE", { surfaceSlug: "web", adapter: null, baseLocale: null,
-      localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan" } }))
+      localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan", reissued: null, pullRequest: { number: 128 } } }))
       .toEqual({ kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null,
-        localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan" } });
+        localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan", reissued: null, pullRequest: { number: 128 } } });
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "de", operation: "ADD", revived: true, reissued: 3 } }))
+      .toMatchObject({ localeChange: { locale: "de", operation: "ADD", revived: true, reissued: 3, pullRequest: null } });
+  });
+
+  it("되살린 수·PR 번호가 없는 옛 payload는 그 칸이 null이다", () => {
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: null, outcome: "orphan" } }))
+      .toMatchObject({ localeChange: { reissued: null, pullRequest: null } });
+  });
+
+  it.each<[string, unknown]>([
+    ["문자열 번호", { number: "128" }],
+    ["0", { number: 0 }],
+    ["음수", { number: -1 }],
+    ["소수", { number: 1.5 }],
+    ["숫자 그대로", 128],
+    ["배열", [128]],
+  ])("PR 번호의 모양이 틀리면(%s) 그 칸만 null이다", (_label, pullRequest) => {
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "ADD", reissued: "3", pullRequest } }))
+      .toMatchObject({ localeChange: { locale: "fr", operation: "ADD", reissued: null, pullRequest: null } });
   });
 
   it("모양이 틀리면 그 칸만 null이고, locale·operation이 없으면 맥락이 없다", () => {
     expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "ADD", revived: "yes", discarded: "2", outcome: "gone" } }))
-      .toMatchObject({ localeChange: { locale: "fr", operation: "ADD", revived: null, discarded: null, outcome: null } });
+      .toMatchObject({ localeChange: { locale: "fr", operation: "ADD", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null } });
     expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "RENAME" } })).not.toHaveProperty("localeChange");
     expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: "fr" })).not.toHaveProperty("localeChange");
   });

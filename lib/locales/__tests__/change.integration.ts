@@ -20,7 +20,7 @@ import { declareBaseLocale } from "@/lib/sources/base-locale";
 import { deliveryContextFingerprint } from "@/lib/translations/context";
 import { en } from "@/messages/en";
 
-import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "../change";
+import { addLocale, cancelLocaleRemoval, previewLocaleAdd, previewLocaleRemoval, removeLocale } from "../change";
 import { countLocaleWork } from "../work";
 import { waitForLockWait } from "./lock-wait";
 
@@ -193,7 +193,16 @@ describe("addLocale — 새 언어", () => {
     expect(await cells("s-app", "de")).toMatchObject([{ keyId: "s-app-hello", pendingEditToken: null }]);
     expect((await prisma.locale.findUniqueOrThrow({ where: { projectId_surfaceId_code: { projectId: "p", surfaceId: "s-app", code: "de" } } })).orphaned).toBe(true);
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.localeAdded" } });
-    expect(event.payload).toMatchObject({ localeChange: { locale: "de", operation: "ADD", revived: true } });
+    expect(event.payload).toMatchObject({ localeChange: { locale: "de", operation: "ADD", revived: true, reissued: 1 } });
+    // Logs가 읽는 파서 출력에도 같은 수가 실린다(시안 Logs "brought back N translations").
+    const page = await loadEvents(prisma, en, "p", parseLogFilter({ kind: "sources" }), { timeZone: "UTC" });
+    expect(page.rows.map(row => (row.payload?.kind === "SURFACE" ? row.payload.localeChange?.reissued : undefined))).toEqual([1]);
+  });
+
+  it("새로 만든 언어의 사건은 되살린 수가 없다(null)", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.localeAdded" } });
+    expect(event.payload).toMatchObject({ localeChange: { locale: "fr", revived: false, reissued: null } });
   });
 
   it.each<[string, { userId: string }, string, string]>([
@@ -227,6 +236,55 @@ describe("addLocale — 새 언어", () => {
     const before = await state();
     await expect(addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).rejects.toThrow();
     expect(await state()).toEqual(before);
+  });
+});
+
+/**
+ * **추가 미리보기** (locale-add 2차 런 E0 — 추가 Dialog의 경로·되살릴 수). 실행(`addLocale`)과 같은 판정 경로를 쓰기 없이 돈다 —
+ * 미리보기 경로 = 실행 경로(POSTMORTEM 2026-09-16). 같은 입력이면 같은 `action`·`path`·거부 코드이고, `revive`는 실행의 `reissued`와 같은 셈이다.
+ */
+describe("previewLocaleAdd", () => {
+  async function seedOrphanDe() {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de", orphaned: true } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "de", value: "Hallo" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-bye", localeCode: "de", value: "Tschüss" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-gone", localeCode: "de", value: "Weg" } });
+  }
+
+  it.each<[string, { userId: string }, { slug: string; surfaceSlug: string }, string, () => Promise<unknown>]>([
+    ["새 언어", OWNER, WEB, "fr", async () => {}],
+    ["orphan 되살림", OWNER, WEB, "de", seedOrphanDe],
+    ["EDITOR", EDITOR, WEB, "fr", async () => {}],
+    ["이미 활성", OWNER, WEB, "ko", async () => {}],
+    ["관측할 수 없는 철자", OWNER, WEB, "KO", async () => {}],
+    ["경로 이탈", OWNER, WEB, "../x", async () => {}],
+    ["비지원 포맷", OWNER, { slug: "p", surfaceSlug: "app" }, "fr", () => prisma.translationSurface.update({ where: { id: "s-app" }, data: { adapterName: "ts-dict" } })],
+    ["보관", OWNER, WEB, "fr", () => prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } })],
+    ["없는 소스", OWNER, { slug: "p", surfaceSlug: "nope" }, "fr", async () => {}],
+  ])("%s — 미리보기가 쓰지 않고 실행과 같은 판정을 낸다", async (_label, subject, target, localeCode, arrange) => {
+    await arrange();
+    const before = await state();
+    const preview = await previewLocaleAdd(prisma, subject, { ...target, localeCode });
+    expect(await state()).toEqual(before);
+    const result = await addLocale(prisma, subject, { ...target, localeCode });
+    if (result.ok) {
+      expect(preview).toEqual({ ok: true, action: result.action, path: result.path, revive: result.reissued });
+    } else {
+      expect(preview).toEqual({ ok: false, error: result.error });
+    }
+  });
+
+  it("되살릴 수는 실행이 토큰을 새로 준 셀 수와 같다 — 값 있는 활성 키만", async () => {
+    await seedOrphanDe();
+    expect(await previewLocaleAdd(prisma, OWNER, { ...WEB, localeCode: "de" })).toEqual({ ok: true, action: "revive", path: "web/de.json", revive: 2 });
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "de" })).toMatchObject({ reissued: 2 });
+  });
+
+  it("결과 미확정 Publish 중이면 실행과 같이 거부한다", async () => {
+    await prisma.syncRun.create({ data: { projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date() } });
+    const preview = await previewLocaleAdd(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    expect(preview).toEqual(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" }));
+    expect(preview).toEqual({ ok: false, error: "publish-unsettled" });
   });
 });
 

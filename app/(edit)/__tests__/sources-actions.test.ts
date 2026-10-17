@@ -82,10 +82,10 @@ it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다", async (
  * 언어 추가·제거·취소 (locale-add tasks §6 첫째). 판정은 공유 코어(`lib/locales/change.ts` — 실 PG는 `change.integration.ts`)가 하고
  * Action은 세션·입력·무효화만 든다. 결과는 문장이 아니라 코드다. **무효화는 커밋된 성공 뒤에만**, 미리보기는 무효화하지 않는다.
  */
-const locales = vi.hoisted(() => ({ add: vi.fn(), preview: vi.fn(), remove: vi.fn(), cancel: vi.fn() }));
+const locales = vi.hoisted(() => ({ add: vi.fn(), preview: vi.fn(), remove: vi.fn(), cancel: vi.fn(), previewAdd: vi.fn() }));
 vi.mock("@/lib/locales/change", async (original) => ({ ...(await original<object>()),
-  addLocale: locales.add, previewLocaleRemoval: locales.preview, removeLocale: locales.remove, cancelLocaleRemoval: locales.cancel }));
-import { addSourceLocale as addLocale, cancelSourceLocaleRemoval as cancelLocaleRemoval, previewSourceLocaleRemoval as previewLocaleRemoval, removeSourceLocale as removeLocale } from "../projects/[slug]/sources/actions";
+  addLocale: locales.add, previewLocaleRemoval: locales.preview, removeLocale: locales.remove, cancelLocaleRemoval: locales.cancel, previewLocaleAdd: locales.previewAdd }));
+import { addSourceLocale as addLocale, cancelSourceLocaleRemoval as cancelLocaleRemoval, previewSourceLocaleAdd as previewLocaleAdd, previewSourceLocaleRemoval as previewLocaleRemoval, removeSourceLocale as removeLocale } from "../projects/[slug]/sources/actions";
 
 const TARGET = { slug: "p", surfaceSlug: "web", localeCode: "fr" };
 const LOCALE_WRITES = [
@@ -125,6 +125,7 @@ it("언어 Action은 입력이 틀리면 세션도 코어도 보지 않는다", 
   expect(await removeLocale({ ...TARGET, approval: "" })).toEqual({ ok: false, error: "invalid input" });
   expect(await cancelLocaleRemoval({ slug: "p", surfaceSlug: "", localeCode: "fr" })).toEqual({ ok: false, error: "invalid input" });
   expect(await previewLocaleRemoval({ slug: "", surfaceSlug: "web", localeCode: "fr" })).toEqual({ ok: false, error: "invalid input" });
+  expect(await previewLocaleAdd({ slug: "p", surfaceSlug: "web", localeCode: "" })).toEqual({ ok: false, error: "invalid input" });
   expect(mocks.session).not.toHaveBeenCalled();
   for (const core of Object.values(locales)) expect(core).not.toHaveBeenCalled();
 });
@@ -147,4 +148,28 @@ it("언어 제거 미리보기 장애는 거부가 아니라 실패다", async (
   expect(await previewLocaleRemoval(TARGET)).toEqual({ ok: false, error: "unavailable" });
   mocks.session.mockResolvedValue({ status: "none" });
   expect(await previewLocaleRemoval(TARGET)).toEqual({ ok: false, error: "unauthorized" });
+});
+
+/** 추가 미리보기(locale-add 2차 런 E0) — 추가 Dialog가 열릴 때 부른다. 실행과 같은 인가·판정은 코어가 하고 Action은 읽기만 한다. */
+it("언어 추가 미리보기는 읽기만 한다 — 거부·성공 모두 무효화하지 않는다", async () => {
+  const preview = { ok: true, action: "revive", path: "web/fr.json", revive: 3 };
+  locales.previewAdd.mockResolvedValue(preview);
+  expect(await previewLocaleAdd(TARGET)).toEqual(preview);
+  expect(locales.previewAdd).toHaveBeenCalledWith({}, { userId: "u" }, TARGET);
+  for (const error of ["forbidden", "already-active", "archived", "publish-unsettled"]) {
+    locales.previewAdd.mockResolvedValue({ ok: false, error });
+    expect(await previewLocaleAdd(TARGET)).toEqual({ ok: false, error });
+  }
+  expect(mocks.revalidate).not.toHaveBeenCalled();
+  expect(locales.add).not.toHaveBeenCalled();
+});
+it("언어 추가 미리보기 장애는 거부가 아니라 실패이고, 세션이 없으면 코어를 부르지 않는다", async () => {
+  locales.previewAdd.mockRejectedValue(new Error("database"));
+  expect(await previewLocaleAdd(TARGET)).toEqual({ ok: false, error: "unavailable" });
+  locales.previewAdd.mockClear();
+  mocks.session.mockResolvedValue({ status: "none" });
+  expect(await previewLocaleAdd(TARGET)).toEqual({ ok: false, error: "unauthorized" });
+  mocks.session.mockResolvedValue({ status: "unavailable" });
+  expect(await previewLocaleAdd(TARGET)).toEqual({ ok: false, error: "unavailable" });
+  expect(locales.previewAdd).not.toHaveBeenCalled();
 });

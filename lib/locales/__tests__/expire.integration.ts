@@ -238,6 +238,47 @@ describe("expireLocaleChanges — 전달 목록 정리 (#266)", () => {
   });
 });
 
+/**
+ * **해소 사건의 PR 번호** (locale-add 2차 런 E0 — 시안 Logs "closed in #128"). 그 의도를 실었던 PR/MR = 마지막 전달 확인 실행의 저장된 주소다.
+ * 효과가 전달 목록에 없던 의도(모순 행·리포에서 직접 추가)는 어느 PR에도 실리지 않았으므로 `null`이다. 끝 단언은 Logs가 읽는 파서 출력이다.
+ */
+describe("expireLocaleChanges — 해소 사건의 PR 번호", () => {
+  async function resolvedPullRequests() {
+    const page = await loadEvents(prisma, en, "p", parseLogFilter({}), { timeZone: "UTC" });
+    return page.rows.flatMap(row => (row.payload?.kind === "SURFACE" && row.payload.localeChange !== undefined ? [[row.payload.localeChange.locale, row.payload.localeChange.pullRequest]] : []));
+  }
+  const runUrl = (url: string | null) => prisma.syncRun.updateMany({ where: { projectId: "p" }, data: { prUrl: url } });
+
+  it("GitHub — 전달된 제거는 확인 실행의 PR 번호를 싣는다", async () => {
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    await runUrl("https://github.com/o/r/pull/128");
+    await expire({ observed: { status: "observed", locales: ["en", "fr"] } });
+    expect(await resolvedPullRequests()).toEqual([["ko", { number: 128 }]]);
+  });
+
+  it("GitLab — MR iid를 숫자만 싣는다", async () => {
+    await prisma.project.update({ where: { id: "p" }, data: { repoHost: "gitlab" } });
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "de", value: "Hallo" } });
+    await request("s-web", "de", "ADD");
+    await deliver("s-web", [{ localeCode: "de", effect: "create" }]);
+    await runUrl("https://gitlab.com/g/r/-/merge_requests/7");
+    await expire({ observed: { status: "observed", locales: ["en", "ko", "fr", "de"] } });
+    expect(await resolvedPullRequests()).toEqual([["de", { number: 7 }]]);
+  });
+
+  it("전달 목록에 없던 의도·주소 없는 실행은 null이다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de", orphaned: true } });
+    await request("s-web", "de", "ADD");
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    await runUrl(null);
+    await expire({ observed: { status: "observed", locales: ["en", "fr"] } });
+    expect(await resolvedPullRequests()).toEqual(expect.arrayContaining([["de", null], ["ko", null]]));
+  });
+});
+
 describe("readLocaleStates · countLocaleWork", () => {
   it("값 수는 활성 키의 비지 않은 값만 센다 — 값 0개 ADD는 작업이 아니다", async () => {
     await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de" } });

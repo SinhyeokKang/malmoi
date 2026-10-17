@@ -192,6 +192,7 @@ const DELEGATED_CORES = new Map([
   ["previewSurfaceRemoval", "lib/surfaces/remove.ts"],
   // 언어 추가·제거·취소(locale-add) — Action·MCP 도구가 같은 코어를 부른다. 코어가 `getSurfaceAccess`(project:settings) → 잠금 안 재판정을 든다.
   ["addLocale", "lib/locales/change.ts"],
+  ["previewLocaleAdd", "lib/locales/change.ts"],
   ["previewLocaleRemoval", "lib/locales/change.ts"],
   ["removeLocale", "lib/locales/change.ts"],
   ["cancelLocaleRemoval", "lib/locales/change.ts"],

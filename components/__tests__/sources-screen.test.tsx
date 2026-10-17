@@ -289,16 +289,19 @@ it("상세를 읽지 못하면 설명이 로딩 중이라고 말하지 않는다
   expect(dialog.textContent).toContain("We couldn't load this source");
   expect(dialog.textContent).not.toContain("Loading source details");
 });
-it("사라진 언어는 낱말과 색을 함께 든다 — `Removed from repository` 한 낱말(2026-09-30 상태 통일)", async () => {
+it("사라진 언어는 낱말과 색을 함께 든다 — 원인을 단정하지 않는 `Inactive` 한 낱말(locale-add 시안 L)", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
   await open();
   const row = [...document.querySelectorAll('[role="dialog"] li')].find(node => node.textContent?.startsWith("ja"))!;
-  expect(row.textContent).toContain("Removed from repository");
+  expect(row.textContent).toContain("Inactive");
   // 배지 안에는 글리프가 없다(5-Y19) — `CircleAlert`는 필드 오류 전용이다.
   expect(row.querySelector(".rounded-full svg")).toBeNull();
   // 카드 바닥 띠는 danger 톤을 든다(5-Y10) — 손 조립 붉은 글자 줄이 아니다.
   const strip = document.querySelector('[role="dialog"] [data-alert="danger"]')!;
-  expect(strip.textContent).toContain("was removed from the repository");
+  expect(strip.textContent).toContain("ja is inactive.");
+  expect(strip.textContent).not.toContain("removed from the repository");
+  // 꺼진 Open의 sr 사유도 같은 중립 문장이다.
+  expect(document.getElementById("language-open-reason-ja")!.textContent).toBe("This language is inactive.");
   expect(strip.getAttribute("role")).toBeNull();
   // 언어 행 [Open]은 앱 안 이동이라 chevron이다(4-Y23).
   expect(document.querySelector('[role="dialog"] a[href*="language=en"] svg')!.getAttribute("class")).toContain("lucide-chevron-right");
