@@ -553,9 +553,11 @@ components/
                         떨어진다. 그 전제를 테스트가 mock으로 정의하므로 new-project-button.test.tsx가
                         설치된 next 소스에 따로 고정한다
                         ButtonLink가 onNavigate와 busy를 전달하고 진행 중 앞 장식 교체를 소유한다
-  locale-meter.tsx      LocaleMeter — 로케일 국기/코드·표시 percent·완료/검토 비율을 조립하는 서버 호환 래퍼.
+  locale-meter.tsx      LocaleMeter — 로케일 국기/코드·표시 percent·완료/검토 비율을 조립하는 래퍼. 입력은 `LocaleMeterValue`(lib/sources/meters).
+                        소비자는 /projects 행(서버)과 Sources 소스 행(클라이언트)이라 상태도 서버 전용 import도 없다. 루트가 `<span>`이다(행 버튼 안).
                         0분모는 0으로 처리하고 표시 percent는 입력값을 그대로 쓴다. 막대의 스타일·장식 의미는 ui/Meter가 소유한다.
-                        Sources 상세도 같은 Meter를 쓰며 막대 폭의 clamp/비율은 상세 화면이, 표시 percent는 lib/keys/view의 localeProgress가 소유한다
+                        Sources 상세 Languages 카드도 같은 Meter를 쓴다 — 두 구간 폭의 clamp는 lib/sources/meters의 meterValue가,
+                        표시 percent(완료 + 검토 대기)는 lib/keys/view의 localeProgress가 소유한다
   use-arrived.ts        useArrived(promise, identity) — 서버가 내려 준 promise의 마지막 도착값(Home 보류 사유 · 번역 화면 연결 판정).
                         ⚠️ use() + Suspense로 받지 않는다 — 재렌더마다 새 promise가 와서 키 선택·저장 뒤 전환이 GitHub 조회를 기다렸다.
                         ⚠️ identity(프로젝트·소스)가 바뀌면 그 렌더에서 옛 값을 버린다 — 다른 프로젝트의 판정이 버튼을 끄거나 켜지 않게
@@ -778,7 +780,9 @@ lib/
                         키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
   sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
                         actions(planSourceActions) · base-language(폼 상태 판정) · add-block(Add sources가 꺼진 갈래별 사유 —
-                        malmoi#93). 세 잎은 서버 import가 없다.
+                        malmoi#93) · meters(언어 막대 값 — `LocaleMeterValue` · `meterValue`(두 구간 폭 clamp) · `sourceRowMeters`(행에 설 앞 다섯 +
+                        남은 수, 키 0이면 빈 결과). 목록 조회가 소스마다 싣고 상세 Languages 카드가 클라이언트에서 같은 `meterValue`를 부른다 —
+                        그래서 server-only가 아니고 `lib/keys/view`는 타입으로만 문다). 네 잎은 서버 import가 없다.
   revalidate-after-commit.ts  커밋 뒤 재검증 실패를 저장 실패로 뒤집지 않는 공유 helper(account/settings/sources).
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
