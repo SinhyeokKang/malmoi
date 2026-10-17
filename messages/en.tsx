@@ -4568,7 +4568,8 @@ export const en = {
       },
       published: (view: string, dropped = 0, reached = 0): string =>
         // 보낼 것 없이 언어 요청만 정리했다(#267) — 그것이 이 결과의 이유다. 리포에 닿지 못한 요청이 있으면 "이미 있다"가 거짓이다.
-        (view === "no-changes" || view === "partial" || view === "request-closed") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
+        // 그 실행은 `request-closed`(버린 요청 있음)나 `no-changes`(반영만)다 — `partial`은 언어 요청 수를 싣지 않는다(#289).
+        (view === "no-changes" || view === "request-closed") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
         : view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
@@ -4628,7 +4629,7 @@ export const en = {
           return `${rest}. Publish with this fingerprint.`;
         },
         published: (view: string, dropped = 0, reached = 0): string =>
-          (view === "no-changes" || view === "partial" || view === "request-closed") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
+          (view === "no-changes" || view === "request-closed") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
           : view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."
           : view === "partial" ? "Some changes weren't sent. See the result for why."

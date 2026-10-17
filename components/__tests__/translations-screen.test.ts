@@ -68,7 +68,7 @@ describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄
 
   it("갈래 판정을 한 곳에서 받는다 — 매핑 표를 두 벌 두지 않는다 (DESIGN §6.646)", () => {
     // ⚠️ **`PublishTone`은 2026-09-16에 사라졌다** — tone 넷을 내던 `pullMessage` 대신
-    // `planPublishView`가 결과 8갈래를 내고, danger는 `Alert` 프리미티브가 그대로 든다.
+    // `planPublishView`가 결과 10갈래를 내고, danger는 `Alert` 프리미티브가 그대로 든다.
     expect(read(PUBLISH)).toMatch(/planPublishView\(outcome\)/);
     expect(read(PUBLISH)).toMatch(/<Alert variant="danger"/);
   });

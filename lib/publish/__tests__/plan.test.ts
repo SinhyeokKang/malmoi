@@ -5,7 +5,8 @@ import { buildPublishDiff, type PublishCell } from "../diff";
 import { summarizeWarnings } from "../warnings";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
-import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
+import { SYNC_ERROR_CODES, planSyncFinish } from "@/lib/sync/plan";
+import type { PullResult } from "@/lib/pull/run";
 
 const committed = { status: "committed", delivered: 1, pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[], changedValues: 1 } as const;
 it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
@@ -177,4 +178,29 @@ it("no-edits + 리포에 없는 채로 버린 언어 요청은 요청을 닫았�
   expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [dropped, { surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("request-closed");
   expect(planPublishView({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: [dropped] })).toBe("partial");
   expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("no-changes");
+});
+
+/**
+ * #289 review 🟡1 — 결과 모달(`planPublishView`, `reason`을 본다)과 Logs(`SyncRun` 컬럼 — `eventResult`가 `withheld > 0 || warnings > 0`이면 Held back)는
+ * 같은 실행을 다른 입력으로 판정한다(POSTMORTEM 2026-09-27). 스킵 결과에서 모달의 Held back(`partial`) ⇔ Logs의 Held back이어야 둘이 갈리지 않는다.
+ * ⚠️ `reconfirm`은 표본에 없다 — 웹 Publish는 지문을 넘기지 않아 모달에 닿지 않는다(Logs는 `errorCode`로 따로 Held back이다).
+ */
+it("스킵 결과의 모달 Held back ⇔ Logs Held back — 요청만 닫은 실행은 둘 다 아니다 (#289)", () => {
+  const dropped = { surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" } as const;
+  const reached = { surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" } as const;
+  const samples: PullResult[] = [
+    { status: "skipped", reason: "no-edits" },
+    { status: "skipped", reason: "no-edits", expired: [dropped] },
+    { status: "skipped", reason: "no-edits", expired: [reached] },
+    { status: "skipped", reason: "no-edits", expired: [dropped, reached] },
+    { status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: [dropped] },
+    { status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "s", path: "ko.json", code: "parse-failed" }], expired: [dropped] },
+    { status: "skipped", reason: "no-changes", withheld: { file: 0, key: 2 } },
+    { status: "skipped", reason: "no-changes" },
+  ];
+  for (const result of samples) {
+    const row = planSyncFinish(result);
+    expect([JSON.stringify(result), planPublishView(result) === "partial"]).toEqual([JSON.stringify(result), row.withheld > 0 || row.warnings > 0]);
+  }
+  expect(planSyncFinish({ status: "skipped", reason: "no-edits", expired: [dropped] })).toMatchObject({ status: "SKIPPED", withheld: 0, warnings: 0 });
 });

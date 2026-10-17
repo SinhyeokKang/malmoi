@@ -366,7 +366,24 @@ describe("Publish — 닫힌 언어 요청 정리 (#282)", () => {
     expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
     expect(text).not.toContain("Held back");
     expect(text).not.toContain("until they can be sent");
+    // D13 — 형제 틀(`Nothing changed`·`stillOpen`)과 같이 Logs로 가는 길을 둔다. Logs는 이 실행을 `Nothing to send`로 적는다.
+    expect(text).toContain(en.translations.publish.inLogs);
     expect(button("Close")).toBeDefined();
+  });
+
+  /** review 🟢4 — 버린 요청 + 리포가 이미 요청대로인 요청: 제목 수는 닫은 요청 전부, 만료 줄도 둘 다 선다. */
+  it("보류 없는 정리 · 버린 요청 + 반영된 요청 — 복수 제목, 만료 줄 둘", async () => {
+    const mixed = [...dropped.expiringLocales, { surfaceSlug: "web", localeCode: "ko", operation: "REMOVE", presence: "orphan" }];
+    mocks.preview.mockResolvedValue(ok({ ...dropped, expiringLocales: mixed }));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", expired: mixed });
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close requests");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Language requests closed");
+    expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+    expect(text).toContain("ko is already gone from the repository, so its request is closed.");
   });
 
   it("보류 없는 정리 · 요청 둘 · GitLab — 복수 제목, merge request 만료 줄", async () => {

@@ -769,12 +769,13 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
           break;
         }
         case "request-closed":
-          // 보낼 것도 보류할 것도 없이 언어 요청만 닫았다(#289) — Held back 틀이면 Home(To send 0)·Logs(`Nothing to send`)와 갈린다. 무엇을 닫았는지는 만료 줄이 말한다.
+          // 보낼 것도 보류할 것도 없이 언어 요청만 닫았다(#289) — Held back 틀이면 Home(To send 0)·Logs(`Nothing to send`)와 갈린다. 무엇을 닫았는지는 만료 줄이 말하고,
+          // 형제 틀처럼 Logs로 가는 길을 둔다(D13).
           panel = PANEL.noChanges; inner = false;
           title = p.language.settle.doneTitle(expiredRequests.length);
           description = p.language.settle.doneDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
-          body = <Stack>{expired}</Stack>;
+          body = <Stack>{expired}<Hint icon={History}>{p.inLogs}</Hint></Stack>;
           break;
         case "no-changes":
           panel = PANEL.noChanges; inner = false;
