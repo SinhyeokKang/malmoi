@@ -53,13 +53,15 @@ export default async function SourcesLoading() {
                 <Skeleton size="md" className="w-[42%]" />
                 <Skeleton size="xs" className="w-[28%]" />
                 {/*
-                  언어 막대 자리 둘 — 묶음은 실물과 같은 `mt-2 flex flex-wrap gap-x-3 gap-y-1.5`, 자리 폭은 실물 `LocaleMeter`의 `w-25`다.
+                  언어 막대 자리 둘 — 묶음은 실물과 같은 `mt-2 flex flex-wrap gap-x-3 gap-y-1.5`, 자리 폭은 실물 `LocaleMeter`의 최소 폭 100(`min-w-25`)이다.
                   ⚠️ **두께는 실물과 다르다** — 라벨 16(실물 배지 20) + 간격 6 + 바 8(실물 4) = 30으로 합만 실물(20 + 6 + 4)과 맞춘다. 4px 바는 골격 면에서 선으로 보여
                   바 자리로 읽히지 않는다(시안 프레임 9). `/projects` 골격의 `h-5`·`h-1`(실물 치수 그대로)을 복사하지 않는다.
-                  ⚠️ **둘이다** — 343 그릇에서도 한 줄이라 골격 줄 수가 폭과 무관하게 하나다. 막대가 한 줄을 넘는 소스와 키 0 소스는 도착할 때 한 줄만큼 바뀐다(골격은 언어 수를 모른다).
+                  ⚠️ **넓은 그릇은 둘, 좁은 그릇(`@max-form`)은 하나다** (#291·#292) — 375의 실제 카드는 325라 이름 칸이 207이고 막대 둘(212)이 한 줄에 들지 않는다.
+                  실물도 그 폭에서 줄당 하나라 둘을 그리면 골격만 두 줄이 된다. 질의는 카드가 이미 선언한 `@container`를 쓴다(새 선언 없음 — POSTMORTEM 2026-09-15).
+                  막대가 한 줄을 넘는 소스와 키 0 소스는 도착할 때 한 줄만큼 바뀐다(골격은 언어 수를 모른다).
                 */}
                 <div data-skeleton-meters className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5">
-                  {[0, 1].map(slot => <div key={slot} data-skeleton-meter className="flex w-25 flex-col gap-1.5">
+                  {[0, 1].map(slot => <div key={slot} data-skeleton-meter className={cn("flex w-25 flex-col gap-1.5", slot === 1 && "@max-form:hidden")}>
                     <Skeleton className="h-4 rounded-full" />
                     <Skeleton className="h-2 rounded-full" />
                   </div>)}

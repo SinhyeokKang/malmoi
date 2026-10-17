@@ -537,3 +537,18 @@ it("행 버튼 안에 <div>가 없다 — 버튼은 phrasing content만 든다",
   expect(row.querySelectorAll("[data-locale-meter]")).toHaveLength(5);
   expect(row.querySelector("div")).toBeNull();
 });
+
+/*
+  #293 — 지역 코드(`bn-BD`)와 `100%`가 함께 서면 100을 넘는다. 슬롯이 고정 100이면 배지의 `truncate`가 `bn-B…`로 잘랐다.
+  슬롯은 최소 100(`min-w-25`)이라 내용만큼 넓어진다. 실제 폭은 브라우저 몫이고 여기서는 클래스 계약과 글자를 센다.
+*/
+it("지역 코드 막대는 고정 폭이 아니라 최소 폭이고 코드 글자가 그대로다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, meters: { shown: [meter("en", 248), meter("bn-BD", 248)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  const meters = [...document.querySelectorAll("[data-source-row] [data-locale-meter]")];
+  expect(meters).toHaveLength(2);
+  for (const node of meters) {
+    expect(node.classList.contains("min-w-25")).toBe(true);
+    expect(node.classList.contains("w-25")).toBe(false);
+  }
+  expect(meters[1]?.textContent).toBe("bn-BD100%");
+});

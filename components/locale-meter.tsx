@@ -25,7 +25,10 @@ export function LocaleMeter({ locale }: { locale: LocaleMeterValue }) {
   const review = locale.total === 0 ? 0 : (locale.review / locale.total) * 100;
 
   return (
-    <span data-locale-meter className="flex w-25 flex-col gap-1.5">
+    // ⚠️ **폭은 최소 100이다(`min-w-25`), 고정이 아니다** (#293) — 2글자 코드는 배지 + 퍼센트가 100 안에 들어 그대로 100이고,
+    // 지역 코드(`bn-BD`)와 `100%`가 함께 서면 100을 넘으므로 내용만큼 넓어진다. 고정 100이면 배지의 `truncate`가 `bn-B…`로 잘랐다.
+    // `truncate`는 그릇이 내용보다 좁을 때만 쓰이는 마지막 수단으로 남는다.
+    <span data-locale-meter className="flex min-w-25 flex-col gap-1.5">
       <span className="flex items-center gap-1.5 text-xs">
         {/*
           ⚠️ **`LocaleFlag`를 그대로 쓴다** — `public/flags/`에 253개가 이미 커밋돼 있고 매핑은

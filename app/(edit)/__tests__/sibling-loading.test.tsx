@@ -77,11 +77,11 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
   });
 
   /**
-   * source-row-locale-meter — 소스 행 셋째 줄 막대 자리 **둘**(시안 프레임 9). 둘이면 343 그릇에서도 한 줄이다.
+   * source-row-locale-meter — 소스 행 셋째 줄 막대 자리(시안 프레임 9). 넓은 그릇은 둘, 좁은 그릇은 하나다(아래 #292 검사).
    * ⚠️ **자리의 두께는 실물과 다르고 합만 같다** — 골격은 라벨 16 + 간격 6 + 바 8, 실물은 배지 20 + 6 + 바 4. jsdom은 높이를 못 재므로
    * 양쪽의 철자를 px로 옮겨 더한다(4px 스케일 · 배지 = `py-0.5` 위아래 + `text-2xs` 줄 높이 16 — `globals.css`의 `calc(1 / 0.75)` × 12).
    */
-  it("Sources: 막대 자리 둘 — 묶음은 실물과 같은 철자, 자리 높이 합은 실물 LocaleMeter와 같다", async () => {
+  it("Sources: 막대 자리 — 묶음은 실물과 같은 철자, 자리 높이 합은 실물 LocaleMeter와 같다", async () => {
     const { container } = await render(<SourcesLoading />);
     const row = container.querySelector("[data-skeleton-source]")!;
     const bundle = row.querySelector("[data-skeleton-meters]")!;
@@ -112,7 +112,25 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
     const realHeight = (px(pick(badge, "py")) * 2 + 16) + px(pick(real, "gap")) + px(pick(track, "h"));
     expect(realHeight).toBe(20 + 6 + 4);
     expect(px(pick(slots[0], "gap"))).toBe(px(pick(real, "gap")));
-    expect(slots[0]?.classList.contains("w-25") && real.classList.contains("w-25")).toBe(true);
+    // 골격 자리는 고정 100, 실물은 최소 100(#293 — 지역 코드만 넓어진다). 2글자 코드의 실물 폭과 같다.
+    expect(slots[0]?.classList.contains("w-25") && real.classList.contains("min-w-25")).toBe(true);
+  });
+
+  /**
+   * #291·#292 — 375의 실제 카드(325, 이름 칸 207)에서 실물 막대는 줄당 하나다. 골격도 좁은 그릇(`@max-form`)에서는 자리 **하나**,
+   * 넓은 그릇에서는 둘이다. jsdom은 컨테이너 질의를 계산하지 못하므로 철자를 센다 — 질의는 카드가 이미 선언한 `@container`다.
+   */
+  it("Sources: 막대 자리 — 넓은 그릇 둘, 좁은 그릇(@max-form) 하나", async () => {
+    const { container } = await render(<SourcesLoading />);
+    const slots = [...container.querySelectorAll("[data-skeleton-meter]")];
+    const wide = slots.filter(slot => !slot.classList.contains("hidden"));
+    const narrow = slots.filter(slot => !slot.classList.contains("hidden") && !slot.classList.contains("@max-form:hidden"));
+    expect(wide).toHaveLength(2);
+    expect(narrow).toHaveLength(1);
+    expect(narrow[0]).toBe(slots[0]);
+    expect(slots[0]?.closest(".\\@container")).not.toBeNull();
+    // 새 컨테이너를 선언하지 않는다 — 묶음·자리 어느 쪽도 `@container`가 아니다.
+    for (const node of [container.querySelector("[data-skeleton-meters]"), ...slots]) expect(node?.classList.contains("@container")).toBe(false);
   });
 
   /** 행 끝 chevron 16 칸이 실물에 있다(4-W9) — 없으면 도착 순간 결과 열이 16+12 밀린다. 첫 행은 헤더 급 선이다(4-Y3). */
