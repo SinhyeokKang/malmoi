@@ -2365,8 +2365,9 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 ## 5.10 언어 추가·제거 (locale-add — 2026-10-14)
 
 OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 파일이 따로인 재생성 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
-웹 Server Action 넷(`addSourceLocale`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
-`app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다.
+웹 Server Action 다섯(`addSourceLocale`·`previewSourceLocaleAdd`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
+`app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다. 호출자는 Sources 상세의 Languages 카드와 Dialog 둘이다(DESIGN §6.66).
+⚠️ 추가 미리보기 `previewSourceLocaleAdd`는 MCP에 짝이 없다(`add_locale`은 바로 실행하고 거부 코드로 답한다).
 요청은 리포를 직접 바꾸지 않는다 — **기존 Publish PR/MR만 파일 집합 변경을 제안한다.** 정본 경계 문장은 §0 불변식 1·3·4·9의 locale-add 메모이고 이 절은 그 구현 계약이다.
 순수 판정은 `lib/locales/{add-plan,change-plan,effects,publish-plan,expiry,presence,chrome-codes}.ts`, I/O 코어는 `change.ts`·`expire.ts`·`work.ts`다(DIRECTORY).
 
@@ -2469,6 +2470,9 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   기준 언어 선언(`planBaseLocaleCandidate`)은 **추가 중·제거 예정인 그 언어만** 같은 코드로 거부한다(그 언어가 기준 후보에서 빠진다) — 다른 언어에 행이 있어도 선언된다. 기준 언어는 **제거할 수 없다**(`base-locale`, 선언된 기준 포함). 리포 연결 변경은 거부하지 않는다 — 리포 정체성(고정된 id)을 바꾸지 못해 삭제가 다른 리포로 새지 않는다.
 - **승인 지문이 언어 변경을 묶는다** — 수동 Sync 폐기 지문(`discardFingerprint`)·소스 제거 지문(`removalFingerprint`)에 소스별 `localeChanges`(코드·연산·`requestedAt`·전달 목록 또는 `null`)를 넣는다.
   셀 편집이 0이어도 언어 변경 행이 있으면 승인을 요구하고, 추가·제거·취소·새 편집·전달이 승인 뒤에 일어나면 `stale-approval`이다.
+  ⚠️ **확인 Dialog가 말하는 언어 목록은 지문과 같은 읽기에서 나온다** — `prepareSync`(`lib/import/prepare.ts`)가 `{ approval, unsent, languages }`를 돌려주고, `languages`(`SyncLanguageChange` — 소스 slug·코드·연산·추가 언어의 값 있는 번역 수)는
+  `readDiscardApproval`이 지문을 만든 그 읽기의 `readLocaleStates` 결과다. 화면이 따로 모으면 동료가 방금 낸 요청을 못 본 채 승인하게 된다. 웹 `prepareRepositorySync`와 MCP `preview_sync`가 같은 코어를 부르지만
+  MCP는 아직 언어 목록을 `readLocaleStates`로 따로 읽는다(합칠 수 있다 — 범위 밖).
 - **번역 저장·Revert의 편집 잠금** — 제거 예정 언어 칸이 든 키 저장은 **키 단위로 전체 거부**한다(`locale-removal-pending` + `localeCodes`; 저장이 키 단위라 다른 언어도 저장되지 않는다). Revert도 같은 사유로 막는다.
   제거 폐기는 Revert처럼 적재 lease 동안(`sync-running`) 거부한다.
 
@@ -2498,7 +2502,18 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 - **미리보기의 거둘 효과** (`withdrawnLocales`, 2026-10-14 RT #265): 전달 후 취소로 되돌린 파일은 base와 같아 `fileChanges`에 없지만, 열린 PR에는 옛 삭제·새 파일이 남아 있고
   Publish가 그것을 거둔다. 미리보기는 **전달 목록에 있는데 이번 캡처에 없는 효과**(`withdrawnLocalesOf`, `lib/pull/locales.ts` — 소스 slug·코드순)를 싣고, 비면 필드가 없다.
   확인 안 된 목록(`null`)은 무엇이 실렸는지 몰라 말하지 않는다(그동안 취소는 거부된다). MCP `preview_publish`는 이를 `languages.withdrawn`으로 싣고, 파일 변경이 0이어도
-  "Nothing to send."가 아니라 이미 보낸 언어 변경을 되돌린다고 말한다. 웹 Publish 모달은 아직 읽지 않는다(표시는 시안 배치).
+  "Nothing to send."가 아니라 이미 보낸 언어 변경을 되돌린다고 말한다. 웹 Publish 모달도 같은 목록을 읽는다 — 파일 diff가 0이어도 `Taken back` 행이 열린 PR에서 무엇을 거두는지 말하고, 바뀐 파일이 없으면 제목이 PR 닫기가 된다(DESIGN §6.646).
+  `WithdrawnLocale`·`LocaleNotes.empty[]`·`LocaleNotes.withheld[]`는 **대상 파일 경로**(`path`)를 같이 싣는다 — 화면이 템플릿을 채우지 않고 서버가 `localeFilePath`로 계산한 값이다(템플릿을 모르면 `null`).
+- **언어만 있는 Publish에 닿는 길** (`languageWork`): 셀 편집이 0이어도 `countLocaleWork`(`lib/locales/work.ts` — 소스별 현재 효과 ≠ 전달 효과의 합)가 0보다 크면 Publish 버튼이 켜진다.
+  **버튼과 모달이 같은 값을 받는다** — Home(`(home)/page.tsx`)과 번역 화면(`translations/page.tsx`)이 서버에서 한 번 세어 `PublishButton`(`planPublishButton`)과 `PublishModal` 둘에 넘기고,
+  모달은 그 값으로 미리보기를 기다리는 동안의 제목(`Publish language changes`)과 진행 제목을 고른다. ⚠️ **버튼은 base를 읽지 않는다** — 작업이 보류된 ADD(`proposal-path-exists`)뿐이어도 켜지고,
+  그때 모달이 `Nothing can be sent yet` + `Held` 행으로 이유를 말한다(실행도 아무것도 쓰지 않는다 — 미리보기 = 실행). 배지는 셀 수라 서지 않는다.
+- **언어 계획이 뺀 언어의 편집 수** (`withheld.language` · `withoutFileLanguage`): `ProjectLocalePlan.exclude`(보류된 ADD 등)의 언어에 사는 미전달 편집은 파일 보류로 센다 — 실행 결과 `withheld.file`·`SyncRun.withheld`·MCP 수는 그대로 `file + key`다.
+  그 중 계획이 뺀 언어의 몫은 따로도 센다(`WithheldCoordinates.languages` → `splitEdits`의 `withheldBy.language` → 결과 `withheld.language`, 미리보기는 `withoutFileLanguage` — 같은 `excluded` 갈래라 **미리보기 = 실행**).
+  화면은 "언어 파일이 아직 없다" 줄과 결과의 파일 복구 권유에서 이 수를 뺀다 — 그 언어는 `Held`·`Not included` 행이 설명하고, "파일이 아직 없다"로 또 세면 같은 표 안에서 `이미 리포에 있다`와 모순이다. 모집단(`sendable`·`delivered`)은 바뀌지 않는다.
+- **결정적 거부의 자리** (`LocalePlanRefused.site`): `locale-plan-refused`(`path-conflict`·`duplicate-path`·`unsafe-path`)가 거부한 소스·언어·경로를 쥔 소스(`LocaleRefusalSite` = `{ surfaceSlug, localeCode, ownerSlug }`)를 싣는다.
+  미리보기 `refused`는 이를 `plan: { refusal, surfaceSlug, localeCode, ownerSlug }`로 옮기고 화면이 어느 소스의 어느 언어가 무엇에 막혔는지 말한 뒤 그 소스 상세로 보낸다(Sources 딥링크 `?source=&language=`).
+  안전하지 않은 경로는 계산하지 못해 언어를 모르고(`localeCode: null`), 경로 충돌인데 그 경로를 쥔 소스를 못 찾으면(계획 뒤 경합) `ownerSlug: null`이라 화면이 "다른 소스의 것"이라는 사실만 말한다.
 - **결과 미확정 동안 언어 변경은 거부한다** — 새 사유 코드를 만들지 않고 기존 `publish-unsettled` 장벽(`planPublishBarrier`)과 RUNNING 실행권을 재사용한다. 응답이 유실된 실행은 원격에 새 파일·삭제를 실었을 수 있는데 전달 목록은 갱신되지 않아,
   그 사이 취소를 받으면 PR에 stale diff가 남는다. **확인이 무효화된 동안(`delivered: null`)도 같다** — 대상 행의 효과가 현재 목록에 있으면(REMOVE, 값 있는 ADD) 두 취소를 막는다. 새 요청(작업을 늘리는 쪽)과 값 0개 ADD의 취소는 막지 않는다.
 - **PR/MR 본문**: 삭제 파일이 있으면 `(removed)` 표시와 "앱 코드의 이 언어 참조(import·지원 언어 목록 등)를 정리해야 한다" 안내를 붙인다(`pullRequestBody` — 두 호스트 공통, 삭제가 없으면 옛 본문과 바이트 동일).
@@ -2519,6 +2534,9 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 | PR/MR 조회 실패·응답 유실 | 만료하지 않고 의도 유지 |
 
 webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 야간 방문 또는 Publish까지 최대 하루 늦을 수 있다. Sources는 진입 시 호스트를 부르지 않고 서버가 마지막으로 관측한 결과만 쓴다.
+**Sources 언어 행의 PR 링크 출처는 저장된 `Project.lastPrUrl` 하나다** (2026-10-17, D5) — `loadSourceDetail`이 `pullRequestUrl: string | null`로 싣고(호스트 호출 0 · `projectId`로 좁힘 · 역할 무관 — 번역 화면의 `lastPrUrl`과 같다),
+번호는 화면이 `reviewNumberFrom(url, repoHost)`(`lib/projects/review-number.ts` — GitHub `/pull/N` · GitLab `/-/merge_requests/N`)로 뽑는다. ⚠️ **이 링크는 열린 PR이라는 뜻도 그 언어를 실었다는 뜻도 아니다** — 마지막 Publish가 만든 PR일 뿐이라
+화면은 행이 "전달됨"(Adding·Removing · 미전달 없음 · 확인됨)일 때만 링크를 세우고 번호를 못 뽑으면 링크를 만들지 않는다. 조회 실패(`prCheckFailed`) 상태는 Sources에 없다 — 그 상태는 Home이 그때 조회한 결과다.
 야간 PR/MR 조회가 실패하면 행이 있는 프로젝트는 그 밤의 Publish 전체가 `pr-check-failed`로 보류된다(종료된 요청을 다시 싣지 않기 위한 fail-closed 비용).
 
 ### 5.10.6 추가 입력의 경계
@@ -2528,10 +2546,23 @@ webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 �
 문서 55개에서 `es_419` 제외)로 좁힌다. 경로는 소스 `pathTemplate`에서 서버가 계산하고 `isPathSafeRepoPath`와 소스 간 경로 소유 판정을 지난다. **로케일 수 상한은 두지 않는다** —
 `/api/push`의 `MAX_LOCALES`(200)는 그대로라 그 위의 리포는 기존 페이로드 검증이 거부한다. 입력 코드는 객체 프로퍼티가 아니라 `Map`·배열로 다룬다(`__proto__` 표 테스트).
 
+**추가 미리보기는 실행 판정을 공유한다** (`previewSourceLocaleAdd` → `previewLocaleAdd`, 2026-10-17 D4): 실행 `addLocale`과 **같은 `judgeAdd`**(같은 `readChangeState` + `planLocaleChange`/`planLocaleAdd` + 경로 소유)와 **같은 되살림 셀 술어**(`reviveCellsWhere`)를 지난다 —
+화면이 템플릿을 채우거나 되살릴 수를 따로 세면 미리보기가 실행과 어긋난다(POSTMORTEM 2026-09-16). 결과는 `{ ok: true, action: "create" | "revive", path, revive }`(`revive` = 실행의 `reissued`와 같은 셈 — 값 있는 활성 키, orphan 키 제외, `create`면 0)
+또는 실행과 **같은 거부 집합**(`unsupported-format`·`removal-pending`·`invalid-code`·`unsupported-locale`·`already-active`·`locale-collision`·`unsafe-path`·`path-conflict` + 접근 계열·`publish-unsettled`·`archived`)이다.
+읽기 전용이고 RepeatableRead 스냅샷이며 잠금이 없다 — 승인 지문이 없다(추가는 버리는 것이 없다). 그 사이 상태가 바뀌면 실행이 잠금 뒤 다시 판정한다.
+입력은 슬러그·언어 코드뿐이라 **파일 경로를 받지 않는다**.
+
 ### 5.10.7 사건 · 스키마 · 배포
 
 - **사건**: `ProjectEvent` SURFACE subtype 넷 — `surface.localeAdded`·`surface.localeRemovalRequested`·`surface.localeChangeCancelled`·`surface.localeChangeResolved`(목록은 잎 `lib/events/payload.ts`의 `LOCALE_CHANGE_SUBTYPES`).
-  payload의 선택 필드 `localeChange {locale, operation, revived, discarded, outcome}`이고 옛 행은 이 필드가 없다. 변경과 **같은 tx**에서 확정된다(§5.7). `result`는 `null`(실행이 아니다)이라 결과 필터에 안 잡히고 `kind=sources`에 잡힌다.
+  payload의 선택 필드 `localeChange {locale, operation, revived, discarded, outcome, reissued, pullRequest, via}`이고 옛 행은 이 필드가 없다. 변경과 **같은 tx**에서 확정된다(§5.7). `result`는 `null`(실행이 아니다)이라 결과 필터에 안 잡히고 `kind=sources`에 잡힌다.
+  ⚠️ **뒤의 셋(2026-10-17)은 additive이고 옛 행은 `null`이다** — 파서(`readPayload`)가 없는 칸을 `null`로 읽고 문장은 그 절을 뺀다. `reissued: number | null`은 `surface.localeAdded`이고 되살림일 때만 수(새로 만든 추가는 `null`)다.
+  `pullRequest: { number } | null`은 `surface.localeChangeResolved`만 싣는다 — 만료된 의도의 효과(ADD→create · REMOVE→delete)가 판정용 전달 목록에 있을 때 **마지막 전달 확인 실행의 `SyncRun.prUrl`**에서 `reviewNumberFrom`으로 뽑는다(번호는 양의 안전 정수만).
+  전달 목록에 없던 의도(모순 행·리포 직접 추가)·확인보다 뒤에 낸 요청·주소 없는 실행은 `null`이다 — 옛 요청의 PR을 새 요청에 붙이지 않으려고 저장 목록이 아니라 판정 목록을 쓴다. 번호 표기(`#N`·`!N`)는 화면이 호스트로 고른다.
+  `via: "publish" | "sync" | "nightly" | "ci" | null`은 만료(`surface.localeChangeResolved`)를 일으킨 실행이다 — 야간 방문·야간 Publish·CI 적재가 모두 AUTOMATION이라 컬럼만으로는 가를 수 없어서다.
+  만료 세 경로(야간 `expireAtHead` · Publish · CI `lib/push/apply.ts`)는 공용 코어 `expireLocaleChanges` 한 곳에서 기록하고, 승인한 수동 Sync의 폐기(`discardLocaleChanges`)도 같은 subtype을 직접 기록한다(`via: "sync"`, `pullRequest: null` — PR에 실린 해소가 아니다).
+  ⚠️ **`triggerWhere`는 JSON 경로 비교의 NULL을 직접 건진다** (`lib/events/trigger-where.ts`): 행위자 필터 `ci`는 `nightly`의 여집합이어야 하는데 via 없는 옛 행에서 `payload->'localeChange'->'via'` 비교가 SQL NULL이라 `NOT (… OR NULL)`이 NULL이 되어 그 행이 어느 쪽에도 안 들었다.
+  그래서 `ci`는 `NOT nightly` 하나로 적지 않고 "언어 만료가 아님 ∨ via ≠ nightly ∨ via 없음(`Prisma.AnyNull`)"으로 직접 적는다 — **`AnyNull`을 값으로 물어야 해서 이 모듈만 `@/generated/prisma/client`를 값 import한다**(타입 전용이 아니다). 여집합인지는 `query.integration.ts`가 실제 행(via nightly · ci · 없음)으로 잰다.
   ⚠️ **파일 삭제를 번역 전달 성공으로 기록하지 않는다.** base를 못 읽으면 결과·사건은 실패/보류다("삭제 완료"·`no-changes` 금지).
 - **스키마**: `LocaleChange`·`DeliveryConfirmation.deliveredLocaleChanges`는 additive이고 백필이 없다(마이그레이션 `20261014060000_locale_change`; 배포 순서는 OPERATIONS "언어 추가·제거 배포 순서", 구버전 구간은 "언어 추가·제거 이전으로 되돌리기"). `lib/privacy/collected.ts`에 `LocaleChange: "not-personal"`.
   새 환경변수·패키지·cron은 없다(SELF-HOSTING §3).
