@@ -3297,6 +3297,8 @@ export const en = {
           title: "These changes can't be published",
           conflict: (surface: string, code: string, path: string, owner: string): string =>
             `Malmoi can't plan the language files for ${surface}. ${code} would be written to ${path}, which now belongs to the ${owner} source.`,
+          /** 경로 충돌인데 그 경로를 쥔 소스를 모른다(계획 뒤 경합). */
+          taken: (surface: string, path: string): string => `Malmoi can't plan the language files for ${surface}. ${path} belongs to another source.`,
           duplicate: (surface: string, path: string): string => `Malmoi can't plan the language files for ${surface}. Two languages would be written to ${path}.`,
           unsafe: (surface: string): string => `Malmoi can't plan the language files for ${surface}. Its path template doesn't give each language its own file.`,
           unknown: "Malmoi can't plan the language files.",

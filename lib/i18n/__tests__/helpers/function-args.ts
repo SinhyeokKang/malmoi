@@ -311,6 +311,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.publish.onGitLab.language.expiring.removeNotReached": ["fr"],
   "translations.publish.language.refused.conflict": ["X", "fr", "X", "X"],
   "translations.publish.language.refused.duplicate": ["X", "X"],
+  "translations.publish.language.refused.taken": ["X", "X"],
   "translations.publish.language.refused.unsafe": ["X"],
   "translations.publish.language.refused.open": ["X"],
   "translations.publish.language.updatedDescription": [2],

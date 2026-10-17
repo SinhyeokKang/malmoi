@@ -1737,6 +1737,7 @@ export const es = {
           title: "Estos cambios no se pueden publicar",
           conflict: (surface: string, code: string, path: string, owner: string): string =>
             `Malmoi no puede planificar los archivos de idioma de ${surface}. ${code} se escribiría en ${path}, que ahora pertenece a la fuente ${owner}.`,
+          taken: (surface: string, path: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. ${path} pertenece a otra fuente.`,
           duplicate: (surface: string, path: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. Dos idiomas se escribirían en ${path}.`,
           unsafe: (surface: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. Su plantilla de ruta no da a cada idioma su propio archivo.`,
           unknown: "Malmoi no puede planificar los archivos de idioma.",

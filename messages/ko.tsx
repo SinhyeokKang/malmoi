@@ -1737,6 +1737,7 @@ export const ko = {
           title: "이 변경 사항은 게시할 수 없습니다",
           conflict: (surface: string, code: string, path: string, owner: string): string =>
             `${surface} 소스의 언어 파일을 정할 수 없습니다. ${code}은(는) ${path}에 쓰여야 하는데, 이 경로는 이제 ${owner} 소스의 것입니다.`,
+          taken: (surface: string, path: string): string => `${surface} 소스의 언어 파일을 정할 수 없습니다. ${path}은(는) 다른 소스의 경로입니다.`,
           duplicate: (surface: string, path: string): string => `${surface} 소스의 언어 파일을 정할 수 없습니다. 두 언어가 ${path}에 쓰이게 됩니다.`,
           unsafe: (surface: string): string => `${surface} 소스의 언어 파일을 정할 수 없습니다. 경로 템플릿이 언어마다 다른 파일을 주지 않습니다.`,
           unknown: "언어 파일을 정할 수 없습니다.",

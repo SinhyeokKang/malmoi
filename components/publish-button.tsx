@@ -451,7 +451,10 @@ function refusedReason(m: Messages, plan: LocalePlanRefusalDetail | undefined, p
   const r = m.translations.publish.language.refused;
   const surface = plan?.surfaceSlug ?? null;
   if (plan === undefined || surface === null) return r.unknown;
-  if (plan.refusal === "path-conflict" && plan.localeCode !== null && plan.ownerSlug !== null) return r.conflict(surface, plan.localeCode, path, plan.ownerSlug);
+  if (plan.refusal === "path-conflict") {
+    // 소유 소스를 못 찾았으면(계획 뒤 경합) 그 경로가 남의 것이라는 사실만 말한다 — 중복 문장으로 접으면 원인이 틀린다.
+    return plan.localeCode !== null && plan.ownerSlug !== null ? r.conflict(surface, plan.localeCode, path, plan.ownerSlug) : r.taken(surface, path);
+  }
   if (plan.refusal === "unsafe-path" || path === "") return r.unsafe(surface);
   return r.duplicate(surface, path);
 }
