@@ -155,7 +155,8 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
         : <ul>{detail.languages.map((row, index) => {
           const plan = planLanguageRow(row, { canManage, supported: detail.connection !== undefined && supportsLocaleChanges(detail.connection.adapterName), unconfirmed });
           // 폭은 목록 행 막대와 같은 식(`meterValue`)에서 나온다 — 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다.
-          // 퍼센트와 오른쪽 수치는 완료 + 검토 대기다(값이 있는 수) — 두 숫자가 다른 비율을 말하지 않게.
+          // 퍼센트와 오른쪽 수치는 완료 + 검토 대기다(값이 있는 수) — 두 숫자가 다른 비율을 말하지 않게. 수치도 막대와 같은 clamp를 지난 값이라
+          // 경합 중에도 `100%` 옆에 분모보다 큰 분자(`60 of 53`)가 서지 않는다(D12).
           const { done, review } = meterValue(row);
           const href = routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code });
           return <li key={row.code} data-language-row={row.code} className={cn("flex items-center gap-4 px-4 py-row-y @max-form:flex-wrap @max-form:gap-y-2", index > 0 && "border-border border-t")}>
@@ -166,7 +167,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
             </span>
             <span className="flex w-[200px] shrink-0 flex-col gap-1.5 @max-[850px]:w-auto @max-[850px]:flex-1">
               <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
-                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{m.sources.translatedOfTotal(row.translated + row.needsReview, row.total)}</span>
+                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{m.sources.translatedOfTotal(done + review, row.total)}</span>
               </span>
               <Meter done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
             </span>

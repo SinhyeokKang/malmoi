@@ -482,8 +482,9 @@ it("막대는 받은 다섯까지 그리고 뒤에 평문 +N — 글자는 숨�
   expect(more.parentElement).toBe(row.querySelector("[data-source-meters]"));
   expect(more.querySelector('[aria-hidden="true"]')?.textContent).toBe(en.sources.moreLanguages(54));
   expect(more.querySelector(".sr-only")?.textContent).toBe(en.sources.moreLanguagesLabel(54));
-  // 배지가 아니다 — 또 하나의 언어로 읽힌다. 이름은 글자를 바꿔 끼워서 내고 `aria-label`로 덮지 않는다.
-  expect(more.className).not.toContain("rounded-full");
+  // 배지가 아니라 평문이고, 명시 높이 20(`h-5`)이 묶음의 기본 `align-items: stretch` 안에서 라벨 줄 위쪽에 선다 — 문자열 전체로 고정한다.
+  // 이름은 글자를 바꿔 끼워서 내고 `aria-label`로 덮지 않는다.
+  expect(more.className).toBe("text-muted-foreground flex h-5 items-center text-xs");
   expect(row.querySelector("[aria-label]")).toBeNull();
   const name = accessibleText(row);
   expect(name).toContain("54 more languages");
@@ -501,7 +502,8 @@ it("숨은 언어가 하나면 단수, 없으면 +N 자리가 없다", async () 
 it("막대 묶음은 이름 칸 안, 경로 아래 — mt-2 · gap-x-3 · gap-y-1.5", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, connection: { pathTemplate: "locales/{locale}.json", format: "JSON", adapterName: "json-catalog" }, meters: { shown: [meter("en", 248)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
   const bundle = document.querySelector("[data-source-meters]")!;
-  for (const token of ["mt-2", "flex", "flex-wrap", "gap-x-3", "gap-y-1.5"]) expect(bundle.classList.contains(token)).toBe(true);
+  // 골격(`sibling-loading.test.tsx`)과 같은 강도 — `items-*`가 붙으면 `+N` 정렬이 바뀐다.
+  expect(bundle.className).toBe("mt-2 flex flex-wrap gap-x-3 gap-y-1.5");
   const column = bundle.parentElement!;
   expect(column.classList.contains("flex-col")).toBe(true);
   expect(column.lastElementChild).toBe(bundle);

@@ -47,13 +47,17 @@ describe("Sources 상세 언어 행 — 번역 수 문구는 사전을 지난다
   완료 구간은 트랙을 넘지 않고 검토 구간은 남은 칸까지만이다. 진행률 칸은 200(850 미만은 그대로 `w-auto flex-1`).
 */
 describe("Sources 상세 언어 행 — 막대 폭·진행률 칸", () => {
-  it("폭은 meterValue의 clamp를 따른다", async () => {
+  it("폭과 오른쪽 수치는 meterValue의 clamp를 따른다", async () => {
     const raced = { ...detail, languages: [{ ...detail.languages[0]!, translated: 50, needsReview: 10, untranslated: 0, percent: 100 }] } as unknown as SourceDetail;
     await draw("en", raced);
     const row = document.querySelector('[data-language-row="en"]')!;
     const [done, review] = [...row.querySelectorAll<HTMLElement>('[style*="width"]')].map(node => Number.parseFloat(node.style.width));
     expect(done).toBeCloseTo((50 / 53) * 100);
     expect(review).toBeCloseTo((3 / 53) * 100);
+    // 오른쪽 수치도 같은 clamp — 60 of 53이 아니다.
+    const progress = row.textContent ?? "";
+    expect(progress).toContain(`100%${en.sources.translatedOfTotal(53, 53)}`);
+    expect(progress).not.toContain(en.sources.translatedOfTotal(60, 53));
   });
 
   it("진행률 칸은 w-[200px], 850 미만 규칙은 그대로", async () => {
