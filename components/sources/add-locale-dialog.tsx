@@ -1,4 +1,5 @@
 "use client";
+import { FilePlus2 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { addSourceLocale, previewSourceLocaleAdd } from "@/app/(edit)/projects/[slug]/sources/actions";
@@ -216,10 +217,17 @@ function OptionFlag({ code }: { code: string }) {
   return <span data-option-flag className="flex w-4 shrink-0"><LocaleFlag code={code} /></span>;
 }
 
+/**
+ * 만들 파일 블록(시안 A1 ④⑤ · A3 ② · A4) — 테두리 없는 muted 면이다. 사실 판(`Fact`·제거 확인의 테두리 판)과 형을 가른다: 이것은 "무엇을 만드나"
+ * 한 줄의 예고이고, 경로 앞 `file-plus` 글리프가 그 뜻을 든다.
+ */
 function FileBlock({ m, path, create }: { m: Messages; path: string; create: boolean }) {
-  return <div data-add-file className="border-border bg-muted/40 space-y-1 rounded-lg border px-3 py-2.5">
-    <p className="text-gray-dim">{m.sources.locale.fileToCreate}</p>
-    <p className="text-foreground text-sm wrap-anywhere">{path.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>)}</p>
+  return <div data-add-file className="bg-muted flex flex-col gap-0.5 rounded-md px-3 py-2.5">
+    <p className="text-muted-foreground">{m.sources.locale.fileToCreate}</p>
+    <p data-add-file-path className="text-foreground flex items-center gap-2 text-sm">
+      <FilePlus2 className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 wrap-anywhere">{path.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>)}</span>
+    </p>
     {create && <p className="text-muted-foreground">{m.sources.locale.noFileYet}</p>}
   </div>;
 }
