@@ -17,7 +17,7 @@ Si hay una sincronización en curso, Malmoi muestra **Sincronizando…** con la 
 ## Sincroniza desde el repositorio {#resync}
 
 1. Elige **Sincronizar** en la parte superior de **Inicio** o de **Traducciones**.
-2. Si hay ediciones sin enviar, el cuadro de diálogo indica cuántas se descartarán.
+2. Si hay ediciones sin enviar, el cuadro de diálogo indica cuántas se descartarán. Si se está añadiendo o quitando un idioma, también enumera esos cambios de idioma como descartados; consulta [Qué bloquea otras tareas](../setup/languages.md#blocks).
 3. Elige **Descartar cambios y sincronizar** cuando hay ediciones sin enviar, o **Sincronizar desde el repositorio** cuando no hay ninguna. Cierra el cuadro de diálogo para conservar los cambios.
 4. Espera en el cuadro de diálogo. Permanece abierto mientras se ejecuta Sincronizar y muestra el resultado en el mismo lugar, bajo un título que nombra el desenlace; elige **Cerrar** cuando lo hayas leído.
 

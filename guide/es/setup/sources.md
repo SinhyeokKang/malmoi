@@ -2,7 +2,7 @@
 
 Añade más archivos de traducción más adelante, cambia el idioma base de una fuente o desvincula una fuente que ya no gestionas.
 
-Cada fuente es un conjunto de archivos de traducción de tu repositorio. Los propietarios del proyecto pueden añadir una fuente y declarar su idioma base; los traductores (rol Editor) pueden ver el estado de las fuentes, pero no cambiar la configuración del proyecto.
+Cada fuente es un conjunto de archivos de traducción de tu repositorio. Los propietarios del proyecto pueden añadir una fuente y declarar su idioma base; los traductores (rol Editor) pueden ver el estado de las fuentes, pero no cambiar la configuración del proyecto. Para añadir o quitar un idioma en una fuente, consulta [Añade y quita idiomas](languages.md#languages).
 
 ## Abre Fuentes {#sources}
 
@@ -37,6 +37,8 @@ Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de arc
 1. Abre los detalles de la fuente desde **Fuentes**. En **Idioma base**, elige el idioma que aporta el texto de origen y luego elige **Guardar**. Hasta que se aplique, los detalles de la fuente muestran **Pendiente de aplicar**. El cambio se aplica con la siguiente actualización desde el workflow de GitHub Actions o los jobs de GitLab CI de tu repositorio. Elegir **Sincronizar** no lo aplica.
 2. Edita el valor `base-locale:` del workflow para que coincida, o el valor `MALMOI_I18N_BASE` del job en GitLab.
 3. Ejecuta el workflow. Si hay ediciones sin enviar, la actualización se retiene. Publica o resuelve esas ediciones y ejecuta el workflow de nuevo.
+
+No puedes elegir como idioma base uno que se está añadiendo o quitando. Consulta [Qué bloquea otras tareas](languages.md#blocks).
 
 [Sincronizar desde el repositorio](../sync/revert.md#resync) reemplaza los valores, pero conserva el idioma base actual.
 

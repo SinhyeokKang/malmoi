@@ -19,6 +19,7 @@
 - [프로젝트 설정](setup/README.md)
   - [번역자 초대](setup/members.md)
   - [소스 추가](setup/sources.md)
+  - [언어 추가·제거](setup/languages.md)
   - [프로젝트 보관](setup/archive.md)
 - [번역](translate/README.md)
   - [프로젝트 참여](translate/join.md)

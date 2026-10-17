@@ -6,14 +6,14 @@
 
 토큰이나 연결된 앱이 내 역할보다 많은 일을 할 수는 없습니다. 프로젝트에서 번역자(편집자 역할)라면 그 프로젝트에서 **프로젝트 설정**과 **멤버** 권한을 허용해도 에이전트는 해당 작업을 할 수 없습니다.
 
-권한을 하나도 고르지 않은 토큰도 허용 범위에 속한 프로젝트의 번역, 활동, 멤버를 읽을 수 있습니다. 프로젝트 소유자는 권한 없이도 동기화나 되돌리기를 미리 보고 워크플로 파일을 읽을 수 있습니다. 조회 작업 중 권한이 필요한 것은 새 프로젝트를 만들기 위한 GitHub·GitLab 리포지토리 및 브랜치 목록 조회와 리포지토리 파일 읽기뿐입니다.
+권한을 하나도 고르지 않은 토큰도 허용 범위에 속한 프로젝트의 번역, 활동, 멤버를 읽을 수 있습니다. 프로젝트 소유자는 권한 없이도 동기화, 되돌리기, 언어 제거를 미리 보고 워크플로 파일을 읽을 수 있습니다. 조회 작업 중 권한이 필요한 것은 새 프로젝트를 만들기 위한 GitHub·GitLab 리포지토리 및 브랜치 목록 조회와 리포지토리 파일 읽기뿐입니다.
 
 ### 권한과 역할 {#allowed-actions}
 
 | 권한 | 에이전트가 할 수 있는 일 | 쓸 수 있는 사람 |
 | --- | --- | --- |
 | **번역·게시** | 번역을 저장하고 PR(GitLab에서는 MR)로 게시합니다. | 소유자와 편집자 |
-| **프로젝트 설정** | 소스 추가와 푸시 토큰 교체(둘 다 리포지토리 쓰기 권한도 필요), 소스 연결 해제, 연결된 리포지토리의 형식 감지, 리포지토리에서 동기화, 마지막으로 보낸 값으로 되돌리기, 이름·기준 브랜치·기준 언어 변경, 보관 또는 복원. | 소유자 |
+| **프로젝트 설정** | 소스 추가와 푸시 토큰 교체(둘 다 리포지토리 쓰기 권한도 필요), 소스 연결 해제, 언어 추가·제거, 연결된 리포지토리의 형식 감지, 리포지토리에서 동기화, 마지막으로 보낸 값으로 되돌리기, 이름·기준 브랜치·기준 언어 변경, 보관 또는 복원. | 소유자 |
 | **멤버** | 사람 초대, 초대 철회, 역할 변경, 멤버 제거. | 소유자 |
 | **프로젝트 만들기** | 내 GitHub나 GitLab 리포지토리와 브랜치 나열, 형식 감지, 프로젝트 만들기(만들려면 리포지토리 쓰기 권한도 필요). | 로그인한 누구나, [프로젝트 한도](../reference/limits.md#limits)까지 |
 
@@ -29,10 +29,11 @@
 | 가이드 읽기 | `read_docs` |
 | 프로젝트 설정 | `list_repositories`, `list_branches`, `detect_formats`, `create_project`, `add_sources`, `get_workflow`, `rotate_push_token` |
 | 소스 연결 해제 | `preview_source_detach`, `detach_source` |
+| 언어 추가·제거 | `add_locale`, `preview_locale_removal`, `remove_locale`, `cancel_locale_removal` |
 | 번역 | `list_keys`, `get_key`, `set_translations` |
 | 게시 | `preview_publish`, `publish` |
 | 되돌리기와 다시 동기화 | `preview_revert`, `revert_to_last_sent`, `preview_sync`, `sync_repository` |
 | 프로젝트 관리 | `update_project`, `set_base_locale`, `archive_project`, `unarchive_project` |
 | 멤버 관리 | `invite_members`, `revoke_invitation`, `change_member` |
 
-`sync_repository`, `revert_to_last_sent`, `rotate_push_token`, `detach_source`, `archive_project`, `revoke_invitation`, `change_member`처럼 작업을 버리거나, 무언가를 제거하거나, 접근을 끊을 수 있는 도구는 파괴적 도구로 표시되어 있어, 대부분의 에이전트가 실행하기 전에 묻습니다. 게시, 동기화, 되돌리기는 각각 미리보기부터 시작하고, 소스 연결 해제도 미전송 변경 사항이 있으면 미리보기부터 시작합니다. 미리보기 후 상태가 바뀌었다면 작업을 실행하지 않고 에이전트에게 다시 미리보기를 요청합니다. `set_translations`는 호출 한 번에 키를 100개까지 저장합니다. 저장할 수 없는 키는 에이전트에게 알리고 나머지 키는 저장합니다. 프로젝트 소유자의 **동기화**나 야간 업데이트가 진행되는 동안에는 `set_translations`와 `revert_to_last_sent`가 아무것도 바꾸지 않고 언제 다시 시도할 수 있는지 에이전트에게 알려 줍니다.
+`sync_repository`, `revert_to_last_sent`, `rotate_push_token`, `detach_source`, `remove_locale`, `archive_project`, `revoke_invitation`, `change_member`처럼 작업을 버리거나, 무언가를 제거하거나, 접근을 끊을 수 있는 도구는 파괴적 도구로 표시되어 있어, 대부분의 에이전트가 실행하기 전에 묻습니다. 게시, 동기화, 되돌리기는 각각 미리보기부터 시작하고, 소스 연결 해제도 미전송 변경 사항이 있으면 미리보기부터 시작하며, `remove_locale`은 `preview_locale_removal`이 준 승인을 받아 실행합니다. 미리보기 후 상태가 바뀌었다면 작업을 실행하지 않고 에이전트에게 다시 미리보기를 요청합니다. `set_translations`는 호출 한 번에 키를 100개까지 저장합니다. 저장할 수 없는 키는 에이전트에게 알리고 나머지 키는 저장합니다. 프로젝트 소유자의 **동기화**나 야간 업데이트가 진행되는 동안에는 `set_translations`와 `revert_to_last_sent`가 아무것도 바꾸지 않고 언제 다시 시도할 수 있는지 에이전트에게 알려 줍니다.

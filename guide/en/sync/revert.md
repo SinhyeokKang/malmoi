@@ -17,7 +17,7 @@ If a sync is running, Malmoi shows **Syncing…** with the latest time you can r
 ## Sync from the repository {#resync}
 
 1. Choose **Sync** at the top of **Home** or **Translations**.
-2. If there are unsent edits, the dialog shows how many will be discarded.
+2. If there are unsent edits, the dialog shows how many will be discarded. If a language is being added or removed, it also lists those language changes as dropped; see [What blocks other work](../setup/languages.md#blocks).
 3. Choose **Discard changes and sync** when there are unsent edits, or **Sync from repository** when there are none. Close the dialog to keep the changes.
 4. Wait in the dialog. It stays open while Sync runs and shows the result in the same place, under a title that names the outcome; choose **Close** when you've read it.
 

@@ -34,6 +34,10 @@ Malmoi nunca combina las dos partes. Mientras haya ediciones sin enviar o un pul
 
 Se conservan. Si la clave vuelve en un commit posterior, sus traducciones vuelven con ella. Consulta [Conserva las claves eliminadas](sync/push.md#removed-keys).
 
+## ¿Puedo añadir o quitar un idioma en Malmoi? {#languages}
+
+Los propietarios del proyecto pueden, en catálogos JSON y mensajes de extensión de Chrome: Publicar crea o borra el archivo del idioma en una pull request (una merge request en GitLab), y las traducciones de un idioma quitado se quedan en Malmoi. En los demás formatos, cambia los archivos en el repositorio. Consulta [Añade y quita idiomas](setup/languages.md#languages).
+
 ## ¿Tengo que añadir el workflow? {#workflow}
 
 No. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con él, los cambios llegan en cada commit. Consulta [Sincronización nocturna o workflow](sync/nightly.md#workflow).

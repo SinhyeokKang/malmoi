@@ -21,6 +21,8 @@ Elige **Abrir pull request** o Reemplazar pull request #N. Si tus cambios ya coi
 
 En un proyecto de GitLab, los mismos botones nombran una merge request, numerada como `!128`: **Abrir merge request**, Reemplazar la merge request !N y Cerrar la merge request !N.
 
+Un propietario del proyecto también puede añadir o quitar un idioma, lo que sale en la misma publicación como un archivo de idioma nuevo o borrado. Cuando solo cambian archivos de idioma, la vista previa se titula **Publicar cambios de idioma**. Consulta [Publica el cambio](../setup/languages.md#publish).
+
 Si Publicar está desactivado, puede que no haya ediciones sin enviar o que publicar no esté disponible temporalmente. Espera a que termine una sincronización en curso; pregunta a un propietario del proyecto si sigue sin estar disponible.
 
 Si la acción falla, tus valores guardados se conservan. Inténtalo de nuevo más tarde o avisa a un propietario del proyecto.

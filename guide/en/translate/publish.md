@@ -21,6 +21,8 @@ Choose **Open pull request** or Replace pull request #N. If your changes already
 
 On a GitLab project, the same buttons name a merge request, numbered like `!128`: **Open merge request**, Replace merge request !N, and Close merge request !N.
 
+A project owner can also add or remove a language, which goes out in the same publish as a new or deleted language file. When only language files change, the preview is titled **Publish language changes**. See [Publish the change](../setup/languages.md#publish).
+
 If Publish is turned off, there may be no unsent edits, or publishing may be temporarily unavailable. Wait for an ongoing sync to finish; ask a project owner if it stays unavailable.
 
 If the action fails, your saved values are kept. Try again later or tell a project owner.

@@ -2,7 +2,7 @@
 
 Add more translation files later, change a source's base language, or detach a source you no longer manage.
 
-Each source is one set of translation files in your repository. Project owners can add a source and declare its base language; translators (Editor role) can read source status but cannot change project settings.
+Each source is one set of translation files in your repository. Project owners can add a source and declare its base language; translators (Editor role) can read source status but cannot change project settings. To add or remove a language in a source, see [Add and remove languages](languages.md#languages).
 
 ## Open Sources {#sources}
 
@@ -37,6 +37,8 @@ Choose **Add sources** and select the same path with the same file format. The d
 1. Open the source's details from **Sources**. Under **Base language**, choose the language that supplies the source text, then choose **Save**. Until it applies, the source's details show **Waiting to apply**. The change applies on the next update from your repository's GitHub Actions workflow or GitLab CI jobs. Choosing **Sync** does not apply it.
 2. Edit the workflow's `base-locale:` value to match it, or the job's `MALMOI_I18N_BASE` value on GitLab.
 3. Run the workflow. If there are unsent edits, the update is held. Publish or resolve those edits, then run the workflow again.
+
+You can't choose a language that is being added or removed as the base language. See [What blocks other work](languages.md#blocks).
 
 [Sync from the repository](../sync/revert.md#resync) replaces values but keeps the current base language.
 

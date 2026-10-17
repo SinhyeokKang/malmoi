@@ -28,6 +28,7 @@ If someone saves a translation while the nightly update is running, Malmoi stops
 The nightly run holds the update — the project is not updated, and **Logs** shows **Held** with the reason — when:
 
 - A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why.
+- A language removal hasn't been published yet. Publish it or cancel it, then the next nightly run picks up the changes. See [What blocks other work](../setup/languages.md#blocks).
 - GitHub or GitLab didn't answer whether that change request is open. Malmoi does not guess; Home shows **Held**, and the next run checks again.
 - The change is too large for a server-side sync. Nightly updates use the same file budget as creating a project (see [Limits](../reference/limits.md#files)). Reduce the files' size, or deliver the change with the repository workflow.
 

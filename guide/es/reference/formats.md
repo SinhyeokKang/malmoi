@@ -25,3 +25,7 @@ Los diccionarios de código con un archivo por idioma admiten `.ts`, `.tsx`, `.j
 Los catálogos YAML y los diccionarios de código conservan los comentarios, las líneas en blanco y el orden de las claves. Los catálogos JSON y los mensajes de extensiones de Chrome conservan la representación de su archivo — sangría, contenedores en una línea, escapes y orden de los campos.
 
 Los valores vienen de Malmoi; el archivo existente aporta la estructura o la representación.
+
+## Añade y quita idiomas {#languages}
+
+Los propietarios del proyecto pueden añadir y quitar un idioma en Malmoi en los catálogos JSON y los mensajes de extensión de Chrome, que guardan un archivo por idioma. Consulta [Añade y quita idiomas](../setup/languages.md#languages). En los demás formatos, añade o borra el archivo del idioma en el repositorio.

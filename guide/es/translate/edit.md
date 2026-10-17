@@ -62,6 +62,8 @@ Mientras se ejecuta una sincronización desde el repositorio (la **Sincronizar**
 
 Algunos proyectos no permiten una traducción vacía. Si Malmoi rechaza un campo vacío, introduce un valor o pulsa Escape en ese campo para deshacer la edición y luego guarda los demás cambios. No se guarda nada mientras siga la edición vacía no válida.
 
+Cuando un propietario del proyecto está quitando un idioma, sus campos no se pueden guardar. Malmoi lo indica bajo el campo y ofrece **Descartar cambio**; una clave con una edición en ese idioma no se guarda en ningún idioma hasta que descartes la edición. Las traducciones que el idioma ya tiene se quedan en Malmoi. Consulta [Celdas de un idioma que se quita](../setup/languages.md#frozen).
+
 ![Traducciones con un valor en francés escrito para una clave, marcado como No guardado, y el botón Guardar al pie del panel](/guide/translation-edit.webp "Escribe la traducción y elige Guardar.")
 
 ## Salir con cambios sin guardar {#unsaved-changes}

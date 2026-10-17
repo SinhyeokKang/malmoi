@@ -19,6 +19,7 @@
 - [Configura un proyecto](setup/README.md)
   - [Invita a traductores](setup/members.md)
   - [Añade fuentes](setup/sources.md)
+  - [Añade y quita idiomas](setup/languages.md)
   - [Archiva un proyecto](setup/archive.md)
 - [Traduce](translate/README.md)
   - [Únete a un proyecto](translate/join.md)
