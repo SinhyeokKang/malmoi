@@ -50,7 +50,14 @@ export default async function SourcesLoading() {
             <div className={cn("flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y", SOURCE_CONTENT_STACK)}>
               <Skeleton className="size-7 shrink-0 rounded" />
               <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-                <Skeleton size="md" className="w-[42%]" />
+                {/*
+                  이름·메타 줄 — 좁은 그릇(`@max-form`)에서는 **두 줄**이다(#295, orch D16). 이름 칸 207에서 실물 `web — JSON catalog · 3 keys · 1 language`가
+                  모든 픽스처에서 감겼다(22.5 → 45). 둘째 줄은 같은 블록 안에 둔다 — 실물은 한 요소가 감기는 것이라 줄 사이에 `gap-copy-gap`이 없다.
+                */}
+                <div data-skeleton-name>
+                  <Skeleton size="md" className="w-[42%]" />
+                  <div className="hidden @max-form:block"><Skeleton size="md" className="w-[30%]" /></div>
+                </div>
                 <Skeleton size="xs" className="w-[28%]" />
                 {/*
                   언어 막대 자리 둘 — 묶음은 실물과 같은 `mt-2 flex flex-wrap gap-x-3 gap-y-1.5`, 자리 폭은 실물 `LocaleMeter`의 최소 폭 100(`min-w-25`)이다.
@@ -67,8 +74,11 @@ export default async function SourcesLoading() {
                   </div>)}
                 </div>
               </div>
-              {/* 상태 — 행 높이는 왼쪽 이름 칸이 정하므로 줄 자리가 아니라 블록 하나다. */}
-              <div data-skeleton-status className={cn("shrink-0", SOURCE_STATUS_STACK)}><Skeleton className="h-3 w-24 rounded-md" /></div>
+              {/*
+                상태 — 넓은 그릇에서는 이름 칸 옆에 서서 행 높이를 이름 칸이 정하므로 줄 자리가 아니라 12 블록이다.
+                ⚠️ **좁은 그릇(`@max-form`)에서는 자기 줄로 내려가 높이가 행에 더해진다** — 실물 배지 높이 20(`@max-form:h-5`)을 든다(#295 — 12면 8 모자랐다).
+              */}
+              <div data-skeleton-status className={cn("shrink-0", SOURCE_STATUS_STACK)}><Skeleton className="h-3 w-24 rounded-md @max-form:h-5" /></div>
             </div>
             <Skeleton className="size-4 shrink-0 rounded" />
           </div>
