@@ -283,14 +283,20 @@ function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { f
  */
 async function discardPullRequest(prisma: PrismaClient, lease: Lease): Promise<PullRequestCheck> {
   if (lease.actor.kind !== "USER" || lease.approvedLocaleChanges.length === 0) return "failed";
-  const confirmations = await prisma.deliveryConfirmation.findMany({
-    where: { projectId: lease.project.id, surfaceId: { in: [...new Set(lease.approvedLocaleChanges.map(row => row.surfaceId))] } },
-    select: { surfaceId: true, deliveredLocaleChanges: true, invalidatedAt: true },
-  });
-  const stored = new Map(confirmations.map(row => [row.surfaceId, deliveredOf(row) ?? []]));
-  if (!lease.approvedLocaleChanges.some(row => stored.get(row.surfaceId)?.some(effect => effect.localeCode === row.localeCode))) return "failed";
-  const open = await loadOpenPrUrl(lease.project.slug, lease.project);
-  return open === undefined ? "failed" : open === null ? "none-open" : "open";
+  // ⚠️ 이 조회가 던져도 적재를 실패시키지 않는다 — 없어도 되는 정리의 입력이다. 모름으로 접어 목록을 남긴다(fail-closed).
+  try {
+    const confirmations = await prisma.deliveryConfirmation.findMany({
+      where: { projectId: lease.project.id, surfaceId: { in: [...new Set(lease.approvedLocaleChanges.map(row => row.surfaceId))] } },
+      select: { surfaceId: true, deliveredLocaleChanges: true, invalidatedAt: true },
+    });
+    const stored = new Map(confirmations.map(row => [row.surfaceId, deliveredOf(row) ?? []]));
+    if (!lease.approvedLocaleChanges.some(row => stored.get(row.surfaceId)?.some(effect => effect.localeCode === row.localeCode))) return "failed";
+    const open = await loadOpenPrUrl(lease.project.slug, lease.project);
+    return open === undefined ? "failed" : open === null ? "none-open" : "open";
+  } catch (error) {
+    logFailure("repository-import-open-pr", error);
+    return "failed";
+  }
 }
 
 /** 커밋된 표면 트랜잭션이 실제로 바꾼 값 수의 합 — 롤백된 표면은 더하지 않는다(트랜잭션이 끝난 뒤에 더한다). */

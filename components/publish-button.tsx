@@ -598,7 +598,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
       if (sending === 0 && !hasLanguageWork(data) && expiring.length > 0) {
         /*
           닫힐 요청만 있다(#282) — 실행은 스냅샷 전 만료를 돌고 `no-edits` + `expired`로 끝난다(ARCHITECTURE §5.10.4). `Nothing can be sent yet` + [Close]로 떨어지면
-          닫을 길이 없었다. 어느 언어가 어떻게 끝났는지는 표 아래 만료 줄이 말한다. 지문이 다르면(그 사이 PR이 다시 열렸다) 실행이 다시 확인을 요구한다.
+          닫을 길이 없었다. 어느 언어가 어떻게 끝났는지는 표 아래 만료 줄이 말한다. ⚠️ 웹 Publish는 지문을 넘기지 않는다 — 그 사이 PR이 다시 열렸으면
+          실행이 실물을 다시 보고 만료 없이 `no-edits`로 끝난다(결과는 `Nothing changed` 틀이고 요청은 남는다 — ARCHITECTURE §5.10.4의 수용한 경합).
         */
         const confirmLabel = l.settle.action(expiring.length);
         title = l.settle.title(expiring.length); description = l.settle.body(expiring.length); footer = null;
