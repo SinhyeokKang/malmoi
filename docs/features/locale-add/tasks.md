@@ -86,7 +86,7 @@
 - [ ] Sources Add Dialog(json 프리셋 + 자유 입력 · Chrome Select · 미리보기 받는 중/실패 · 재추가)·행 동작·확인 Dialog·취소 결과 notice·상태 배지(시안 L1–L7·A1–A5·D1–D5). 검증(DOM): 시안의 상태별 배지·톤·버튼, base/EDITOR/비지원/미확정 비활성 이유(`aria-disabled` + 설명), 정확한 파일 경로·미전달 수·앱 코드 정리 경고, Inactive danger 톤·Open 비활성·재추가 안내, 프리셋의 이름(화면 언어 · 밑줄 코드 이름 표시)·구분자 규칙·`Use this code`·IME, 정렬과 `role="status"` 알림·포커스 규칙. 클릭 전 enabled 대기(POSTMORTEM 2829).
 - [ ] 언어 변경 때문에 막힌 기준 언어 선언(소스 상세 Base language 카드)·기준 브랜치 변경(Settings Repository 카드) 안내(시안 P2). 검증(DOM): `locale-change-pending`이 일반 실패 문구로 접히지 않는다.
 - [x] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.
-- [ ] 번역 화면 셀 얼리기 — DOM(jsdom): 서버 갱신 주입 시 입력 보존, 저장 중 제거 거부 시 입력 유지·전용 footer 문구, 세션 만료 중 저장의 입력 보존, 이탈 확인에 얼린 입력 포함. 검증: transition 정리(POSTMORTEM 2187)·클릭 가능 대기를 포함한 DOM 테스트 green.
+- [x] 번역 화면 셀 얼리기 — DOM(jsdom): 서버 갱신 주입 시 입력 보존, 저장 중 제거 거부 시 입력 유지·전용 footer 문구, 세션 만료 중 저장의 입력 보존, 이탈 확인에 얼린 입력 포함. 검증: transition 정리(POSTMORTEM 2187)·클릭 가능 대기를 포함한 DOM 테스트 green.
 - [ ] 번역 화면 셀 얼리기 — 수동: 두 세션·두 언어에서 외부 제거. 검증: `/runtime-test` 리포트에 결과.
 - [x] `summary.ts`가 REMOVE 언어를 읽기 전용으로 싣는다. 검증: 상세 데이터 테스트에 REMOVE 언어 포함, orphan 제외.
 - [x] 완료율·Home·Keys 검색·Inbox·Sources 수를 상태 술어에 맞춘다. 검증: ADD 포함, REMOVE 작업 제외/상태 행 유지, 취소 시 복구.
