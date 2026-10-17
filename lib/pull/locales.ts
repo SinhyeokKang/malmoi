@@ -1,4 +1,4 @@
-import { supportsLocaleChanges } from "@/lib/locales/add-plan";
+import { localeFilePath, supportsLocaleChanges } from "@/lib/locales/add-plan";
 import { localeEffects, sameLocaleEffects, type LocaleEffect, type LocaleOperation } from "@/lib/locales/effects";
 import { planLocaleExpiry, type PullRequestCheck } from "@/lib/locales/expiry";
 import { localeWork } from "@/lib/locales/work";
@@ -39,6 +39,8 @@ export type SurfaceLocalePlan = {
   empty: string[];
   /** 이 스냅샷이 실제로 이루는 효과. PR/MR 경계까지 성공하면 이 목록이 그 소스의 전달 목록이 된다. */
   captured: LocaleEffect[];
+  /** 그 소스의 경로 템플릿 — 화면이 빈 추가를 파일 행으로 말할 경로(`localeNotesOf`)를 같은 판정(`localeFilePath`)으로 낸다. 없으면 경로를 모른다. */
+  pathTemplate?: string | null;
 };
 /** 행이 있는 소스만 담는다. 비면 기존 Publish와 같다. */
 export type ProjectLocalePlan = { surfaces: SurfaceLocalePlan[] };
@@ -51,9 +53,15 @@ type FormatItem = {
   layout: Adapter["layout"];
 };
 
+/**
+ * 거부한 소스와 그 경로에 닿은 언어 — 화면이 고칠 자리를 말한다(시안 P1 ⑥). `ownerSlug`는 경로 충돌일 때 그 경로를 쥔 다른 소스다(계획이 쓴 같은 경로 목록에서 찾는다).
+ * 안전하지 않은 경로는 계산되지 않아 언어를 모른다.
+ */
+export type LocaleRefusalSite = { surfaceSlug: string; localeCode: string | null; ownerSlug: string | null };
+
 export type ProjectLocaleRefusal =
   | { ok: false; error: "irregular-file"; path: string; mode: string }
-  | Exclude<LocalePublishPlan, { ok: true }>;
+  | (Exclude<LocalePublishPlan, { ok: true }> & { site?: LocaleRefusalSite });
 
 const REGULAR = new Set(["100644", "100755"]);
 
@@ -86,10 +94,15 @@ export function planProjectLocales(formats: readonly FormatItem[], tree: readonl
     });
     if (!verdict.ok) {
       if (verdict.error === "irregular-file") return { ok: false, error: "irregular-file", path: verdict.path, mode: tree.find(entry => entry.path === verdict.path)?.mode ?? "" };
-      return verdict;
+      const path = "path" in verdict ? verdict.path : null;
+      const template = item.surface.pathTemplate;
+      // ⚠️ 경로 → 언어·소유 소스는 계획이 쓴 **같은 판정**으로 되짚는다 — 언어는 `localeFilePath`, 소유는 `foreignPaths`를 만든 `pathsOf`다(두 번째 술어를 두지 않는다).
+      const localeCode = path === null || template === null ? null : changes.rows.find(row => localeFilePath(template, row.localeCode) === path)?.localeCode ?? null;
+      const owner = verdict.error === "path-conflict" ? formats.find(other => other.surface.id !== item.surface.id && pathsOf(other, new Set()).includes(verdict.path)) : undefined;
+      return { ...verdict, site: { surfaceSlug: item.surface.slug, localeCode, ownerSlug: owner?.surface.slug ?? null } };
     }
     const { exclude, creates, deletes, withheld, empty, captured } = verdict;
-    surfaces.push({ surfaceId: item.surface.id, surfaceSlug: item.surface.slug, exclude, creates, deletes, withheld, empty, captured });
+    surfaces.push({ surfaceId: item.surface.id, surfaceSlug: item.surface.slug, exclude, creates, deletes, withheld, empty, captured, pathTemplate: item.surface.pathTemplate });
   }
   return { ok: true, plan: { surfaces } };
 }
@@ -110,8 +123,8 @@ export function deliverableLocaleWork(plan: ProjectLocalePlan, surfaces: readonl
   return work;
 }
 
-/** 전달됐는데 이번 스냅샷이 싣지 않는 언어 효과 — Publish가 열린 PR에서 거둔다. */
-export type WithdrawnLocale = { surfaceSlug: string; localeCode: string; effect: LocaleEffect["effect"] };
+/** 전달됐는데 이번 스냅샷이 싣지 않는 언어 효과 — Publish가 열린 PR에서 거둔다. `path`는 그 소스 템플릿의 경로다(모르면 `null` — 화면의 파일 행). */
+export type WithdrawnLocale = { surfaceSlug: string; localeCode: string; effect: LocaleEffect["effect"]; path: string | null };
 
 /**
  * **거둘 언어 효과** (#265 — design-brief 프레임 13 "이전 변경 거두기"). 전달 목록에 있는데 이번 캡처에 없는 효과다. 전달된 의도를 취소하면 그 파일은
@@ -119,7 +132,7 @@ export type WithdrawnLocale = { surfaceSlug: string; localeCode: string; effect:
  * 이 목록으로 "보낼 것 없음"과 가른다. 소스 slug·코드순이다.
  * ⚠️ 확인 안 된 목록(`null`)은 무엇이 실렸는지 몰라 거둘 것을 말하지 않는다 — 취소는 그동안 거부된다(R2).
  */
-export function withdrawnLocalesOf(plan: ProjectLocalePlan, surfaces: readonly { id: string; slug: string; localeChanges?: SurfaceLocaleChanges }[]): WithdrawnLocale[] {
+export function withdrawnLocalesOf(plan: ProjectLocalePlan, surfaces: readonly { id: string; slug: string; pathTemplate?: string | null; localeChanges?: SurfaceLocaleChanges }[]): WithdrawnLocale[] {
   const captured = new Map(plan.surfaces.map(surface => [surface.surfaceId, surface.captured]));
   const out: WithdrawnLocale[] = [];
   for (const surface of surfaces) {
@@ -128,7 +141,8 @@ export function withdrawnLocalesOf(plan: ProjectLocalePlan, surfaces: readonly {
     const now = captured.get(surface.id) ?? [];
     for (const effect of delivered) {
       if (now.some(item => item.localeCode === effect.localeCode && item.effect === effect.effect)) continue;
-      out.push({ surfaceSlug: surface.slug, localeCode: effect.localeCode, effect: effect.effect });
+      const template = surface.pathTemplate ?? null;
+      out.push({ surfaceSlug: surface.slug, localeCode: effect.localeCode, effect: effect.effect, path: template === null ? null : localeFilePath(template, effect.localeCode) });
     }
   }
   return out.sort((a, b) => compareCodeUnits(a.surfaceSlug, b.surfaceSlug) || compareCodeUnits(a.localeCode, b.localeCode));
@@ -263,11 +277,13 @@ export function localeFingerprintInput(plan: ProjectLocalePlan, formats: readonl
 /** 결과·미리보기가 싣는 언어 보류 안내 — 문장이 아니라 데이터다(화면 문구는 시안 배치). 둘 다 비면 `undefined`. */
 export type LocaleNotes = {
   withheld: { surfaceSlug: string; localeCode: string; path: string; reason: "proposal-path-exists" }[];
-  empty: { surfaceSlug: string; localeCode: string }[];
+  /** `path` — 값이 생기면 만들 파일(화면의 `Not included` 행). 템플릿을 모르면 `null`이다. */
+  empty: { surfaceSlug: string; localeCode: string; path: string | null }[];
 };
 export function localeNotesOf(plan: ProjectLocalePlan): LocaleNotes | undefined {
   const withheld = plan.surfaces.flatMap(s => s.withheld.map(w => ({ surfaceSlug: s.surfaceSlug, localeCode: w.localeCode, path: w.path, reason: w.reason })));
-  const empty = plan.surfaces.flatMap(s => s.empty.map(localeCode => ({ surfaceSlug: s.surfaceSlug, localeCode })));
+  const empty = plan.surfaces.flatMap(s => s.empty.map(localeCode => ({ surfaceSlug: s.surfaceSlug, localeCode,
+    path: s.pathTemplate === undefined || s.pathTemplate === null ? null : localeFilePath(s.pathTemplate, localeCode) })));
   return withheld.length === 0 && empty.length === 0 ? undefined : { withheld, empty };
 }
 

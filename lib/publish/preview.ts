@@ -67,6 +67,12 @@ export class PreviewWriterWarnings extends Error {
   override readonly name = "PreviewWriterWarnings";
   constructor(readonly warnings: PullWarning[]) { super("Preview cannot safely deliver values"); }
 }
+/**
+ * `locale-plan-refused`의 고칠 자리 (시안 P1 ⑥) — 어느 소스의 어느 언어가 왜 막혔나. `ownerSlug`는 경로 충돌일 때 그 경로를 쥔 다른 소스다.
+ * 소스 설정에서 계산한 값이라 화면에 실어도 된다(`path`와 같은 근거).
+ */
+export type LocalePlanRefusalDetail = { refusal: "path-conflict" | "duplicate-path" | "unsafe-path"; surfaceSlug: string | null; localeCode: string | null; ownerSlug: string | null };
+
 export type PublishPreviewResult =
   | { status: "blocked"; warnings: PullWarning[] }
   | { status: "ok"; preview: PublishPreview }
@@ -74,13 +80,13 @@ export type PublishPreviewResult =
    * `locale-plan-refused` — 언어 추가·제거의 파일 경로를 쓸 수 없거나 다른 소스의 것이다(locale-add R-B2 Y2). **코드만이다** — 화면·MCP 문구는 C1이 잇는다.
    * 그 전까지 화면은 이 사유를 다른 거부 문구로 떨어뜨린다. 안전하지 않은 경로면 `path`가 비어 있다.
    */
-  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string }
+  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string; plan?: LocalePlanRefusalDetail }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }
   | { status: "failed" };
 export type PublishModalState =
   | { kind: "preview-loading" }
   | { kind: "preview-ready"; preview: PublishPreview }
   | { kind: "preview-error" }
-  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string }
+  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string; plan?: LocalePlanRefusalDetail }
   | { kind: "running" }
   | { kind: "result"; outcome: import("@/lib/pull/message").PullOutcome };

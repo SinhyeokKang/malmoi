@@ -23,7 +23,8 @@ export async function loadPreview(prisma: PrismaClient, subject: Subject, input:
     // 이유가 있는 거부다 — Try again으로 그리면 같은 거부를 영영 받는다(L3.3). 경로·브랜치는 설정값이라 화면에 실어도 된다.
     if (error instanceof GitFileKindError) return { status: "refused", reason: "unsupported-file-kind", path: error.path, branch: error.branch };
     // 언어 계획의 결정적 거부도 이유가 있는 거부다 — Try again으로 그리면 매번 같은 거부를 받는다(#200 계열, R-B2 Y2).
-    if (error instanceof LocalePlanRefused) return { status: "refused", reason: "locale-plan-refused", path: error.path, branch: error.branch };
+    if (error instanceof LocalePlanRefused) return { status: "refused", reason: "locale-plan-refused", path: error.path, branch: error.branch,
+      plan: { refusal: error.refusal, surfaceSlug: error.site?.surfaceSlug ?? null, localeCode: error.site?.localeCode ?? null, ownerSlug: error.site?.ownerSlug ?? null } };
     if (error instanceof PreviewBaseFileMissing) return { status: "refused", reason: "base-file-missing", path: error.path, branch: error.branch };
     if (error instanceof PreviewBaseFileUnreadable) return { status: "refused", reason: "base-file-unreadable", path: error.path, branch: error.branch };
     if (error instanceof PreviewWriterWarnings) return { status: "blocked", warnings: error.warnings };

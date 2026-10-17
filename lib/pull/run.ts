@@ -22,7 +22,7 @@ import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, with
 import type { LocaleEffect } from "@/lib/locales/effects";
 import {
   NO_LOCALE_PLAN, capturedBySurface, deliverableLocaleWork, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, observedLocalesOf, planProjectLocales,
-  type ExpiredLocaleRequest, type LocaleNotes, type ProjectLocalePlan, type SurfaceLocaleChanges,
+  type ExpiredLocaleRequest, type LocaleNotes, type LocaleRefusalSite, type ProjectLocalePlan, type SurfaceLocaleChanges,
 } from "./locales";
 
 /**
@@ -242,7 +242,8 @@ export class GitFileKindError extends AppError {
  * `path`는 소스 설정에서 계산한 경로라 화면에 실어도 된다(안전하지 않은 경로는 계산하지 못해 비어 있다).
  */
 export class LocalePlanRefused extends AppError {
-  constructor(readonly refusal: "path-conflict" | "duplicate-path" | "unsafe-path", readonly path: string, readonly branch: string) {
+  /** @param site 거부한 소스·언어·경로를 쥔 소스(시안 P1 ⑥ — 화면이 고칠 자리를 말한다). 모르면 `null`. */
+  constructor(readonly refusal: "path-conflict" | "duplicate-path" | "unsafe-path", readonly path: string, readonly branch: string, readonly site: LocaleRefusalSite | null = null) {
     super(`locale change cannot be published: ${refusal}${path === "" ? "" : ` (${path})`}`, "locale-plan-refused");
   }
 }
@@ -357,7 +358,7 @@ export function planLocales(project: Pick<PullProject, "baseBranch">, formats: P
   // 트리를 읽은 뒤의 계획이라 `base-unreadable`은 오지 않는다 — 와도 부재로 접지 않고 실패다.
   if (planned.error === "base-unreadable") fail("unreachable: locale plan saw an unreadable base after reading the tree");
   if (planned.error === "irregular-file") fail("unreachable: irregular locale file without a mode");
-  throw new LocalePlanRefused(planned.error, "path" in planned ? planned.path : "", project.baseBranch);
+  throw new LocalePlanRefused(planned.error, "path" in planned ? planned.path : "", project.baseBranch, planned.site ?? null);
 }
 
 /** 미리보기와 실행이 같은 원본 자리·스냅샷으로 전달 가능 셀과 빈값 경고를 판정한다. */

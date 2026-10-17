@@ -679,7 +679,7 @@ describe("결정적 언어 계획 거부 (R-B2 🟡 Y2)", () => {
     expect(error).toBeInstanceOf(LocalePlanRefused);
     expect(error).toMatchObject({ code: "locale-plan-refused", path: "i18n/ko.json", branch: "dev", refusal: "path-conflict" });
     // 화면이 고칠 자리를 말한다(시안 P1 ⑥) — 어느 소스의 어느 언어가 어느 소스의 경로에 닿았나. 소유 판정은 계획이 쓴 경로 목록 그대로다.
-    expect(error).toMatchObject({ surfaceSlug: "default", localeCode: "ko", ownerSlug: "other" });
+    expect(error).toMatchObject({ site: { surfaceSlug: "default", localeCode: "ko", ownerSlug: "other" } });
     expect(classifySyncError(error)).toMatchObject({ code: "locale-plan-refused", retryable: false });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
