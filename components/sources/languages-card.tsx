@@ -34,7 +34,7 @@ type Focus = { pick: (card: HTMLElement) => HTMLElement | null; detail: SourceDe
  * 새 행 [Open]. 대상은 결과를 다시 읽은 뒤에야 서므로 기다렸다가 옮긴다 — 다시 읽은 뒤에도 없으면 머리로 간다.
  * ⚠️ **결과는 카드 notice다**(A5·L7) — Status 카드의 적재 결과와 같은 자리·형이다. 닫는 것은 사람이다.
  */
-export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, onNavigate, onReload }: {
+export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, onNavigate, onReload, focusLanguage = null }: {
   slug: string; detail: SourceDetail; role: Role; busy: boolean;
   /** 소스가 번역 화면을 열 수 있나(연결·첫 적재·언어 있음) — 행 [Open]의 바탕이다. */
   canOpen: boolean;
@@ -43,6 +43,8 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
   /** 행 [Open] — 상세 모달의 미저장 확인을 지난다. */
   onNavigate: (href: string, event: MouseEvent) => void;
   onReload: () => void;
+  /** 딥링크(`?language=`)의 언어 — 카드가 서면 그 행의 동작에 포커스한다. 없는 언어면 아무것도 하지 않는다. */
+  focusLanguage?: string | null;
 }) {
   const m = useMessages();
   const t = m.sources.locale;
@@ -73,6 +75,11 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
     if (wanted.detail !== detail) { focus.current = null; header(card)?.focus(); }
   });
   const landOn = (pick: Focus["pick"]) => { focus.current = { pick, detail }; };
+  // 딥링크 착지 — 행은 카드와 함께 이미 서 있어 곧바로 옮긴다. 그 언어가 없으면 아무것도 하지 않는다(머리로 보내지 않는다).
+  useEffect(() => {
+    if (focusLanguage === null || cardRef.current === null) return;
+    rowOf(cardRef.current, focusLanguage)?.querySelector<HTMLElement>("[data-language-action]")?.focus();
+  }, [detail.id, focusLanguage]);
   /*
     ⚠️ **사람이 먼저 움직이면 예약을 버린다** — 다시 읽기가 실패하면 호스트가 같은 `detail`을 들고 있어 위 "머리로" 판정이 서지 않는다. 남은 예약은
     한참 뒤의 다음 다시 읽기에서 대상이 서는 순간 사람이 보던 자리의 포커스를 빼앗는다.
@@ -123,6 +130,8 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
         // 실패면 행도 포커스도 그대로다 — 다시 시도할 자리다.
         setNotice({ tone: "danger", text: result.error === "publish-unsettled" ? t.cancelUnsettled(code) : t.cancelFailed(code) });
         button.focus();
+        // 다른 세션이 이미 취소했다 — 다시 읽지 않으면 행이 Removing으로 남아 같은 실패가 되풀이된다(R-E1 ⚪2).
+        if (result.error === "no-removal") onReload();
       }
     } catch {
       setNotice({ tone: "warning", text: t.cancelUnconfirmed(code) });

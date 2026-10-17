@@ -2012,7 +2012,6 @@ export const es = {
       reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} estuvo antes en esta fuente. Al añadirlo de nuevo vuelven {count}, listas para publicar.</>,
       reviveAgain: (count: ReactNode): ReactNode => <>Al añadirlo de nuevo vuelven {count}, listas para publicar.</>,
       errors: {
-        invalidCode: "Usa un idioma en minúsculas, con una región opcional: fr, pt-BR, zh_TW.",
         unreadable: "Malmoi no puede volver a leer este código desde el repositorio. Añade el archivo en el repositorio.",
         unsupportedLocale: "Las extensiones de Chrome no admiten este código de idioma.",
         alreadyActive: (code: string): string => `${code} ya está en esta fuente.`,

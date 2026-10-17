@@ -83,7 +83,7 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
     if (FIELD_ERRORS.has(error)) return { kind: "field", text: fieldText(m, error, value, languages, pathTemplate) };
     return { kind: "refused", text: dialogText(m, error) };
   }
-  // 고른 값은 곧바로, 친 값은 쉼 뒤에 미리보기를 부른다 — 코드 모양이 아니면 부르지 않는다(모양 안내는 고를 때 선다).
+  // 고른 값은 곧바로, 친 값은 쉼 뒤에 미리보기를 부른다 — 코드 모양이 아니면 부르지 않는다(이름 조각은 목록이 거른다).
   function type(value: string) {
     setQuery(value);
     stopTyping();
@@ -93,13 +93,10 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
     setCheck({ kind: "idle" });
     if (looksLikeCodeInput(value)) timer.current = setTimeout(() => run(value), TYPING_PAUSE_MS);
   }
+  // 고를 수 있는 행은 코드뿐이다 — 프리셋·이 소스에 있던 언어·코드 모양일 때만 서는 `Use this code`(R-E1 🟡1).
   function choose(value: string) {
     setQuery(value);
-    if (looksLikeCodeInput(value)) { run(value); return; }
-    stopTyping();
-    request.current++;
-    setCode(null);
-    setCheck({ kind: "field", text: m.sources.locale.errors.invalidCode });
+    run(value);
   }
 
   // 열 때마다 비운다 — 닫았다 연 Dialog가 앞의 입력·판정을 들고 오지 않게. 행에서 열면 그 코드를 곧바로 확인한다.
@@ -142,7 +139,8 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
     const taken = new Set(inactive.map(language => language.code));
     const common = presetCodes(presetSeparator(languages.map(language => language.code))).filter(value => !taken.has(value) && shown(value))
       .map(value => active.has(localeCollisionKey(value)) ? { value, label: row(value), aside: m.sources.locale.added, disabled: true } : { value, label: row(value) });
-    if (typed !== "" && ![...previously, ...common].some(option => option.value === typed)) groups.push({ options: [{ value: typed, label: <span data-option-code className="min-w-0 truncate">{typed}</span>, aside: m.sources.locale.useCode }] });
+    // 목록 밖 **코드**만 그대로 쓰라고 권한다 — 이름 조각(`Fren`)에 Use this code가 첫 행이면 Enter가 프리셋 대신 모양 오류를 낸다(R-E1 🟡1).
+    if (looksLikeCodeInput(typed) && ![...previously, ...common].some(option => option.value === typed)) groups.push({ options: [{ value: typed, label: <span data-option-code className="min-w-0 truncate">{typed}</span>, aside: m.sources.locale.useCode }] });
     groups.push({ heading: m.sources.locale.previously, options: previously }, { heading: m.sources.locale.common, options: common });
   }
 

@@ -34,8 +34,10 @@ import { planSurfaceRemoval, removalReason } from "@/lib/surfaces/plan-removal";
 import { IconTile } from "@/components/ui/icon-tile";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
-export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, onLost, returnFocusRef, fallbackFocusRef }: {
+export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, focusLanguage = null, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, onLost, returnFocusRef, fallbackFocusRef }: {
   slug: string; sourceSlug: string | null; role: Role; state: DetailState; now: Date; busy: boolean;
+  /** 딥링크가 가리킨 언어 — 상세가 서면 그 행에 포커스한다. */
+  focusLanguage?: string | null;
   /** 프로젝트의 활성 소스 전부 — 마지막 소스 판정(`planSurfaceRemoval`)의 입력이다. */
   sources: readonly { id: string; slug: string }[];
   /** 제거가 성공했다 — 호스트가 재검증 커밋 뒤 모달을 닫고 결과 배너를 세운다. */
@@ -173,7 +175,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>
       </Card>
       {/* Languages 카드 — 언어 추가·제거·취소와 행 상태(locale-add 시안 L). 행 [Open]도 여기 있고 같은 미저장 확인 문을 지난다. */}
-      <LanguagesCard slug={slug} detail={detail} role={role} busy={busy} canOpen={canOpen} openReason={disabledReason} onReload={onSaved}
+      <LanguagesCard slug={slug} detail={detail} role={role} busy={busy} canOpen={canOpen} openReason={disabledReason} onReload={onReload} focusLanguage={focusLanguage}
         onNavigate={(href, event) => { if (draft !== null) { event.preventDefault(); leave(href); } }} />
     </div>}
     {canEdit && detail && <RemoveSourceDialog open={removing} onOpenChange={setRemoving} slug={slug} surfaceSlug={detail.slug} onPending={onBusy} onRemoved={() => onRemoved(detail.slug)} onLost={onLost} />}

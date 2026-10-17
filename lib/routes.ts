@@ -186,7 +186,11 @@ export const routes = {
     withQuery(`/projects/${slug}/translations`, query),
   surfaceTranslations: (slug: string, surfaceSlug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/surfaces/${surfaceSlug}/translations`, query),
-  sources: (slug: string, query: { add?: string; e?: string } = {}): string =>
+  /**
+   * `source`·`language` — 그 소스의 상세를 열고 그 언어 행에 포커스한다(locale-add — Publish 결과의 `Open <source>`, 시안 P1 ⑥).
+   * 모르는 소스면 목록 그대로, 모르는 언어면 상세만 연다. 이름은 번역 화면 딥링크(`surfaceTranslations`의 `language`)와 같다.
+   */
+  sources: (slug: string, query: { add?: string; e?: string; source?: string; language?: string } = {}): string =>
     withQuery(`/projects/${slug}/sources`, query),
   surfaceLocales: (slug: string, surfaceSlug: string): string => `/projects/${slug}/surfaces/${surfaceSlug}/locales`,
   /**

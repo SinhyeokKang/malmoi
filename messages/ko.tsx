@@ -2008,7 +2008,6 @@ export const ko = {
       reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} 언어는 전에 이 소스에 있었습니다. 다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
       reviveAgain: (count: ReactNode): ReactNode => <>다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
       errors: {
-        invalidCode: "소문자 언어 코드에 지역을 붙일 수 있습니다: fr, pt-BR, zh_TW.",
         unreadable: "Malmoi가 리포지토리에서 이 코드를 다시 읽을 수 없습니다. 리포지토리에서 직접 파일을 추가하세요.",
         unsupportedLocale: "Chrome 확장 프로그램이 지원하지 않는 언어 코드입니다.",
         alreadyActive: (code: string): string => `${code} 언어는 이미 이 소스에 있습니다.`,

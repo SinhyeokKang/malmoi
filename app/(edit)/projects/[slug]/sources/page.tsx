@@ -14,7 +14,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 import { loadSources } from "@/lib/sources/query";
 
 export const maxDuration = 60;
-export default async function SourcesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Raw<"add" | "e" | "source">> }) {
+export default async function SourcesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Raw<"add" | "e" | "source" | "language">> }) {
   const style = await getDateStyle();
   const m = await getMessages();
   const { slug } = await params;
@@ -23,7 +23,7 @@ export default async function SourcesPage({ params, searchParams }: { params: Pr
     const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
     return <SourcesArchived slug={slug} role={role} archivedAt={project?.archivedAt ?? null} style={style} m={m} />;
   }
-  const { add, e } = firstQueryValues(await searchParams);
+  const { add, e, source, language } = firstQueryValues(await searchParams);
   const canEdit = canPerform(role, "project:settings");
   const data = await loadSources(getPrisma(), m, projectId, role);
   if (data === null) notFound();
@@ -32,6 +32,7 @@ export default async function SourcesPage({ params, searchParams }: { params: Pr
     {isConnectError(e) && <Alert variant="danger">{connectErrorMessage(m, e)}</Alert>}
     {add === "sources" && !canEdit && <Alert variant="warning">{m.sources.ownerOnly}</Alert>}
     <SourcesScreen slug={slug} role={role} data={data} now={new Date()} initialOpen={canEdit && add === "sources"}
+      deepLink={source === undefined ? undefined : { source, language: language ?? null }}
       adapters={canEdit ? ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(m, a.name) })) : []} />
   </RepoHostScope>;
 }

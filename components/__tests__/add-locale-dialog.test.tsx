@@ -201,13 +201,15 @@ describe("필드 오류 — 서버 코드가 도움말을 대신한다(A2)", () 
     expect(confirm().getAttribute("aria-disabled")).toBe("true");
   });
 
-  it("코드 모양이 아닌 값을 고르면 모양 안내가 필드 오류로 선다 — 서버를 부르지 않는다", async () => {
+  it("코드도 이름도 아닌 값에는 고를 행이 없다 — Enter가 아무것도 고르지 않고 서버를 부르지 않는다", async () => {
     await open();
     await openAdd();
-    await act(async () => { await user().type(combobox(), "French"); });
+    await act(async () => { await user().type(combobox(), "Klingonese"); });
+    expect(options()).toHaveLength(0);
     await key(combobox(), "Enter");
-    expect(dialog()!.querySelector("[data-field-error]")!.textContent).toBe(en.sources.locale.errors.invalidCode);
+    expect(dialog()!.querySelector("[data-field-error]")).toBeNull();
     expect(mocks.previewAdd).not.toHaveBeenCalled();
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
   });
 });
 

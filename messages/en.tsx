@@ -3693,7 +3693,6 @@ export const en = {
       reviveAgain: (count: ReactNode): ReactNode => <>Adding it again brings back {count}, ready to publish.</>,
       /** 필드 자리의 거부 — 도움말을 대신한다(시안 A2). */
       errors: {
-        invalidCode: "Use a lowercase language, with an optional region: fr, pt-BR, zh_TW.",
         unreadable: "Malmoi can't read this code back from the repository. Add the file in the repository instead.",
         unsupportedLocale: "Chrome extensions don't support this language code.",
         alreadyActive: (code: string): string => `${code} is already in this source.`,
