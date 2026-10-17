@@ -230,3 +230,4 @@
 - E3 질문 2(야간 만료 사건이 Logs에서 CI로 읽힘) → **지휘자 판단: payload `trigger` 필드 추가 + 문장(`triggerOf`)과 필터(`triggerWhere`)가 같이 읽는다**(한 화면 안 분류 불일치 금지). 옛 행은 지금 동작, 야간 cron Publish = nightly. 필터가 비-additive 변경을 요하면 다시 묻는다.
 - E1 질문 2(`reviewNumberFrom`이 `lib/adapters`를 끌어 클라이언트 모달이 못 문다) → **지휘자 판단: 새 잎 `lib/projects/review-number.ts`로 이동 + `remote-plan.ts` 재수출**(소비자 수정 0 — E3 충돌 회피), EDITOR도 링크.
 - E2 fix1 `worker_done` — 🟡1·🟡4·M7 + `Removing` 배지(`gate: ok` 15485). 재리뷰 생략(지휘자 판단 — 범위 작음). **E2 통합**(cherry-pick 8: `312825e6`..`64182c16`) · main 체크아웃 `pnpm gate` **ok**(15485 · PG 883). tasks §6 셀 얼리기 DOM 체크. TR 메모: es 낱말 `Quitando`(E0 배지) vs `Se está eliminando`(E2). E2 retain(DS 지적 수신용).
+- E3 질문 3(언어 변경만 있으면 웹 Publish 버튼이 꺼져 P1 ①④⑤에 닿지 않는다) → **지휘자 판단: E3가 `git rebase dev`(E2 통합됨) 뒤 모든 Publish 호스트(Home·번역 화면 `workspace.tsx`)에 `countLocaleWork` 연결 + `lib/publish/plan.ts`**. 배지는 셀 수 유지, 버튼 수와 모달 ①이 같은 출처.
