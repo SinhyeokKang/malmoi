@@ -246,3 +246,6 @@
 - **E2 fix2**(#274) · **E3 fix3**(#275) 착수. E1은 fix2 끝난 뒤 **E1 fix3**(#276 + 언어 행 `order-*` Tab/시각 순서 후보).
 - E1 fix2 `worker_done` — #268·#273 깃발 열 · #269 FileBlock 형 · #270·#271·#272 Combobox가 가장 가까운 Dialog 안으로 portal + `role=presentation` + 첫 배치 전 `max-h` 300(`gate: ok` 15693; 1회차 api-contract 타임아웃 2 — load 27, 재실행 green). A3 왼쪽 체크 슬롯은 `SelectItem` 프리미티브가 오른쪽 표시라 안 넣음(프리미티브 우선). 재실측 몫: 휠·위치(1440·375)·AX·375 첫 프레임. **E1 fix3**(#276 + 언어 행 `order-*`) 착수.
 - D2 fix1 `worker_done` — R1·R2·Y1~Y9·W1~W7(ARCHITECTURE·DESIGN·DIRECTORY 문서별 커밋, §10.1 en 행 + ko·es 초안 표시, 결정 번호 꼬리표 걷음, `gate: ok` 15687; 1회차 api-contract 타임아웃 — load). 재리뷰 생략(지휘자 판단). D2 retain(TR 뒤 §10.1 확정·DS 수정 반영용).
+- E1 fix3 `worker_done`(#276 카드 머리 = 목록 행 수 · 언어 행 `order-*` 제거 — 실제 시각/DOM 갈림은 없었고 ListRow 규칙 위반만, `gate: ok` 15695). 남김: 모달 설명 줄의 작업 언어 수 vs 카드 행 수 → DS2 판정. ⚠️ `api-contract` 테스트가 부하(load 77~87 — 동시 게이트 여럿)에서 5초 타임아웃 반복, 단독·재실행 green.
+- **통합**: E2 fix2 · E3 fix3 · D2(+fix1, 8) → gate **ok**(15689 · PG 884) · ⚠️ **지휘자 누락 정정**: E1 fix2(6커밋)를 앞 통합에서 빠뜨렸다 → E1 fix3와 함께 cherry-pick → gate **ok**(15697 · PG 884). `next-env.d.ts`는 build 산출 변경이라 되돌림.
+- 착수: **DS2**(main 체크아웃, #268~#276 재실측·닫기) ∥ **TR**(워크트리, `/translate` 모드②).
