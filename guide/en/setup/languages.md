@@ -86,7 +86,7 @@ If a Malmoi pull request is open, Publish replaces what it holds with everything
 
 Malmoi learns what happened to a pull request at the next Publish or nightly run, so a merge can take up to a day to show.
 
-You don't have to wait for the nightly run. Once the pull request is no longer open, **Publish** turns on even if nothing else is waiting to be sent, and its preview closes the language request right away.
+You don't have to wait for the nightly run. Once the pull request is no longer open, **Publish** turns on even if nothing else is waiting to be sent, and its preview closes the language request right away. If the pull request closed without merging and nothing else was waiting, the result says Language request closed and nothing is written to the repository.
 
 - Removal merged: the language becomes **Inactive**. Its translations, history, and row stay.
 - Removal closed without merging: the file is still in the repository, so the language stays active and the removal request is gone. Request it again if you still want it removed. Logs records the closing.

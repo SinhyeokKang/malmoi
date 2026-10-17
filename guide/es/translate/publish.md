@@ -34,6 +34,7 @@ El resultado puede decir:
 - **Enviado a revisión** — hay un pull request nuevo abierto para el equipo de desarrollo.
 - **Tu pull request anterior ahora contiene esto** — se actualizó el pull request existente.
 - **Nada cambió en los archivos** — no hay nada nuevo que publicar.
+- Solicitud de idioma cerrada — la pull request de un cambio de idioma se cerró sin fusionarse, así que Malmoi cerró su solicitud. No se escribió nada en el repositorio.
 - **Excluido — algunos valores no se pueden escribir en los archivos** o N ediciones no se enviaron — tus valores guardados se conservan. Indica a un propietario del proyecto qué archivos aparecen.
 - Se cerró el pull request anterior — tus ediciones ahora coinciden con la rama base, así que ya no tenía nada que revisar.
 - **GitHub no respondió** — tus valores guardados se conservan; inténtalo de nuevo más tarde.
