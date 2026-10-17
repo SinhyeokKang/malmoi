@@ -422,7 +422,7 @@ it("저장 성공의 첫 표시부터 Saved · not sent이고, 저장한 셀에 
 it("번역 화면의 Sync 확인창이 권하는 Publish 링크는 지금 소스를 가리킨다 — 옛 경로로 우회하지 않는다", async () => {
   const user = userEvent.setup();
   mocks.pr.mockResolvedValue(null);
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1, languages: [] });
   await render(<TranslationWorkspace {...props({ routeSurfaceSlug: "app", detail: null, query: { ...props().query, key: undefined, keySurface: undefined } })} />);
   await act(async () => user.click(button("Sync")!));
   const link = [...document.querySelectorAll<HTMLAnchorElement>("a")].find(a => a.textContent === en.repositorySync.sendFirst);

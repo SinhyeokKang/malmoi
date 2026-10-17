@@ -224,6 +224,17 @@ export const en = {
      * 그것을 참조하면 Archive를 고칠 때 이 화면이 조용히 따라 움직인다 (2026-09-13 리뷰).
      */
     seeOpen: "See what's open",
+    /**
+     * 승인하면 사라지는 언어 변경 (locale-add 시안 P4) — 셀 편집 블록과 따로 센다("요청이 없어진다"). 줄마다 Sync 뒤 그 언어의 결과다.
+     * 추가는 값이 있을 때만 수를 말한다 — 값 0개 추가에 "0 translations are kept"는 할 말이 없다.
+     */
+    languagesDropped: (n: number): string => `${n.toLocaleString("en-US")} language ${n === 1 ? "change" : "changes"} will be dropped.`,
+    languageNotAdded: (code: string, translations: number): string =>
+      translations === 0 ? `${code} won't be added.` : `${code} won't be added. Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+    languageNotRemoved: (code: string): string => `${code} won't be removed. It stays in this source.`,
+    /** 소스가 둘 이상일 때 줄이 소스를 함께 말한다 — "this source"가 어느 소스인지. */
+    languageInSource: (code: string, source: string): string => `${code} (${source})`,
+    languagesMore: (n: number): string => `and ${n.toLocaleString("en-US")} more`,
     /** ⚠️ `Alert.title`은 **구두점 없는 문장 조각**이다 (DESIGN §10) — 헤드라인에서 마침표를 뗀다. */
     completed: (n: number, branch: string): string => `Synced ${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"} from ${branch}`,
     /**

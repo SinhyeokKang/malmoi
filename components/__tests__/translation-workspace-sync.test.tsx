@@ -40,7 +40,7 @@ beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
   window.sessionStorage.clear();
   mocks.pr.mockResolvedValue(null);
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1, languages: [] });
 });
 
 it.each(["already-running", "reconfirm", "unauthorized"] as const)("거부(%s)는 번역 화면에 사유를 세우고 refresh하지 않는다", async (error) => {

@@ -47,7 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.pr.mockResolvedValue(null);
   mocks.run.mockResolvedValue(success);
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0, languages: [] });
 });
 afterEach(async () => {
   if (pending !== null) { const run = pending; pending = null; await act(async () => run.resolve(success)); }
@@ -111,7 +111,7 @@ it("남은 편집이 있으면 결과가 warning이고 남은 사실을 원인 �
 
 it("reconfirm의 [Try again]은 같은 Dialog를 확인 단계로 되돌리고 지문을 다시 받는다", async () => {
   mocks.run.mockResolvedValueOnce({ ok: false, error: "reconfirm" });
-  mocks.prepare.mockResolvedValueOnce({ approval: "digest-1", unsent: 0 }).mockResolvedValueOnce({ approval: "digest-2", unsent: 4 });
+  mocks.prepare.mockResolvedValueOnce({ approval: "digest-1", unsent: 0, languages: [] }).mockResolvedValueOnce({ approval: "digest-2", unsent: 4, languages: [] });
   await render(<SyncButton />);
   await click("Sync"); await click("Sync from repository");
   await vi.waitFor(() => expect(dialog()?.textContent).toContain("nothing was discarded"));
@@ -235,8 +235,8 @@ it("편집과 언어 변경이 함께면 블록이 둘이고 편집 블록이 �
   const node = await openWith(12, [lang("fr", "ADD", 9), lang("de", "REMOVE")]);
   const block = languageBlock()!;
   expect(block.textContent).toBe("2 language changes will be dropped.fr won't be added. Its 9 translations are kept in Malmoi.de won't be removed. It stays in this source.");
-  const alerts = [...node.querySelectorAll('[data-variant="warning"], [data-tone="warning"]')];
-  expect(alerts.length).toBeGreaterThanOrEqual(1);
+  // 같은 amber 형의 블록 둘이다 — 편집 경고 · 언어 변경.
+  expect(node.querySelectorAll('[data-alert="warning"]')).toHaveLength(2);
   const editLine = [...node.querySelectorAll("p")].find(p => p.textContent?.includes("12 unsent edits"))!;
   expect(editLine.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(node.textContent).toContain(en.repositorySync.sendFirst);

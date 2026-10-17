@@ -67,6 +67,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   const describedId = useId();
   const warningId = useId();
   const pausedReasonId = useId();
+  const languagesId = useId();
   const [pending, setPending] = useState(false);
   /** Dialog 본문이 결과로 바뀌었다. 닫히면 비운다 — 기록은 Logs다. */
   const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
@@ -104,9 +105,14 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
    * *"Translations changed after you opened Sync"* 라는 사실과 다른 문장을 띄웠다. **실패는 끝난 것이다** — 그때는 풀어서 `null`을
    * 보내고 서버가 재확인을 요구한다. 그동안의 건수는 호출부 값을 잠정으로 쓴다(확정이 막혀 있어 그 값으로 승인되는 일이 없다).
    */
-  const [issued, setIssued] = useState<{ approval: string | null; unsent: number } | null>(null);
+  const [issued, setIssued] = useState<{ approval: string | null; unsent: number; languages: readonly LanguageChange[] } | null>(null);
   const approvalPending = issued === null;
   const shownUnsent = issued === null || issued.approval === null ? unsent : issued.unsent;
+  /*
+    승인하면 사라지는 언어 변경 (시안 P4) — **지문과 같은 응답에서만** 온다(위 `unsent`와 같은 규칙). 발급 실패면 모른다 — 그때 확정은 `null` 승인이라
+    서버가 reconfirm을 내고 아무것도 버리지 않으므로 지어내지 않는다.
+  */
+  const languages = issued?.approval == null ? [] : issued.languages;
   const router = useRouter();
   const request = useRef(0);
   const busy = useRef(false);
@@ -117,8 +123,8 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
     if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
     void prepareRepositorySync({ slug }).then(
-      value => { if (request.current === id) setIssued(value === undefined ? { approval: null, unsent } : value); },
-      () => { if (request.current === id) setIssued({ approval: null, unsent }); },
+      value => { if (request.current === id) setIssued(value === undefined ? { approval: null, unsent, languages: [] } : value); },
+      () => { if (request.current === id) setIssued({ approval: null, unsent, languages: [] }); },
     );
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
@@ -275,7 +281,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       /*
         ⚠️ **결과 단계엔 설명문이 없다** — "리포를 읽어 덮는다"는 이미 답한 질문이다. 명시적 `undefined`라야 Radix가 없는 id를 걸지 않는다.
       */
-      aria-describedby={outcome !== null ? undefined : plan.atRisk ? `${describedId} ${warningId}` : describedId}
+      aria-describedby={outcome !== null ? undefined : [describedId, plan.atRisk ? warningId : null, languages.length > 0 ? languagesId : null].filter(Boolean).join(" ")}
       description={outcome !== null ? undefined : <span id={describedId}>{m.repositorySync.body(<span className="text-gray-strong">{branch}</span>)}</span>}
       actions={outcome !== null
         /* 결과를 받고 닫는 자리라 [Close] 하나이고 `primary`다(DESIGN §6.4 Modal 행). */
@@ -302,7 +308,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         ⚠️ `unconfirmed`엔 [Try again]이 없다 — 서버가 끝냈을 수 있어 다시 돌리지 않는다(malmoi#132).
         ⚠️ **본문은 표현식 하나다** — 형제 표현식이 둘이면 `children`이 배열이 되어 `DialogContent`가 빈 본문 블록(죽은 공간 32)을 세운다.
       */}
-      {outcome !== null ? <SyncResult outcome={outcome} slug={slug} branch={branch} onRetry={retry} /> : (plan.atRisk || slow || expired) && <>
+      {outcome !== null ? <SyncResult outcome={outcome} slug={slug} branch={branch} onRetry={retry} /> : (plan.atRisk || languages.length > 0 || slow || expired) && <>
       {/*
         ⚠️ **위험이 없으면 본문 자체가 없다** (시안 `4a`) — "없음"을 한 줄로 세우지 않는다: 부재가 곧
         정보다. `DialogContent`가 본문 없는 상태를 이미 그렇게 다룬다(빈 블록의 죽은 공간 32).
@@ -349,6 +355,11 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
                 </InlineLink></p>
             : null}
       </>}
+      {/*
+        ⚠️ **언어 변경은 셀 편집과 다른 블록이다** (시안 P4) — 편집은 "값이 바뀐다", 언어 변경은 "요청이 없어진다"라 한 수로 합치면("14 changes")
+        무엇을 잃는지 안 읽힌다. 손실이 큰 편집 블록 다음이고, 같은 amber · `compact` 형이다. 권유 줄(`Publish first`)은 편집을 위한 길이라 여기엔 없다.
+      */}
+      {languages.length > 0 && <LanguageBlock id={languagesId} languages={languages} />}
       {/* 지연 문구는 Dialog 안이다 — 띠가 걷혔다(DESIGN §6.644). 둘 다 판정이 아니다. */}
       {slow && <SlowLine />}
       {/* ⚠️ `status`다 — 포커스는 도는 확정 버튼에 머물러 있어, 알리지 않으면 스크린리더 사용자는 [Close]가 돌아온 것을 모른다. */}
@@ -356,4 +367,32 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       </>}
     </DialogContent>
   </Dialog>;
+}
+
+type LanguageChange = NonNullable<Awaited<ReturnType<typeof prepareRepositorySync>>>["languages"][number];
+
+/** 다섯을 넘으면 앞 넷 + `and N more`로 접는다(시안 P4) — 440 Dialog에서 목록이 확인 버튼을 밀어내지 않는다. */
+const LANGUAGE_LIMIT = 5;
+
+/**
+ * 승인하면 사라지는 언어 변경 — 언어마다 **Sync 뒤 결과** 한 줄이다(추가 중 → 추가되지 않고 값은 남는다 · 제거 중 → 그대로 남는다).
+ * 동작 배지(Adding·Removing)를 다시 쓰지 않는다 — Dialog 안에서는 결과가 읽혀야 한다. 소스가 둘 이상이면 줄이 소스를 함께 말한다.
+ */
+function LanguageBlock({ id, languages }: { id: string; languages: readonly LanguageChange[] }) {
+  const m = useMessages();
+  const s = m.repositorySync;
+  const sources = new Set(languages.map(change => change.surfaceSlug)).size;
+  const shown = languages.length > LANGUAGE_LIMIT ? languages.slice(0, LANGUAGE_LIMIT - 1) : languages;
+  return <Alert variant="warning" size="sm">
+    <div id={id} data-sync-languages className="space-y-1.5">
+      <p>{s.languagesDropped(languages.length)}</p>
+      <ul className="space-y-1">
+        {shown.map(change => {
+          const code = sources > 1 ? s.languageInSource(change.localeCode, change.surfaceSlug) : change.localeCode;
+          return <li key={`${change.surfaceSlug}\0${change.localeCode}`}>{change.operation === "ADD" ? s.languageNotAdded(code, change.translations) : s.languageNotRemoved(code)}</li>;
+        })}
+        {shown.length < languages.length && <li>{s.languagesMore(languages.length - shown.length)}</li>}
+      </ul>
+    </div>
+  </Alert>;
 }

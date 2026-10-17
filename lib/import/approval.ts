@@ -16,26 +16,41 @@ import { REPO_COLUMNS } from "@/lib/repo-host/target";
 export async function readDiscardApproval(
   db: Prisma.TransactionClient,
   input: { projectId: string; userId: string },
-): Promise<{ fingerprint: string; pending: { id: string; token: string }[]; localeChanges: LocaleChangeState[] }> {
+): Promise<{ fingerprint: string; pending: { id: string; token: string }[]; localeChanges: LocaleChangeState[]; languages: SyncLanguageChange[] }> {
   const repository = await db.project.findUniqueOrThrow({
     where: { id: input.projectId },
     select: { ...REPO_COLUMNS, baseBranch: true },
   });
   const surfaces = await db.translationSurface.findMany({
     where: { projectId: input.projectId, archivedAt: null },
-    select: { id: true, importRevision: true, adapterName: true, pathTemplate: true, baseLocale: true },
+    select: { id: true, slug: true, importRevision: true, adapterName: true, pathTemplate: true, baseLocale: true },
   });
   const pending = await loadPendingEdits(db, input.projectId);
-  const localeChanges = await readLocaleChangeStates(db, input.projectId);
-  return { fingerprint: discardFingerprint({ userId: input.userId, projectId: input.projectId, repository, surfaces, pending, localeChanges }), pending, localeChanges };
+  const states = await readLocaleStates(db, input.projectId);
+  const localeChanges = toChangeStates(states);
+  // 확인 Dialog가 무엇이 없어지는지 말하는 목록 — 지문과 **같은 읽기**에서 낸다(시안 P4). 화면이 따로 모으면 동료가 방금 낸 요청을 못 본 채 승인한다.
+  const slugs = new Map(surfaces.map(surface => [surface.id, surface.slug]));
+  const languages = states.flatMap(state => state.rows.map(row => ({
+    surfaceSlug: slugs.get(state.surfaceId) ?? "", localeCode: row.localeCode, operation: row.operation,
+    translations: row.operation === "ADD" ? state.valueCounts.get(row.localeCode) ?? 0 : 0,
+  }))).sort((a, b) => compare(a.surfaceSlug, b.surfaceSlug) || compare(a.localeCode, b.localeCode));
+  return { fingerprint: discardFingerprint({ userId: input.userId, projectId: input.projectId, repository, surfaces, pending, localeChanges }), pending, localeChanges, languages };
 }
+
+/** 수동 Sync가 버리는 언어 변경 하나 — 소스 slug · 코드 · 종류 · 추가 언어의 값 있는 번역 수(Sync 뒤 Inactive로 남는다). 제거는 0이다. */
+export type SyncLanguageChange = { surfaceSlug: string; localeCode: string; operation: "ADD" | "REMOVE"; translations: number };
+
+const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * 승인 지문이 묶는 **언어 변경 상태** — 활성 소스 중 의도 행이나 비지 않은 전달 목록이 있는 것만(`readLocaleStates`). 수동 Sync와 소스 제거가 같은
  * 읽기를 쓴다 — 둘 다 의도를 지우므로 승인 대상이다(locale-add design §4). 비면 언어 변경이 없다.
  */
 export async function readLocaleChangeStates(db: Prisma.TransactionClient, projectId: string, surfaceId?: string): Promise<LocaleChangeState[]> {
-  const states = await readLocaleStates(db, projectId, surfaceId);
+  return toChangeStates(await readLocaleStates(db, projectId, surfaceId));
+}
+
+function toChangeStates(states: Awaited<ReturnType<typeof readLocaleStates>>): LocaleChangeState[] {
   return states.map(state => ({
     surfaceId: state.surfaceId,
     rows: state.rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt.toISOString() })),

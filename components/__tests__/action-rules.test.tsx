@@ -81,7 +81,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   mocks.checkOpenPullRequest.mockResolvedValue(null);
   mocks.listProjectBranches.mockResolvedValue({ ok: true, names: ["main"], defaultBranch: "main", truncated: false });
-  mocks.prepareRepositorySync.mockResolvedValue({ approval: "digest-1", unsent: 0 });
+  mocks.prepareRepositorySync.mockResolvedValue({ approval: "digest-1", unsent: 0, languages: [] });
   mocks.preview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "a", after: "b" }], confirmation: "f".repeat(64) });
 });
 
@@ -281,7 +281,7 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
   },
   {
     name: "Sync 확인 — Publish first (문장 안)", file: SYNC_FILE, ui: () => <Sync unsent={3} />,
-    open: async () => { mocks.prepareRepositorySync.mockResolvedValue({ approval: "digest-1", unsent: 3 }); await click(buttonByText("Sync")); },
+    open: async () => { mocks.prepareRepositorySync.mockResolvedValue({ approval: "digest-1", unsent: 3, languages: [] }); await click(buttonByText("Sync")); },
   },
   { name: "번역 화면 — 코드 참조", file: "components/translations/workspace/locale-panel.tsx", ui: () => <TranslationWorkspace {...workspaceProps()} /> },
   { name: "GitLab PAT 입력 — 토큰 만들기", file: "components/gitlab/token-form.tsx", ui: () => <GitLabTokenForm submitLabel="Connect" onConnected={() => {}} /> },

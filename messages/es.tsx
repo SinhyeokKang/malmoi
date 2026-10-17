@@ -74,6 +74,12 @@ export const es = {
     sendHint: (n: number, link: ReactNode): ReactNode => <>Para {n === 1 ? "conservarla" : "conservarlas"}, usa {link}: abre la pantalla de traducción.</>,
     nothingUnsent: "No hay nada que enviar — todas las ediciones ya se enviaron.",
     seeOpen: "Ver qué está abierto",
+    languagesDropped: (n: number): string => `Se descartará${n === 1 ? "" : "n"} ${n.toLocaleString("es")} ${n === 1 ? "cambio de idioma" : "cambios de idioma"}.`,
+    languageNotAdded: (code: string, translations: number): string =>
+      translations === 0 ? `${code} no se añadirá.` : `${code} no se añadirá. ${translations === 1 ? "Su traducción se conserva" : `Sus ${translations.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
+    languageNotRemoved: (code: string): string => `${code} no se quitará. Se queda en esta fuente.`,
+    languageInSource: (code: string, source: string): string => `${code} (${source})`,
+    languagesMore: (n: number): string => `y ${n.toLocaleString("es")} más`,
     completed: (n: number, branch: string): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"} desde ${branch}`,
     syncedKeys: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"}`,
     unreadable: (n: number): string => `No pudimos leer ${n.toLocaleString("es")} ${n === 1 ? "fuente" : "fuentes"}`,

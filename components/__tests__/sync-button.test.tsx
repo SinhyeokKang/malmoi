@@ -33,7 +33,7 @@ async function closeResult() {
   await vi.waitFor(() => expect(dialog()?.querySelector("footer button")?.textContent).toBe("Close"));
   await act(async () => userEvent.setup().click(dialog()!.querySelector<HTMLButtonElement>("footer button")!));
 }
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.run.mockResolvedValue(success); mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0 }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.run.mockResolvedValue(success); mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0, languages: [] }); });
 
 it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확인을 거친다", async () => {
   const view = await render(<SyncButton {...props} role="EDITOR" />);
@@ -70,7 +70,7 @@ it("조용한 갈래는 제목과 설명문뿐이고 포커스가 Cancel에 선�
  */
 it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", async () => {
   mocks.pr.mockResolvedValue({ number: 42, url: "https://github.com/o/r/pull/42" });
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 7 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 7, languages: [] });
   const view = await render(<SyncButton {...props} unsent={7} />);
   await click("Sync");
   const described = (dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
@@ -84,7 +84,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   await click("Cancel");
   await view.rerender(<SyncButton {...props} unsent={0} />);
   mocks.pr.mockResolvedValue(null);
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0, languages: [] });
   await click("Sync");
   await vi.waitFor(() => expect((dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean)).toHaveLength(1));
   const only = dialog()?.getAttribute("aria-describedby") ?? "";
@@ -145,7 +145,7 @@ it("PR 실패도 미확인이고 닫기→재열기에서는 늦은 이전 응�
  */
 it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면 링크다", async () => {
   mocks.pr.mockResolvedValue({ number: 42, url: "https://github.com/o/r/pull/42" });
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 7 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 7, languages: [] });
   await render(<SyncButton {...props} unsent={7} />); await click("Sync");
   const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
   expect(lines).toHaveLength(2);
@@ -159,7 +159,7 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
 /** 번역 화면 안의 [Sync]는 표면을 넘기지 않는다 — 그때는 옛 경로(기본 표면 redirect)로 남는다. */
 it("표면을 모르면 권유 링크가 옛 번역 경로다", async () => {
   const { surfaceSlug: _, ...rest } = props;
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 7 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 7, languages: [] });
   await render(<SyncButton {...rest} unsent={7} />); await click("Sync");
   expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Publish first");
 });
@@ -311,7 +311,7 @@ it("권한 변경으로 트리거가 사라지면 Home의 대체 포커스로 �
  * 서버가 잠금 뒤 재계산해 대조하므로 Dialog 뒤 새 편집·설정 변경이 있으면 거기서 reconfirm이 된다.
  */
 it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실패면 null을 보내 서버가 재확인을 요구하게 둔다", async () => {
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 2 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 2, languages: [] });
   await render(<SyncButton {...props} unsent={2} />);
   await click("Sync");
   await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledWith({ slug: "acme" }));
@@ -330,7 +330,7 @@ it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실�
  * **문장을 늘리지 않고 교체한다** (sync-edit-protection T13 — DESIGN §6.2). 경고 블록이 폐기를 한 번 말하고, 같은 사실을 두 번 말하지 않는다.
  */
 it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 말한다 — 취소하면 아무것도 안 부른다", async () => {
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 3 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 3, languages: [] });
   await render(<SyncButton {...props} unsent={3} />);
   await click("Sync");
   const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
@@ -343,7 +343,7 @@ it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 �
 
 /** 단수면 대명사도 단수다 — "1 unsent translation change and replace them"이었다(런타임 QA 2026-09-29). */
 it("미전달 편집이 하나면 경고 줄의 대명사가 it이다", async () => {
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1, languages: [] });
   await render(<SyncButton {...props} unsent={1} />);
   await click("Sync");
   const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
@@ -367,7 +367,7 @@ it("지문 도착 전 확정은 aria-disabled + 스피너이고 눌러도 Action
   await click("Discard changes and sync");
   expect(mocks.run).not.toHaveBeenCalled();
   expect(dialog()).not.toBeNull();
-  await act(async () => issued.resolve({ approval: "digest-late", unsent: 2 }));
+  await act(async () => issued.resolve({ approval: "digest-late", unsent: 2, languages: [] }));
   expect(button("Discard changes and sync").getAttribute("aria-disabled")).not.toBe("true");
   await click("Discard changes and sync");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-late" });
@@ -379,7 +379,7 @@ it("지문 도착 전 확정은 aria-disabled + 스피너이고 눌러도 Action
  * 정상 승인으로 받아 3건을 조용히 덮는다. 번역 화면의 [Sync]도 같은 컴포넌트라 같이 막힌다.
  */
 it("화면 0건·서버 3건이면 서버 건수로 폐기를 경고하고 그 지문을 싣는다", async () => {
-  mocks.prepare.mockResolvedValue({ approval: "fp-with-3", unsent: 3 });
+  mocks.prepare.mockResolvedValue({ approval: "fp-with-3", unsent: 3, languages: [] });
   await render(<SyncButton {...props} unsent={0} />);
   await click("Sync");
   await vi.waitFor(() => expect(button("Discard changes and sync").getAttribute("aria-disabled")).not.toBe("true"));
@@ -391,7 +391,7 @@ it("화면 0건·서버 3건이면 서버 건수로 폐기를 경고하고 그 �
 
 /** 짝 — 화면이 낡아 7건이라 말해도 서버가 0건이면 지울 것이 없다. 폐기 문구를 세우지 않고 일반 Sync로 간다. */
 it("화면 7건·서버 0건이면 일반 Sync 확인이고 그 지문을 싣는다", async () => {
-  mocks.prepare.mockResolvedValue({ approval: "fp-with-0", unsent: 0 });
+  mocks.prepare.mockResolvedValue({ approval: "fp-with-0", unsent: 0, languages: [] });
   await render(<SyncButton {...props} unsent={7} />);
   await click("Sync");
   await vi.waitFor(() => expect(button("Sync from repository").getAttribute("aria-disabled")).not.toBe("true"));
@@ -410,12 +410,12 @@ it("닫고 다시 열면 늦게 온 이전 응답을 쓰지 않고 새 응답의
   mocks.prepare.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
   await render(<SyncButton {...props} unsent={0} />);
   await click("Sync"); await click("Cancel"); await click("Sync");
-  await act(async () => first.resolve({ approval: "fp-old", unsent: 5 }));
+  await act(async () => first.resolve({ approval: "fp-old", unsent: 5, languages: [] }));
   expect(dialog()?.textContent).not.toContain("5 unsent");
   expect(button("Sync from repository").getAttribute("aria-disabled")).toBe("true");
   await click("Sync from repository");
   expect(mocks.run).not.toHaveBeenCalled();
-  await act(async () => second.resolve({ approval: "fp-new", unsent: 1 }));
+  await act(async () => second.resolve({ approval: "fp-new", unsent: 1, languages: [] }));
   expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("Sync will discard 1 unsent edit");
   await click("Discard changes and sync");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "fp-new" });

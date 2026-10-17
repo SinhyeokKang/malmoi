@@ -54,7 +54,7 @@ import {
   type SampleRow,
 } from "@/lib/onboarding/detect";
 import { redrawIfArchived, settleRevalidate } from "@/lib/revalidate-after-commit";
-import { prepareSync } from "@/lib/import/prepare";
+import { prepareSync, type PreparedSync } from "@/lib/import/prepare";
 import { checkRepoAccess, type OnboardFailure } from "@/lib/onboarding-run/access";
 import { addSources, AddSurfacesInput, type AddSurfacesResult } from "@/lib/onboarding-run/add";
 import { listLinkedBranches, listNewRepoBranches, type BranchesResult, type ProjectBranchesResult } from "@/lib/onboarding-run/branches";
@@ -886,7 +886,7 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
  * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 본체는 공유
  * 코어 `prepareSync`다 — 원문 비노출·`undefined` 실패 계약이 거기 있다.
  */
-export async function prepareRepositorySync(raw: { slug: string }): Promise<{ approval: string; unsent: number } | undefined> {
+export async function prepareRepositorySync(raw: { slug: string }): Promise<PreparedSync | undefined> {
   const parsed = SlugOnlyInput.safeParse(raw);
   if (!parsed.success) return undefined;
   const session = await readSession();

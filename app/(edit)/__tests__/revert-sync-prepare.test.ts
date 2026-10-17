@@ -51,7 +51,8 @@ beforeEach(() => {
   hoisted.revalidatePath.mockReset();
   hoisted.previewKeyRevert.mockReset().mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "b", after: "a" }], confirmation: CONFIRMATION });
   hoisted.executeKeyRevert.mockReset().mockResolvedValue({ status: "reverted", cells: [{ localeCode: "ko", value: "a" }] });
-  hoisted.readDiscardApproval.mockReset().mockResolvedValue({ fingerprint: "f".repeat(64), pending: [{ id: "t1", token: "raw" }, { id: "t2", token: "raw2" }] });
+  hoisted.readDiscardApproval.mockReset().mockResolvedValue({ fingerprint: "f".repeat(64), pending: [{ id: "t1", token: "raw" }, { id: "t2", token: "raw2" }],
+    languages: [{ surfaceSlug: "web", localeCode: "de", operation: "REMOVE", translations: 0 }] });
 });
 
 describe("previewTranslationRevert", () => {
@@ -115,7 +116,8 @@ describe("prepareRepositorySync", () => {
   it("OWNER에게 지문과 건수만 준다 — 토큰 원문은 응답에 없다", async () => {
     const result = await prepareRepositorySync({ slug: "acme" });
     expect(hoisted.readDiscardApproval).toHaveBeenCalledExactlyOnceWith(hoisted.prisma, { projectId: "p1", userId: "u-owner" });
-    expect(result).toEqual({ approval: "f".repeat(64), unsent: 2 });
+    // 언어 변경 목록은 지문과 같은 읽기에서 그대로 간다(시안 P4) — 토큰 원문은 여전히 없다.
+    expect(result).toEqual({ approval: "f".repeat(64), unsent: 2, languages: [{ surfaceSlug: "web", localeCode: "de", operation: "REMOVE", translations: 0 }] });
     expect(JSON.stringify(result)).not.toContain("raw");
     expect(hoisted.revalidatePath).not.toHaveBeenCalled();
   });

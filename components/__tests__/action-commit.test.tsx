@@ -82,7 +82,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
   */
   it("Sync 성공: refresh를 부르지 않고 결과는 호스트에 닿는다", async () => {
     mocks.checkOpenPullRequest.mockResolvedValue(null);
-    mocks.prepareRepositorySync.mockResolvedValue({ approval: "d", unsent: 0 });
+    mocks.prepareRepositorySync.mockResolvedValue({ approval: "d", unsent: 0, languages: [] });
     mocks.runRepositoryImport.mockResolvedValue({ ok: true, remainingEdits: 0, surfaces: [] });
     function Host() {
       const [open, setOpen] = useState(false);
