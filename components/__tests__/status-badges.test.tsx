@@ -59,7 +59,8 @@ it.each([false, true])("로케일 orphaned=%s도 코드·국기와 접근 설명
   const visibleCode = [...pill.children].find(node => node.textContent === "fr");
   expect(visibleCode).toBeDefined();
   expect(visibleCode?.classList.contains("sr-only")).toBe(false);
-  expect(pill.querySelector(".sr-only")?.textContent ?? null).toBe(orphaned ? en.locales.orphaned.badge : null);
+  // Sources의 사라진 언어 배지와 같은 원인 중립 낱말이다 — 같은 상태를 화면마다 다르게 부르지 않는다(locale-add R-E0 Y4).
+  expect(pill.querySelector(".sr-only")?.textContent ?? null).toBe(orphaned ? "Inactive" : null);
   expect(pill.classList.contains(orphaned ? "bg-destructive/8" : "bg-foreground/5")).toBe(true);
   expect(pill.classList.contains("gap-1")).toBe(true);
 });
