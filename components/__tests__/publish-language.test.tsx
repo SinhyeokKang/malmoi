@@ -206,6 +206,14 @@ describe("Publish 미리보기 — ⑥ locale-plan-refused", () => {
     expect(button("Close")).toBeDefined();
   });
 
+  it("소유 소스를 모르는 경로 충돌은 중복 문장으로 떨어지지 않는다", async () => {
+    mocks.preview.mockResolvedValue({ ...refused, plan: { ...refused.plan, ownerSlug: null } });
+    await render(<Host />); await click("Publish");
+    const text = modal().textContent ?? "";
+    expect(text).toContain("Malmoi can't plan the language files for web. apps/web/i18n/fr.json belongs to another source.");
+    expect(text).not.toContain("Two languages");
+  });
+
   it("EDITOR — Close 하나", async () => {
     mocks.preview.mockResolvedValue(refused);
     await render(<Host role="EDITOR" />); await click("Publish");
