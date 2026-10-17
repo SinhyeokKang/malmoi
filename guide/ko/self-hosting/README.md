@@ -39,4 +39,4 @@ Linux 서버 한 대에서 Docker Compose로 Malmoi를 직접 운영할 수 있�
 
 GitHub 리포지토리의 워크플로는 `SinhyeokKang/malmoi`의 상류 action 태그 `malmoi-i18n-push-v3`를 실행하고, 그 단계에 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어갑니다. 이 태그가 가리키는 커밋은 설치한 버전과 상관없이 바뀔 수 있습니다. 받아들일 수 없다면 상류 리포지토리를 포크해 `uses:`를 포크의 커밋 SHA로 고정하세요.
 
-GitLab CI 작업은 상류 태그 `malmoi-i18n-push-gitlab-v1`을 받고, 해당 커밋이 생성된 설정의 `MALMOI_I18N_PUSH_SHA`와 같은지 확인한 뒤 `PUSH_TOKEN`으로 동기화 스크립트를 실행합니다. SHA 검사를 유지하세요. `PUSH_TOKEN`은 보호·마스킹된 CI 변수로 저장하고 기준 브랜치를 보호하세요. 러너는 스크립트를 받을 GitHub와 업데이트를 보낼 설치본에 모두 접근할 수 있어야 합니다.
+GitLab CI 작업은 상류 태그 `malmoi-i18n-push-gitlab-v2`을 받고, 해당 커밋이 생성된 설정의 `MALMOI_I18N_PUSH_SHA`와 같은지 확인한 뒤 `PUSH_TOKEN`으로 동기화 스크립트를 실행합니다. SHA 검사를 유지하세요. `PUSH_TOKEN`은 보호·마스킹된 CI 변수로 저장하고 기준 브랜치를 보호하세요. 러너는 스크립트를 받을 GitHub와 업데이트를 보낼 설치본에 모두 접근할 수 있어야 합니다.
