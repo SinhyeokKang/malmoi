@@ -2082,7 +2082,8 @@ export const es = {
       removeFailed: (code: string): string => `No pudimos quitar ${code}. No se cambió nada.`,
       removeUnconfirmed: (code: string): string => `No pudimos confirmar si se quitó ${code}. La lista muestra el estado actual.`,
       removeRequested: (code: string): string => `Quitando ${code}. Al publicar se quita su archivo del repositorio.`,
-      cancelAddDone: (code: string, n: number): string => `${code} está inactivo. ${n === 1 ? "Su traducción se conserva" : `Sus ${n.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
+      cancelAddDone: (code: string, n: number): string => `${code} está inactivo. ${n === 0 ? "No tiene traducciones."
+        : `${n === 1 ? "Su traducción se conserva" : `Sus ${n.toLocaleString("es")} traducciones se conservan`} en Malmoi.`}`,
       onGitLab: {
         notConfirmed: "Sin confirmar en la merge request",
         readOnlyDelivered: "Solo lectura hasta que se fusione la merge request o se cancele la eliminación.",

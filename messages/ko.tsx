@@ -2075,7 +2075,7 @@ export const ko = {
       removeFailed: (code: string): string => `${code} 언어를 제거하지 못했습니다. 바뀐 것은 없습니다.`,
       removeUnconfirmed: (code: string): string => `${code} 언어가 제거되었는지 확인하지 못했습니다. 목록은 현재 상태입니다.`,
       removeRequested: (code: string): string => `${code} 언어를 제거 중입니다. 게시하면 리포지토리에서 파일이 제거됩니다.`,
-      cancelAddDone: (code: string, n: number): string => `${code} 언어는 비활성 상태입니다. 번역 ${n.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`,
+      cancelAddDone: (code: string, n: number): string => `${code} 언어는 비활성 상태입니다. ${n === 0 ? "번역이 없습니다." : `번역 ${n.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`}`,
       onGitLab: {
         notConfirmed: "MR 반영 여부 확인 안 됨",
         readOnlyDelivered: "MR이 머지되거나 제거가 취소될 때까지 읽기 전용입니다.",

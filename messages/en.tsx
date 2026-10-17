@@ -3785,7 +3785,9 @@ export const en = {
       removeUnconfirmed: (code: string): string => `We couldn't confirm whether ${code} was removed. The list shows the current state.`,
       /** 제거 요청 성공 — 행은 제자리에 Removing으로 남는다. 리포 파일은 Publish 뒤에 사라진다. */
       removeRequested: (code: string): string => `Removing ${code}. Publishing removes its file from the repository.`,
-      cancelAddDone: (code: string, n: number): string => `${code} is inactive. Its ${n.toLocaleString("en-US")} ${n === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+      /** 보존할 번역이 없으면(0) 보존을 말하지 않는다 — `orphanStripRest`와 같은 문장이다(#288). */
+      cancelAddDone: (code: string, n: number): string => `${code} is inactive. ${n === 0 ? "It has no translations."
+        : `Its ${n.toLocaleString("en-US")} ${n === 1 ? "translation is" : "translations are"} kept in Malmoi.`}`,
       onGitLab: {
         notConfirmed: "Not confirmed in the merge request",
         readOnlyDelivered: "Read-only until the merge request is merged or the removal is cancelled.",
