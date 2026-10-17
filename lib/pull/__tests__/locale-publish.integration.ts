@@ -533,7 +533,8 @@ describe("언어 계획 거부 코드", () => {
     const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
     fake(files);
     const { loadPreview } = await import("@/lib/publish/load-preview");
-    expect(await loadPreview(prisma, { userId: "owner" }, { slug: "fixture" })).toMatchObject({ status: "refused", reason: "locale-plan-refused", path: "i18n/fr.json", branch: "main" });
+    expect(await loadPreview(prisma, { userId: "owner" }, { slug: "fixture" })).toMatchObject({ status: "refused", reason: "locale-plan-refused", path: "i18n/fr.json", branch: "main",
+      plan: { refusal: "path-conflict", surfaceSlug: WEB.surfaceSlug, localeCode: "fr", ownerSlug: "other" } });
     const made = fake(files);
     expect(await publish()).toMatchObject({ status: "failed", code: "locale-plan-refused", retryable: false });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);

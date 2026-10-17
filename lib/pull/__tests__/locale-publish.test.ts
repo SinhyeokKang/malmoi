@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
+import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, localeNotesOf, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { reachedRepository } from "@/lib/locales/reached";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
@@ -98,6 +98,8 @@ describe("planProjectLocales — 의도 × base 트리 (design §2·§4)", () =>
   it("값 있는 ADD는 create, 값 0개 ADD는 파일을 내지 않는다", () => {
     const plan = planProjectLocales(formats(changes([["fr", "ADD"], ["de", "ADD"]], [], [["fr", 1]]), ["en", "ko", "fr", "de"]), entries(["i18n/en.json", "i18n/ko.json"]));
     expect(plan).toMatchObject({ ok: true, plan: { surfaces: [{ exclude: ["de"], creates: [{ localeCode: "fr", path: "i18n/fr.json" }], empty: ["de"] }] } });
+    // 화면이 빈 추가를 그 파일 행(`Not included`)으로 말한다(시안 P1 ③) — 경로는 같은 템플릿 판정에서 온다.
+    expect(plan.ok && localeNotesOf(plan.plan)).toEqual({ withheld: [], empty: [{ surfaceSlug: "default", localeCode: "de", path: "i18n/de.json" }] });
   });
 
   it("미전달 ADD의 경로가 base에 이미 있으면 그 언어만 보류한다(proposal-path-exists)", () => {
@@ -163,14 +165,24 @@ describe("withdrawnLocalesOf — 전달됐는데 이번 스냅샷이 싣지 않�
     surfaces: Object.entries(captured).map(([surfaceId, effects]) => ({ surfaceId, surfaceSlug: surfaceId, exclude: [], creates: [], deletes: [], withheld: [], empty: [], captured: effects })),
   });
 
+  it("거둘 효과는 그 소스 템플릿의 경로를 싣는다 — 화면이 파일 행(`Taken back from #N`)으로 말한다(시안 P1 ④)", () => {
+    expect(withdrawnLocalesOf(NO_LOCALE_PLAN, [
+      { ...surface("s1", "app", changes([], [{ localeCode: "fr", effect: "create" }])), pathTemplate: "apps/web/locales/{locale}.json" },
+      surface("s2", "web", changes([], [{ localeCode: "ko", effect: "delete" }])),
+    ])).toEqual([
+      { surfaceSlug: "app", localeCode: "fr", effect: "create", path: "apps/web/locales/fr.json" },
+      { surfaceSlug: "web", localeCode: "ko", effect: "delete", path: null },
+    ]);
+  });
+
   it("전달된 제거·추가를 취소(행 없음) → 그 delete·create를 거둔다 — 소스·코드순", () => {
     expect(withdrawnLocalesOf(NO_LOCALE_PLAN, [
       surface("s2", "web", changes([], [{ localeCode: "ko", effect: "delete" }])),
       surface("s1", "app", changes([], [{ localeCode: "fr", effect: "create" }, { localeCode: "de", effect: "delete" }])),
     ])).toEqual([
-      { surfaceSlug: "app", localeCode: "de", effect: "delete" },
-      { surfaceSlug: "app", localeCode: "fr", effect: "create" },
-      { surfaceSlug: "web", localeCode: "ko", effect: "delete" },
+      { surfaceSlug: "app", localeCode: "de", effect: "delete", path: null },
+      { surfaceSlug: "app", localeCode: "fr", effect: "create", path: null },
+      { surfaceSlug: "web", localeCode: "ko", effect: "delete", path: null },
     ]);
   });
 
@@ -181,7 +193,7 @@ describe("withdrawnLocalesOf — 전달됐는데 이번 스냅샷이 싣지 않�
 
   it("값을 비운 전달된 추가(캡처 없음)는 그 create를 거둔다", () => {
     expect(withdrawnLocalesOf(planOf({ s1: [] }), [surface("s1", "app", changes([["fr", "ADD"]], [{ localeCode: "fr", effect: "create" }]))]))
-      .toEqual([{ surfaceSlug: "app", localeCode: "fr", effect: "create" }]);
+      .toEqual([{ surfaceSlug: "app", localeCode: "fr", effect: "create", path: null }]);
   });
 
   it("확인 안 됨(null)·빈 전달 목록·언어 상태 없는 소스는 거둘 것이 없다", () => {
@@ -666,6 +678,8 @@ describe("결정적 언어 계획 거부 (R-B2 🟡 Y2)", () => {
     const error = await runPull(deps({ ...state(), surfaces }, made).deps).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(LocalePlanRefused);
     expect(error).toMatchObject({ code: "locale-plan-refused", path: "i18n/ko.json", branch: "dev", refusal: "path-conflict" });
+    // 화면이 고칠 자리를 말한다(시안 P1 ⑥) — 어느 소스의 어느 언어가 어느 소스의 경로에 닿았나. 소유 판정은 계획이 쓴 경로 목록 그대로다.
+    expect(error).toMatchObject({ surfaceSlug: "default", localeCode: "ko", ownerSlug: "other" });
     expect(classifySyncError(error)).toMatchObject({ code: "locale-plan-refused", retryable: false });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
