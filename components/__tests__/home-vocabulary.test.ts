@@ -236,6 +236,9 @@ const NOT_A_COUNT: Record<string, string> = {
   "home.meta.pr": "PR 번호 — 같은 이유다",
   "translations.publish.prOpen.title": "PR 번호",
   "translations.publish.replacePr": "PR 번호",
+  // 언어 변경 Publish(locale-add 시안 P1) — 수는 PR/MR 번호 하나다.
+  "translations.publish.language.introOpen": "PR 번호",
+  "translations.publish.language.updatedDescription": "PR 번호",
   "translations.publish.tellReviewer": "PR 번호",
   "translations.publish.closedPr.line": "PR 번호",
   "translations.publish.closedPr.view": "PR 번호",

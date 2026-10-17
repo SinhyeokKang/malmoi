@@ -17,12 +17,18 @@ export function planPublishView(outcome: PullOutcome): PublishView {
     default: { const exhaustive: never = outcome; return exhaustive; }
   }
 }
-/** @param pausedReason 꺼진 원인을 호출부가 알 때의 사유 — 번역 화면의 연결 끊김(malmoi#160). 없으면 원인 없는 `paused`다. */
-export function planPublishButton(m: Messages, { count, paused, otherPending, publishPending, pausedReason }: { count: number; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
+/**
+ * @param pausedReason 꺼진 원인을 호출부가 알 때의 사유 — 번역 화면의 연결 끊김(malmoi#160). 없으면 원인 없는 `paused`다.
+ * @param languageWork 언어 변경 작업 수(`countLocaleWork` — 미리보기가 거둘·보낼 파일과 같은 상태). 셀 편집이 0이어도 이게 있으면 Publish가 할 일이 있다
+ *   (locale-add 시안 P1 ①④⑤) — 배지는 셀 수 그대로라 서지 않고, 켜진 이유를 `hint`가 sr로 말한다.
+ */
+export function planPublishButton(m: Messages, { count, languageWork = 0, paused, otherPending, publishPending, pausedReason }: { count: number; languageWork?: number; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
+  const nothing = count === 0 && languageWork === 0;
   return { mode: publishPending ? "progress" as const : "preview" as const,
-    disabled: !publishPending && (count === 0 || paused || otherPending),
+    disabled: !publishPending && (nothing || paused || otherPending),
     badge: !publishPending && count > 0 ? count : null,
-    hint: count === 0 ? m.translations.publish.nothing : paused || otherPending ? pausedReason ?? m.translations.publish.paused : "" };
+    hint: nothing ? m.translations.publish.nothing : paused || otherPending ? pausedReason ?? m.translations.publish.paused
+      : count === 0 && !publishPending ? m.translations.publish.language.ready : "" };
 }
 
 /**

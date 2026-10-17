@@ -3063,11 +3063,31 @@ export const en = {
               {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}.
             </>
           ),
+          languageBody: (n: number, files: number): ReactNode => (
+            <>
+              A second merge request isn&apos;t opened. !{n} will hold{" "}
+              <span className="text-foreground">everything unsent</span>, not just{" "}
+              {files === 1 ? "this language change" : `these ${files.toLocaleString("en-US")} language changes`}.
+            </>
+          ),
         },
         prNone: { title: (repo: string): string => `A new merge request opens on ${repo}` },
         prUnknown: { title: "Couldn't check for an open merge request" },
         openPr: "Open merge request",
         replacePr: (n: number): string => `Replace merge request !${n}`,
+        language: {
+          intro: (repo: string): string => `Goes to ${repo} as one merge request.`,
+          introOpen: (repo: string, n: number): string => `Goes to ${repo} in merge request !${n}.`,
+          held: (code: string, branch: string): string =>
+            `This file is already on ${branch}. After the open merge request closes, ${code} becomes active at the next publish or nightly check.`,
+          expiring: {
+            addNotReached: (code: string): string => `${code} wasn't added — its merge request closed without merging. Its translations stay in Malmoi.`,
+            removeNotReached: (code: string): string => `${code} wasn't removed — its merge request closed without merging. It stays in this source.`,
+          },
+          createdDescription: "The language changes are in a merge request. They reach the product once someone on the team merges it.",
+          updatedDescription: (n: number): string =>
+            `!${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
+        },
         progressDescription: "Writing the translation files and opening a merge request. This usually takes a few seconds.",
         progress: (branch: string): readonly string[] => ["Rendering the translation files", `Committing to ${branch}`, "Opening the merge request"],
         createdDescription: (n: number): string =>
@@ -3194,6 +3214,14 @@ export const en = {
             {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}.
           </>
         ),
+        /** 번역 변경 0 · 언어 파일 변경만 (locale-add 시안 P1 ① — 결정 D10). 언어 파일 변경 수로 센다 — "these 0"이 서지 않는다. */
+        languageBody: (n: number, files: number): ReactNode => (
+          <>
+            A second pull request isn&apos;t opened. #{n} will hold{" "}
+            <span className="text-foreground">everything unsent</span>, not just{" "}
+            {files === 1 ? "this language change" : `these ${files.toLocaleString("en-US")} language changes`}.
+          </>
+        ),
       },
       prNone: {
         title: (repo: string): string => `A new pull request opens on ${repo}`,
@@ -3201,6 +3229,11 @@ export const en = {
           changes === 1
             ? "Nothing is open right now, so this change goes out on its own."
             : `Nothing is open right now, so these ${changes.toLocaleString("en-US")} changes go out on their own.`,
+        /** 번역 변경 0 · 언어 파일 변경만 (시안 P1 ① — D10). 호스트 낱말이 없어 GitLab 덮기가 없다. */
+        languageBody: (files: number): string =>
+          files === 1
+            ? "Nothing is open right now, so this language change goes out on its own."
+            : `Nothing is open right now, so these ${files.toLocaleString("en-US")} language changes go out on their own.`,
       },
       prUnknown: {
         title: "Couldn't check for an open pull request",
@@ -3208,6 +3241,74 @@ export const en = {
       },
       openPr: "Open pull request",
       replacePr: (n: number): string => `Replace pull request #${n}`,
+      /**
+       * **언어 변경의 Publish** (locale-add 시안 P1). 번역 변경이 0이고 파일만 바뀌면 `Publish 0 changes`가 할 일이 없다고 읽혀 제목·바닥·PR 줄이
+       * 파일로 말한다. 파일 머리 오른쪽 낱말은 그 파일에 생기는 일이다 — 새 배지가 아니라 `fileSummary`·`otherFile.label` 자리다.
+       * ⚠️ 삭제 파일의 번역을 전달 수에 더하지 않는다 — 번역은 Malmoi에 남는다(`removedBody`).
+       */
+      language: {
+        title: "Publish language changes",
+        progressTitle: "Publishing language changes",
+        intro: (repo: string): string => `Goes to ${repo} as one pull request.`,
+        introOpen: (repo: string, n: number): string => `Goes to ${repo} in pull request #${n}.`,
+        /** 파일 수 조각 — 설명문에서 번역 수 뒤(`, 1 file added.`)나 홀로(`1 file removed.`) 선다. */
+        files: (added: number, removed: number): string => {
+          const word = (n: number) => `${n.toLocaleString("en-US")} ${n === 1 ? "file" : "files"}`;
+          return added > 0 && removed > 0 ? `${word(added)} added, ${removed.toLocaleString("en-US")} removed` : added > 0 ? `${word(added)} added` : `${word(removed)} removed`;
+        },
+        countsWithFiles: (n: number, keys: number, files: string): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} in ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}, ${files}.`,
+        leftOut: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language is" : "languages are"} left out.`,
+        summary: (files: number): string => `0 changes \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`,
+        takenBackSummary: (n: number, files: number): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"} taken back`,
+        /** 파일 diff 0 · 전달된 언어 변경을 거둔다(시안 P1 ④⑤) — 제목은 `same.closeAction`이다. `pr`은 호스트 표기(`#128`·`!128`). */
+        takenBackDescription: (pr: string, branch: string, what: "adding" | "removing" | "several"): string =>
+          `Nothing differs from ${branch} anymore. Closing ${pr} takes back ${what === "several" ? "the files it was changing" : `the file it was ${what}`}.`,
+        label: {
+          newFile: "New file",
+          updated: "Updated",
+          removed: "Removed",
+          notIncluded: "Not included",
+          held: "Held",
+          takenBack: (pr: string | null): string => (pr === null ? "Taken back" : `Taken back from ${pr}`),
+        },
+        removed: "Translations stay in Malmoi.",
+        notIncluded: (code: string): string => `${code} has no translations yet, so no file is created. It goes out once it has one.`,
+        /** 보류(`proposal-path-exists`)는 열린 PR이 있을 때만 생긴다 — 수동 Sync를 권하지 않는다(그건 다른 편집까지 버린다). */
+        held: (code: string, branch: string): string =>
+          `This file is already on ${branch}. After the open pull request closes, ${code} becomes active at the next publish or nightly check.`,
+        takenBack: {
+          create: (code: string, pr: string | null): string =>
+            `${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file it adds comes out. Translations stay in Malmoi.`,
+          delete: (code: string, pr: string | null): string =>
+            `Removing ${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file stays in the repository.`,
+        },
+        /** 이 Publish가 먼저 정리할 언어 요청(#267 — R-F2b) — 그 언어를 이름으로 말한다. 리포가 요청대로인지가 갈린다(`reachedRepository`). */
+        expiring: {
+          addReached: (code: string): string => `${code} is already in the repository, so its request is closed.`,
+          addNotReached: (code: string): string => `${code} wasn't added — its pull request closed without merging. Its translations stay in Malmoi.`,
+          removeReached: (code: string): string => `${code} is already gone from the repository, so its request is closed.`,
+          removeNotReached: (code: string): string => `${code} wasn't removed — its pull request closed without merging. It stays in this source.`,
+        },
+        /** 결정적 언어 계획 거부(시안 P1 ⑥) — 다시 받아도 같다. Try again이 없고 고칠 자리(소스 상세)로 보낸다. */
+        refused: {
+          description: "Nothing was sent.",
+          title: "These changes can't be published",
+          conflict: (surface: string, code: string, path: string, owner: string): string =>
+            `Malmoi can't plan the language files for ${surface}. ${code} would be written to ${path}, which now belongs to the ${owner} source.`,
+          duplicate: (surface: string, path: string): string => `Malmoi can't plan the language files for ${surface}. Two languages would be written to ${path}.`,
+          unsafe: (surface: string): string => `Malmoi can't plan the language files for ${surface}. Its path template doesn't give each language its own file.`,
+          unknown: "Malmoi can't plan the language files.",
+          open: (surface: string): string => `Open ${surface}`,
+        },
+        /** 결과 — 번역 0인 Publish의 PR. "N changes"·"published"를 말하지 않는다(머지 전이다). */
+        createdDescription: "The language changes are in a pull request. They reach the product once someone on the team merges it.",
+        updatedDescription: (n: number): string =>
+          `#${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
+        /** 셀 편집 0 · 언어 작업만 있을 때 켜진 [Publish]의 sr 설명 — 배지는 셀 수라 서지 않는다. */
+        ready: "Language changes are ready to publish.",
+      },
 
       /**
        * `1c` — 단계 셋은 **하는 일의 목록**이고 진행 표시가 아니다 (audit-ux #23). 전엔 2.5초·6.5초 타이머가 체크를 넘겼는데,

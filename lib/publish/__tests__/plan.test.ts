@@ -54,6 +54,14 @@ it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
   expect(planPublishButton(en, { count: 0, paused: true, otherPending: true, publishPending: true })).toMatchObject({ mode: "progress", disabled: false, badge: null });
   expect(planPublishButton(en, { count: 2, paused: false, otherPending: true, publishPending: false }).disabled).toBe(true);
 });
+/** 셀 편집 0 · 언어 작업만 (locale-add 시안 P1 ①④) — 켜지고 배지는 없으며(셀 수) 켜진 이유를 hint가 sr로 말한다. 멈춤 사유가 그보다 앞선다. */
+it("언어 작업만 있으면 켜지고 배지 없이 이유를 말한다", () => {
+  expect(planPublishButton(en, { count: 0, languageWork: 1, paused: false, otherPending: false, publishPending: false }))
+    .toEqual({ mode: "preview", disabled: false, badge: null, hint: en.translations.publish.language.ready });
+  expect(planPublishButton(en, { count: 0, languageWork: 1, paused: true, otherPending: false, publishPending: false, pausedReason: "Archived." }))
+    .toMatchObject({ disabled: true, hint: "Archived." });
+  expect(planPublishButton(en, { count: 3, languageWork: 1, paused: false, otherPending: false, publishPending: false })).toMatchObject({ disabled: false, badge: 3, hint: "" });
+});
 const cell = (over: Partial<PublishCell> = {}): PublishCell => ({ surface: "web", path: "ko.json", keyId: "k1", key: "hello", localeCode: "ko", after: "new", author: "Editor", updatedAt: "2026-09-16", ...over });
 it("파일·키·로케일로 정렬하고 키 병합과 상한 초과 수를 센다", () => {
   const rows = [cell({ localeCode: "ko" }), cell({ localeCode: "en" }), cell({ keyId: "k2", key: "z" })];

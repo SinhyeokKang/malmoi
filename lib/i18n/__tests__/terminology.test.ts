@@ -251,6 +251,8 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   "home.cards.held.*": ["held"],
   "repositorySync.kept": ["held"],
   "mcp.summary.synced": ["held"],
+  // 열린 PR 동안 그 언어만 보류된다(`proposal-path-exists` — locale-add 시안 P1 ③). 같은 보류 개념의 파일 머리 낱말이다.
+  "translations.publish.language.label.held": ["held"],
   // ── Publish 일부 보류(Held back) — 결과 모달·Logs의 Publish 결과만.
   "translations.publish.*": ["held back"],
   "logs.status.notSent": ["held back"],

@@ -1542,11 +1542,31 @@ export const es = {
               {changes === 1 ? "este cambio" : `estos ${changes.toLocaleString("es")}`}.
             </>
           ),
+          languageBody: (n: number, files: number): ReactNode => (
+            <>
+              No se abre una segunda merge request. !{n} contendrá{" "}
+              <span className="text-foreground">todo lo que está sin enviar</span>, no solo{" "}
+              {files === 1 ? "este cambio de idioma" : `estos ${files.toLocaleString("es")} cambios de idioma`}.
+            </>
+          ),
         },
         prNone: { title: (repo: string): string => `Se abre una nueva merge request en ${repo}` },
         prUnknown: { title: "No se pudo comprobar si hay una merge request abierta" },
         openPr: "Abrir merge request",
         replacePr: (n: number): string => `Reemplazar la merge request !${n}`,
+        language: {
+          intro: (repo: string): string => `Va a ${repo} como una sola merge request.`,
+          introOpen: (repo: string, n: number): string => `Va a ${repo} en la merge request !${n}.`,
+          held: (code: string, branch: string): string =>
+            `Este archivo ya está en ${branch}. Cuando se cierre la merge request abierta, ${code} se activará en la siguiente publicación o comprobación nocturna.`,
+          expiring: {
+            addNotReached: (code: string): string => `${code} no se añadió: su merge request se cerró sin fusionarse. Sus traducciones se conservan en Malmoi.`,
+            removeNotReached: (code: string): string => `${code} no se quitó: su merge request se cerró sin fusionarse. Se queda en esta fuente.`,
+          },
+          createdDescription: "Los cambios de idioma están en una merge request. Llegan al producto cuando alguien del equipo la fusione.",
+          updatedDescription: (n: number): string =>
+            `!${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
+        },
         progressDescription: "Escribiendo los archivos de traducción y abriendo una merge request. Normalmente tarda unos segundos.",
         progress: (branch: string): readonly string[] => ["Generando los archivos de traducción", `Haciendo commit en ${branch}`, "Abriendo la merge request"],
         createdDescription: (n: number): string =>
@@ -1645,6 +1665,13 @@ export const es = {
             {changes === 1 ? "este cambio" : `estos ${changes.toLocaleString("es")}`}.
           </>
         ),
+        languageBody: (n: number, files: number): ReactNode => (
+          <>
+            No se abre una segunda pull request. #{n} contendrá{" "}
+            <span className="text-foreground">todo lo que está sin enviar</span>, no solo{" "}
+            {files === 1 ? "este cambio de idioma" : `estos ${files.toLocaleString("es")} cambios de idioma`}.
+          </>
+        ),
       },
       prNone: {
         title: (repo: string): string => `Se abre una nueva pull request en ${repo}`,
@@ -1652,6 +1679,10 @@ export const es = {
           changes === 1
             ? "No hay nada abierto ahora mismo, así que este cambio sale por su cuenta."
             : `No hay nada abierto ahora mismo, así que estos ${changes.toLocaleString("es")} cambios salen por su cuenta.`,
+        languageBody: (files: number): string =>
+          files === 1
+            ? "No hay nada abierto ahora mismo, así que este cambio de idioma sale por su cuenta."
+            : `No hay nada abierto ahora mismo, así que estos ${files.toLocaleString("es")} cambios de idioma salen por su cuenta.`,
       },
       prUnknown: {
         title: "No se pudo comprobar si hay una pull request abierta",
@@ -1659,6 +1690,63 @@ export const es = {
       },
       openPr: "Abrir pull request",
       replacePr: (n: number): string => `Reemplazar la pull request #${n}`,
+      language: {
+        title: "Publicar cambios de idioma",
+        progressTitle: "Publicando cambios de idioma",
+        intro: (repo: string): string => `Va a ${repo} como una sola pull request.`,
+        introOpen: (repo: string, n: number): string => `Va a ${repo} en la pull request #${n}.`,
+        files: (added: number, removed: number): string => {
+          const word = (n: number) => `${n.toLocaleString("es")} ${n === 1 ? "archivo" : "archivos"}`;
+          return added > 0 && removed > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}, ${removed.toLocaleString("es")} ${removed === 1 ? "eliminado" : "eliminados"}`
+            : added > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}` : `${word(removed)} ${removed === 1 ? "eliminado" : "eliminados"}`;
+        },
+        countsWithFiles: (n: number, keys: number, files: string): string =>
+          `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} en ${keys.toLocaleString("es")} ${keys === 1 ? "clave" : "claves"}, ${files}.`,
+        leftOut: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "idioma queda" : "idiomas quedan"} fuera.`,
+        summary: (files: number): string => `0 cambios \u00b7 ${files.toLocaleString("es")} ${files === 1 ? "archivo" : "archivos"}`,
+        takenBackSummary: (n: number, files: number): string =>
+          `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} \u00b7 ${files.toLocaleString("es")} ${files === 1 ? "archivo retirado" : "archivos retirados"}`,
+        takenBackDescription: (pr: string, branch: string, what: "adding" | "removing" | "several"): string =>
+          `Ya no hay diferencias con ${branch}. Al cerrar ${pr} ${what === "several" ? "se retiran los archivos que cambiaba" : what === "adding" ? "se retira el archivo que añadía" : "se retira el archivo que eliminaba"}.`,
+        label: {
+          newFile: "Archivo nuevo",
+          updated: "Actualizado",
+          removed: "Eliminado",
+          notIncluded: "No incluido",
+          held: "Retenido",
+          takenBack: (pr: string | null): string => (pr === null ? "Retirado" : `Retirado de ${pr}`),
+        },
+        removed: "Las traducciones se conservan en Malmoi.",
+        notIncluded: (code: string): string => `${code} aún no tiene traducciones, así que no se crea ningún archivo. Saldrá cuando tenga una.`,
+        held: (code: string, branch: string): string =>
+          `Este archivo ya está en ${branch}. Cuando se cierre la pull request abierta, ${code} se activará en la siguiente publicación o comprobación nocturna.`,
+        takenBack: {
+          create: (code: string, pr: string | null): string =>
+            `${code} se canceló después de ${pr === null ? "enviarse" : `abrirse ${pr}`}, así que el archivo que añade sale. Las traducciones se conservan en Malmoi.`,
+          delete: (code: string, pr: string | null): string =>
+            `La eliminación de ${code} se canceló después de ${pr === null ? "enviarse" : `abrirse ${pr}`}, así que el archivo se queda en el repositorio.`,
+        },
+        expiring: {
+          addReached: (code: string): string => `${code} ya está en el repositorio, así que su solicitud se cierra.`,
+          addNotReached: (code: string): string => `${code} no se añadió: su pull request se cerró sin fusionarse. Sus traducciones se conservan en Malmoi.`,
+          removeReached: (code: string): string => `${code} ya no está en el repositorio, así que su solicitud se cierra.`,
+          removeNotReached: (code: string): string => `${code} no se quitó: su pull request se cerró sin fusionarse. Se queda en esta fuente.`,
+        },
+        refused: {
+          description: "No se envió nada.",
+          title: "Estos cambios no se pueden publicar",
+          conflict: (surface: string, code: string, path: string, owner: string): string =>
+            `Malmoi no puede planificar los archivos de idioma de ${surface}. ${code} se escribiría en ${path}, que ahora pertenece a la fuente ${owner}.`,
+          duplicate: (surface: string, path: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. Dos idiomas se escribirían en ${path}.`,
+          unsafe: (surface: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. Su plantilla de ruta no da a cada idioma su propio archivo.`,
+          unknown: "Malmoi no puede planificar los archivos de idioma.",
+          open: (surface: string): string => `Abrir ${surface}`,
+        },
+        createdDescription: "Los cambios de idioma están en una pull request. Llegan al producto cuando alguien del equipo la fusione.",
+        updatedDescription: (n: number): string =>
+          `#${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
+        ready: "Hay cambios de idioma listos para publicar.",
+      },
 
       progressTitle: (n: number): string => `Publicando ${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"}`,
       progressDescription:

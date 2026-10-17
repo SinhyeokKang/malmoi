@@ -1551,11 +1551,31 @@ export const ko = {
               <span className="text-foreground">미전송 변경 사항 전체</span>가 담깁니다.
             </>
           ),
+          languageBody: (n: number, files: number): ReactNode => (
+            <>
+              두 번째 MR은 열리지 않습니다. !{n}에는 이번 언어 변경{" "}
+              {files.toLocaleString("ko-KR")}건만이 아니라{" "}
+              <span className="text-foreground">미전송 변경 사항 전체</span>가 담깁니다.
+            </>
+          ),
         },
         prNone: { title: (repo: string): string => `${repo} 리포지토리에 새 MR이 열림` },
         prUnknown: { title: "열린 MR을 확인하지 못했습니다" },
         openPr: "MR 열기",
         replacePr: (n: number): string => `MR !${n} 교체`,
+        language: {
+          intro: (repo: string): string => `${repo} 리포지토리에 MR 하나로 보냅니다.`,
+          introOpen: (repo: string, n: number): string => `${repo} 리포지토리의 MR !${n}에 보냅니다.`,
+          held: (code: string, branch: string): string =>
+            `이 파일은 이미 ${branch} 브랜치에 있습니다. 열린 MR이 닫히면 다음 게시나 야간 확인 때 ${code}이(가) 활성화됩니다.`,
+          expiring: {
+            addNotReached: (code: string): string => `${code}은(는) 추가되지 않았습니다. MR이 머지되지 않고 닫혔습니다. 번역은 Malmoi에 남습니다.`,
+            removeNotReached: (code: string): string => `${code}은(는) 제거되지 않았습니다. MR이 머지되지 않고 닫혔습니다. 이 소스에 남습니다.`,
+          },
+          createdDescription: "언어 변경을 MR에 담았습니다. 팀원이 머지하면 서비스에 반영됩니다.",
+          updatedDescription: (n: number): string =>
+            `!${n}이(가) 아직 열려 있어 두 번째 MR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
+        },
         progressDescription: "번역 파일을 만들고 MR을 엽니다. 보통 몇 초 걸립니다.",
         progress: (branch: string): readonly string[] => ["번역 파일 생성", `${branch} 브랜치에 커밋`, "MR 열기"],
         createdDescription: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건을 MR에 담았습니다. 머지되면 서비스에 반영됩니다.`,
@@ -1652,11 +1672,20 @@ export const ko = {
             <span className="text-foreground">미전송 변경 사항 전체</span>가 담깁니다.
           </>
         ),
+        languageBody: (n: number, files: number): ReactNode => (
+          <>
+            두 번째 PR은 열리지 않습니다. #{n}에는 이번 언어 변경{" "}
+            {files.toLocaleString("ko-KR")}건만이 아니라{" "}
+            <span className="text-foreground">미전송 변경 사항 전체</span>가 담깁니다.
+          </>
+        ),
       },
       prNone: {
         title: (repo: string): string => `${repo} 리포지토리에 새 PR이 열림`,
         body: (changes: number): string =>
           `현재 열린 요청이 없어 변경 사항 ${changes.toLocaleString("ko-KR")}건을 새 요청으로 보냅니다.`,
+        languageBody: (files: number): string =>
+          `현재 열린 요청이 없어 언어 변경 ${files.toLocaleString("ko-KR")}건을 새 요청으로 보냅니다.`,
       },
       prUnknown: {
         title: "열린 PR을 확인하지 못했습니다",
@@ -1664,6 +1693,60 @@ export const ko = {
       },
       openPr: "PR 열기",
       replacePr: (n: number): string => `PR #${n} 교체`,
+      language: {
+        title: "언어 변경 게시",
+        progressTitle: "언어 변경 게시 중",
+        intro: (repo: string): string => `${repo} 리포지토리에 PR 하나로 보냅니다.`,
+        introOpen: (repo: string, n: number): string => `${repo} 리포지토리의 PR #${n}에 보냅니다.`,
+        files: (added: number, removed: number): string =>
+          added > 0 && removed > 0 ? `파일 ${added.toLocaleString("ko-KR")}개 추가, ${removed.toLocaleString("ko-KR")}개 삭제`
+            : added > 0 ? `파일 ${added.toLocaleString("ko-KR")}개 추가` : `파일 ${removed.toLocaleString("ko-KR")}개 삭제`,
+        countsWithFiles: (n: number, keys: number, files: string): string =>
+          `키 ${keys.toLocaleString("ko-KR")}개의 변경 사항 ${n.toLocaleString("ko-KR")}건, ${files}.`,
+        leftOut: (n: number): string => `언어 ${n.toLocaleString("ko-KR")}개는 이번에 빠집니다.`,
+        summary: (files: number): string => `변경 사항 0건 · 파일 ${files.toLocaleString("ko-KR")}개`,
+        takenBackSummary: (n: number, files: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건 · 파일 ${files.toLocaleString("ko-KR")}개 회수`,
+        takenBackDescription: (pr: string, branch: string, what: "adding" | "removing" | "several"): string =>
+          `이제 ${branch} 브랜치와 다른 점이 없습니다. ${pr}을(를) 닫으면 ${what === "several" ? "그 요청이 바꾸던 파일들" : what === "adding" ? "그 요청이 추가하던 파일" : "그 요청이 삭제하던 파일"}을 회수합니다.`,
+        label: {
+          newFile: "새 파일",
+          updated: "업데이트",
+          removed: "삭제",
+          notIncluded: "포함 안 됨",
+          held: "보류",
+          takenBack: (pr: string | null): string => (pr === null ? "회수" : `${pr}에서 회수`),
+        },
+        removed: "번역은 Malmoi에 남습니다.",
+        notIncluded: (code: string): string => `${code}에는 아직 번역이 없어 파일을 만들지 않습니다. 번역이 생기면 함께 나갑니다.`,
+        held: (code: string, branch: string): string =>
+          `이 파일은 이미 ${branch} 브랜치에 있습니다. 열린 PR이 닫히면 다음 게시나 야간 확인 때 ${code}이(가) 활성화됩니다.`,
+        takenBack: {
+          create: (code: string, pr: string | null): string =>
+            `${pr === null ? "보낸 뒤" : `${pr}이(가) 열린 뒤`} ${code} 추가가 취소되어 그 파일을 뺍니다. 번역은 Malmoi에 남습니다.`,
+          delete: (code: string, pr: string | null): string =>
+            `${pr === null ? "보낸 뒤" : `${pr}이(가) 열린 뒤`} ${code} 제거가 취소되어 파일이 리포지토리에 남습니다.`,
+        },
+        expiring: {
+          addReached: (code: string): string => `${code}은(는) 이미 리포지토리에 있어 요청을 닫습니다.`,
+          addNotReached: (code: string): string => `${code}은(는) 추가되지 않았습니다. PR이 머지되지 않고 닫혔습니다. 번역은 Malmoi에 남습니다.`,
+          removeReached: (code: string): string => `${code}은(는) 이미 리포지토리에서 사라져 요청을 닫습니다.`,
+          removeNotReached: (code: string): string => `${code}은(는) 제거되지 않았습니다. PR이 머지되지 않고 닫혔습니다. 이 소스에 남습니다.`,
+        },
+        refused: {
+          description: "아무것도 보내지 않았습니다.",
+          title: "이 변경 사항은 게시할 수 없습니다",
+          conflict: (surface: string, code: string, path: string, owner: string): string =>
+            `${surface} 소스의 언어 파일을 정할 수 없습니다. ${code}은(는) ${path}에 쓰여야 하는데, 이 경로는 이제 ${owner} 소스의 것입니다.`,
+          duplicate: (surface: string, path: string): string => `${surface} 소스의 언어 파일을 정할 수 없습니다. 두 언어가 ${path}에 쓰이게 됩니다.`,
+          unsafe: (surface: string): string => `${surface} 소스의 언어 파일을 정할 수 없습니다. 경로 템플릿이 언어마다 다른 파일을 주지 않습니다.`,
+          unknown: "언어 파일을 정할 수 없습니다.",
+          open: (surface: string): string => `${surface} 열기`,
+        },
+        createdDescription: "언어 변경을 PR에 담았습니다. 팀원이 머지하면 서비스에 반영됩니다.",
+        updatedDescription: (n: number): string =>
+          `#${n}이(가) 아직 열려 있어 두 번째 PR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
+        ready: "게시할 언어 변경이 있습니다.",
+      },
 
       progressTitle: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건 게시 중`,
       progressDescription:

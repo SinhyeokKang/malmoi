@@ -44,6 +44,7 @@ import { loadOpenPrUrlMemo } from "@/lib/projects/open-pr";
 import { repoWebUrl } from "@/lib/projects/repo-web";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
+import { countLocaleWork } from "@/lib/locales/work";
 
 /**
  * 프로젝트 Home — **진입의 착지점** (PRODUCT §7.7 결정 1).
@@ -150,7 +151,7 @@ export default async function ProjectHomePage({
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
   const target = repoTargetOf(project);
-  const [aggregates, events, review, openEvent, health, runs, writeLock] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, runs, writeLock, languageWork] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -180,6 +181,8 @@ export default async function ProjectHomePage({
     loadHomeRuns(prisma, projectId),
     // 다른 실행의 적재 lease — [Sync]·배너 [Try again]을 멈춘다(sync-lock R5). 같은 라운드라 왕복이 늘지 않는다.
     loadWriteLock(prisma, projectId, now),
+    // 언어 변경 작업 수 — 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). 미리보기가 그 파일을 보이는 것과 같은 상태 술어다(`countLocaleWork`).
+    countLocaleWork(prisma, projectId),
   ]);
   // 번역 사건은 키 **이름**을 든다 — Logs와 같은 해석이다(translation-rework T12).
   const translationHref = openEvent?.payload?.kind === "TRANSLATION"
@@ -304,6 +307,7 @@ export default async function ProjectHomePage({
             branch={project.baseBranch}
             role={role}
             unsent={counts.toSend}
+            languageWork={languageWork}
             paused={paused}
             /* 멈춘 원인 문장 — Sync·Publish가 같은 원인이라 같은 문장을 각자 `title` + 자기 sr-only로 든다. 보관이 먼저, 끊김은 번역 화면과 같은 문장이다. */
             pausedReason={archived ? `${m.home.banner.archived.title}.` : connectionReason(m, health.status, role) ?? undefined}
@@ -340,6 +344,7 @@ export default async function ProjectHomePage({
             /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
             repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug), host: project.repoHost }}
             unsent={counts.toSend}
+            languageWork={languageWork}
             failedSurface={failed?.slug ?? null}
             reason={failed?.importError ?? null}
             /* 시각 없는 성공은 "이 Sync 전의 값"으로 말한다 — 지어낸 시각을 배너에 넣지 않는다 (malmoi#81). */

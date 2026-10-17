@@ -116,6 +116,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
   ],
   es: [
     "landing.mockup",
+    // 코드와 소스 이름을 괄호로 잇는 기호 틀이다(`fr (web)`) — 번역할 낱말이 없다(locale-add 시안 P4).
+    "repositorySync.languageInSource",
     // 고유명사·기호 — 번역하지 않는 이름(`Malmoi`·`GitHub`·`Google`·`CI`·`404`·`—`·키 기호)과 en과 철자가 같은 낱말(`Editor`·`Avatar`·`General`·`Base`)
     "common.appName",
     "common.keys",

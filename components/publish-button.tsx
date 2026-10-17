@@ -3,7 +3,7 @@ import { Link as InlineLink } from "@/components/ui/link";
 import { formatMinute, type DateStyle } from "@/lib/date-format";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
-import { FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, Send, TriangleAlert } from "lucide-react";
+import { CirclePause, FileJson2, FileMinus2, FilePlus2, FileX2, GitPullRequestArrow, History, Info, LoaderCircle, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { triggerPullAction } from "@/app/(edit)/actions";
@@ -21,7 +21,9 @@ import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import { pullRevalidates, UNCONFIRMED_PULL, type PullOutcome } from "@/lib/pull/message";
 import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
-import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
+import type { LocalePlanRefusalDetail, PublishModalState, PublishPreview } from "@/lib/publish/preview";
+import type { ExpiredLocaleRequest } from "@/lib/pull/locales";
+import { reachedRepository } from "@/lib/locales/reached";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
@@ -72,7 +74,7 @@ export function usePublish(slug: string, server?: unknown) {
         data.status === "ok" ? { kind: "preview-ready", preview: data.preview }
         : data.status === "blocked" ? { kind: "result", outcome: { status: "skipped", reason: "writer-warnings", warnings: data.warnings } }
         : data.status === "rejected" ? { kind: "result", outcome: { status: "failed", error: data.error, delivery: "not-started", retryable: false } }
-        : data.status === "refused" ? { kind: "preview-refused", reason: data.reason, path: data.path, branch: data.branch }
+        : data.status === "refused" ? { kind: "preview-refused", reason: data.reason, path: data.path, branch: data.branch, ...(data.plan === undefined ? {} : { plan: data.plan }) }
         : { kind: "preview-error" };
       current.current = next; setState(next);
     } catch {
@@ -82,9 +84,9 @@ export function usePublish(slug: string, server?: unknown) {
   async function confirm(label: string) {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
-    // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다.
+    // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다. 번역 0이어도 바뀌거나 거둘 언어 파일이 있으면 할 일이 있다(시안 P1 ①④).
     const total = current.current.preview.sendable.total;
-    if (total === 0) return;
+    if (total === 0 && !hasLanguageWork(current.current.preview)) return;
     running.current = true; generation.current++; setPending(true); setRunTotal(total); setRunLabel(label);
     current.current = { kind: "running" }; setState(current.current);
     // ⚠️ **다시 실행하지 않는다** (malmoi#135) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고, 그때 서버는 PR을 냈다. 두 번 나갈 수 있다.
@@ -120,11 +122,20 @@ export function usePublish(slug: string, server?: unknown) {
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
+/**
+ * 번역 변경과 별개로 이 Publish가 만들거나 지우거나 거둘 언어 파일이 있나 — 새 파일·삭제(`fileChanges`)와 거둘 효과(`withdrawnLocales`)다.
+ * ⚠️ **갱신 파일은 세지 않는다** — 편집이 전부 보류된 Publish도 그 편집이 사는 파일을 `changedFiles`에 싣지만 실행은 `withheld`로 아무것도 안 쓴다(#128 r5).
+ */
+function hasLanguageWork(preview: PublishPreview): boolean {
+  return (preview.fileChanges ?? []).some(file => file.kind !== "updated") || (preview.withdrawnLocales?.length ?? 0) > 0;
+}
+
 /** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
-export function PublishButton({ id, count, publish, disabled = false, pausedReason }: { id?: string; count: number; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
+/** @param languageWork 언어 변경 작업 수 — 셀 편집이 0이어도 이게 있으면 켜진다(시안 P1 ①④). 배지는 셀 수다. */
+export function PublishButton({ id, count, languageWork = 0, publish, disabled = false, pausedReason }: { id?: string; count: number; languageWork?: number; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
   const m = useMessages();
   const p = m.translations.publish;
-  const plan = planPublishButton(m, { count, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
+  const plan = planPublishButton(m, { count, languageWork, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
   const reasonId = useId();
   // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
   // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
@@ -134,7 +145,8 @@ export function PublishButton({ id, count, publish, disabled = false, pausedReas
   */
   return <div className="flex items-center gap-2">
     <span title={plan.hint || undefined}>
-      <Button id={id} variant="primary" aria-disabled={plan.disabled ? "true" : undefined} aria-describedby={plan.disabled && plan.hint ? reasonId : undefined}
+      {/* 켜진 언어 변경 Publish도 이유를 sr로 든다 — 배지(셀 수)가 없어 무엇을 보내는지 버튼이 말하지 않는다. */}
+      <Button id={id} variant="primary" aria-disabled={plan.disabled ? "true" : undefined} aria-describedby={plan.hint ? reasonId : undefined}
         aria-busy={publish.pending || undefined}
         onClick={event => { if (plan.disabled) return; publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
@@ -142,7 +154,7 @@ export function PublishButton({ id, count, publish, disabled = false, pausedReas
         {/* 어두운 면 위라 면·글자를 그 면에 맞춰 덮는다 — 개수 규칙(0이면 없음 · sr 문장)은 `CountBadge`가 든다. */}
         {plan.badge !== null && <CountBadge count={plan.badge} label={p.unsentCount(plan.badge)} className="bg-background/20 text-current" />}
       </Button>
-      {plan.disabled && plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
+      {plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
     </span>
     {!publish.pending && publish.result && <Button onClick={event => { publish.triggerRef.current = event.currentTarget; publish.showResult(); }}>{m.translations.publish.viewResult}</Button>}
   </div>;
@@ -272,9 +284,49 @@ function DiffLine({ sign, parts, before }: { sign: string; parts: readonly { tex
   </span>;
 }
 
-function PreviewTable({ preview }: { preview: PublishPreview }) {
+/** 파일 머리 행 — 경로 + 오른쪽 낱말(`fileSummary` · 파일 종류). 글리프가 파일에 생기는 일을 가른다(시안 P1 — 색은 muted, 새 배지 없음). */
+function FileHead({ path, label, icon: Icon = FileJson2 }: { path: string; label: string; icon?: typeof FileJson2 }) {
+  return <tr>
+    <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
+      <span className="flex items-center gap-2">
+        <Icon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{path}</span>
+        <span className="text-muted-foreground ml-auto shrink-0">{label}</span>
+      </span>
+    </th>
+  </tr>;
+}
+
+/** 편집 행 없이 사유 한 줄만 서는 파일 — 편집 없이 바뀌는 파일 · 삭제 · 빈 추가 · 보류 · 거두기. */
+function FileNote({ children }: { children: ReactNode }) {
+  return <tr><td colSpan={3} className="border-divider text-muted-foreground border-t px-3.5 py-[11px] text-xs leading-5">{children}</td></tr>;
+}
+
+const FILE_ICON = { new: FilePlus2, updated: FileJson2, removed: FileMinus2 } as const;
+
+/**
+ * 만료될(된) 언어 요청을 그 언어 이름으로 말한다 (#267 — R-F2b). 리포가 요청대로인지(`reachedRepository`)가 문장을 가른다. 미리보기 표 아래와
+ * 결과의 Not sent 둘이 같은 줄이다.
+ */
+function expiringLine(m: Messages, request: ExpiredLocaleRequest): string {
+  const e = m.translations.publish.language.expiring;
+  const reached = reachedRepository(request);
+  return request.operation === "ADD" ? (reached ? e.addReached(request.localeCode) : e.addNotReached(request.localeCode))
+    : reached ? e.removeReached(request.localeCode) : e.removeNotReached(request.localeCode);
+}
+
+function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: string }) {
   const m = useMessages();
   const p = m.translations.publish;
+  const l = p.language;
+  const kinds = new Map((preview.fileChanges ?? []).map(file => [file.path, file.kind]));
+  /*
+    ⚠️ **파일 종류 낱말은 언어 변경이 있는 Publish에서만 선다** (시안 P1) — 번역만 바뀌는 평소 Publish는 머리 오른쪽이 그대로 편집 수(`fileSummary`)다.
+    언어 변경이 섞이면 같은 자리가 그 파일에 생기는 일(`New file`·`Updated`·`Removed`)을 말한다 — 한 표 안에서 두 문법이 섞이지 않는다.
+  */
+  const language = [...kinds.values()].some(kind => kind !== "updated") || preview.locales !== undefined || (preview.withdrawnLocales?.length ?? 0) > 0;
+  const kindLabel = (kind: "new" | "updated" | "removed") => kind === "new" ? l.label.newFile : kind === "removed" ? l.label.removed : l.label.updated;
+  const pr = preview.openPr ? m.home.meta.pr(preview.openPr.number) : null;
   return <TableShell>
     {/*
       ⚠️ **좁으면 표가 가로로 스크롤한다** (#232) — `table-fixed`에 Key 220 · 언어 84를 고정한 채 모달이 341로 줄면 Value가 37로 눌려 값이 글자 단위로 세로 감겼다.
@@ -283,16 +335,10 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
     <div className="min-h-0 flex-1 overflow-auto">
       <table className="w-full min-w-[520px] table-fixed border-separate border-spacing-0">
         <TableHead />
-        {preview.groups.map(group => <tbody key={`${group.surface}:${group.path}`}>
-          <tr>
-            <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
-              <span className="flex items-center gap-2">
-                <FileJson2 className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{group.path}</span>
-                <span className="text-muted-foreground ml-auto shrink-0">{p.fileSummary(group.changes, group.keys)}</span>
-              </span>
-            </th>
-          </tr>
+        {preview.groups.map(group => {
+          const kind = language ? kinds.get(group.path) : undefined;
+          return <tbody key={`${group.surface}:${group.path}`}>
+          <FileHead path={group.path} label={kind === undefined ? p.fileSummary(group.changes, group.keys) : kindLabel(kind)} icon={kind === undefined ? FileJson2 : FILE_ICON[kind]} />
           {group.rows.map(row => {
             const diff = diffWords(row.before ?? "", row.after);
             const flag = flagFor(row.localeCode);
@@ -322,26 +368,38 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
               </td>
             </tr>;
           })}
-        </tbody>)}
+        </tbody>;
+        })}
         {/* #128 — 편집 없이 바뀌는 파일. 상한 밖 행이 있으면 그 파일에 편집이 있는지 모르므로 단정하지 않는다(푸터의 파일 수는 그대로 실행의 수다). */}
-        {/* 전부 보류면(`sending === 0`) 실행은 `skipped/withheld`라 아무 파일도 안 바꾼다 — 그 파일들을 약속하지 않는다(#128 r5). */}
-        {preview.truncated === 0 && preview.sendable.total > 0 && preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)).map(path => <tbody key={`other:${path}`}>
-          <tr>
-            <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
-              <span className="flex items-center gap-2">
-                <FileJson2 className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{path}</span>
-                <span className="text-muted-foreground ml-auto shrink-0">{p.otherFile.label}</span>
-              </span>
-            </th>
-          </tr>
-          <tr><td colSpan={3} className="border-divider text-muted-foreground border-t px-3.5 py-[11px] text-xs leading-5">{p.otherFile.body}</td></tr>
+        {/* 전부 보류면(`sending === 0`이고 언어 파일도 없으면) 실행은 `skipped/withheld`라 아무 파일도 안 바꾼다 — 그 파일들을 약속하지 않는다(#128 r5). */}
+        {preview.truncated === 0 && (preview.sendable.total > 0 || hasLanguageWork(preview)) && preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)).map(path => {
+          const kind = kinds.get(path);
+          // 삭제 파일의 번역은 Malmoi에 남는다 — 그 수를 전달 수로 말하지 않는다(시안 P1 ①).
+          return <tbody key={`other:${path}`}>
+            <FileHead path={path} label={language && kind !== undefined && kind !== "updated" ? kindLabel(kind) : p.otherFile.label} icon={kind === undefined ? FileJson2 : FILE_ICON[kind]} />
+            <FileNote>{kind === "removed" ? l.removed : p.otherFile.body}</FileNote>
+          </tbody>;
+        })}
+        {/* 빈 추가 · 보류는 숨기지 않고 그 언어만 빠지는 이유를 말한다(시안 P1 ③). */}
+        {preview.locales?.empty.map(item => <tbody key={`empty:${item.surfaceSlug}:${item.localeCode}`}>
+          <FileHead path={item.path ?? item.localeCode} label={l.label.notIncluded} icon={FilePlus2} />
+          <FileNote>{l.notIncluded(item.localeCode)}</FileNote>
+        </tbody>)}
+        {preview.locales?.withheld.map(item => <tbody key={`held:${item.surfaceSlug}:${item.localeCode}`}>
+          <FileHead path={item.path} label={l.label.held} icon={CirclePause} />
+          <FileNote>{l.held(item.localeCode, branch)}</FileNote>
+        </tbody>)}
+        {/* 거둘 언어 효과(시안 P1 ④⑤) — 파일 diff 0이어도 열린 PR에서 무엇을 거두는지 보인다. */}
+        {preview.withdrawnLocales?.map(item => <tbody key={`withdrawn:${item.surfaceSlug}:${item.localeCode}`}>
+          <FileHead path={item.path ?? item.localeCode} label={l.label.takenBack(pr)} icon={FileX2} />
+          <FileNote>{item.effect === "create" ? l.takenBack.create(item.localeCode, pr) : l.takenBack.delete(item.localeCode, pr)}</FileNote>
         </tbody>)}
       </table>
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
       {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
       {preview.withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(preview.withoutFile)}</p>}
       {preview.withoutKey > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutKey(preview.withoutKey)}</p>}
+      {preview.expiringLocales?.map(request => <p key={`expiring:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground px-3.5 py-[11px] text-xs">{expiringLine(m, request)}</p>)}
     </div>
   </TableShell>;
 }
@@ -388,6 +446,16 @@ function Warnings({ warnings }: { warnings: readonly PullWarning[] }) {
   </section>;
 }
 
+/** 결정적 언어 계획 거부의 원인 문장 (시안 P1 ⑥) — 어느 소스의 어느 언어가 무엇에 막혔나. 자리를 모르면(옛 응답) 원인 없는 문장이다. */
+function refusedReason(m: Messages, plan: LocalePlanRefusalDetail | undefined, path: string): string {
+  const r = m.translations.publish.language.refused;
+  const surface = plan?.surfaceSlug ?? null;
+  if (plan === undefined || surface === null) return r.unknown;
+  if (plan.refusal === "path-conflict" && plan.localeCode !== null && plan.ownerSlug !== null) return r.conflict(surface, plan.localeCode, path, plan.ownerSlug);
+  if (plan.refusal === "unsafe-path" || path === "") return r.unsafe(surface);
+  return r.duplicate(surface, path);
+}
+
 function failureText(m: Messages, outcome: Extract<PullOutcome, { status: "failed" }>) {
   if (isAccessError(outcome.error)) return accessErrorMessage(m, outcome.error);
   if (isOnboardError(outcome.error)) return onboardErrorMessage(m, outcome.error);
@@ -402,7 +470,7 @@ function failureText(m: Messages, outcome: Extract<PullOutcome, { status: "faile
 // 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
 const stamp = (at: Date, style: DateStyle) => <time dateTime={at.toISOString()}>{formatMinute(at, style)}</time>;
 
-export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
+export function PublishModal({ slug, publish, fallbackFocusRef, count, languageWork = 0, repo, role }: {
   slug: string;
   publish: PublishController;
   fallbackFocusRef: RefObject<HTMLElement | null>;
@@ -414,6 +482,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
   role: "OWNER" | "EDITOR";
   /** 미발송 수 — `1a`의 스켈레톤과 `1k`가 조회 전에도 그것을 말한다. */
   count: number;
+  /** 언어 변경 작업 수 — 셀 편집 0이면 조회 중에도 제목이 `Publish 0 changes`가 아니라 언어 변경을 말한다(시안 P1 ①). */
+  languageWork?: number;
   /**
    * ⚠️ **호스트가 넘긴다** — 조회가 실패한 갈래(`1k`·`1h`)도 리포 이름을 말해야 하고,
    * 브랜치 이름은 서버가 만든다(그 모듈을 클라이언트가 물면 번들에 octokit·ts-morph가 온다).
@@ -433,7 +503,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
   let alert = false;
   switch (state.kind) {
     case "preview-loading":
-      title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count);
+      // 번역 0 · 언어 작업만이면 "0 changes"를 말하지 않는다 — 바닥의 파일 수는 조회 뒤에야 안다(시안 P1 ①).
+      if (count === 0 && languageWork > 0) { title = p.language.title; description = p.language.intro(label); footer = null; }
+      else { title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count); }
       body = <>
         <AlertSkeleton />
         <TableShell>
@@ -445,6 +517,21 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-refused": {
       // ⚠️ **Try again이 없다** — 파일이 생기거나 경로가 고쳐질 때까지 같은 거부다(L3.3). 고칠 곳은 역할이 가른다: Settings는 OWNER에게만 열린다.
       panel = PANEL.configError; inner = false; quiet = true;
+      if (state.reason === "locale-plan-refused") {
+        /*
+          결정적 언어 계획 거부 (시안 P1 ⑥) — base 파일 문구로 폴백하지 않는다. 원인이 소스 하나의 언어라 고칠 자리는 소스 상세다(Settings에는 언어 목록이 없다).
+          EDITOR는 [Close] 하나다 — 그 언어를 빼거나 다시 추가하는 동작이 OWNER 전용이다.
+        */
+        const l = p.language;
+        const surface = state.plan?.surfaceSlug ?? null;
+        title = l.title; description = l.refused.description; footer = null;
+        actions = <>
+          <Button size="lg" variant={role === "OWNER" && surface !== null ? "default" : "primary"} onClick={publish.close}>{p.close}</Button>
+          {role === "OWNER" && surface !== null && <ButtonLink variant="primary" size="lg" href={routes.sources(slug)}>{l.refused.open(surface)}</ButtonLink>}
+        </>;
+        body = <Stack><Alert variant="danger" title={l.refused.title}>{refusedReason(m, state.plan, state.path)}</Alert></Stack>;
+        break;
+      }
       const r = state.reason === "unsupported-file-kind" ? p.unsupportedFileKind : state.reason === "base-file-unreadable" ? p.baseFileUnreadable : p.baseFileMissing;
       title = r.title; description = r.description(state.path, state.branch); footer = p.notStarted;
       actions = role === "OWNER" ? <ButtonLink variant="primary" size="lg" href={routes.settings(slug)}>{p.settings}</ButtonLink> : null;
@@ -471,14 +558,22 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-ready": {
       const data = state.preview;
       const open = data.openPr;
+      const l = p.language;
       // ⚠️ **나가는 수로 말한다** (#84 — POSTMORTEM 2026-09-17). 보류(`withoutFile`·`withoutKey`)를 뺀 수가 결과의 `delivered`·Logs와 같은 모집단이다.
       const { total: sending, keys: sendingKeys } = data.sendable;
       const partial = sending < data.total;
-      if (sending === 0) {
+      const withdrawn = data.withdrawnLocales ?? [];
+      const kinds = data.fileChanges ?? [];
+      const added = kinds.filter(file => file.kind === "new").length;
+      const removed = kinds.filter(file => file.kind === "removed").length;
+      // 언어 파일 변경 — 새 파일·삭제. PR 줄의 0건 갈래가 이 수로 센다(결정 D10). 갱신 파일은 번역 변경이 말한다.
+      const languageFiles = added + removed;
+      const leftOut = (data.locales?.empty.length ?? 0) + (data.locales?.withheld.length ?? 0);
+      if (sending === 0 && !hasLanguageWork(data)) {
         // 전부 보류면 PR을 만들거나 바꿀 것이 없다 — 그 버튼을 두지 않고 이유를 말한다. 표의 보류 줄이 사유별로 선다.
         title = p.nothingSendable.title; description = p.nothingSendable.body; footer = p.notStarted;
         actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
-        body = <PreviewTable preview={data} />;
+        body = <PreviewTable preview={data} branch={repo.branch} />;
         break;
       }
       /**
@@ -488,36 +583,61 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
        */
       const allSame = data.changedFiles.length === 0 && open !== undefined;
       if (allSame) {
-        title = open === null ? p.same.nothingTitle(repo.branch) : p.same.closesTitle(open.number);
-        description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
-        // ⚠️ **파일 수를 빼고 말한다** (#94) — `groups`는 편집이 사는 파일이지 바뀌는 파일이 아니다. 실행·Logs는 `0 files`다.
-        footer = p.fileSummary(sending, sendingKeys);
         const confirmLabel = open === null ? p.same.action : p.same.closeAction(open.number);
+        if (open !== null && withdrawn.length > 0) {
+          // 전달된 언어 변경을 취소해 PR이 base와 같아졌다(시안 P1 ④⑤) — "바뀐 것 없음"만 말하면 무엇을 거두는지 안 보인다. 제목이 그 일(PR 닫기)이다.
+          const what = withdrawn.length > 1 ? "several" : withdrawn[0]?.effect === "delete" ? "removing" : "adding";
+          title = confirmLabel; description = l.takenBackDescription(m.home.meta.pr(open.number), repo.branch, what);
+          footer = l.takenBackSummary(sending, withdrawn.length);
+        } else {
+          title = open === null ? p.same.nothingTitle(repo.branch) : p.same.closesTitle(open.number);
+          description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
+          // ⚠️ **파일 수를 빼고 말한다** (#94) — `groups`는 편집이 사는 파일이지 바뀌는 파일이 아니다. 실행·Logs는 `0 files`다.
+          footer = p.fileSummary(sending, sendingKeys);
+        }
         actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
-        body = <PreviewTable preview={data} />;
+        body = <PreviewTable preview={data} branch={repo.branch} />;
         break;
       }
-      title = p.previewTitle(sending);
-      description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${p.previewCounts(sending, sendingKeys)}`;
-      // ⚠️ **파일 수는 실행이 바꾸는 파일이다** (#128) — `groups`(편집이 사는 파일)를 세면 토큰 없이 바뀌는 파일이 빠지고 결과의 "N files changed"와 갈린다.
-      // 실행과 같은 렌더·blob 비교에서 오므로 상한(`truncated`)과 무관하다.
-      footer = p.previewSummary(sending, sendingKeys, data.changedFiles.length);
+      /*
+        번역 변경 0 · 파일 변경 ≥ 1 → `Publish language changes`(시안 P1 ①). `Publish 0 changes`는 할 일이 없다고 읽힌다. 바닥 수는 번역 변경과 파일을 따로 센다 —
+        삭제 파일의 번역을 전달 수에 더하지 않는다.
+      */
+      const files = languageFiles > 0 ? l.files(added, removed) : null;
+      const left = leftOut > 0 ? ` ${l.leftOut(leftOut)}` : "";
+      if (sending === 0) {
+        title = l.title;
+        const intro = open ? l.introOpen(label, open.number) : l.intro(label);
+        description = `${intro}${files === null ? "" : ` ${files.charAt(0).toUpperCase()}${files.slice(1)}.`}${left}`;
+        footer = l.summary(data.changedFiles.length);
+      } else {
+        title = p.previewTitle(sending);
+        const counts = files === null ? p.previewCounts(sending, sendingKeys) : l.countsWithFiles(sending, sendingKeys, files);
+        description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${counts}${left}`;
+        // ⚠️ **파일 수는 실행이 바꾸는 파일이다** (#128) — `groups`(편집이 사는 파일)를 세면 토큰 없이 바뀌는 파일이 빠지고 결과의 "N files changed"와 갈린다.
+        // 실행과 같은 렌더·blob 비교에서 오므로 상한(`truncated`)과 무관하다.
+        footer = p.previewSummary(sending, sendingKeys, data.changedFiles.length);
+      }
       const confirmLabel = open ? p.replacePr(open.number) : p.openPr;
       actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
+      // PR 줄 본문 — 번역 변경 0이면 언어 파일 변경 수로 센다(결정 D10). "these 0 changes"가 서지 않는다.
+      const prCount = sending === 0 ? Math.max(languageFiles, 1) : sending;
       body = <>
         {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
         {open === undefined
           ? <Alert variant="warning" className="shrink-0" title={p.prUnknown.title}>{p.prUnknown.body}</Alert>
           : open === null
-            ? <Alert variant="neutral" className="shrink-0" title={p.prNone.title(label)}>{p.prNone.body(sending)}</Alert>
-            : <Alert variant="neutral" className="shrink-0" title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, sending)}</Alert>}
-        <PreviewTable preview={data} />
+            ? <Alert variant="neutral" className="shrink-0" title={p.prNone.title(label)}>{sending === 0 ? p.prNone.languageBody(prCount) : p.prNone.body(sending)}</Alert>
+            : <Alert variant="neutral" className="shrink-0" title={p.prOpen.title(open.number)}>{sending === 0 ? p.prOpen.languageBody(open.number, prCount) : p.prOpen.body(open.number, sending)}</Alert>}
+        <PreviewTable preview={data} branch={repo.branch} />
       </>;
       break;
     }
     case "running":
       panel = PANEL.running; inner = false;
-      title = p.progressTitle(runTotal || count); description = p.progressDescription; footer = p.leave;
+      // 번역 0인 실행(언어 파일만)은 "Publishing 0 changes"가 아니다(시안 P1 ①).
+      title = runTotal > 0 ? p.progressTitle(runTotal) : count > 0 && languageWork === 0 ? p.progressTitle(count) : p.language.progressTitle;
+      description = p.progressDescription; footer = p.leave;
       // D1 — 라벨은 누른 확정 버튼의 것 그대로이고 스피너만 선다. 닫았다 다시 연 모달도 같은 라벨이다.
       actions = <Button variant="primary" size="lg" loading>{publish.runLabel || p.button}</Button>;
       body = <Progress branch={repo.syncBranch} />;
@@ -530,6 +650,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       // "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다.
       const total = outcome.status === "committed" ? outcome.delivered : result?.total ?? count;
       const withheld = planWithheldLines(m, outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
+      // 이 실행이 정리한 언어 요청을 그 언어 이름으로 말한다(#267 — R-F2b). "Not sent"만으로는 무엇이 안 나갔는지 모른다.
+      const expired = (outcome.status === "skipped" && outcome.reason === "no-edits" ? outcome.expired ?? [] : [])
+        .map(request => <p key={`expired:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground text-xs">{expiringLine(m, request)}</p>);
       // no-changes 실행이 닫은 PR (B1 r3) — 조용히 닫힌 채 두지 않고 이유와 링크를 보인다. 보류가 섞여 Not sent 틀이어도 같은 줄이다.
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
@@ -547,14 +670,15 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       switch (view) {
         case "created":
           panel = PANEL.created; inner = false;
-          title = p.created; description = p.createdDescription(total);
+          // 번역 0인 PR은 "0 changes are in a pull request"가 아니다 — 언어 변경이 머지를 기다린다(완료를 말하지 않는다).
+          title = p.created; description = total === 0 ? p.language.createdDescription : p.createdDescription(total);
           footer = number === null ? null : p.prMeta(number, files);
           actions = viewPr;
           body = <Stack><PrCard repo={label} number={number} note={p.openedJustNow} />{withheld}<Hint>{p.accessNote}</Hint></Stack>;
           break;
         case "updated":
           panel = PANEL.updated; inner = false;
-          title = p.updated; description = number === null ? undefined : p.updatedDescription(number, total);
+          title = p.updated; description = number === null ? undefined : total === 0 ? p.language.updatedDescription(number) : p.updatedDescription(number, total);
           footer = number === null ? null : p.prMeta(number, files);
           actions = viewPr;
           body = <Stack>
@@ -582,6 +706,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             {outcome.status === "skipped" && outcome.reason === "writer-warnings" && <Warnings warnings={outcome.warnings} />}
             {closedLine}
             {withheld}
+            {expired}
           </Stack>;
           break;
         }
@@ -593,6 +718,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             <Alert variant="success" className="shrink-0">{p.noChangesBody(repo.branch)}</Alert>
             {closedLine}
             {withheld}
+            {expired}
             <Hint icon={History}>{p.inLogs}</Hint>
           </Stack>;
           break;
