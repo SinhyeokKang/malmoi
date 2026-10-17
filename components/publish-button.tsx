@@ -536,7 +536,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
         title = l.title; description = l.refused.description; footer = null;
         actions = <>
           <Button size="lg" variant={role === "OWNER" && surface !== null ? "default" : "primary"} onClick={publish.close}>{p.close}</Button>
-          {role === "OWNER" && surface !== null && <ButtonLink variant="primary" size="lg" href={routes.sources(slug)}>{l.refused.open(surface)}</ButtonLink>}
+          {/* 고칠 자리로 바로 보낸다 — 소스 상세를 열고 그 언어 행에 포커스한다(E1 딥링크). 언어를 모르면(안전하지 않은 경로) 상세만 연다. */}
+          {role === "OWNER" && surface !== null && <ButtonLink variant="primary" size="lg" href={routes.sources(slug, { source: surface, language: state.plan?.localeCode ?? undefined })}>{l.refused.open(surface)}</ButtonLink>}
         </>;
         body = <Stack><Alert variant="danger" title={l.refused.title}>{refusedReason(m, state.plan, state.path)}</Alert></Stack>;
         break;

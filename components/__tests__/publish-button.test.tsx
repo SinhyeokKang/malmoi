@@ -714,6 +714,6 @@ it("Publish 모달은 ButtonLink로 내부 이동과 새 탭 외부 링크를 �
   const internal = links.filter((link) => !/\bexternal\b/.test(link));
   // 설정 둘(base 파일 거부 · 실행 설정 오류) + 소스 하나(언어 계획 거부 — 고칠 자리가 소스 상세다, 시안 P1 ⑥).
   expect(internal).toHaveLength(3);
-  for (const link of internal) expect(link).toMatch(/href=\{routes\.(settings|sources)\(slug\)\}/);
+  for (const link of internal) expect(link).toMatch(/href=\{routes\.(settings\(slug\)|sources\(slug, )/);
   expect(source).not.toMatch(/<a\b[^>]*buttonClass/);
 });
