@@ -60,6 +60,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
         <p className="text-muted-foreground min-w-0 basis-full text-xs leading-prose">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
-    {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(m, error) : isAccessError(error) ? accessErrorMessage(m, error) : m.locales.field.failed}</FieldError>}
+    {/* `locale-change-pending`은 일반 실패로 접지 않는다 — 고른 뒤 다른 세션의 언어 변경이 도착한 경합이고, 다음 행동이 다르다(시안 P2). */}
+    {error && <FieldError>{error === "locale-change-pending" ? m.sources.localeChangePending : isRepositorySettingsError(error) ? repositorySettingsErrorMessage(m, error) : isAccessError(error) ? accessErrorMessage(m, error) : m.locales.field.failed}</FieldError>}
   </form>;
 }

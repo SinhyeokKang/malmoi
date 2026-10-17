@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SourcesScreen } from "@/components/sources/sources-screen";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
+import { languageName } from "@/lib/onboarding/language-name";
 import { en } from "@/messages/en";
 import { ko } from "@/messages/ko";
 import { key, render } from "./helpers/dom";
@@ -82,7 +83,8 @@ describe("json 프리셋 + 자유 입력(A1)", () => {
 
   it("이름은 화면 언어다 — ko 화면이면 독일어", async () => {
     await open(standard, "ko");
-    await act(async () => { await user().click(card().querySelector("header button")!); });
+    const koCard = [...document.querySelectorAll("section")].find(node => node.querySelector("h2")?.textContent === ko.sources.languages)!;
+    await act(async () => { await user().click(koCard.querySelector("header button")!); });
     const de = options().find(node => node.querySelector("[data-option-code]")?.textContent === "de")!;
     expect(de.textContent).toContain("독일어");
     expect(document.body.textContent).toContain(ko.sources.locale.common);
@@ -93,7 +95,7 @@ describe("json 프리셋 + 자유 입력(A1)", () => {
     await openAdd();
     expect(option("zh_CN")).toBeDefined();
     expect(option("zh-CN")).toBeUndefined();
-    expect(option("zh_CN")!.textContent).toContain("Chinese");
+    expect(option("zh_CN")!.textContent).toContain(languageName("zh-CN", "en"));
     expect(option("pt_BR")!.getAttribute("aria-disabled")).toBe("true");
   });
 
@@ -134,7 +136,9 @@ describe("미리보기 — 받는 중 · 실패 · 유효 · 되살림(A1·A4)",
     await open();
     await openAdd();
     await act(async () => { await user().type(combobox(), "fr"); });
-    expect(mocks.previewAdd).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "fr" });
+    // 치는 동안은 쉼 뒤에 부른다 — 한 글자마다 서버를 부르지 않는다.
+    await vi.waitFor(() => expect(mocks.previewAdd).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "fr" }));
+    expect(mocks.previewAdd).toHaveBeenCalledTimes(1);
   });
 
   it("실패: danger Alert + Try again, 확정 꺼짐 — Try again이 다시 받는다", async () => {
@@ -182,6 +186,7 @@ describe("필드 오류 — 서버 코드가 도움말을 대신한다(A2)", () 
     await openAdd();
     await act(async () => { await user().type(combobox(), code); });
     await key(combobox(), "Escape");
+    await vi.waitFor(() => expect(dialog()!.querySelector("[data-field-error]")).not.toBeNull());
     const field = dialog()!.querySelector("[data-field-error]")!;
     expect(field.textContent).toBe(text);
     expect(combobox().getAttribute("aria-invalid")).toBe("true");
@@ -255,7 +260,9 @@ describe("Chrome — 지원 목록 Select(A3)", () => {
     const items = [...document.querySelectorAll('[role="option"]')];
     expect(items.length).toBe(54);
     const enAu = items.find(node => node.textContent?.startsWith("en_AU"))!;
-    expect(enAu.textContent).toContain("English (Australia)");
+    // 이름은 기존 헬퍼 그대로다(D8) — 표시용으로만 밑줄을 하이픈으로 바꿔 넘긴다.
+    expect(enAu.textContent).toContain(languageName("en-AU", "en"));
+    expect(enAu.textContent).not.toContain("en_AU en_AU");
     const de = items.find(node => node.textContent?.startsWith("de"))!;
     expect(de.getAttribute("aria-disabled")).toBe("true");
     expect(de.textContent).toContain(en.sources.locale.added);

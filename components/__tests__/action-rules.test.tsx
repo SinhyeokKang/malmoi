@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn(), listProjectBranches: vi.fn(),
   unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(), startSessionRevocation: vi.fn(),
   issueApiToken: vi.fn(), revokeApiToken: vi.fn(), disconnectOAuthConnection: vi.fn(),
-  preview: vi.fn(), revert: vi.fn(),
+  preview: vi.fn(), revert: vi.fn(), localePreview: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh, push: mocks.push, replace: mocks.replace }),
@@ -46,7 +46,10 @@ vi.mock("@/app/(edit)/mcp/actions", () => ({
 }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: mocks.preview, revertTranslationKey: mocks.revert, triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
-vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ updateBaseLocale: vi.fn(), removeSource: vi.fn(), previewSourceRemoval: async () => ({ ok: true, pendingCount: 0, approval: null, openPr: "none" }) }));
+vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({
+  updateBaseLocale: vi.fn(), removeSource: vi.fn(), previewSourceRemoval: async () => ({ ok: true, pendingCount: 0, approval: null, openPr: "none" }),
+  previewSourceLocaleRemoval: mocks.localePreview, removeSourceLocale: vi.fn(), cancelSourceLocaleRemoval: vi.fn(), previewSourceLocaleAdd: vi.fn(), addSourceLocale: vi.fn(),
+}));
 
 import { GithubSection } from "@/components/account/github-section";
 import { GitLabSection } from "@/components/account/gitlab-section";
@@ -83,6 +86,7 @@ beforeEach(() => {
   mocks.listProjectBranches.mockResolvedValue({ ok: true, names: ["main"], defaultBranch: "main", truncated: false });
   mocks.prepareRepositorySync.mockResolvedValue({ approval: "digest-1", unsent: 0, languages: [] });
   mocks.preview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "a", after: "b" }], confirmation: "f".repeat(64) });
+  mocks.localePreview.mockReturnValue(new Promise(() => {}));
 });
 
 async function click(node: Element) { await act(async () => { await userEvent.setup().click(node); }); }
@@ -106,8 +110,17 @@ const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", re
 const sourceDetail = {
   id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc", lastCommitAt: now, lastImportStartedAt: null, lastImportError: null,
   lastImportFailedAt: null, lastImportedAt: now, createdAt: now, keys: 1, locales: 1, orphanedLocales: 0, progress: { total: 1, done: 1, review: 0, percent: 100 },
-  installed: true, importActive: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 1, translated: 1, needsReview: 0, untranslated: 0, percent: 100 }],
+  installed: true, importActive: false, repoHost: "github", pullRequestUrl: "https://github.com/o/r/pull/7", localeDelivery: "confirmed",
+  repository: { repoOwner: "o", repoName: "r", baseBranch: "main" }, connection: { adapterName: "json-catalog", pathTemplate: "web/{locale}.json", format: "JSON catalog" },
+  languages: [
+    { code: "en", isBase: true, orphaned: false, total: 1, translated: 1, needsReview: 0, untranslated: 0, percent: 100, change: null, unsent: false },
+    { code: "ko", isBase: false, orphaned: false, total: 1, translated: 1, needsReview: 0, untranslated: 0, percent: 100, change: { operation: "REMOVE", requestedAt: now }, unsent: false },
+    { code: "ja", isBase: false, orphaned: false, total: 1, translated: 1, needsReview: 0, untranslated: 0, percent: 100, change: null, unsent: false },
+  ],
 } as unknown as SourceDetail;
+const sourceModal = () => <SourceDetailModal slug="acme" sourceSlug="web" role="OWNER" state={{ status: "ready", detail: sourceDetail }} now={now} busy={false}
+  sources={[{ id: "s-web", slug: "web" }, { id: "s-app", slug: "app" }]} onRemoved={() => {}} onLost={() => {}} onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
+  returnFocusRef={{ current: null }} fallbackFocusRef={{ current: null }} />;
 const activeToken: TokenCardData = { state: "active", grants: [], scope: { kind: "all" }, createdAt: "2026-09-28T00:00:00.000Z", lastUsedAt: null, expiresAt: "2026-12-27T12:00:00.000Z" };
 const connectedApp: ConnectedAppData = {
   id: "c1", name: "Claude Code", ident: "claude.ai/oauth/claude-code-client-metadata", state: "active", grants: [], scope: { kind: "all" },
@@ -177,6 +190,10 @@ const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: ()
       sources={[{ id: "s-web", slug: "web" }, { id: "s-app", slug: "app" }]} onRemoved={() => {}} onLost={() => {}} onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
       returnFocusRef={{ current: null }} fallbackFocusRef={{ current: null }} />,
     trigger: () => buttonByText(en.sources.removal.action), host: 1,
+  },
+  {
+    name: "언어 Remove language", file: ["components/sources/remove-locale-dialog.tsx"],
+    ui: sourceModal, trigger: () => q(`[aria-label="${en.sources.locale.removeLabel("ja")}"]`), host: 1,
   },
 ];
 
@@ -285,6 +302,12 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
   },
   { name: "번역 화면 — 코드 참조", file: "components/translations/workspace/locale-panel.tsx", ui: () => <TranslationWorkspace {...workspaceProps()} /> },
   { name: "GitLab PAT 입력 — 토큰 만들기", file: "components/gitlab/token-form.tsx", ui: () => <GitLabTokenForm submitLabel="Connect" onConnected={() => {}} /> },
+  // 언어 행의 마지막 Publish 링크 — 새 탭 외부 링크다(locale-add 시안 L2).
+  { name: "Sources 언어 행 — View pull request", file: "components/sources/languages-card.tsx", ui: sourceModal },
+  {
+    name: "언어 제거 확인 — 결과 미확정의 Logs (문장 안)", file: "components/sources/remove-locale-dialog.tsx", ui: sourceModal,
+    open: async () => { mocks.localePreview.mockResolvedValue({ ok: false, error: "publish-unsettled" }); await click(q(`[aria-label="${en.sources.locale.removeLabel("ja")}"]`)); },
+  },
 ];
 
 /**

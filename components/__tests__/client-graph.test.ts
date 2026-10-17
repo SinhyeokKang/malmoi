@@ -146,6 +146,13 @@ const CLIENT_LIB_FILES = [
   "lib/landing/stage.ts",
   // 공개 셸 서랍의 GitHub 행이 헤더와 같은 저장소 URL을 읽는다 — `routes`와 사전 타입만 무는 잎이다.
   "lib/links.ts",
+  // Sources 언어 추가 Dialog(locale-add E1)가 포맷 지원·같은 파일 철자 판정(`supportsLocaleChanges`·`localeCollisionKey`)과 Chrome 목록을 값으로 읽는다.
+  // 판정 잎(`add-plan`)이 코드 모양 검사(`lib/locale-code.ts`)와 경로 소유(`lib/surfaces/plan.ts`)를 문다 — 아래 `lib/locales` 잎 검사가 그래프를 고정한다.
+  "lib/locale-code.ts",
+  "lib/locales/add-plan.ts",
+  "lib/locales/chrome-codes.ts",
+  // 추가 Dialog의 프리셋·구분자·거르기 — import 0인 잎이다.
+  "lib/locales/presets.ts",
   // Publish 결과 갈래가 정리한 언어 요청이 리포에 닿았는지 읽는다(#267) — import 0인 잎이다.
   "lib/locales/reached.ts",
   // LNB 프로젝트 스위처·사용자 메뉴·LNB 목록 구역의 목록 판정 — `lib/search/match.ts`(import 0) 하나만 무는 잎이다.
@@ -165,6 +172,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/slug.ts",
   // 리포 호스트의 웹 주소(`/projects` 띠의 compare) — import 0 잎.
   "lib/projects/repo-web.ts",
+  // Sources 언어 행의 `View pull request #N`(locale-add E1) — 저장된 Publish 주소에서 번호만 뽑는 import 0 잎이다(옛 자리 `remote-plan.ts`는 어댑터를 문다).
+  "lib/projects/review-number.ts",
   "lib/projects/import-failure.ts",
   // 프로젝트 목록이 검색을 로컬에서 거른다 (audit-ux #17) — 갈래·검색·하이라이트가 전부 I/O 없는 순수 함수다.
   "lib/projects/list.ts",
@@ -510,6 +519,14 @@ describe("클라이언트 그래프", () => {
     expect({ outside, packages: [...packages] }).toEqual({ outside: [], packages: [] });
     const chrome = walk([join(ROOT, "lib/locales/chrome-codes.ts")]);
     expect([...chrome.files].map((file) => file.slice(ROOT.length))).toEqual(["lib/locales/chrome-codes.ts"]);
+  });
+
+  it("`lib/locales/presets.ts`·`lib/projects/review-number.ts`는 잎이다 — 아무것도 물지 않는다(locale-add E1)", () => {
+    for (const leaf of ["lib/locales/presets.ts", "lib/projects/review-number.ts"]) {
+      const graph = walk([join(ROOT, leaf)]);
+      expect([...graph.files].map((file) => file.slice(ROOT.length))).toEqual([leaf]);
+      expect([...graph.packages]).toEqual([]);
+    }
   });
 
   it("`lib/shell/breakpoint.ts`는 잎이다 — 아무것도 물지 않는다", () => {

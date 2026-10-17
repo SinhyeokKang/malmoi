@@ -225,6 +225,9 @@ const GUIDE_ALLOWED: Readonly<Record<string, readonly string[]>> = {
 const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   // 코드의 `import` 문을 말한다 — Sync가 아니다.
   "adapterErrors.shorthand-property": ["import"],
+  // 언어 제거 확인의 앱 코드 경고 — 그 언어를 불러오는 코드의 `import` 문을 말한다(시안 D1). Sync가 아니다.
+  "sources.locale.appCodeLine": ["import"],
+  "sources.locale.onGitLab.appCodeLine": ["import"],
   // ①은 개발자가 고르는 화면이고 GitHub이 보여 주는 값이다 (DESIGN §10.1).
   "newProject.repo.pushedAt": ["push"],
   // 설정의 CI 카드 — 워크플로가 실제로 하는 일을 개발자에게 말한다 (DESIGN §10.1).

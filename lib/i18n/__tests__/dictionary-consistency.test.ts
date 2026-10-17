@@ -129,6 +129,9 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "changelog.releases",
     "home.meta.ci",
     "home.meta.pullRequest",
+    // 언어 제거 확인의 사실 판 라벨 — 같은 PR/MR 낱말이다(`home.meta.pullRequest`와 같은 이유).
+    "sources.locale.factPullRequest",
+    "sources.locale.onGitLab.factPullRequest",
     "logs.none",
     "logs.detail.labels.pullRequest",
     "logs.trigger.ci",

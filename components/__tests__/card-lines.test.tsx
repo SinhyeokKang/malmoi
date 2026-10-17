@@ -54,7 +54,7 @@ describe("Sources 상세 Status 카드 — 결과 줄 유무", () => {
     id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"),
     lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"),
     createdAt: new Date("2026-09-19T00:00:00Z"), keys: 3, locales: 1, orphanedLocales: 0, progress: { total: 3, done: 3, review: 0, percent: 100 },
-    installed: true, languages: [{ code: "en", isBase: true, orphaned: false, total: 3, translated: 3, needsReview: 0, untranslated: 0, percent: 100 }],
+    installed: true, languages: [{ code: "en", isBase: true, orphaned: false, total: 3, translated: 3, needsReview: 0, untranslated: 0, percent: 100, change: null, unsent: false }],
   } as unknown as SourceDetail;
   const draw = (importResult?: { text: string; tone: "success" }) => render(
     <SourceDetailModal slug="p" sourceSlug="web" role="OWNER" state={{ status: "ready", detail }} now={new Date("2026-09-21T00:00:00Z")} busy={false} sources={[{ id: "s", slug: "web" }]} onRemoved={() => {}} onLost={() => {}}

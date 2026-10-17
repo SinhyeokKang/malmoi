@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
 import { Radio, RadioGroup } from "@/components/ui/radio";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -176,6 +177,8 @@ const DELEGATED_RADIX_FIXTURES = {
     h(SelectContent, null, h(SelectItem, { value: "en" }, "English")),
   ),
   "components/ui/select-row.tsx": h(SelectRow, {input: "checkbox", checked: false, label: "Include", aside: h(Button, null, "Preview")}),
+  // 링은 `Input`이 든다 — 목록 행은 포커스를 받지 않는다(`aria-activedescendant`).
+  "components/ui/combobox.tsx": h(Combobox, { id: "focus-combobox", value: "", onValueChange: () => {}, onSelect: () => {}, groups: [], listLabel: "Languages" }),
 };
 
 /** Slot만 쓰는 장식 타일도 실제 렌더 픽스처로 비포커스 계약을 확인한다. */
