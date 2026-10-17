@@ -227,3 +227,4 @@
 - wave ⑦ — **E1** `ctx_e14f9f6656c2` · **E3** `ctx_3e30e41ce60f`(Opus high, base `01cc042d`) · **E2 fix1** `ctx_5d39562474c8`(같은 터미널).
 - E3 질문(데이터 공백 넷 — A Sync 언어별 목록 · B Not included/Taken back 경로 · C `locale-plan-refused` 소스·소유 소스 · D Settings 문장의 소스 이름) → **지휘자 판단: A~D 모두 E3가 추가 필드로**(시안이 정본, 그 파일을 쥔 다른 배치 없음). 조건: additive만 · 판정 변경·호스트 호출·미리보기 쓰기 없음 · C는 기존 경로 소유 판정 재사용 · 필드마다 red 먼저 · 브리프 밖 파일은 인계에. 비-additive가 필요하면 그 하나만 소스 없는 문장 + 미룸.
 - E1 질문(프리셋+자유 입력 콤보박스 — `command.tsx`는 ⌘K 전용, `popover.tsx`는 포커스를 뺏는다) → **지휘자 판단: 새 프리미티브 `components/ui/combobox.tsx`**(메모리 'UI primitives first'). API는 A1 소비만큼 · `useImeGuard`·`nextActive` 재사용 · ARIA/IME/포커스 DOM 테스트 먼저 · 기존 손 사본은 위치만 인계(이관은 지휘자 판단) · 문서(CLAUDE.md 프리미티브 수·DESIGN·DIRECTORY)는 D2.
+- E3 질문 2(야간 만료 사건이 Logs에서 CI로 읽힘) → **지휘자 판단: payload `trigger` 필드 추가 + 문장(`triggerOf`)과 필터(`triggerWhere`)가 같이 읽는다**(한 화면 안 분류 불일치 금지). 옛 행은 지금 동작, 야간 cron Publish = nightly. 필터가 비-additive 변경을 요하면 다시 묻는다.
