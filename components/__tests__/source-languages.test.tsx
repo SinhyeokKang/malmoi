@@ -392,3 +392,27 @@ describe("planLanguageRow", () => {
     expect(planLanguageRow(r, input)).toEqual({ badge, unsent, link, notConfirmed, note, action: { kind, block } });
   });
 });
+
+describe("DS fix3", () => {
+  /** #276 — 카드 머리 수는 카드가 보이는 행 수다(시안 L2·L6·L7). 서버 `locales`(REMOVE 제외 — Home·Keys·Inbox 분모 계약)는 그대로다. */
+  it("#276 머리 수와 sr 문장은 Adding·Removing·Inactive를 포함한 행 수다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { change: add }), row("ko", { change: removal }), row("es", { orphaned: true })], { locales: 2 }) });
+    await open();
+    const head = card().querySelector("header")!;
+    expect(head.textContent).toContain(en.sources.languageCount(4));
+    expect(head.querySelector("[aria-hidden]")?.textContent).toBe("4");
+  });
+
+  /**
+   * 언어 행은 DOM 순서가 곧 시각 순서다 — 코드 · 진행률 · 상태 · 동작. 좁은 폭에서 줄을 바꿀 뿐 `order-*`로 시각 순서를 따로 정하지 않는다
+   * (`list-primitives.test.tsx`의 ListRow 규칙과 같다 — Tab 순서와 읽는 순서가 갈리지 않게).
+   */
+  it("언어 행에 order-* 가 없고 상태 칸이 동작 칸보다 DOM에서 앞이다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de", { change: removal })], { pullRequestUrl: "https://github.com/o/r/pull/128" }) });
+    await open();
+    const de = rowOf("de");
+    for (const element of [de, ...de.querySelectorAll("*")]) expect([...element.classList].some(token => /(^|:)order-/.test(token)), element.className).toBe(false);
+    const link = de.querySelector("a[target]")!;
+    expect(link.compareDocumentPosition(action("de")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
