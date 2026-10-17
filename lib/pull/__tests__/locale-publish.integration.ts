@@ -495,7 +495,7 @@ describe("cron Publish의 스냅샷 전 만료", () => {
     expect(snapshot(made)?.changes.map(change => [change.kind, change.path])).toEqual([["upsert", "i18n/en.json"]]);
     expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(0);
     expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "ko" } })).toMatchObject({ orphaned: false });
-    expect(await prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "surface.localeChangeResolved" }, select: { actorKind: true } })).toEqual([{ actorKind: "AUTOMATION" }]);
+    expect(await prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "surface.localeChangeResolved" }, select: { actorKind: true, payload: true } })).toEqual([{ actorKind: "AUTOMATION", payload: expect.objectContaining({ localeChange: expect.objectContaining({ via: "nightly" }) }) }]);
   });
 
   it("보류된 ADD + PR 닫힘 + cron → 관측된 파일로 활성 만료되고 그 언어 편집이 나간다", async () => {
@@ -572,7 +572,7 @@ describe.each(["github", "gitlab"] as const)("미머지 종료 뒤 만료 전 Pu
     expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(0);
     expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "ko" } })).toMatchObject({ orphaned: false });
     expect(await delivered()).toEqual([]);
-    expect(await prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "surface.localeChangeResolved" }, select: { actorKind: true } })).toEqual([{ actorKind: "USER" }]);
+    expect(await prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "surface.localeChangeResolved" }, select: { actorKind: true, payload: true } })).toEqual([{ actorKind: "USER", payload: expect.objectContaining({ localeChange: expect.objectContaining({ via: "publish" }) }) }]);
 
     // 만료 뒤에는 행이 없다 — 다음 미리보기·Publish는 원격 호출 없이 보낼 것이 없다.
     await ageRuns();

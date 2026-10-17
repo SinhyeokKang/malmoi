@@ -34,6 +34,24 @@ describe("triggerOf — 주체 셋", () => {
     expect(triggerOf({ kind: "IMPORT", actorKind: "AUTOMATION", subtype: "import.reportedFailure" })).toBe("ci");
   });
 
+  /**
+   * **언어 변경 만료는 그 판정을 돌린 실행이 주체다** (locale-add 시안 P3) — 야간·CI·야간 Publish가 모두 AUTOMATION · 같은 subtype으로 남아,
+   * 컬럼만 보면 야간 만료가 "CI"로 섰다. 기록 때 실은 `via`가 가른다. 옛 행(`via` 없음)은 지금 판정(ci) 그대로다.
+   */
+  it.each([
+    ["nightly", "nightly"],
+    ["ci", "ci"],
+    [null, "ci"],
+    [undefined, "ci"],
+  ] as const)("AUTOMATION 언어 만료 × via %s → %s", (via, expected) => {
+    expect(triggerOf({ kind: "SURFACE", actorKind: "AUTOMATION", subtype: "surface.localeChangeResolved", via })).toBe(expected);
+  });
+
+  it("via는 언어 만료 행에서만 읽는다 — 사람 주체는 manual 그대로", () => {
+    expect(triggerOf({ kind: "SURFACE", actorKind: "USER", subtype: "surface.localeChangeResolved", via: "nightly" })).toBe("manual");
+    expect(triggerOf({ kind: "IMPORT", actorKind: "AUTOMATION", subtype: "import.ci", via: "nightly" })).toBe("ci");
+  });
+
   it("야간 subtype 목록은 둘이다", () => {
     expect([...NIGHTLY_SUBTYPES].sort()).toEqual(["import.nightly", "nightly.skip"]);
   });

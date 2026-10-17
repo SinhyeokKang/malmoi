@@ -122,16 +122,25 @@ describe("readPayload — 빠지거나 모양이 틀린 필드는 폴백이다",
 describe("readPayload — SURFACE localeChange", () => {
   it("locale·operation·결과 필드를 읽는다", () => {
     expect(readPayload("SURFACE", { surfaceSlug: "web", adapter: null, baseLocale: null,
-      localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan", reissued: null, pullRequest: { number: 128 } } }))
+      localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan", reissued: null, pullRequest: { number: 128 }, via: "nightly" } }))
       .toEqual({ kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null,
-        localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan", reissued: null, pullRequest: { number: 128 } } });
+        localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan", reissued: null, pullRequest: { number: 128 }, via: "nightly" } });
     expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "de", operation: "ADD", revived: true, reissued: 3 } }))
       .toMatchObject({ localeChange: { locale: "de", operation: "ADD", revived: true, reissued: 3, pullRequest: null } });
   });
 
   it("되살린 수·PR 번호가 없는 옛 payload는 그 칸이 null이다", () => {
     expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: null, outcome: "orphan" } }))
-      .toMatchObject({ localeChange: { reissued: null, pullRequest: null } });
+      .toMatchObject({ localeChange: { reissued: null, pullRequest: null, via: null } });
+  });
+
+  it("만료를 돌린 실행(via)을 읽는다 — 모르는 값·옛 행은 null", () => {
+    for (const via of ["publish", "sync", "nightly", "ci"] as const) {
+      expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "REMOVE", via } }))
+        .toMatchObject({ localeChange: { via } });
+    }
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "REMOVE", via: "manual" } }))
+      .toMatchObject({ localeChange: { via: null } });
   });
 
   it.each<[string, unknown]>([

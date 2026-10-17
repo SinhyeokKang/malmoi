@@ -228,7 +228,7 @@ describe("CI /api/push — 언어 변경 게이트·만료", () => {
     expect(await presence()).toMatchObject({ fr: "active" });
     const [event] = await resolved();
     expect(event).toMatchObject({ actorKind: "AUTOMATION", surfaceIds: ["s-web"] });
-    expect(event?.payload).toMatchObject({ localeChange: { locale: "fr", operation: "ADD", outcome: "active" } });
+    expect(event?.payload).toMatchObject({ localeChange: { locale: "fr", operation: "ADD", outcome: "active", via: "ci" } });
   });
 
   it("REMOVE tx 직후 적재는 전체 보류 — 200 deferred `locale-change-pending`, 사건·Logs 사유, 아무것도 쓰지 않는다", async () => {
@@ -324,7 +324,7 @@ describe.each<Host>(["github", "gitlab"])("야간 — 같은 head의 만료 (%s 
     expect(calls.some(call => isGitMutation(call.method))).toBe(false);
     expect(await rows()).toEqual([]);
     expect(await presence()).toMatchObject({ ko: "active" });
-    expect((await resolved())[0]?.payload).toMatchObject({ localeChange: { locale: "ko", operation: "REMOVE", outcome: "active" } });
+    expect((await resolved())[0]?.payload).toMatchObject({ localeChange: { locale: "ko", operation: "REMOVE", outcome: "active", via: "nightly" } });
     // 재전송 0 — 다음 Publish가 실을 현재 효과에 삭제가 없고, 만료가 전달 목록에서도 그 삭제를 뺐다(#266). 수렴용 Publish가 남지 않는다.
     // 행도 전달 목록도 비었으니 상태 자체가 없다.
     expect(await readLocaleStates(prisma, "p", "s-web")).toEqual([]);
@@ -469,6 +469,9 @@ describe.each<Host>(["github", "gitlab"])("야간 — 같은 head의 만료 (%s 
     expect(await presence("s-web")).toMatchObject({ fr: "active" });
     expect(await rows()).toEqual([{ surfaceId: "s-web", localeCode: "fr", operation: "ADD" }]);
     expect(await presence("s-app")).toMatchObject({ de: "active" });
+    // 야간 적재의 만료다 — 행위자 낱말이 CI로 서지 않게 기록한 실행을 싣는다(시안 P3).
+    expect((await resolved()).map(event => [event.actorKind, (event.payload as { localeChange?: { locale: string; via?: unknown } }).localeChange?.via]))
+      .toEqual([["AUTOMATION", "nightly"]]);
   });
 });
 
@@ -561,9 +564,9 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
     ]);
     const events = await resolved();
     expect(events.map(event => [event.actorKind, (event.payload as { localeChange?: unknown }).localeChange])).toEqual(expect.arrayContaining([
-      ["USER", expect.objectContaining({ locale: "ko", operation: "REMOVE", outcome: "active" })],
-      ["USER", expect.objectContaining({ locale: "fr", operation: "ADD", outcome: "orphan" })],
-      ["USER", expect.objectContaining({ locale: "ja", operation: "REMOVE", outcome: "orphan" })],
+      ["USER", expect.objectContaining({ locale: "ko", operation: "REMOVE", outcome: "active", via: "sync" })],
+      ["USER", expect.objectContaining({ locale: "fr", operation: "ADD", outcome: "orphan", via: "sync" })],
+      ["USER", expect.objectContaining({ locale: "ja", operation: "REMOVE", outcome: "orphan", via: "sync" })],
     ]));
     expect(events).toHaveLength(3);
   });
