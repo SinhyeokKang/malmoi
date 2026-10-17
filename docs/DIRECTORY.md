@@ -119,7 +119,8 @@ app/
         loading.tsx     Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
       translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
       locales/         Sources 목록으로 보내는 legacy redirect
-      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale · removeSource · 읽기 전용 loadSourceDetail/previewSourceRemoval · 언어 변경 넷 addSourceLocale/removeSourceLocale/cancelSourceLocaleRemoval + 읽기 전용 previewSourceLocaleRemoval — 코어 lib/locales/change.ts를 감싸고 코드만 돌려준다) · loading.tsx 골격
+      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale · removeSource · 읽기 전용 loadSourceDetail/previewSourceRemoval · 언어 변경 넷 addSourceLocale/removeSourceLocale/cancelSourceLocaleRemoval + 읽기 전용 미리보기 둘 previewSourceLocaleAdd/previewSourceLocaleRemoval — 코어 lib/locales/change.ts를 감싸고 코드만 돌려준다. 호출자는 components/sources/의 Languages 카드와 Dialog 둘이다) · loading.tsx 골격
+                        page.tsx는 딥링크 쿼리 `?source=&language=`를 읽어 상세 모달·그 언어 행의 동작 버튼으로 착지시킨다(`routes.sources(slug, { source, language })` — Publish 거부 ⑥의 Open web이 쓴다)
                         제거는 미전달 편집이 있으면 소스별 승인 지문을 요구하고 미리보기는 쓰지 않는다
       surfaces/[surfaceSlug]/translations/  번역 작업 화면(트리·키 목록·로케일 세 패널 — translation-rework C4).
                         URL 계약은 lib/translations/query.ts 하나다(화면 층 — 옛 주소는 정규 주소로 redirect). 전 소스를 한 번 읽고 범위로 자른다.
@@ -289,6 +290,8 @@ components/
                         가드 → 내부 동작 → 소비자다(조합 중이면 소비자 onEscapeKeyDown도 안 부른다). ref를 가져 훅이다.
                         ⚠️ 불리언이 아니라 조합을 시작한 노드를 든다 — 조합 중에 닫히면 compositionend가 안 와 재오픈 뒤 Esc가 막혔다.
                         노드가 문서에서 떨어지면 조합이 끝난 것으로 본다
+  ui/combobox.tsx     Combobox — 입력 + 목록 Popover(locale-add 언어 추가 칸이 첫 소비자). 값은 자유 입력이고 목록 행은 `onSelect`로 값을 준다 — 거르기·행 구성은 소비자가 `groups`로 넘긴다.
+                        ⚠️ ui/command.tsx와 다르다 — Command는 ⌘K 이동 전용이라 행이 링크이고 Enter가 a[href]를 누른다. 이쪽은 폼 값을 고른다. 활성 판정(lib/search/keys의 nextActive·reconcileActive)과 IME 가드(use-ime-guard)는 같은 것을 쓰고, 포커스는 늘 입력에 있다(aria-activedescendant)
   ui/command.tsx      Command/CommandInput/CommandStatus/CommandList/CommandGroup/CommandItem — combobox/listbox.
                         활성 id·실제 링크 click·입력 포커스·sr 결과 수를 소유하며 검색/필터 판정은 소비자다.
                         행은 ListRow + 28 타일(icon 필수, 활성 = selected 7%), 상태 줄은 CommandStatus lines 묶음 하나다
@@ -514,7 +517,12 @@ components/
   onboarding/repo-input.ts
                         repoInputOf — ① 리포 행 → Action 입력(GitHub { owner, repo } · GitLab 숫자 id 하나). 모달의 다섯 호출이 이 함수 하나로 입력을 만든다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        remove-source-dialog · sources-archived 일곱 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
+                        remove-source-dialog · sources-archived · languages-card · language-row · add-locale-dialog · remove-locale-dialog 열하나 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
+                        languages-card(locale-add, 2026-10-17)는 상세 모달의 Languages 카드다 — 머리 [Add language] · 행(코드·진행률·상태 배지·동작 하나·[Open]) · Inactive 띠 · 결과 notice · 포커스 예약을 든다.
+                        language-row는 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
+                        add-locale-dialog는 추가 Dialog(json은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
+                        화면이 템플릿을 채우지 않는다. remove-locale-dialog는 **제거 요청·추가 취소 공용** 확인 창이다(remove-source-dialog와 같은 형 — 지문은 여는 순간 받는다).
+                        ⚠️ 두 Dialog는 결과를 호스트(languages-card)로 올리고 닫히며, 포커스는 호스트가 옮긴다.
                         remove-source-dialog는 상세 모달 바닥 왼쪽 [Detach source]의 확인 창이다(Sync 확인 창 형 — 지문은
                         여는 순간 받는다). 성공·응답 유실은 목록 소유자(sources-screen)가 상세를 닫고 배너로 받는다.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
@@ -621,6 +629,10 @@ components/
                         files-sequential · home-stack · members-narrow · repo-branch-narrow · responsive-activity · settings-narrow · admin-panel-head — 2026-10-11 responsive-app
                         (⚠️ jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약·data-pane·포커스 대상만 단언하고 픽셀은 런타임 실측 몫이다)
                         ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
+                        · source-languages · add-locale-dialog · remove-locale-dialog · combobox · publish-language · translation-workspace-frozen — 2026-10-17 locale-add
+                        (Languages 카드 행 판정 표 · 추가·제거 Dialog 상태 전이 · 프리미티브 키보드·IME · Publish 모달 언어 갈래 · 얼린 칸. 접힘·Popover 위치·실 IME는 jsdom 밖이라 런타임 몫이다)
+                        helpers/(dom · result-alert · workspace-props · layer — 테스트 전용 공유 조각. ⚠️ layer의 `waitForLayer`는 상세 모달·중첩 Dialog·Combobox 목록을 연 **직후**
+                        클릭 전에 그 Content의 `pointer-events`가 열릴 때까지 기다린다 — Radix는 DOM을 먼저 붙이고 다음 렌더에서야 여는데, 그 사이에 누르면 CI에서만 깨진다, POSTMORTEM 2026-10-08)
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -726,9 +738,10 @@ lib/
                         `runToken` 조립·`readPayload` · 언어 변경 사건 subtype 넷 LOCALE_CHANGE_SUBTYPES — view가 "source added" 폴백 앞에서 갈라 읽는다) · view(결과 열·값 상태·보는 사람의 시간대 날짜 카드·수집 경계선) ·
                         filter(URL 판정 — 시간대 무관 · 커서 · 시간대 구간 parseDateRange · 프리셋 presetRange) · search(검색 문자열의 **유일한 관문**) /
                         query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label ·
-                        trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 컬럼**
-                        (`actorKind`·`kind`·`subtype`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다. ⚠️ query.ts가 아니라
-                        따로인 이유: query는 `server-only`라 단위 테스트가 그 경계를 못 넘는다 — Prisma는 타입으로만 문다)
+                        trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 칸**
+                        (`actorKind`·`kind`·`subtype` + 언어 만료의 payload `localeChange.via`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다.
+                        ⚠️ query.ts가 아니라 따로인 이유: query는 `server-only`라 단위 테스트가 그 경계를 못 넘는다 — Prisma는 `AnyNull` 표식 하나만 **값으로** 문다
+                        (via 없는 옛 행의 JSON 경로 비교가 SQL NULL이라, `ci`를 `NOT nightly`로 적으면 그 행이 어느 쪽에도 안 든다 — ARCHITECTURE §5.10.7))
                         ⚠️ **앞의 넷은 잎이다** — 클라이언트가 값으로 읽고, 조회를 물면 그 순간 Prisma가
                         번들에 온다(POSTMORTEM 2026-09-07의 7.2MB). `client-graph.test.ts`가 파일 집합을
                         정확 일치로 고정한다
@@ -806,7 +819,7 @@ lib/
                         planBaseLocaleCandidate) · effects(행 + 값 수 → 정규 효과 목록 · 목록 비교) · publish-plan(의도 × base 경로 → 생성·삭제·보류) ·
                         expiry(planLocaleExpiry — 만료 조건 · ADD 자기 증거 · 빈 관측 보류) · presence(strict 적재와 공유하는 존재 판정 liveLocalesOf/localePresence) ·
                         reached(reachedRepository — 만료 뒤 존재로 리포가 요청대로인지, import 0인 잎이라 클라이언트 결과 갈래도 부른다) ·
-                        chrome-codes(Chrome 지원 목록 54개 — 출처 URL·확인일이 머리 주석) · fingerprint(localeChangeFingerprint — 서버 발급 승인 지문, node:crypto)
+                        chrome-codes(Chrome 지원 목록 54개 — 출처 URL·확인일이 머리 주석) · presets(추가 Dialog의 프리셋 — 고정 목록·소스별 구분자·이름 거르기·코드 모양. ⚠️ **클라이언트 잎**이고 표시 규칙만 든다 — 받을지는 서버 미리보기가 정한다) · fingerprint(localeChangeFingerprint — 서버 발급 승인 지문, node:crypto)
                         / work(server-only 없음 — 전달 목록 읽기·localeWork·readLocaleStates·countLocaleWork) · expire(expireLocaleChanges — 잠금 안 만료 I/O,
                         적재·야간·모든 Publish가 같이 부른다) · change(**웹 Action·MCP가 같은 코어** — addLocale · previewLocaleRemoval · removeLocale · cancelLocaleRemoval, server-only)
                         ⚠️ 순수 판정에 server-only를 붙이지 않는다. 격리 PG 시나리오(__tests__/*.integration.ts — change · expire)는 scripts/gate-plan.ts 트리거에 lib/locales/가 들어 있어 pnpm gate가 붙인다
@@ -1000,7 +1013,10 @@ lib/
                         열림 · 없음(null) · 확인 못 함(undefined → 행 띠 "Couldn't check…"). PR·compare는 따로 settle한다
   projects/remote-plan.ts
                         그 판정의 순수 부분(변경된 로케일 **파일 수** · PR 번호 파싱). ⚠️ 키 수가
-                        아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
+                        아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다. 번호 파싱(`reviewNumberFrom`·`pullNumberFrom`)은 review-number로 옮겼고 이 파일은 같은 이름을 다시 내보낸다
+  projects/review-number.ts
+                        reviewNumberFrom·pullNumberFrom — 저장된 PR/MR 주소에서 번호를 뽑는 **클라이언트 잎**(GitHub `/pull/N` · GitLab `/-/merge_requests/N`). remote-plan이 lib/adapters를 물어 클라이언트가 못 읽어서 분리했다.
+                        소비자: Sources Languages 카드는 이 잎을 직접 읽고(저장된 `lastPrUrl`), Home 메타 열·사건 payload의 PR 번호(lib/locales/expire)·projects/remote는 remote-plan의 재수출을 읽는다
   projects/open-pr.ts   server-only. installation 토큰으로 sync 브랜치의 **열린 PR 하나**를 찾는다 —
                         Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
                         `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
@@ -1047,7 +1063,8 @@ lib/
                         Intl.DisplayNames([code])는 그 로케일 데이터가 없으면 보는 사람의 시스템
                         언어로 떨어져 Chrome(ko)에서 az-AZ가 "azərbaycan (아제르바이잔)"이었다
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
-                        한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
+                        한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다. ⚠️ `languageDisplay: "standard"`다(2026-10-17, locale-add D13) —
+                        기본(dialect)은 `pt-BR`을 "Brazilian Portuguese"로 읽어 `Portuguese (Brazil)`인 시안·가이드와 갈렸다. 밑줄 코드(`en_AU`)는 `Intl.DisplayNames`가 RangeError라 코드 그대로 낸다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
   landing/              랜딩(`/`) 스테이지의 수학 — stage(deviceForViewport · fitScale · PLAY · pinnedSpan · trackHeight · sceneAt · typedPrefix · frame).
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
