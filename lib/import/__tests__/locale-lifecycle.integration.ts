@@ -661,7 +661,9 @@ describe("기준 브랜치 변경", () => {
   it("언어 변경 행이 있으면 `locale-change-pending`으로 거부하고 아무것도 바꾸지 않는다 — 행이 없어지면 바뀐다", async () => {
     await seed();
     await request("s-web", "ko", "REMOVE");
-    expect(await changeBaseBranch(prisma, OWNER, { slug: "fixture", baseBranch: "release" })).toEqual({ ok: false, error: "locale-change-pending" });
+    // 어느 소스인지 싣는다 — Settings가 그 이름으로 안내한다(시안 P2). 보관된 소스의 행은 의도가 아니라 세지 않는다.
+    await request("s-app", "fr", "ADD");
+    expect(await changeBaseBranch(prisma, OWNER, { slug: "fixture", baseBranch: "release" })).toEqual({ ok: false, error: "locale-change-pending", surfaceSlugs: ["app", "web"] });
     expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ baseBranch: "main" });
     expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "settings.baseBranchChanged" } })).toBe(0);
     await prisma.localeChange.deleteMany({ where: { projectId: "p" } });

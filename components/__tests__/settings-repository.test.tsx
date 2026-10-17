@@ -267,3 +267,20 @@ it.each([false, true])("Branch mode input=%s keeps desktop240, responsive flex t
   expect(container.querySelector('button[type="submit"]')?.parentElement).toBe(wrapper.parentElement);
   expect(field.getAttribute("aria-describedby")).toBe("base-branch-caption");
 });
+
+/**
+ * **언어 변경이 남아 기준 브랜치를 못 바꾼다** (locale-add 시안 P2) — 일반 실패 문구("Couldn't save")로 접지 않는다. 그 소스를 이름으로 말하고
+ * 할 일(언어 변경을 끝내거나 취소)을 말한다. 자리는 기존 저장 거부 자리(FieldError)다 — 새 그릇이 없다.
+ */
+it.each([
+  [["web"], "web has a language change that isn't published yet. Finish or cancel the language change first, then change the branch."],
+  [["web", "emails"], "2 sources have language changes that aren't published yet. Finish or cancel those language changes first, then change the branch."],
+] as const)("locale-change-pending %o는 전용 안내다", async (surfaceSlugs, sentence) => {
+  actions.updateRepositorySettings.mockResolvedValueOnce({ ok: false, error: "locale-change-pending", surfaceSlugs });
+  const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
+  await choose(container, "dev");
+  await act(async () => { await userEvent.setup().click(container.querySelector('button[type="submit"]')!); });
+  const caption = container.querySelector("#base-branch-caption")!;
+  expect(caption.textContent).toBe(sentence);
+  expect(caption.textContent).not.toContain("Couldn't");
+});
