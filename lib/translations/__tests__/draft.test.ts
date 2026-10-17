@@ -314,6 +314,18 @@ describe("읽기 전용(제거 예정) 언어", () => {
     expect(s.readOnly).toEqual(["ko"]);
   });
 
+  it("복구 사본(restore)은 얼린 칸의 입력도 되살린다 — 편집이 아니라 버린 적 없는 입력이다", () => {
+    const s = reduceKeyDraft(initKeyDraft("k1", { en: "Hello", ko: "안녕" }, ["ko"]), { type: "restore", locale: "ko", value: "mine" });
+    expect(s.draft.ko).toBe("mine");
+    expect(dirtyLocales(s)).toEqual(["ko"]);
+    expect(savableLocales(s)).toEqual([]);
+  });
+
+  it("복구 사본은 활성 집합 밖의 언어를 들이지 않는다", () => {
+    const s = start();
+    expect(reduceKeyDraft(s, { type: "restore", locale: "fr", value: "x" })).toBe(s);
+  });
+
   it("읽기 전용을 싣지 않은 서버 갱신은 기존처럼 전부 편집 가능하다", () => {
     expect(reduceKeyDraft(start(), { type: "server", keyId: "k1", values: { en: "Hello", ko: "안녕", ja: "" } }).readOnly).toEqual([]);
     expect(start().readOnly).toEqual([]);
