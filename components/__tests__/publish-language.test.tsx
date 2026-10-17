@@ -165,6 +165,22 @@ describe("Publish 미리보기 — 언어 변경 (시안 P1)", () => {
     expect(mocks.pull).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * **좁은 폭** (#280) — 표는 최소 520이라 375에서 가로로 스크롤한다(#232). 파일 머리 낱말과 언어 사유 문장은 그 520에 묶이지 않고 스크롤러의 보이는 폭
+   * (`100cqw` — 스크롤러가 컨테이너다)에 맞춰 왼쪽에 붙는다(`sticky left-0`). 머리는 줄바꿈한다(`flex-wrap`). 실제 폭은 RT4가 잰다.
+   */
+  it("좁은 폭 — 파일 머리·사유 줄이 스크롤러의 보이는 폭에 묶인다", async () => {
+    mocks.preview.mockResolvedValue(ok(takenBack));
+    await render(<Host />); await click("Publish");
+    const scroller = modal().querySelector("table")!.parentElement!;
+    expect(scroller.className.split(" ")).toContain("@container/preview");
+    const head = fileHead("apps/web/locales/fr.json")!;
+    const headBox = head.querySelector("[data-file-head]")!;
+    expect(headBox.className.split(" ")).toEqual(expect.arrayContaining(["sticky", "left-0", "w-[100cqw]", "flex-wrap"]));
+    const note = [...modal().querySelectorAll("td")].find(td => td.textContent?.includes("was cancelled after"))!;
+    expect(note.querySelector("[data-file-note]")!.className.split(" ")).toEqual(expect.arrayContaining(["sticky", "left-0", "w-[100cqw]"]));
+  });
+
   it("⑤ 파일 diff 0 · GitLab — 같은 갈래, 낱말만 merge request · !128", async () => {
     mocks.preview.mockResolvedValue(ok({ ...takenBack, openPr: { number: 128, url: "https://gitlab.com/g/p/-/merge_requests/128" } }));
     await render(<Host host="gitlab" />); await click("Publish");
@@ -277,6 +293,22 @@ describe("Publish 미리보기 — ⑥ locale-plan-refused", () => {
 });
 
 describe("Publish 결과 — 번역 0", () => {
+  /** 언어를 거둔 Publish의 결과(#281) — 미리보기의 `Taken back` 사유와 같은 사실을 말한다. 일반 no-changes 원인 문장("same values were synced…")이 아니다. */
+  it.each([
+    ["github", "https://github.com/SinhyeokKang/malmoi/pull/128", "#128"],
+    ["gitlab", "https://gitlab.com/SinhyeokKang/malmoi/-/merge_requests/128", "!128"],
+  ] as const)("거둔 언어 %s — 결과가 그 언어를 이름으로 말한다", async (host, url, pr) => {
+    mocks.preview.mockResolvedValue(ok({ ...takenBack, openPr: { number: 128, url } }));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-changes", closedPr: { number: 128, url }, withdrawn: takenBack.withdrawnLocales });
+    await render(<Host host={host} />); await click("Publish");
+    await click(host === "gitlab" ? "Close merge request !128" : "Close pull request #128");
+    const text = modal().textContent ?? "";
+    expect(text).toContain(`${pr} was closed because the language changes it carried were taken back. Nothing differs from main anymore.`);
+    expect(text).toContain(`fr was cancelled after ${pr} was opened, so the file it was adding is no longer sent. Translations stay in Malmoi.`);
+    expect(text).not.toContain("same values were synced");
+    expect(text).not.toContain("Your edits now match");
+  });
+
   /** 번역 0으로 열린 PR/MR을 교체한 결과(R-E3 Y4 — 변이 M3이 남았다). "today's 0"이 서지 않는다. */
   it.each([
     ["github", "https://github.com/SinhyeokKang/malmoi/pull/128", "#128 was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes."],

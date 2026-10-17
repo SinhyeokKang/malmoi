@@ -256,8 +256,14 @@ describe("전달 뒤 — 다음 스냅샷·취소·만료", () => {
     await deliveredRemoval();
     expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: true });
     expect(await countLocaleWork(prisma, "p")).toBe(1);
-    const made = fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, { refSha: { [SYNC]: "stale" }, openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "t", base: "main" } });
-    expect(await publish()).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 9 } });
+    const openPr = { url: "https://github.com/o/r/pull/9", number: 9, title: "t", base: "main" };
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, { refSha: { [SYNC]: "stale" }, openPr });
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    const made = fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, { refSha: { [SYNC]: "stale" }, openPr });
+    // 결과도 거둔 언어를 싣는다 — 미리보기의 `withdrawnLocales`와 같은 함수·같은 입력이다(#281). 화면이 "같은 값이 동기화됐거나 편집을 되돌렸다"로 말하지 않는다.
+    const result = await publish();
+    expect(result).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 9 }, withdrawn: [{ surfaceSlug: "default", localeCode: "ko", effect: "delete", path: "i18n/ko.json" }] });
+    expect("withdrawn" in result ? result.withdrawn : undefined).toEqual(preview.withdrawnLocales);
     expect(made.calls.map(call => call.method).filter(method => method === "closePr" || method === "resetSyncBranch")).toEqual(["closePr", "resetSyncBranch"]);
     expect(await delivered()).toEqual([]);
     expect(await countLocaleWork(prisma, "p")).toBe(0);
