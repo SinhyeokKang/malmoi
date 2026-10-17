@@ -571,6 +571,8 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
     // 머지된 다른 소스의 제거 — 파일이 base에서 사라졌다. 정리 뒤 다음 Publish가 그 파일을 되살리지 않는다(orphan).
     await request("s-app", "ja", "REMOVE");
     await deliver("s-app", [{ localeCode: "ja", effect: "delete" }]);
+    // 열린 PR 조회 실패를 명시한다(R-282 ⚪4) — 묵시적인 "가짜 클라이언트 없음"에 기대지 않는다. 실패면 목록을 남긴다(fail-closed).
+    github({ failOn: "findOpenPr" });
     expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko"] }))).toMatchObject({ ok: true });
     expect(await rows()).toEqual([]);
     expect(await presence("s-web")).toEqual({ en: "active", fr: "orphan", ja: "active", ko: "active" });
@@ -639,6 +641,17 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
     expect(await rows()).toEqual([]);
     expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } })).toMatchObject({ deliveredLocaleChanges: [] });
     expect(await countLocaleWork(prisma, "p")).toBe(0);
+  });
+
+  /** R-282 ⚪3(변이 M11) — 폐기한 코드의 효과만 뺀다. 같은 소스에 전달 뒤 취소로 행 없이 남은 효과(de 삭제)는 이 Sync가 폐기한 것이 아니라 그대로다. */
+  it("폐기한 코드의 효과만 뺀다 — 같은 소스의 행 없는 전달 효과는 남는다", async () => {
+    await seed();
+    await request("s-web", "fr", "ADD");
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "fr", value: "bonjour" } });
+    await deliver("s-web", [{ localeCode: "de", effect: "delete" }, { localeCode: "fr", effect: "create" }]);
+    github();
+    expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }))).toMatchObject({ ok: true });
+    expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } })).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "de", effect: "delete" }] });
   });
 
   it.each([

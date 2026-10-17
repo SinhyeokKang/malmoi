@@ -136,6 +136,18 @@ describe("배선", () => {
     const source = readFileSync(`${ROOT}/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx`, "utf8");
     expect(source.split("loadOpenPrUrlMemo(").length - 1).toBe(1);
     expect(source).toMatch(/planSettleLookup\([^;]*?\(\) => loadOpenPrUrlMemo\(/s);
+    // 창의 입력도 고정한다(#282 fix1 — R-282 변이 M1·M2가 살았다) — `awaiting`을 참으로 박으면 편집 0인 모든 프로젝트가 30초마다 호스트를 부르고,
+    // `applies`를 참으로 박으면 게이트·연결 없는 프로젝트가 묻는다.
+    expect(source).toMatch(/planSettleLookup\(\s*\{ count: unpublished, languageWork: localeWork\.work, awaiting: localeWork\.awaiting, applies: target\.status === "ok" && openPrGateApplies\(project\) \}/);
+  });
+
+  /** Home은 보류 판정의 조회를 나눠 쓴다(#282 fix1 — 변이 M3) — 메모는 진행 중 조회를 합치지 않아, 새 조회면 콜드 착지에서 호스트를 2회 더 부른다. */
+  it("Home의 settle은 보류 판정과 같은 조회 함수를 넘기고, 창은 보류 판정이 조회하는 갈래로 좁힌다", () => {
+    const source = readFileSync(`${ROOT}/app/(edit)/projects/[slug]/(home)/page.tsx`, "utf8");
+    expect(source.split("loadOpenPrUrlMemo(").length - 1).toBe(1);
+    expect(source).toMatch(/const lookupOpenPr = \(\) => openPr \?\?= loadOpenPrUrlMemo\(/);
+    expect(source).toMatch(/planHomeHold\([^;]*?\n\s*lookupOpenPr,\n\s*\);/s);
+    expect(source).toMatch(/planSettleLookup\(\{ count: counts\.toSend, languageWork, awaiting: localeWork\.awaiting, applies: heldLater !== undefined \}, lookupOpenPr\)/);
   });
 
   it("메모 인스턴스를 직접 만지는 곳은 조회 한 곳과 지우는 함수뿐이다", () => {

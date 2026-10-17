@@ -630,6 +630,14 @@ describe("언어 변경이 다른 도구에 낳는 거부", () => {
     expect(outcome.status === "ok" && outcome.summary).not.toContain("already has these values");
   });
 
+  it("publish — 언어 요청이 열린 PR을 기다리면 그렇게 말한다, \"already has these values\"가 아니다 (#282 fix1)", async () => {
+    h.core.mockResolvedValueOnce({ outcome: { status: "skipped", reason: "no-edits", prOpen: true }, attempted: true });
+    const outcome = await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" });
+    expect(outcome).toMatchObject({ status: "ok", summary: en.mcp.summary.languageWaiting });
+    expect(en.mcp.summary.languageWaiting).toBe("Nothing was sent. A pull request with language changes is still open, so their requests stay until it's merged or closed.");
+    expect(en.mcp.summary.gitlab.languageWaiting).toBe("Nothing was sent. A merge request with language changes is still open, so their requests stay until it's merged or closed.");
+  });
+
   it("버린·반영된 요청 문장 — 미리보기·결과·GitLab", () => {
     expect(en.mcp.summary.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The pull request for 1 language change was closed without the change reaching the repository, so publishing drops it. Publish with this fingerprint.");
     expect(en.mcp.summary.publishPreview(0, 0, 0, 0, 1)).toBe("Nothing to send. 1 language change already reached the repository, so publishing only clears its request. Publish with this fingerprint.");

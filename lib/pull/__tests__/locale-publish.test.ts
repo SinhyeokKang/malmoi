@@ -489,6 +489,24 @@ describe("작업 0 + 전달된 효과 — 1층 전 만료 (#267)", () => {
   const deliveredRemove = { ...changes([["ko", "REMOVE"]], [{ localeCode: "ko", effect: "delete" }]), work: 0 };
   const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const, presence: "active" as const }];
 
+  /**
+   * **만료 뒤 보류로 끝나도 닫은 요청을 싣는다** (#282 fix1 🟡2). 웹의 정리 갈래는 보낼 것 0이면 보류 편집이 있어도 선다 — 실행이 만료를 커밋한 뒤
+   * `withheld`로 끝나면서 `expired`를 떨어뜨리면 결과 화면이 요청을 닫았다는 사실을 말하지 않는다. 다시 읽은 스냅샷은 로더 결과를 손으로 준다(fr은 보류된 ADD).
+   */
+  it("만료 뒤 셀이 전부 보류로 끝나도 withheld 결과가 닫은 요청을 싣는다 — 쓰기 0", async () => {
+    const withFr = { ...files, "i18n/fr.json": FR };
+    const pendingEdits = [{ id: "t1", token: "tok", cell: { surfaceId: "s1", keyId: "ka", localeCode: "fr", restoreValue: "" } }];
+    const loads = [
+      state({ unpublished: 1, localeChanges: deliveredRemove, pendingEdits }),
+      state({ localeCodes: ["en", "ko", "fr"], unpublished: 1, localeChanges: { ...changes([["fr", "ADD"]], [], [["fr", 1]]), work: 0 }, pendingEdits }),
+    ];
+    const made = fake(withFr);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => EXPIRED);
+    const result = await runPull(deps(loads[0]!, made, { loadState: async () => loads.shift()!, expireLocales }).deps);
+    expect(result).toMatchObject({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: EXPIRED });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+  });
+
   it("만료가 있었으면 다시 읽고, 보낼 것이 없으면 no-edits + 버린 요청 — 쓰기 0", async () => {
     const made = fake(files);
     const loads = [state({ localeChanges: deliveredRemove }), state()];
@@ -500,12 +518,16 @@ describe("작업 0 + 전달된 효과 — 1층 전 만료 (#267)", () => {
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 
-  it("열린 PR이면 만료 0 — no-edits에 버린 요청이 없다, 쓰기 0", async () => {
+  /**
+   * 열린 PR이 언어 요청을 들고 있어 보낼 것이 없다 — "리포에 이미 있다"와 다른 원인이라 결과가 `prOpen`으로 가른다(#282 fix1 · POSTMORTEM 2026-10-14
+   * "결과 코드 하나에 원인 문장 하나를 고정하지 않는다"). 정리 미리보기 뒤 PR이 다시 열린 경합도 이 갈래다 — 1층 뒤 `no-edits`가 지문 대조보다 앞이라 MCP도 같다.
+   */
+  it("열린 PR이면 만료 0 — no-edits에 버린 요청이 없고 prOpen이 그 원인을 말한다, 쓰기 0", async () => {
     const made = fake(files, { openPr: { url: "u", number: 3, title: "t" } });
     const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
     const result = await runPull(deps(state({ localeChanges: deliveredRemove }), made, { expireLocales }).deps);
     expect(expireLocales.mock.calls[0]?.[0].pullRequest).toBe("open");
-    expect(result).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(result).toEqual({ status: "skipped", reason: "no-edits", prOpen: true });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 
