@@ -458,3 +458,80 @@ it("소스 상세 정보 격자: 640 미만 한 열 — 850 두 열 토큰은 �
   expect(tokens(grid.closest("div.\\@container"))).toContain("@container");
   expect(tokens(grid)).not.toContain("@container");
 });
+
+/*
+  source-row-locale-meter T7 — 이름 칸 셋째 줄의 언어 막대(시안 프레임 1·2·5·6). 서버가 이미 잘라 주므로(`sourceRowMeters`) 화면은 받은 만큼 그린다.
+  행 버튼의 접근 이름은 내용에서 계산된다 — `aria-hidden` 밑의 글자는 빠지고 `sr-only`는 남는다.
+*/
+const meter = (code: string, done: number, review = 0) => ({ code, total: 248, done, review, percent: Math.floor(((done + review) / 248) * 100) });
+const accessibleText = (root: Element) => {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (!node.parentElement?.closest('[aria-hidden="true"]')) parts.push(node.textContent ?? "");
+  return parts.join(" ").replace(/\s+/g, " ");
+};
+const manyMeters = { shown: [meter("en", 248), meter("am", 160), meter("ar", 210, 6), meter("bg", 180), meter("bn", 130)], hidden: 54 };
+
+it("막대는 받은 다섯까지 그리고 뒤에 평문 +N — 글자는 숨기고 접근 이름은 N more languages", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, locales: 59, meters: manyMeters }] }} adapters={[]} now={new Date()} />);
+  const row = document.querySelector("[data-source-row]")!;
+  const meters = row.querySelectorAll("[data-locale-meter]");
+  expect(meters).toHaveLength(5);
+  expect([...meters].map(node => node.textContent)).toEqual(["en100%", "am64%", "ar87%", "bg72%", "bn52%"]);
+  const more = row.querySelector("[data-source-meters-more]")!;
+  expect(more.parentElement).toBe(row.querySelector("[data-source-meters]"));
+  expect(more.querySelector('[aria-hidden="true"]')?.textContent).toBe(en.sources.moreLanguages(54));
+  expect(more.querySelector(".sr-only")?.textContent).toBe(en.sources.moreLanguagesLabel(54));
+  // 배지가 아니다 — 또 하나의 언어로 읽힌다. 이름은 글자를 바꿔 끼워서 내고 `aria-label`로 덮지 않는다.
+  expect(more.className).not.toContain("rounded-full");
+  expect(row.querySelector("[aria-label]")).toBeNull();
+  const name = accessibleText(row);
+  expect(name).toContain("54 more languages");
+  expect(name).not.toContain("+54");
+  expect(name).toMatch(/en 100 ?%/);
+});
+
+it("숨은 언어가 하나면 단수, 없으면 +N 자리가 없다", async () => {
+  expect(en.sources.moreLanguagesLabel(1)).toBe("1 more language");
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, meters: { shown: manyMeters.shown.slice(0, 2), hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  expect(document.querySelectorAll("[data-locale-meter]")).toHaveLength(2);
+  expect(document.querySelector("[data-source-meters-more]")).toBeNull();
+});
+
+it("막대 묶음은 이름 칸 안, 경로 아래 — mt-2 · gap-x-3 · gap-y-1.5", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, connection: { pathTemplate: "locales/{locale}.json", format: "JSON", adapterName: "json-catalog" }, meters: { shown: [meter("en", 248)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  const bundle = document.querySelector("[data-source-meters]")!;
+  for (const token of ["mt-2", "flex", "flex-wrap", "gap-x-3", "gap-y-1.5"]) expect(bundle.classList.contains(token)).toBe(true);
+  const column = bundle.parentElement!;
+  expect(column.classList.contains("flex-col")).toBe(true);
+  expect(column.lastElementChild).toBe(bundle);
+  expect(bundle.previousElementSibling?.textContent).toContain("locales/{locale}.json");
+});
+
+it("키 0 소스(첫 적재 전·첫 적재 실패)는 막대 줄 자체가 없다", async () => {
+  const empty = { shown: [], hidden: 0 };
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...failedFirst, keys: 0, locales: 0, meters: empty }, { ...source, id: "t", slug: "emails", lastCommitSha: null, lastImportedAt: null, keys: 0, locales: 0, meters: empty }] }} adapters={[]} now={new Date()} />);
+  expect(document.querySelectorAll("[data-source-row]")).toHaveLength(2);
+  expect(document.querySelector("[data-source-meters]")).toBeNull();
+  expect(document.querySelector("[data-locale-meter]")).toBeNull();
+});
+
+it.each([
+  { state: "failed-after", row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") } },
+  { state: "partial", row: partialAfter },
+])("적재 이후 실패($state)는 마지막 값의 막대가 남고 흐리게 하지 않는다", async ({ row }) => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...row, meters: { shown: [meter("en", 248), meter("ko", 221, 8)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  const meters = document.querySelectorAll("[data-source-row] [data-locale-meter]");
+  expect(meters).toHaveLength(2);
+  expect(meters[1]?.textContent).toBe("ko92%");
+  // `dimmed`(사라진 언어)의 완료 구간 색이 아니다.
+  expect(document.querySelector("[data-source-row] .bg-foreground\\/25")).toBeNull();
+  expect(document.querySelectorAll("[data-source-row] .bg-foreground\\/85")).toHaveLength(2);
+});
+
+it("행 버튼 안에 <div>가 없다 — 버튼은 phrasing content만 든다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, meters: manyMeters }] }} adapters={[]} now={new Date()} />);
+  const row = document.querySelector("[data-source-row]")!;
+  expect(row.querySelectorAll("[data-locale-meter]")).toHaveLength(5);
+  expect(row.querySelector("div")).toBeNull();
+});

@@ -123,7 +123,7 @@ const RULES: Rule[] = [
     handCopy: (node, file) => node.tagName.getText(file) === "div" && /\babsolute\b/.test(classes(node, file)) && /\btop-14\b/.test(classes(node, file)) && /\bw-70\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <div className="absolute top-14 left-3 w-70 shadow-md">Tree</div>;',
     good: 'import {Popover} from "@/components/ui/popover"; export const Demo = () => <Popover open id="tree" aria-label="Sources" anchor={ref} onOpenChange={change}>Tree</Popover>;' },
-{ primitive: "Meter", retired: ["MeterBar"], paths: ["components/locale-meter.tsx", "components/sources/source-detail-modal.tsx"], minimum: 2,
+{ primitive: "Meter", retired: ["MeterBar"], paths: ["components/locale-meter.tsx", "components/sources/languages-card.tsx"], minimum: 2,
     handCopy: (node, file) => /^(?:div|span)$/.test(node.tagName.getText(file)) && /\bh-1\b/.test(classes(node, file)) && /\brounded-full\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <span aria-hidden className="flex h-1 rounded-full"><span style={{width: "40%"}} /></span>;',
     good: 'import {Meter} from "@/components/ui/meter"; export const Demo = () => <Meter done={40} review={0} />;' },

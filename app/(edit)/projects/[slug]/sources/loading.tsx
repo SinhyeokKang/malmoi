@@ -10,7 +10,7 @@ import { getMessages } from "@/lib/i18n/server";
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다.
  *
  * ⚠️ **치수는 `sources-screen.tsx` 그대로다** — 머리(제목 · [Add source]) · `Card` 헤더(`px-4 py-3`,
- * 아래 `border-divider`, 제목 + 개수 배지, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-row-y` · 글리프 28 · 본문·경로 두 줄 · 상태 ·
+ * 아래 `border-divider`, 제목 + 개수 배지, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-row-y` · 글리프 28 · 본문·경로 두 줄 · 언어 막대 줄 · 상태 ·
  * chevron). 첫 행은 헤더의 선을 쓰고 자기 선이 없다(`first:border-t-0`). 실물에 없는 요소(머리 설명 · 머리 개수 · 행 버튼)를
  * 그리지 않는다 — 도착 순간 폭이 튄다(4-Y16 · 4-Y6).
  * ⚠️ **개수 원은 카드 머리 하나만 그린다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않지만, 골격은 아래 "행은 하나다"와 같은
@@ -52,8 +52,20 @@ export default async function SourcesLoading() {
               <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                 <Skeleton size="md" className="w-[42%]" />
                 <Skeleton size="xs" className="w-[28%]" />
+                {/*
+                  언어 막대 자리 둘 — 묶음은 실물과 같은 `mt-2 flex flex-wrap gap-x-3 gap-y-1.5`, 자리 폭은 실물 `LocaleMeter`의 `w-25`다.
+                  ⚠️ **두께는 실물과 다르다** — 라벨 16(실물 배지 20) + 간격 6 + 바 8(실물 4) = 30으로 합만 실물(20 + 6 + 4)과 맞춘다. 4px 바는 골격 면에서 선으로 보여
+                  바 자리로 읽히지 않는다(시안 프레임 9). `/projects` 골격의 `h-5`·`h-1`(실물 치수 그대로)을 복사하지 않는다.
+                  ⚠️ **둘이다** — 343 그릇에서도 한 줄이라 골격 줄 수가 폭과 무관하게 하나다. 막대가 한 줄을 넘는 소스와 키 0 소스는 도착할 때 한 줄만큼 바뀐다(골격은 언어 수를 모른다).
+                */}
+                <div data-skeleton-meters className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5">
+                  {[0, 1].map(slot => <div key={slot} data-skeleton-meter className="flex w-25 flex-col gap-1.5">
+                    <Skeleton className="h-4 rounded-full" />
+                    <Skeleton className="h-2 rounded-full" />
+                  </div>)}
+                </div>
               </div>
-              {/* 상태 — 행 높이는 왼쪽 두 줄이 정하므로 줄 자리가 아니라 블록 하나다. */}
+              {/* 상태 — 행 높이는 왼쪽 이름 칸이 정하므로 줄 자리가 아니라 블록 하나다. */}
               <div data-skeleton-status className={cn("shrink-0", SOURCE_STATUS_STACK)}><Skeleton className="h-3 w-24 rounded-md" /></div>
             </div>
             <Skeleton className="size-4 shrink-0 rounded" />

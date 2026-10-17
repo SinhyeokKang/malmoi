@@ -113,6 +113,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "newProject.files.preview.option",
     "newProject.baseLocale.row",
     "translations.cellLabel",
+    // 수 앞의 `+` 하나 — 접근 이름은 `moreLanguagesLabel`이 문장으로 든다(source-row-locale-meter).
+    "sources.moreLanguages",
   ],
   es: [
     "landing.mockup",
@@ -168,6 +170,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "newProject.files.preview.option",
     "newProject.baseLocale.row",
     "translations.cellLabel",
+    // 수 앞의 `+` 하나 — 접근 이름은 `moreLanguagesLabel`이 문장으로 든다(source-row-locale-meter).
+    "sources.moreLanguages",
   ],
 };
 

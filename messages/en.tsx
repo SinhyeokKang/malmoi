@@ -3583,8 +3583,11 @@ export const en = {
     count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"}`,
     /** Sources 상세 Languages 카드의 개수 배지 sr 문장. */
     languageCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"}`,
-    /** Sources 상세 언어 행의 오른쪽 수치 — 번역된 수 / 전체 수. */
+    /** Sources 상세 언어 행의 오른쪽 수치 — 값이 있는 수(완료 + 검토 대기) / 전체 수. 퍼센트와 같은 비율을 말한다. 키 이름은 옛 뜻(완료만)에서 남았다. */
     translatedOfTotal: (translated: number, total: number): string => `${translated.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
+    /** Sources 목록 행의 막대 다섯 뒤 평문 — 보이는 글자는 `aria-hidden`이고 아래 문장이 접근 이름을 바꿔 끼운다(행 버튼의 이름이 내용에서 계산된다). */
+    moreLanguages: (n: number): string => `+${n.toLocaleString("en-US")}`,
+    moreLanguagesLabel: (n: number): string => (n === 1 ? "1 more language" : `${n.toLocaleString("en-US")} more languages`),
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.

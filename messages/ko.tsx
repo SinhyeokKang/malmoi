@@ -1928,6 +1928,8 @@ export const ko = {
     count: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개`,
     languageCount: (n: number): string => `언어 ${n.toLocaleString("ko-KR")}개`,
     translatedOfTotal: (translated: number, total: number): string => `${total.toLocaleString("ko-KR")}개 중 ${translated.toLocaleString("ko-KR")}개`,
+    moreLanguages: (n: number): string => `+${n.toLocaleString("ko-KR")}`,
+    moreLanguagesLabel: (n: number): string => `언어 ${n.toLocaleString("ko-KR")}개 더`,
     unmanaged: (n: number): string => `항목 ${n.toLocaleString("ko-KR")}개는 일반 텍스트가 아니어서 코드에 그대로 남습니다.`,
     add: "소스 추가",
     open: "번역 열기",

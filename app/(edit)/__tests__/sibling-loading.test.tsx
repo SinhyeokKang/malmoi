@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
+import { LocaleMeter } from "@/components/locale-meter";
 import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
 
 import AccountLoading from "../account/loading";
@@ -73,6 +74,45 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
     const rows = container.querySelectorAll("[data-skeleton-source]");
     expect(rows).toHaveLength(1);
     expect(rows[0]?.querySelectorAll("[data-skeleton-line]")).toHaveLength(2);
+  });
+
+  /**
+   * source-row-locale-meter — 소스 행 셋째 줄 막대 자리 **둘**(시안 프레임 9). 둘이면 343 그릇에서도 한 줄이다.
+   * ⚠️ **자리의 두께는 실물과 다르고 합만 같다** — 골격은 라벨 16 + 간격 6 + 바 8, 실물은 배지 20 + 6 + 바 4. jsdom은 높이를 못 재므로
+   * 양쪽의 철자를 px로 옮겨 더한다(4px 스케일 · 배지 = `py-0.5` 위아래 + `text-2xs` 줄 높이 16 — `globals.css`의 `calc(1 / 0.75)` × 12).
+   */
+  it("Sources: 막대 자리 둘 — 묶음은 실물과 같은 철자, 자리 높이 합은 실물 LocaleMeter와 같다", async () => {
+    const { container } = await render(<SourcesLoading />);
+    const row = container.querySelector("[data-skeleton-source]")!;
+    const bundle = row.querySelector("[data-skeleton-meters]")!;
+    expect(bundle.className).toBe("mt-2 flex flex-wrap gap-x-3 gap-y-1.5");
+    // 이름 칸의 마지막 줄 — 본문·경로 두 줄 아래다.
+    expect(bundle.parentElement?.lastElementChild).toBe(bundle);
+    expect(bundle.parentElement?.querySelectorAll(":scope > [data-skeleton-line]")).toHaveLength(2);
+    const slots = [...bundle.querySelectorAll("[data-skeleton-meter]")];
+    expect(slots).toHaveLength(2);
+
+    const px = (token: string) => Number(/^(?:h|gap|py)-(\d+(?:\.\d+)?)$/.exec(token)?.[1]) * 4;
+    const pick = (element: Element | null | undefined, prefix: string) => [...(element?.classList ?? [])].find(token => new RegExp(`^${prefix}-\\d`).test(token)) ?? "";
+    for (const slot of slots) {
+      for (const token of ["flex", "w-25", "flex-col", "gap-1.5"]) expect(slot.classList.contains(token)).toBe(true);
+      const [label, bar] = [...slot.children];
+      expect(label?.classList.contains("rounded-full")).toBe(true);
+      expect(bar?.classList.contains("rounded-full")).toBe(true);
+      // `/projects` 골격의 실물 치수(`h-5`·`h-1`)가 아니다.
+      expect(pick(label, "h")).toBe("h-4");
+      expect(pick(bar, "h")).toBe("h-2");
+      expect(px(pick(label, "h")) + px(pick(slot, "gap")) + px(pick(bar, "h"))).toBe(30);
+    }
+
+    const real = (await render(<LocaleMeter locale={{ code: "fr", total: 10, done: 5, review: 0, percent: 50 }} />)).container.querySelector("[data-locale-meter]")!;
+    const [labelRow, track] = [...real.children];
+    const badge = labelRow?.firstElementChild;
+    expect(badge?.classList.contains("text-2xs")).toBe(true);
+    const realHeight = (px(pick(badge, "py")) * 2 + 16) + px(pick(real, "gap")) + px(pick(track, "h"));
+    expect(realHeight).toBe(20 + 6 + 4);
+    expect(px(pick(slots[0], "gap"))).toBe(px(pick(real, "gap")));
+    expect(slots[0]?.classList.contains("w-25") && real.classList.contains("w-25")).toBe(true);
   });
 
   /** 행 끝 chevron 16 칸이 실물에 있다(4-W9) — 없으면 도착 순간 결과 열이 16+12 밀린다. 첫 행은 헤더 급 선이다(4-Y3). */

@@ -19,7 +19,7 @@ it.each([false, true])("meter preserves decorative done/review proportions and d
 });
 
 it("locale zero denominator stays finite and server-renderable", () => {
-  const html = renderToStaticMarkup(<LocaleMeter locale={{code: "en", surfaceSlug: "main", isBase: true, total: 0, done: 0, review: 0, percent: 0}}/>);
+  const html = renderToStaticMarkup(<LocaleMeter locale={{code: "en", total: 0, done: 0, review: 0, percent: 0}}/>);
   expect(html).not.toMatch(/NaN|Infinity/); expect(html).toContain("width:0%");
   expect(readFileSync("components/ui/meter.tsx", "utf8")).not.toMatch(/["']use client["']/);
 });

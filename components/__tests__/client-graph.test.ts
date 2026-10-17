@@ -236,6 +236,8 @@ const CLIENT_LIB_FILES = [
   // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
   "lib/sources/add-block.ts",
   "lib/sources/base-language.ts",
+  // 언어 막대 값(source-row-locale-meter) — 상세 Languages 카드가 폭을 여기서 얻는다. `lib/keys/view`는 타입으로만 문다.
+  "lib/sources/meters.ts",
   "lib/surfaces/plan.ts",
   "lib/hue.ts",
   // 번역 단일 판의 판 전환·트리 이동 의도(responsive-app design §3) — import 0인 잎이다.

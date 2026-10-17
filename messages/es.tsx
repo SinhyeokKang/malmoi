@@ -1933,6 +1933,8 @@ export const es = {
     count: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "fuente" : "fuentes"}`,
     languageCount: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "idioma" : "idiomas"}`,
     translatedOfTotal: (translated: number, total: number): string => `${translated.toLocaleString("es")} de ${total.toLocaleString("es")}`,
+    moreLanguages: (n: number): string => `+${n.toLocaleString("es")}`,
+    moreLanguagesLabel: (n: number): string => (n === 1 ? "1 idioma más" : `${n.toLocaleString("es")} idiomas más`),
     unmanaged: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "entrada no es" : "entradas no son"} texto simple y ${n === 1 ? "se queda" : "se quedan"} en el código.`,
     add: "Añadir fuentes",
     open: "Abrir traducciones",

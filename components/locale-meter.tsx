@@ -1,13 +1,16 @@
 import { Meter } from "@/components/ui/meter";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Badge } from "@/components/ui/badge";
-import type { RowLocaleProgress } from "@/lib/projects/list";
+import type { LocaleMeterValue } from "@/lib/sources/meters";
 
 /**
  * 목록 행의 **로케일 Meter** (DESIGN §6.63). 시안 `1c`의 Meter 블록이 정본이고,
  * 아래 치수는 그 캔버스의 인라인 스타일에서 그대로 인용했다.
  *
- * ⚠️ **서버 컴포넌트다** — 상태가 없고 값은 서버가 이미 접어서 준다(`rowLocaleProgress`).
+ * ⚠️ **두 목록이 같이 쓴다** — Projects 행(서버 컴포넌트)과 Sources 소스 행(클라이언트 `sources-screen.tsx`). 그래서 상태도
+ * 서버 전용 import도 두지 않는다. 값은 서버가 이미 접어서 준다(`LocaleMeterValue` — 폭 clamp는 `meterValue`).
+ *
+ * ⚠️ **루트가 `<span>`이다** — Sources 행은 버튼 하나라 그 안은 phrasing content만 허용된다. `<div>`를 두면 HTML이 무효다.
  *
  * ⚠️ **두 구간이 겹치지 않는다.** 완료는 검토 대기를 포함하지 않으므로(`done`) 두 폭의 합이 100%를
  * 넘지 않는다 — 겹치면 바가 트랙을 넘어 흐른다.
@@ -16,13 +19,13 @@ import type { RowLocaleProgress } from "@/lib/projects/list";
  * 유틸리티이고, "비슷한 유틸리티로 옮기는 것"이 이전 사이클에서 시안과 갈린 원인이었다 —
  * `gap-2.5`(10)로 `gap 16`을, `rounded-sm`(8)로 `radius 4`를 옮기면 `tsc`도 `pnpm test`도 조용하다.
  */
-export function LocaleMeter({ locale }: { locale: RowLocaleProgress }) {
+export function LocaleMeter({ locale }: { locale: LocaleMeterValue }) {
   // 분모가 0이면 두 폭도 0이다 — 0으로 나누지 않는다.
   const done = locale.total === 0 ? 0 : (locale.done / locale.total) * 100;
   const review = locale.total === 0 ? 0 : (locale.review / locale.total) * 100;
 
   return (
-    <div className="flex w-25 flex-col gap-1.5">
+    <span data-locale-meter className="flex w-25 flex-col gap-1.5">
       <span className="flex items-center gap-1.5 text-xs">
         {/*
           ⚠️ **`LocaleFlag`를 그대로 쓴다** — `public/flags/`에 253개가 이미 커밋돼 있고 매핑은
@@ -46,6 +49,6 @@ export function LocaleMeter({ locale }: { locale: RowLocaleProgress }) {
         이번 범위에서 제외했다 (2026-09-13 사용자).
       */}
       <Meter done={done} review={review} />
-    </div>
+    </span>
   );
 }
