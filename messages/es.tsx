@@ -2042,8 +2042,9 @@ export const es = {
       fileToCreate: "Archivo que se creará",
       checkFailed: "No pudimos comprobar este idioma.",
       savedTranslations: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "traducción guardada" : "traducciones guardadas"}`,
-      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} estuvo antes en esta fuente. Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
-      reviveAgain: (count: ReactNode): ReactNode => <>Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
+      reviveLine: (code: string, n: number, count: ReactNode): ReactNode => n === 0 ? <>{code} estuvo antes en esta fuente. No tiene traducciones guardadas.</>
+        : <>{code} estuvo antes en esta fuente. Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
+      reviveAgain: (n: number, count: ReactNode): ReactNode => n === 0 ? <>No tiene traducciones guardadas.</> : <>Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
       errors: {
         unreadable: "Malmoi no puede volver a leer este código desde el repositorio. Añade el archivo en el repositorio.",
         unsupportedLocale: "Las extensiones de Chrome no admiten este código de idioma.",
@@ -2058,7 +2059,8 @@ export const es = {
       addUnsettled: "No pudimos añadir el idioma. La última publicación no terminó — publica de nuevo primero.",
       addUnconfirmed: (code: string): string => `No pudimos confirmar si se añadió ${code}. La lista muestra el estado actual.`,
       addedNotice: (code: string): string => `Se añadió ${code}. Ábrelo para empezar a traducir.`,
-      addedAgain: (code: string, n: number): string => `Se añadió ${code} de nuevo. ${n === 1 ? "Volvió 1 traducción guardada, sin enviar" : `Volvieron ${n.toLocaleString("es")} traducciones guardadas, sin enviar`}.`,
+      addedAgain: (code: string, n: number): string => n === 0 ? `Se añadió ${code} de nuevo.`
+        : `Se añadió ${code} de nuevo. ${n === 1 ? "Volvió 1 traducción guardada, sin enviar" : `Volvieron ${n.toLocaleString("es")} traducciones guardadas, sin enviar`}.`,
       removeTitle: (code: string, source: string): string => `¿Quitar ${code} de ${source}?`,
       removeBody: "Al publicar se quita este archivo de idioma del repositorio. Las traducciones guardadas se conservan.",
       cancelAddBody: "Este idioma quedará inactivo. Las traducciones guardadas se conservan.",
@@ -2067,7 +2069,7 @@ export const es = {
       factFile: "Archivo",
       factTranslations: "Traducciones",
       factPullRequest: "Pull request",
-      keptInMalmoi: (n: number): string => `${n.toLocaleString("es")} en Malmoi`,
+      keptInMalmoi: (n: number): string => n === 0 ? "Ninguna" : `${n.toLocaleString("es")} en Malmoi`,
       notCreatedYet: (path: string): string => `${path} — aún no creado`,
       notSentYet: "Sin enviar",
       prRemoves: (pr: string): string => `${pr} quita este archivo`,

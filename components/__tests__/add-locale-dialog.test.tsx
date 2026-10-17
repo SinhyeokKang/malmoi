@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,7 +7,9 @@ import { SourcesScreen } from "@/components/sources/sources-screen";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { languageName } from "@/lib/onboarding/language-name";
 import { en } from "@/messages/en";
+import { es } from "@/messages/es";
 import { ko } from "@/messages/ko";
+import { renderToStaticMarkup } from "react-dom/server";
 import { key, render } from "./helpers/dom";
 import { waitForLayer } from "./helpers/layer";
 
@@ -178,6 +180,18 @@ describe("미리보기 — 받는 중 · 실패 · 유효 · 되살림(A1·A4)",
     expect(mocks.previewAdd).toHaveBeenCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "es" });
     expect(dialog()!.querySelector("[data-alert='info']")!.textContent).toBe(`Adding it again brings back ${en.sources.locale.savedTranslations(164)}, ready to publish.`);
   });
+
+  /** #294 — 보존된 값이 0이면 "0개를 되돌린다"고 약속하지 않는다(#287·#288과 같은 0/1/다수 갈래). */
+  it("되살림 · 보존 번역 0개: 행에서 열든 입력으로 고르든 돌아올 것이 없다고 말한다(#294)", async () => {
+    mocks.previewAdd.mockResolvedValue({ ok: true, action: "revive", path: "apps/web/locales/es.json", revive: 0 });
+    await open();
+    await act(async () => { await user().click(card().querySelector<HTMLElement>('[data-language-row="es"] [data-language-action]')!); });
+    expect(dialog()!.querySelector("[data-alert='info']")!.textContent).toBe("It has no saved translations.");
+    await act(async () => { await user().click([...dialog()!.querySelectorAll("button")].find(node => node.getAttribute("aria-label") === en.common.close)!); });
+    await openAdd();
+    await choose("es");
+    expect(dialog()!.querySelector("[data-alert='info']")!.textContent).toBe("es was in this source before. It has no saved translations.");
+  });
 });
 
 describe("필드 오류 — 서버 코드가 도움말을 대신한다(A2)", () => {
@@ -240,6 +254,16 @@ describe("확정(A1 ⑤ · A3 ② · A5)", () => {
     await choose("es");
     await act(async () => { await user().click(confirm()); });
     expect(card().querySelector("[data-card-notice]")!.textContent).toContain(en.sources.locale.addedAgain("es", 160));
+  });
+
+  it("되살림 성공 · reissued 0: 돌아온 번역 수를 말하지 않는다(#294)", async () => {
+    mocks.previewAdd.mockResolvedValue({ ok: true, action: "revive", path: "apps/web/locales/es.json", revive: 0 });
+    mocks.add.mockResolvedValue({ ok: true, action: "revive", path: "apps/web/locales/es.json", reissued: 0 });
+    await open();
+    await openAdd();
+    await choose("es");
+    await act(async () => { await user().click(confirm()); });
+    expect(card().querySelector("[data-card-notice] [role='status']")!.textContent).toBe("Added es again.");
   });
 
   it.each([
@@ -390,4 +414,34 @@ describe("DS fix2 — 행 깃발 · 파일 블록", () => {
     expect(path.querySelector("svg")?.getAttribute("class")).toContain("lucide-file-plus");
     expect(path.textContent).toBe("apps/web/locales/fr.json");
   });
+});
+
+describe("다시 추가 경로의 수 — 0·1·2, 세 사전(#294)", () => {
+  const html = (node: unknown) => renderToStaticMarkup(<>{node as ReactNode}</>);
+  const cases = [
+    { lang: "en", t: en,
+      again: ["It has no saved translations.", "Adding it again brings back C, ready to publish.", "Adding it again brings back C, ready to publish."],
+      line: ["es was in this source before. It has no saved translations.", "es was in this source before. Adding it again brings back C, ready to publish.", "es was in this source before. Adding it again brings back C, ready to publish."],
+      added: ["Added es again.", "Added es again. 1 saved translation is back and unsent.", "Added es again. 2 saved translations are back and unsent."],
+      kept: ["None", "1 kept in Malmoi", "2 kept in Malmoi"] },
+    { lang: "ko", t: ko,
+      again: ["보존된 번역이 없습니다.", "다시 추가하면 C가 돌아오고 게시할 준비가 됩니다.", "다시 추가하면 C가 돌아오고 게시할 준비가 됩니다."],
+      line: ["es 언어는 전에 이 소스에 있었습니다. 보존된 번역이 없습니다.", "es 언어는 전에 이 소스에 있었습니다. 다시 추가하면 C가 돌아오고 게시할 준비가 됩니다.", "es 언어는 전에 이 소스에 있었습니다. 다시 추가하면 C가 돌아오고 게시할 준비가 됩니다."],
+      added: ["es 언어를 다시 추가했습니다.", "es 언어를 다시 추가했습니다. 보존된 번역 1개가 돌아왔고 미전송 상태입니다.", "es 언어를 다시 추가했습니다. 보존된 번역 2개가 돌아왔고 미전송 상태입니다."],
+      kept: ["없음", "1개 Malmoi에 보존", "2개 Malmoi에 보존"] },
+    { lang: "es", t: es,
+      again: ["No tiene traducciones guardadas.", "Al añadirlo de nuevo recuperas C y todo queda listo para publicar.", "Al añadirlo de nuevo recuperas C y todo queda listo para publicar."],
+      line: ["es estuvo antes en esta fuente. No tiene traducciones guardadas.", "es estuvo antes en esta fuente. Al añadirlo de nuevo recuperas C y todo queda listo para publicar.", "es estuvo antes en esta fuente. Al añadirlo de nuevo recuperas C y todo queda listo para publicar."],
+      added: ["Se añadió es de nuevo.", "Se añadió es de nuevo. Volvió 1 traducción guardada, sin enviar.", "Se añadió es de nuevo. Volvieron 2 traducciones guardadas, sin enviar."],
+      kept: ["Ninguna", "1 en Malmoi", "2 en Malmoi"] },
+  ];
+  for (const c of cases) {
+    it(c.lang, () => {
+      const t = c.t.sources.locale;
+      expect([0, 1, 2].map(n => html(t.reviveAgain(n, "C")))).toEqual(c.again);
+      expect([0, 1, 2].map(n => html(t.reviveLine("es", n, "C")))).toEqual(c.line);
+      expect([0, 1, 2].map(n => t.addedAgain("es", n))).toEqual(c.added);
+      expect([0, 1, 2].map(n => t.keptInMalmoi(n))).toEqual(c.kept);
+    });
+  }
 });

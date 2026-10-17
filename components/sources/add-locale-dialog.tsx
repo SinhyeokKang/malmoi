@@ -195,7 +195,7 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
           </div>}
           {ready !== null && <FileBlock m={m} path={ready.path} create={ready.action === "create"} />}
           {ready !== null && ready.action === "revive" && code !== null && <Alert variant="info" size="sm">
-            {(initialCode !== null ? m.sources.locale.reviveAgain : (count: ReactNode) => m.sources.locale.reviveLine(code, count))(<span className="font-medium">{m.sources.locale.savedTranslations(ready.revive)}</span>)}
+            {(initialCode !== null ? (count: ReactNode) => m.sources.locale.reviveAgain(ready.revive, count) : (count: ReactNode) => m.sources.locale.reviveLine(code, ready.revive, count))(<span className="font-medium">{m.sources.locale.savedTranslations(ready.revive)}</span>)}
           </Alert>}
           {check.kind === "failed" && <Alert variant="danger" size="sm" live="off" actions={<Button size="sm" onClick={() => {
             // 누른 버튼이 골격과 함께 사라진다 — 포커스를 [Cancel]로 옮겨 둔다(#193).

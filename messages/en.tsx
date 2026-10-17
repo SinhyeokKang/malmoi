@@ -3737,9 +3737,13 @@ export const en = {
       fileToCreate: "File to create",
       checkFailed: "We couldn't check this language.",
       savedTranslations: (n: number): string => `${n.toLocaleString("en-US")} saved ${n === 1 ? "translation" : "translations"}`,
-      /** 되살림 안내 — `count`는 `savedTranslations`를 굵게 든다. 행에서 열면 코드가 제목에 있어 둘째 형이다(시안 A4). */
-      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} was in this source before. Adding it again brings back {count}, ready to publish.</>,
-      reviveAgain: (count: ReactNode): ReactNode => <>Adding it again brings back {count}, ready to publish.</>,
+      /**
+       * 되살림 안내 — `count`는 `savedTranslations`를 굵게 든다. 행에서 열면 코드가 제목에 있어 둘째 형이다(시안 A4).
+       * `n`은 보존된 번역 수이고 분기에만 쓴다 — 0이면 되돌릴 것을 약속하지 않는다(#294 — `orphanStripRest`·`cancelAddDone`과 같은 갈래).
+       */
+      reviveLine: (code: string, n: number, count: ReactNode): ReactNode => n === 0 ? <>{code} was in this source before. It has no saved translations.</>
+        : <>{code} was in this source before. Adding it again brings back {count}, ready to publish.</>,
+      reviveAgain: (n: number, count: ReactNode): ReactNode => n === 0 ? <>It has no saved translations.</> : <>Adding it again brings back {count}, ready to publish.</>,
       /** 필드 자리의 거부 — 도움말을 대신한다(시안 A2). */
       errors: {
         unreadable: "Malmoi can't read this code back from the repository. Add the file in the repository instead.",
@@ -3755,7 +3759,9 @@ export const en = {
       addUnsettled: "We couldn't add the language. The last publish couldn't finish — publish again first.",
       addUnconfirmed: (code: string): string => `We couldn't confirm whether ${code} was added. The list shows the current state.`,
       addedNotice: (code: string): string => `Added ${code}. Open it to start translating.`,
-      addedAgain: (code: string, n: number): string => `Added ${code} again. ${n.toLocaleString("en-US")} saved ${n === 1 ? "translation is" : "translations are"} back and unsent.`,
+      /** 돌아온 번역이 없으면(0) 수 문장을 뺀다(#294). */
+      addedAgain: (code: string, n: number): string => n === 0 ? `Added ${code} again.`
+        : `Added ${code} again. ${n.toLocaleString("en-US")} saved ${n === 1 ? "translation is" : "translations are"} back and unsent.`,
       removeTitle: (code: string, source: string): string => `Remove ${code} from ${source}?`,
       removeBody: "Publishing removes this language file from the repository. Saved translations are kept.",
       cancelAddBody: "This language will become inactive. Saved translations are kept.",
@@ -3764,7 +3770,7 @@ export const en = {
       factFile: "File",
       factTranslations: "Translations",
       factPullRequest: "Pull request",
-      keptInMalmoi: (n: number): string => `${n.toLocaleString("en-US")} kept in Malmoi`,
+      keptInMalmoi: (n: number): string => n === 0 ? "None" : `${n.toLocaleString("en-US")} kept in Malmoi`,
       notCreatedYet: (path: string): string => `${path} — not created yet`,
       /** 아직 어느 PR에도 실리지 않았다 — 상태 낱말 Unsent 그대로다(DESIGN §2.4 개념 색인 — "Not sent yet"은 쓰지 않는 말). */
       notSentYet: "Unsent",

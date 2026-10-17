@@ -2035,8 +2035,9 @@ export const ko = {
       fileToCreate: "만들 파일",
       checkFailed: "이 언어를 확인하지 못했습니다.",
       savedTranslations: (n: number): string => `보존된 번역 ${n.toLocaleString("ko-KR")}개`,
-      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} 언어는 전에 이 소스에 있었습니다. 다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
-      reviveAgain: (count: ReactNode): ReactNode => <>다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
+      reviveLine: (code: string, n: number, count: ReactNode): ReactNode => n === 0 ? <>{code} 언어는 전에 이 소스에 있었습니다. 보존된 번역이 없습니다.</>
+        : <>{code} 언어는 전에 이 소스에 있었습니다. 다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
+      reviveAgain: (n: number, count: ReactNode): ReactNode => n === 0 ? <>보존된 번역이 없습니다.</> : <>다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
       errors: {
         unreadable: "Malmoi가 리포지토리에서 이 코드를 다시 읽을 수 없습니다. 리포지토리에서 직접 파일을 추가하세요.",
         unsupportedLocale: "Chrome 확장 프로그램이 지원하지 않는 언어 코드입니다.",
@@ -2051,7 +2052,8 @@ export const ko = {
       addUnsettled: "언어를 추가하지 못했습니다. 마지막 게시가 끝나지 않았습니다 — 먼저 다시 게시하세요.",
       addUnconfirmed: (code: string): string => `${code} 언어가 추가되었는지 확인하지 못했습니다. 목록은 현재 상태입니다.`,
       addedNotice: (code: string): string => `${code} 언어를 추가했습니다. 열어서 번역을 시작하세요.`,
-      addedAgain: (code: string, n: number): string => `${code} 언어를 다시 추가했습니다. 보존된 번역 ${n.toLocaleString("ko-KR")}개가 돌아왔고 미전송 상태입니다.`,
+      addedAgain: (code: string, n: number): string => n === 0 ? `${code} 언어를 다시 추가했습니다.`
+        : `${code} 언어를 다시 추가했습니다. 보존된 번역 ${n.toLocaleString("ko-KR")}개가 돌아왔고 미전송 상태입니다.`,
       removeTitle: (code: string, source: string): string => `${source}에서 ${code} 언어를 제거할까요?`,
       removeBody: "게시하면 리포지토리에서 이 언어 파일이 제거됩니다. 저장된 번역은 보존됩니다.",
       cancelAddBody: "이 언어는 비활성 상태가 됩니다. 저장된 번역은 보존됩니다.",
@@ -2060,7 +2062,7 @@ export const ko = {
       factFile: "파일",
       factTranslations: "번역",
       factPullRequest: "PR",
-      keptInMalmoi: (n: number): string => `${n.toLocaleString("ko-KR")}개 Malmoi에 보존`,
+      keptInMalmoi: (n: number): string => n === 0 ? "없음" : `${n.toLocaleString("ko-KR")}개 Malmoi에 보존`,
       notCreatedYet: (path: string): string => `${path} — 아직 만들어지지 않음`,
       notSentYet: "미전송",
       prRemoves: (pr: string): string => `${pr}에서 이 파일 제거`,
