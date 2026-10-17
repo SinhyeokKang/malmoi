@@ -205,9 +205,10 @@ describe("추가 → Publish — 새 파일은 기준 파일의 표현을 빌리
     fake(files, open);
     const preview = await readPublishPreview(prisma, "p", "fixture");
     const reason = { withheld: [{ surfaceSlug: "default", localeCode: "fr", path: "i18n/fr.json", reason: "proposal-path-exists" }], empty: [] };
-    expect(preview).toMatchObject({ locales: reason, withoutFile: 1, sendable: { total: 1 } });
+    // 보류된 언어의 편집은 파일 보류 수에 들되 언어 보류로도 센다 — 화면이 "파일이 아직 없다"에서 빼고 Held 행이 이유를 말한다(R-E3 Y1). 미리보기 == 실행.
+    expect(preview).toMatchObject({ locales: reason, withoutFile: 1, withoutFileLanguage: 1, sendable: { total: 1 } });
     const made = fake(files, open);
-    expect(await publish(preview.fingerprint)).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 1, key: 0 }, locales: reason });
+    expect(await publish(preview.fingerprint)).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 1, key: 0, language: 1 }, locales: reason });
     expect(snapshot(made)?.changes.map(change => change.path)).toEqual(["i18n/ko.json"]);
     // 보류된 ADD는 캡처하지 않는다 — 작업으로 남는다.
     expect(await delivered()).toEqual([]);

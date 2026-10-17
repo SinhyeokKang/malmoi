@@ -33,7 +33,8 @@ const newFile = { ...base, total: 2, keys: 2, openPr: null, sendable: { total: 2
   groups: [{ surface: "web", path: "apps/web/locales/fr.json", changes: 2, keys: 2, rows: [row("checkout.submit", "fr", "Passer la commande"), row("checkout.title", "fr", "Paiement")] }],
   changedFiles: ["apps/web/locales/fr.json"], fileChanges: [{ path: "apps/web/locales/fr.json", kind: "new" }] };
 /** ③ 열린 #128 · 갱신 1 · 빈 추가 · 보류 */
-const partial = { ...base, total: 1, keys: 1, openPr: { number: 128, url: "https://github.com/SinhyeokKang/malmoi/pull/128" }, sendable: { total: 1, keys: 1 },
+/** ③ 실제 서버 응답 형이다 — 보류된 언어(zh-CN)의 편집 1건이 `withoutFile`에 들고 `withoutFileLanguage`로도 센다(격리 PG `locale-publish.integration`). */
+const partial = { ...base, total: 2, keys: 2, withoutFile: 1, withoutFileLanguage: 1, openPr: { number: 128, url: "https://github.com/SinhyeokKang/malmoi/pull/128" }, sendable: { total: 1, keys: 1 },
   groups: [{ surface: "web", path: "apps/web/locales/ko.json", changes: 1, keys: 1, rows: [row("checkout.submit", "ko", "주문하기", "결제하기")] }],
   changedFiles: ["apps/web/locales/ko.json"], fileChanges: [{ path: "apps/web/locales/ko.json", kind: "updated" }],
   locales: { withheld: [{ surfaceSlug: "web", localeCode: "zh-CN", path: "apps/web/locales/zh-CN.json", reason: "proposal-path-exists" }],
@@ -73,7 +74,7 @@ describe("Publish 버튼 — 언어 변경만 있을 때", () => {
     expect(publish.getAttribute("aria-disabled")).toBeNull();
     const described = publish.getAttribute("aria-describedby");
     expect(described).not.toBeNull();
-    expect(document.getElementById(described!)?.textContent).toBe("Language changes are ready to publish.");
+    expect(document.getElementById(described!)?.textContent).toBe("There are language changes to publish.");
   });
 
   it("셀 편집도 언어 작업도 0이면 지금처럼 꺼진다", async () => {
@@ -134,6 +135,20 @@ describe("Publish 미리보기 — 언어 변경 (시안 P1)", () => {
     expect(text).toContain("This file is already on main. After the open pull request closes, zh-CN becomes active at the next publish or nightly check.");
     expect(text).toContain("1 change · 1 key · 1 file");
     expect(button("Replace pull request #128")).toBeDefined();
+    // Held 행이 이유를 말한다 — 같은 편집을 "파일이 리포에 아직 없다"로 또 세면 "이미 main에 있다"와 모순이다(R-E3 Y1).
+    expect(text).not.toContain("isn't in the repository yet");
+    // PR 줄은 번역 변경 수로 남는다(번역이 있는 갈래 — D10은 번역 0 갈래만).
+    expect(text).toContain("not just this one.");
+  });
+
+  it("③ 결과 — 언어 보류 편집에 파일 복구 권유를 붙이지 않는다", async () => {
+    mocks.preview.mockResolvedValue(ok(partial));
+    mocks.pull.mockResolvedValue({ status: "committed", pr: "updated", prUrl: "https://github.com/SinhyeokKang/malmoi/pull/128", delivered: 1, changed: ["apps/web/locales/ko.json"],
+      withheld: { file: 1, key: 0, language: 1 }, locales: partial.locales });
+    await render(<Host unsent={2} />); await click("Publish2"); await click("Replace pull request #128");
+    const text = modal().textContent ?? "";
+    expect(text).not.toContain("isn't in the repository");
+    expect(text).not.toContain("Add the file to the repository");
   });
 
   it("④ 파일 diff 0 · GitHub — 거둘 파일 행과 PR 닫기", async () => {
@@ -158,6 +173,36 @@ describe("Publish 미리보기 — 언어 변경 (시안 P1)", () => {
     expect(text).toContain("Nothing differs from main anymore. Closing !128 takes back the file it was adding.");
     expect(fileHead("apps/web/locales/fr.json")?.textContent).toContain("Taken back from !128");
     expect(text).toContain("fr was cancelled after !128 was opened, so the file it adds comes out. Translations stay in Malmoi.");
+  });
+
+  /** D10 — 번역 0이면 PR 줄이 언어 파일 변경 수로 센다. PR 없음·열림 × 단수·복수 × GitHub·GitLab(R-E3 Y4 — 변이 M1이 남았다). */
+  const OPEN = { github: { number: 128, url: "https://github.com/SinhyeokKang/malmoi/pull/128" }, gitlab: { number: 128, url: "https://gitlab.com/g/p/-/merge_requests/128" } };
+  const removedFiles = (n: number) => Array.from({ length: n }, (_, i) => `apps/web/locales/r${i}.json`);
+  it.each([
+    ["github", false, 1, "Nothing is open right now, so this language change goes out on its own."],
+    ["github", false, 2, "Nothing is open right now, so these 2 language changes go out on their own."],
+    ["github", true, 1, "A second pull request isn't opened. #128 will hold everything unsent, not just this language change."],
+    ["github", true, 2, "A second pull request isn't opened. #128 will hold everything unsent, not just these 2 language changes."],
+    ["gitlab", false, 1, "Nothing is open right now, so this language change goes out on its own."],
+    ["gitlab", false, 2, "Nothing is open right now, so these 2 language changes go out on their own."],
+    ["gitlab", true, 1, "A second merge request isn't opened. !128 will hold everything unsent, not just this language change."],
+    ["gitlab", true, 2, "A second merge request isn't opened. !128 will hold everything unsent, not just these 2 language changes."],
+  ] as const)("D10 %s · 열린 PR %s · 파일 %i", async (host, open, n, sentence) => {
+    const paths = removedFiles(n);
+    mocks.preview.mockResolvedValue(ok({ ...removedOnly, openPr: open ? OPEN[host] : null, changedFiles: paths, fileChanges: paths.map(path => ({ path, kind: "removed" })) }));
+    await render(<Host host={host} />); await click("Publish");
+    expect(modal().textContent).toContain(sentence);
+  });
+
+  it("만료 안내는 소스가 둘 이상이면 그 소스를 함께 말한다", async () => {
+    mocks.preview.mockResolvedValue(ok({ ...newFile, expiringLocales: [
+      { surfaceSlug: "web", localeCode: "ja", operation: "REMOVE", presence: "active" },
+      { surfaceSlug: "emails", localeCode: "es", operation: "ADD", presence: "active" },
+    ] }));
+    await render(<Host unsent={2} />); await click("Publish2");
+    const text = modal().textContent ?? "";
+    expect(text).toContain("ja (web) wasn't removed — its pull request closed without merging. It stays in this source.");
+    expect(text).toContain("es (emails) is already in the repository, so its request is closed.");
   });
 
   it("PR 줄 본문 — 번역 0 · 열린 PR이면 언어 파일 변경 수로 센다 (GitHub · GitLab)", async () => {
@@ -223,6 +268,20 @@ describe("Publish 미리보기 — ⑥ locale-plan-refused", () => {
 });
 
 describe("Publish 결과 — 번역 0", () => {
+  /** 번역 0으로 열린 PR/MR을 교체한 결과(R-E3 Y4 — 변이 M3이 남았다). "today's 0"이 서지 않는다. */
+  it.each([
+    ["github", "https://github.com/SinhyeokKang/malmoi/pull/128", "#128 was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes."],
+    ["gitlab", "https://gitlab.com/SinhyeokKang/malmoi/-/merge_requests/128", "!128 was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes."],
+  ] as const)("교체 %s — 언어 변경을 담았다고 말한다", async (host, prUrl, sentence) => {
+    mocks.preview.mockResolvedValue(ok({ ...removedOnly, openPr: { number: 128, url: prUrl } }));
+    mocks.pull.mockResolvedValue({ status: "committed", pr: "updated", prUrl, delivered: 0, changed: ["apps/web/locales/de.json"], files: [{ path: "apps/web/locales/de.json", kind: "removed" }] });
+    await render(<Host host={host} />); await click("Publish");
+    await click(host === "gitlab" ? "Replace merge request !128" : "Replace pull request #128");
+    const text = modal().textContent ?? "";
+    expect(text).toContain(sentence);
+    expect(text).not.toContain("today's 0");
+  });
+
   it("새 PR — 0 changes를 말하지 않고 머지 전 완료를 말하지 않는다", async () => {
     mocks.preview.mockResolvedValue(ok(removedOnly));
     mocks.pull.mockResolvedValue({ status: "committed", pr: "created", prUrl: "https://github.com/SinhyeokKang/malmoi/pull/129", delivered: 0, changed: ["apps/web/locales/de.json"],

@@ -240,6 +240,9 @@ it("편집과 언어 변경이 함께면 블록이 둘이고 편집 블록이 �
   const editLine = [...node.querySelectorAll("p")].find(p => p.textContent?.includes("12 unsent edits"))!;
   expect(editLine.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(node.textContent).toContain(en.repositorySync.sendFirst);
+  // 시안 P4 순서 — 편집 → 언어 → 권유. 권유는 두 블록을 다 읽은 뒤의 다음 행동이다(R-E3 Y2).
+  const hint = [...node.querySelectorAll("a")].find(a => a.textContent === en.repositorySync.sendFirst)!;
+  expect(block.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   // 블록은 Dialog 설명에 묶인다 — 무엇이 없어지는지가 열릴 때 읽혀야 한다.
   expect(node.getAttribute("aria-describedby")?.split(" ")).toContain(block.id);
 });
