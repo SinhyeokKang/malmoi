@@ -271,3 +271,4 @@
 - **GS 완료**(`gs-report.md`) — 재촬영 18 · SHA만 1 · 새 컷 4(`languages-card`·`language-add`·`language-remove`·`publish-language-changes`, en·ko·es 참조) · `guide:check` stale 0 · 보안 ③ `sign-out-everywhere` 포함. 편차: Removing 행이 PR 링크가 아니라 Unsent(Publish 금지) · Inactive 행은 SQL로 심었다 지움. `1abfb99d` → gate ok → **push**(`1c6d68a6..1abfb99d`). P4 CI(`1c6d68a6`) success run 39021691708. GS 해제. **RT4** 착수(preview).
 - 보안 ③ 완료(GS). 
 - RT4 이슈 1차: #278·#279 → **E1 fix5** · #280·#281 → **E3 fix4** · #282 → **D17**(후속, 이슈 열어 둠 + 댓글). #277은 E1 fix4가 dev에 있다 — RT4 재확인 뒤 닫는다.
+- E1 fix5 `worker_done`(#278 단수/복수 · #279 Sync 상태 줄 = 리포에서 읽은 언어 수, `gate: ok` 15700). RT4 이슈 2차: #285 → **E1 fix6** · #284 → **E2b**(새 워커, `lo-E2b`) · #283 → **지휘자 판단: D17과 같은 부류(버튼·사유가 PR 닫힘을 모른다 — R3 설계상 데이터 손실 없음)라 후속**, 이슈 열어 둠 + 댓글.
