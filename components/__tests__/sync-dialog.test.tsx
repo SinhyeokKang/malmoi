@@ -213,3 +213,73 @@ it("70초 출구 안내는 status로 알려지고, 그때 닫으면 아직 도�
     await vi.waitFor(() => expect(document.activeElement).toBe(fallback.current));
   } finally { fallback.current.remove(); }
 });
+
+/**
+ * **수동 Sync 확인의 언어 변경 구획** (locale-add 시안 P4) — 셀 편집은 "값이 바뀐다", 언어 변경은 "요청이 없어진다"라 한 수로 합치지 않는다.
+ * 블록은 손실이 큰 것부터(편집 → 언어 변경)이고, 언어마다 Sync 뒤 결과 한 줄을 말한다. `Send changes first` 권유는 편집이 있을 때만이다.
+ * 언어 목록은 지문과 같은 응답에서만 온다 — 화면 값으로 세우면 동료가 방금 낸 요청을 못 본 채 승인한다(`unsent`와 같은 규칙).
+ */
+type Language = { surfaceSlug: string; localeCode: string; operation: "ADD" | "REMOVE"; translations: number };
+const lang = (localeCode: string, operation: "ADD" | "REMOVE", translations = 0, surfaceSlug = "web"): Language => ({ surfaceSlug, localeCode, operation, translations });
+async function openWith(unsent: number, languages: Language[]) {
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent, languages });
+  await render(<SyncButton unsent={unsent} />);
+  await click("Sync");
+  // 지문 응답이 커밋될 때까지 기다린다 — 그 전엔 확정 버튼이 busy다.
+  await act(async () => {});
+  return dialog()!;
+}
+const languageBlock = () => document.querySelector<HTMLElement>("[data-sync-languages]");
+
+it("편집과 언어 변경이 함께면 블록이 둘이고 편집 블록이 먼저다", async () => {
+  const node = await openWith(12, [lang("fr", "ADD", 9), lang("de", "REMOVE")]);
+  const block = languageBlock()!;
+  expect(block.textContent).toBe("2 language changes will be dropped.fr won't be added. Its 9 translations are kept in Malmoi.de won't be removed. It stays in this source.");
+  const alerts = [...node.querySelectorAll('[data-variant="warning"], [data-tone="warning"]')];
+  expect(alerts.length).toBeGreaterThanOrEqual(1);
+  const editLine = [...node.querySelectorAll("p")].find(p => p.textContent?.includes("12 unsent edits"))!;
+  expect(editLine.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(node.textContent).toContain(en.repositorySync.sendFirst);
+  // 블록은 Dialog 설명에 묶인다 — 무엇이 없어지는지가 열릴 때 읽혀야 한다.
+  expect(node.getAttribute("aria-describedby")?.split(" ")).toContain(block.id);
+});
+
+it("언어 변경만 있으면 그 블록 하나이고 Send changes first 줄이 없다", async () => {
+  const node = await openWith(0, [lang("de", "REMOVE")]);
+  expect(languageBlock()!.textContent).toBe("1 language change will be dropped.de won't be removed. It stays in this source.");
+  expect(node.textContent).not.toContain(en.repositorySync.sendFirst);
+  expect(node.textContent).not.toContain("unsent edit");
+});
+
+it("값 없는 추가는 번역 수를 말하지 않는다", async () => {
+  await openWith(0, [lang("fr", "ADD", 0)]);
+  expect(languageBlock()!.textContent).toBe("1 language change will be dropped.fr won't be added.");
+});
+
+it("다섯 개를 넘으면 앞 넷과 and N more로 접는다", async () => {
+  await openWith(0, ["ja", "ko", "fr", "de", "es", "it", "pt"].map(code => lang(code, "REMOVE")));
+  const lines = [...languageBlock()!.querySelectorAll("li")].map(li => li.textContent);
+  expect(lines).toEqual([
+    "ja won't be removed. It stays in this source.",
+    "ko won't be removed. It stays in this source.",
+    "fr won't be removed. It stays in this source.",
+    "de won't be removed. It stays in this source.",
+    "and 3 more",
+  ]);
+});
+
+it("다섯 개면 접지 않는다", async () => {
+  await openWith(0, ["ja", "ko", "fr", "de", "es"].map(code => lang(code, "REMOVE")));
+  expect(languageBlock()!.querySelectorAll("li")).toHaveLength(5);
+});
+
+it("소스가 둘 이상이면 언어 줄이 소스를 함께 말한다", async () => {
+  await openWith(0, [lang("de", "REMOVE", 0, "web"), lang("fr", "ADD", 2, "emails")]);
+  const lines = [...languageBlock()!.querySelectorAll("li")].map(li => li.textContent);
+  expect(lines).toEqual(["de (web) won't be removed. It stays in this source.", "fr (emails) won't be added. Its 2 translations are kept in Malmoi."]);
+});
+
+it("언어 변경이 없으면 블록이 없다", async () => {
+  await openWith(3, []);
+  expect(languageBlock()).toBeNull();
+});

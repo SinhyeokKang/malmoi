@@ -518,6 +518,25 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
   const save = (localeCode: string, value: string) =>
     applyKeySave(prisma, { projectId: "p", surfaceId: "s-web", surfaceSlug: "web", keyId: "s-web-hello", userId: "owner", credential: undefined, changes: [{ localeCode, value }] });
 
+  /**
+   * 확인 Dialog의 언어 변경 구획(시안 P4)은 **지문과 같은 응답**의 목록으로 선다 — 소스 slug · 코드 · 종류 · 추가 언어의 값 있는 번역 수(Sync 뒤 Inactive로 남는 값).
+   * 보관된 소스의 행은 의도가 아니라 싣지 않는다(지문과 같은 읽기).
+   */
+  it("준비 응답이 언어 변경을 소스·코드순으로 싣는다 — 추가는 남는 번역 수", async () => {
+    await seed();
+    await request("s-web", "ko", "REMOVE");
+    await request("s-app", "fr", "ADD");
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-app", keyId: "s-app-hello", localeCode: "fr", value: "bonjour" } });
+    await request("s-web", "de", "ADD");
+    expect((await prepareSync(prisma, OWNER, { slug: "fixture" }))?.languages).toEqual([
+      { surfaceSlug: "app", localeCode: "fr", operation: "ADD", translations: 1 },
+      { surfaceSlug: "web", localeCode: "de", operation: "ADD", translations: 0 },
+      { surfaceSlug: "web", localeCode: "ko", operation: "REMOVE", translations: 0 },
+    ]);
+    await prisma.translationSurface.update({ where: { id: "s-app" }, data: { archivedAt: new Date() } });
+    expect((await prepareSync(prisma, OWNER, { slug: "fixture" }))?.languages.map(row => row.localeCode)).toEqual(["de", "ko"]);
+  });
+
   it("편집 0이어도 언어 변경 행이 있으면 승인 없이는 reconfirm — 행 그대로", async () => {
     await seed();
     await request("s-web", "ko", "REMOVE");
