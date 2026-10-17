@@ -100,6 +100,7 @@
 | D14 | 소스 상세 모달의 설명 줄 언어 수도 Languages 카드 머리처럼 **목록 행 수**(Adding·Removing·Inactive 포함) — 시안대로 두 자리가 같은 수. Sources 목록 행·Home·서버 `locales`는 작업 언어 수 그대로 | 사용자 2026-10-17(DS2 #277 — 지휘자 추천은 "두 수를 둔다"였다) |
 | D15 | 지휘 마무리 후 `/merge` **patch**. 단 **G(`/guide`)·GS(`/guide-shots`)는 머지 전에 한다** — 로케일 관리는 별개 가이드 페이지로 추가해도 된다. RT4는 머지 뒤 | 사용자 2026-10-17 |
 | D16 | **RT4는 preview(`dev.mal-moi.com`)에서** 돌리고 문제없으면 `/merge`(patch). **배포 뒤 prod에서 이번 머지에 든 것 전부 `/runtime-test`**(locale-add + 보안 감사 후속) | 사용자 2026-10-17 |
+| D17 | RT4 #282(머지 없이 닫힌 추가 PR을 앱에서 정리할 길 없음 — 편집 없으면 Publish가 꺼짐)는 **이번 배포 뒤 후속 이슈** — prod는 야간이 하루 안에 정리 | 사용자 2026-10-17(지휘자 추천) |
 
 ## 1차 런 배치 (2026-10-14 — 완료)
 
@@ -267,3 +268,6 @@
 - 사용자: 마무리하고 `/merge` patch → G·GS는 머지 전(D15). **G** 착수(Sonnet high, `lo-G`, 새 페이지 `setup/languages.md` 권장). RT4는 머지 뒤로(런 밖). TR 통합 1회차 gate 실패 2건(`mcp-connected-apps` 포커스 · `translation-workspace` 세션 만료 문구 — 단독 60 green, load 39) → 재실행 중.
 - **D16** — 순서: E1 fix4·D2 fix2·G 통합 → GS(main 체크아웃 로컬, ego 단독) → gate → **P4 push**(locale-add 전체 + 보안 후속 7커밋 첫 push) → CI·preview 배포 확인 → **RT4 preview**(+ 보안 ④) → 수정 시 재push → `/merge` patch(+ 보안 ⑤) → **RT5 prod**(이번 머지 전부 + 보안 ⑥). `api-contract` 타임아웃은 부하 flake(단독 green) — 최종 gate는 워커가 빠진 뒤 한 번.
 - E1 fix4(D14 — `listedLanguageCount` 하나를 모달 설명 줄·카드 머리가 같이 읽음) · D2 fix2(§10.1 TR 용어 · D14) · **G**(새 페이지 `setup/languages.md` en·ko·es + SUMMARY·AUTHORING, 기존 10쪽 정리, MCP 표 네 도구 — 틀린 "리포에서만" 문장은 원래 없었다) 통합 → gate **ok**(15698 · PG 884, load 17). tasks §6 문구·`/design-sync` · §8 둘째 체크. E2·D2·G 해제·워크트리 정리(E1·E3는 RT4 수정용 retain). **P4 push**.
+- **GS 완료**(`gs-report.md`) — 재촬영 18 · SHA만 1 · 새 컷 4(`languages-card`·`language-add`·`language-remove`·`publish-language-changes`, en·ko·es 참조) · `guide:check` stale 0 · 보안 ③ `sign-out-everywhere` 포함. 편차: Removing 행이 PR 링크가 아니라 Unsent(Publish 금지) · Inactive 행은 SQL로 심었다 지움. `1abfb99d` → gate ok → **push**(`1c6d68a6..1abfb99d`). P4 CI(`1c6d68a6`) success run 39021691708. GS 해제. **RT4** 착수(preview).
+- 보안 ③ 완료(GS). 
+- RT4 이슈 1차: #278·#279 → **E1 fix5** · #280·#281 → **E3 fix4** · #282 → **D17**(후속, 이슈 열어 둠 + 댓글). #277은 E1 fix4가 dev에 있다 — RT4 재확인 뒤 닫는다.
