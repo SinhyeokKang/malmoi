@@ -98,6 +98,7 @@
 | D12 | 번역 화면 미저장 문장은 시안 T1 ③(`2 languages not saved`)과 달리 **기존 `N unsaved changes` 유지** — 일반 상태는 이 기능 범위가 아니다 | 사용자 2026-10-17(R-E2 🟡3) |
 | D13 | 언어 이름은 **standard형**(`English (Australia)`)으로 전역 전환 — `languageName` 한 줄, 온보딩·Add sources·Logs·추가 Dialog가 같이 바뀐다 | 사용자 2026-10-17(R-E1 ⚪3) |
 | D14 | 소스 상세 모달의 설명 줄 언어 수도 Languages 카드 머리처럼 **목록 행 수**(Adding·Removing·Inactive 포함) — 시안대로 두 자리가 같은 수. Sources 목록 행·Home·서버 `locales`는 작업 언어 수 그대로 | 사용자 2026-10-17(DS2 #277 — 지휘자 추천은 "두 수를 둔다"였다) |
+| D15 | 지휘 마무리 후 `/merge` **patch**. 단 **G(`/guide`)·GS(`/guide-shots`)는 머지 전에 한다** — 로케일 관리는 별개 가이드 페이지로 추가해도 된다. RT4는 머지 뒤 | 사용자 2026-10-17 |
 
 ## 1차 런 배치 (2026-10-14 — 완료)
 
@@ -262,3 +263,4 @@
 - **통합**: E2 fix2 · E3 fix3 · D2(+fix1, 8) → gate **ok**(15689 · PG 884) · ⚠️ **지휘자 누락 정정**: E1 fix2(6커밋)를 앞 통합에서 빠뜨렸다 → E1 fix3와 함께 cherry-pick → gate **ok**(15697 · PG 884). `next-env.d.ts`는 build 산출 변경이라 되돌림.
 - 착수: **DS2**(main 체크아웃, #268~#276 재실측·닫기) ∥ **TR**(워크트리, `/translate` 모드②).
 - **DS2 완료**(`ds2-report.md`) — #268~#276 아홉 건 실측 통과·닫음(실제 wheel 입력·375 CDP·AX·라이트/다크). 새 이탈 **#277**(모달 설명 줄 작업 언어 수 vs 카드 머리 행 수) → **D14 사용자 결정**(둘 다 행 수) → **E1 fix4**. 못 함: VoiceOver 실청취 · T 패널 머리 `3 of 3` 시안 대조 미판정(RT4로). dev DB 전후 동일. DS2 해제.
+- 사용자: 마무리하고 `/merge` patch → G·GS는 머지 전(D15). **G** 착수(Sonnet high, `lo-G`, 새 페이지 `setup/languages.md` 권장). RT4는 머지 뒤로(런 밖). TR 통합 1회차 gate 실패 2건(`mcp-connected-apps` 포커스 · `translation-workspace` 세션 만료 문구 — 단독 60 green, load 39) → 재실행 중.
