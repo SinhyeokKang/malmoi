@@ -19,7 +19,7 @@ import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import type { SourceDetail } from "@/lib/sources/query";
 import { cn } from "@/lib/utils";
 import { AddLocaleDialog, type AddOutcome } from "./add-locale-dialog";
-import { planLanguageRow, type LanguageRowPlan } from "./language-row";
+import { listedLanguageCount, planLanguageRow, type LanguageRowPlan } from "./language-row";
 import { RemoveLocaleDialog, type RemoveOutcome } from "./remove-locale-dialog";
 
 type Notice = { tone: "success" | "warning" | "danger"; text: string };
@@ -143,8 +143,8 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
 
   const orphaned = detail.languages.filter(row => row.orphaned);
   return <div ref={cardRef}>
-    {/* 머리 수는 카드가 보이는 행 수다(시안 L2·L6·L7 — DS #276). 서버 `locales`는 Removing을 뺀 작업 언어 수라 Home·Keys·Inbox 분모의 계약이고, 여기 쓰면 바로 아래 행과 어긋난다. */}
-    <Card title={m.sources.languages} count={detail.languages.length} countLabel={m.sources.languageCount(detail.languages.length)}
+    {/* 머리 수는 카드가 보이는 행 수다(시안 L2·L6·L7 — DS #276). 모달 설명 줄과 같은 출처다(`listedLanguageCount`). */}
+    <Card title={m.sources.languages} count={listedLanguageCount(detail)} countLabel={m.sources.languageCount(listedLanguageCount(detail))}
       description={<span id={helpId}>{help}</span>}
       // 소스 전체의 언어 구성을 바꾸는 동작이라 행이 아니라 머리다(L1). 꺼져도 숨기지 않는다(L4).
       action={<Button data-language-add disabled={busy} aria-disabled={headerBlocked || undefined} aria-describedby={headerBlocked ? helpId : undefined}

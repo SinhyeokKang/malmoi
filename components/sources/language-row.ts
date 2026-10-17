@@ -2,6 +2,14 @@ import type { SourceDetail } from "@/lib/sources/query";
 
 type LanguageRow = SourceDetail["languages"][number];
 
+/**
+ * 상세 모달이 말하는 언어 수 — **카드가 보이는 행 수**다(Adding·Removing·Inactive 포함 — 시안 L1·L5, DS #276·#277 · D14). 모달 설명 줄과 Languages 카드
+ * 머리가 이 하나를 읽는다. ⚠️ 서버 `locales`(REMOVE를 뺀 작업 언어 수)는 Sources 목록 행·Home·Keys·Inbox 분모의 계약이라 그대로 둔다 — 모달 안에서만 행을 센다.
+ */
+export function listedLanguageCount(detail: Pick<SourceDetail, "languages">): number {
+  return detail.languages.length;
+}
+
 /** 행 동작의 꺼짐 이유 — 앞선 것이 이긴다(기준 언어 > 권한 > 포맷 > 전달 미확정). 문장 자리는 이유마다 다르다(시안 L1·L3·L4). */
 export type ActionBlock = "base" | "role" | "format" | "unconfirmed";
 
