@@ -161,17 +161,23 @@ export type PullResult =
    * `locales` — 셀 편집 0인데 언어 작업이 전부 보류(경로가 이미 있는 ADD)일 때만 있다. 그때도 쓰기는 0이다.
    * `expired` — 이 실행이 스냅샷 전에 정리한 언어 요청(PR/MR이 더 이상 열려 있지 않다, #267). 보낼 것이 없어 끝났을 때만 있다. 요청마다 `presence`가
    * 리포가 요청대로였는지(머지)·아닌지(리포에 닿지 못한 채 닫힘)를 가른다(`reachedRepository`) — 뒤엣것이 있으면 "리포에 이미 있다"가 거짓이다.
+   * `prOpen` — 스냅샷 전 만료가 열린 PR/MR을 봐서 아무것도 정리하지 않았고 보낼 것도 없었다(#282 fix1). 언어 요청이 그 PR/MR을 기다린다 — "리포에 이미 있다"와
+   * 다른 원인이라 결과 문장이 갈린다(POSTMORTEM 2026-10-14 "결과 코드 하나에 원인 문장 하나를 고정하지 않는다"). 정리 미리보기 뒤 PR이 다시 열린 경합이 여기
+   * 닿는다 — 이 반환이 지문 대조보다 앞이라 MCP(지문)도 같다.
    */
-  | { status: "skipped"; reason: "no-edits"; locales?: LocaleNotes; expired?: ExpiredLocaleRequest[] }
+  | { status: "skipped"; reason: "no-edits"; locales?: LocaleNotes; expired?: ExpiredLocaleRequest[]; prOpen?: true }
   /**
    * `closedPr` — 이 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 sync 브랜치를 base로 되돌릴 때 그 PR은 할 일이 없다 — 조용히 닫히게 두지 않고
    * 코멘트와 함께 닫은 뒤 결과·Logs(`SyncRun.prUrl`)가 그 사실을 말한다.
    */
   /** `withdrawn` — 이 실행이 열린 PR에서 거둔 언어 효과(전달 뒤 취소, #281). 미리보기의 `withdrawnLocales`와 같은 함수·같은 입력이다. 없으면 필드가 없다. */
   | { status: "skipped"; reason: "no-changes"; withheld?: Withheld; closedPr?: { number: number; url: string }; locales?: LocaleNotes; withdrawn?: WithdrawnLocale[] }
-  /** 실린 편집 0 + 보류 > 0 + 언어 작업 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다. */
-  | { status: "skipped"; reason: "withheld"; withheld: Withheld; locales?: LocaleNotes }
-  | { status: "skipped"; reason: "writer-warnings"; warnings: PullWarning[] }
+  /**
+   * 실린 편집 0 + 보류 > 0 + 언어 작업 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다.
+   * `expired` — 쓰기 전에 끝났어도 스냅샷 전 만료는 이미 커밋됐다(#282 fix1). 정리 미리보기가 약속한 요청 닫기를 결과가 말하게 같이 싣는다(`no-edits`와 같은 뜻).
+   */
+  | { status: "skipped"; reason: "withheld"; withheld: Withheld; locales?: LocaleNotes; expired?: ExpiredLocaleRequest[] }
+  | { status: "skipped"; reason: "writer-warnings"; warnings: PullWarning[]; expired?: ExpiredLocaleRequest[] }
   /**
    * 미리보기가 준 지문(`expectedFingerprint`)과 실행권 뒤 스냅샷 + base head의 지문이 다르다 (mcp-connector design §3.1). **첫 쓰기 전에** 끝나
    * GitHub 쓰기·전달 확인 무효화·성공 확정이 전부 0이다. 인자가 없는 호출(웹·cron)에는 생기지 않는다.
@@ -482,6 +488,8 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
    * 읽는다 — 만료 전 스냅샷의 의도를 싣지 않는다. MCP 미리보기의 지문은 만료 전 상태라 그때 reconfirm이다(안전한 쪽).
    */
   let expiredRequests: ExpiredLocaleRequest[] = [];
+  /** 열린 PR/MR 때문에 아무것도 만료하지 않았다 — 보낼 것 없이 끝나면 결과가 그 원인을 싣는다(`prOpen`). */
+  let heldByOpenPr = false;
   if (deps.expireLocales !== undefined && expiryApplies) {
     const open = await client.findOpenPr(deps.syncBranch);
     const entries = await readTree();
@@ -491,6 +499,7 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
       surfaces: formats.filter(item => (item.surface.localeChanges?.rows.length ?? 0) > 0)
         .map(item => ({ surfaceId: item.surface.id, surfaceSlug: item.surface.slug, observed: observedLocalesOf(item, entries) })),
     });
+    heldByOpenPr = open !== null && expired.length === 0;
     if (expired.length > 0) {
       expiredRequests = expired;
       state = await deps.loadState();
@@ -516,8 +525,9 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
    */
   const localeWork = deliverableLocaleWork(localePlan, surfaces);
   const localeNotesEarly = localeNotesOf(localePlan);
+  const expiredField = expiredRequests.length === 0 ? {} : { expired: expiredRequests };
   if (unpublished === 0 && localeWork === 0) {
-    return { status: "skipped", reason: "no-edits", ...(localeNotesEarly === undefined ? {} : { locales: localeNotesEarly }), ...(expiredRequests.length === 0 ? {} : { expired: expiredRequests }) };
+    return { status: "skipped", reason: "no-edits", ...(localeNotesEarly === undefined ? {} : { locales: localeNotesEarly }), ...expiredField, ...(heldByOpenPr ? { prOpen: true as const } : {}) };
   }
   if (expectedFingerprint !== undefined) {
     // 행이 있을 때만 base 입력(대상 blob·삭제 경로)이 선다 — 없으면 트리를 읽기 전에 대조한다.
@@ -540,7 +550,7 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   warnings.push(...emptyWarnings);
   // 셀 편집과 언어 작업을 합친 "보낼 일"이다 — 셀 0·언어 작업 > 0에서도 경고 거부가 서야 한다(design §4 판정표).
   const decision = planProtectedPublish({ pending: unpublished + localeWork, writerWarnings: warnings.length });
-  if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
+  if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings, ...expiredField };
 
   // 기준의 유무는 이 실행의 확정과 무관하다 — 보류 셀은 토큰을 지키고 기준 행의 revision만 다시 찍힌다(`saveLastPulledAt`). 그래서 쓰기 전에 묻는다.
   const revertable = split.withheld.length > 0 && deps.withheldRevertable !== undefined && await deps.withheldRevertable(project.id, split.withheld);
@@ -549,7 +559,7 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   const notes = localeNotesEarly;
   const localeNotes = notes === undefined ? {} : { locales: notes };
   // 셀이 전부 보류여도 언어 작업이 있으면 진행한다 — 안전한 삭제·새 파일은 전달할 수 있다(design §4 조기 종료 ②).
-  if (split.delivered.length === 0 && split.withheld.length > 0 && localeWork === 0) return { status: "skipped", reason: "withheld", withheld: withheldBy, ...localeNotes };
+  if (split.delivered.length === 0 && split.withheld.length > 0 && localeWork === 0) return { status: "skipped", reason: "withheld", withheld: withheldBy, ...localeNotes, ...expiredField };
   const contextIds = deliveryContexts.map(context => context.surfaceId);
   // 스냅샷 때의 효과 목록이다 — 확인 tx는 이 캡처를 쓰고, 실행 중의 새 요청·취소는 확인 뒤에도 작업으로 남는다(design §3 "Publish 경합").
   const deliveredLocales = capturedBySurface(localePlan, contextIds);

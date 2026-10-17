@@ -313,6 +313,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.publish.language.settle.title": [2],
   "translations.publish.language.settle.body": [2],
   "translations.publish.language.settle.action": [2],
+  "translations.publish.language.settle.progressTitle": [2],
   "translations.publish.onGitLab.language.settle.body": [2],
   "translations.publish.language.refused.conflict": ["X", "fr", "X", "X"],
   "translations.publish.language.refused.duplicate": ["X", "X"],

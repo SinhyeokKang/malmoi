@@ -1566,6 +1566,9 @@ export const es = {
             removeNotReached: (code: string): string => `${code} no se quitó: su merge request se cerró sin fusionarse. Se queda en esta fuente.`,
           },
           settle: {
+            progressDescription: "Comprobando la merge request y el repositorio y cerrando después la solicitud. Normalmente tarda unos segundos.",
+            progress: ["Comprobando si la merge request sigue abierta", "Leyendo el repositorio", "Cerrando la solicitud"] as readonly string[],
+            stillOpen: "Hay una merge request abierta con cambios de idioma, así que la solicitud se queda hasta que se fusione o se cierre. No se envió nada.",
             hint: "La merge request de un cambio de idioma ya no está abierta. Publica para cerrar su solicitud.",
             body: (n: number): string =>
               `La merge request en la que se ${n === 1 ? "envió esta solicitud" : "enviaron estas solicitudes"} ya no está abierta. No se envía nada ni se abre una merge request nueva; al publicar solo se ${n === 1 ? "cierra" : "cierran"}.`,
@@ -1766,6 +1769,10 @@ export const es = {
           body: (n: number): string =>
             `La pull request en la que se ${n === 1 ? "envió esta solicitud" : "enviaron estas solicitudes"} ya no está abierta. No se envía nada ni se abre una pull request nueva; al publicar solo se ${n === 1 ? "cierra" : "cierran"}.`,
           action: (n: number): string => (n === 1 ? "Cerrar solicitud" : "Cerrar solicitudes"),
+          progressTitle: (n: number): string => (n === 1 ? "Cerrando la solicitud de idioma" : "Cerrando las solicitudes de idioma"),
+          progressDescription: "Comprobando la pull request y el repositorio y cerrando después la solicitud. Normalmente tarda unos segundos.",
+          progress: ["Comprobando si la pull request sigue abierta", "Leyendo el repositorio", "Cerrando la solicitud"] as readonly string[],
+          stillOpen: "Hay una pull request abierta con cambios de idioma, así que la solicitud se queda hasta que se fusione o se cierre. No se envió nada.",
         },
         inSource: (code: string, source: string): string => `${code} (${source})`,
       },

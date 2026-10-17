@@ -3089,6 +3089,9 @@ export const en = {
             removeNotReached: (code: string): string => `${code} wasn't removed — its merge request closed without merging. It stays in this source.`,
           },
           settle: {
+            progressDescription: "Checking the merge request and the repository, then closing the request. This usually takes a few seconds.",
+            progress: ["Checking whether the merge request is still open", "Reading the repository", "Closing the request"] as readonly string[],
+            stillOpen: "A merge request with language changes is open, so the request stays until it's merged or closed. Nothing was sent.",
             hint: "The merge request for a language change is no longer open. Publish to close its request.",
             body: (n: number): string =>
               `The merge request ${n === 1 ? "this request was" : "these requests were"} sent in is no longer open. Nothing goes out and no new merge request opens \u2014 publishing only closes ${n === 1 ? "it" : "them"}.`,
@@ -3342,6 +3345,12 @@ export const en = {
           body: (n: number): string =>
             `The pull request ${n === 1 ? "this request was" : "these requests were"} sent in is no longer open. Nothing goes out and no new pull request opens \u2014 publishing only closes ${n === 1 ? "it" : "them"}.`,
           action: (n: number): string => (n === 1 ? "Close request" : "Close requests"),
+          /** 정리 실행의 진행 화면(#282 fix1) — PR을 쓰지 않으므로 Publish의 세 단계(파일 쓰기 · 커밋 · PR 열기)를 말하지 않는다. */
+          progressTitle: (n: number): string => (n === 1 ? "Closing the language request" : "Closing the language requests"),
+          progressDescription: "Checking the pull request and the repository, then closing the request. This usually takes a few seconds.",
+          progress: ["Checking whether the pull request is still open", "Reading the repository", "Closing the request"] as readonly string[],
+          /** 실행이 열린 PR을 봤다(`no-edits` + `prOpen`) — 정리 미리보기 뒤 PR이 다시 열린 경합이다. "리포에 이미 있다"가 아니다. */
+          stillOpen: "A pull request with language changes is open, so the request stays until it's merged or closed. Nothing was sent.",
         },
         /** 만료 안내가 여러 소스에 걸칠 때 언어에 소스를 붙인다(`fr (web)`) — "this source"가 어느 소스인지. */
         inSource: (code: string, source: string): string => `${code} (${source})`,
@@ -4556,6 +4565,8 @@ export const en = {
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
         : "Nothing changed — the repository already has these values.",
+      /** 보낼 것 없이 끝났는데 언어 요청이 열린 PR을 기다린다(`no-edits` + `prOpen`, #282 fix1) — "리포에 이미 있다"는 일어나지 않은 원인이다. */
+      languageWaiting: "Nothing was sent. A pull request with language changes is still open, so their requests stay until it's merged or closed.",
       saved: (saved: number, rejected: number): string =>
         `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key wasn't" : "keys weren't"} saved`}.`,
       updated: "Settings saved.",
@@ -4614,6 +4625,7 @@ export const en = {
           : view === "updated" ? "Updated the open merge request."
           : view === "partial" ? "Some changes weren't sent. See the result for why."
           : "Nothing changed — the repository already has these values.",
+        languageWaiting: "Nothing was sent. A merge request with language changes is still open, so their requests stay until it's merged or closed.",
         pushToken: "New push token issued. The old one stopped working. Update the PUSH_TOKEN CI/CD variable in the GitLab project's settings.",
         created: (slug: string, keys: number): string =>
           `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Add the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked) first, then commit the jobs to .gitlab-ci.yml.`,
