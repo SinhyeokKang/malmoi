@@ -33,6 +33,17 @@
 4. ~~POSTMORTEM~~ **완료**(`8393f7ca`, 항목 둘) — RT가 잡은 #266·#265·#267(전달 목록이 "어느 요청의 효과인가"를 모르는 부류, 1층 스킵이 만료보다 먼저인 순서)을 `/postmortem`으로 남긴다.
 5. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
 
+### 보안 감사 후속 — 다음 `/merge`까지 이 세션 담당 (2026-10-17 인계, 세션 malmoi-bc)
+
+원문: 로컬 `.scratch/handoff-security-audit-2026-10-17.md`. 코드·문서는 dev `55ffaff3..ef3168fa`(7커밋, 마이그레이션 없음) — locale-add 커밋 아래에 깔려 다음 push에 함께 나간다.
+
+- [x] ① `ef3168fa` CI — success(run 38982386357, 2026-10-17 지휘자 확인)
+- [ ] ② **ko 검수(사용자)** — `messages/ko.tsx` `account.sessions.confirmHint` · `messages/ko-privacy.tsx` 보존 2줄 + `2026-10-17` 변경 이력 줄 · `guide/ko/account/profile.md#sessions` 새 문단. `/merge` 전.
+- [ ] ③ **`/guide-shots`** `public/guide/sign-out-everywhere.webp` 재촬영 — `guide:check`가 못 잡는다(소스 SHA 불변). GS 행에 합쳐 `/merge` 전.
+- [ ] ④ **preview 런타임**(`dev.mal-moi.com`) — Sign out everywhere 뒤 `/mcp` Personal token·Connected apps가 비는지, 확인창 새 문장. P4 push 뒤 RT4와 별도로 확인.
+- [ ] ⑤ **`/merge` 시** — 개인정보 방침 시행일 `2026-10-17`(머지일이 다르면 en `publicDocs.privacy.effectiveDate`·ko-privacy `effectiveDate`·변경 이력 두 줄·`REVISIONS` 행 같이 이동) · Release 노트 2줄(self-hosted 32자 미만 비밀은 preflight `too-short`로 기동 차단 / Sign out everywhere가 개인 토큰·연결된 앱도 끊는다).
+- [ ] ⑥ **머지 뒤 GitLab CI 원본 릴리스** — 태그 `malmoi-i18n-push-gitlab-v2`(OPERATIONS "GitLab CI 원본 릴리스" 557줄~) → 후속 커밋에서 `lib/onboarding/gitlab-ci.ts` `GITLAB_CI_RELEASE`·`docs/ACTIONS.md` §5 블록 → 다음 앱 릴리스.
+
 ### 화면 배치 데이터 계약 (C1 인계에서 옮김 — 원문은 로컬 `handoff-C1.md`)
 
 - **Sources 상세** `loadSourceDetail` → `languages[]`: `change: { operation: "ADD"|"REMOVE"; requestedAt } | null`(배지 Adding/Removing · 동작 Remove language/Cancel removal) · `unsent: boolean`(그 언어 **파일** 변경이 마지막 전달과 다름 — 셀 Unsent와 별개, 값 0개 ADD는 false, 전달 후 제거 취소는 행이 없어도 true) · `localeDelivery: "confirmed"|"unconfirmed"`(무효화 중이면 전달 여부를 단정하지 않는다). `locales` 수는 REMOVE를 뺀다.
