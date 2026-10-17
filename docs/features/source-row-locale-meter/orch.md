@@ -45,7 +45,16 @@
 
 ## 인수 — 다른 세션(malmoi-8e) 잔여, 2026-10-17
 
-원문: `.scratch/followups/handoff-malmoi-8e-to-d4.md`(gitignore — 이 머신만). 이 런의 배치가 아니며 다음 `/merge` 전에 사용자에게 꺼낸다.
+원문: `.scratch/followups/handoff-malmoi-8e-to-d4.md`(gitignore — 이 머신만). **2026-10-17 사용자: 인수 항목은 전부 이 세션에서 수행한다** — 아래가 배치 대응이다.
+
+| 항목 | 배치 |
+|---|---|
+| ko 검수 | **사용자가 직접 한다**(2026-10-17) — 지휘자는 묻지 않는다 |
+| RT6 잔여(GitLab판 `merge request` 문장 · #287 EDITOR·비지원 갈래 · 정리 모달 다크·341 폭) | QA 행에 합친다 |
+| RT5 prod 잔여(GitHub 실제 Publish · 기준 언어/브랜치 거부 문구 · Held·머지 갈래) | QA-P 행 — prod, 사용자 PR #15 처리 결정 필요 |
+| `/merge` 뒤 prod #282·#283 한 번 | QA-P 행 — 사용자가 `/merge`를 부른 뒤 |
+| prod MCP OAuth·개인 토큰 재인가 | 사용자 몫 — 리포트에 남긴다 |
+
 
 - 다음 `/merge` 실을 것(v1.4.3 `325ae01a` 이후 dev, 마이그레이션 없음): GitLab CI 원본 v2 상수 · #287 · #282·#283 요청 정리 — 이 런의 결과와 함께 나간다.
 - **ko 사용자 검수 미완**(`/merge` 전): 보안 후속 ② 문구 · locale-add TR 후보 넷 · E2b `revert.frozen` · #282 새 키. 확정되면 DESIGN §10.1 `언어 상태 낱말` 행의 ko `초안` 표시를 뗀다.
