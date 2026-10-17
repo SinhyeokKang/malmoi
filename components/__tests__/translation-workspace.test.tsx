@@ -507,9 +507,9 @@ it("RTL 로케일 셀은 dir=rtl·lang을 들고 LTR 셀은 ltr이다", async ()
     detail: base.detail && {
       ...base.detail,
       locales: [
-        { code: "en", isBase: true, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
-        { code: "ar-SA", isBase: false, value: "لا شيء هنا.", needsReview: false, pending: false, actorLabel: null },
-        { code: "ku-TR", isBase: false, value: null, needsReview: false, pending: false, actorLabel: null },
+        { code: "en", isBase: true, readOnly: false, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
+        { code: "ar-SA", isBase: false, readOnly: false, value: "لا شيء هنا.", needsReview: false, pending: false, actorLabel: null },
+        { code: "ku-TR", isBase: false, readOnly: false, value: null, needsReview: false, pending: false, actorLabel: null },
       ],
     },
   })} />);

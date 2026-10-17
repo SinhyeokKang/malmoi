@@ -63,7 +63,7 @@ it("서버 갱신이 제거를 알리면 그 칸의 입력을 남기고 얼린�
   expect(area(container, "ko").readOnly).toBe(false);
   expect(container.textContent).toContain(w.detail.frozenReason("zh"));
   expect(button(w.detail.discardChange)).toBeDefined();
-  expect(footer(container)).toBe(w.footer.frozen(["ko"], ["zh"]));
+  expect(footer(container)).toBe(w.footer.frozen("ko", "zh"));
   // 분모는 작업 언어만 — 제거 예정 칸은 빠진다(시안 T1 "2 of 2 languages").
   expect(container.textContent).toContain(w.detail.languages(2, 2));
 
@@ -77,7 +77,7 @@ it("서버 갱신이 제거를 알리면 그 칸의 입력을 남기고 얼린�
   expect(mocks.save.mock.calls[0]?.[0]).toMatchObject({ changes: [{ localeCode: "ko", value: "없음" }] });
   // 저장 뒤에도 얼린 입력은 남고, 보낼 것이 없어 Save가 꺼진다.
   expect(area(container, "zh").value).toBe("空");
-  expect(footer(container)).toBe(w.footer.frozen([], ["zh"]));
+  expect(footer(container)).toBe(w.footer.frozen("", "zh"));
   expect(saveButton().disabled).toBe(true);
 });
 
@@ -88,7 +88,7 @@ it("얼린 칸만 미저장이면 Save가 꺼지고, Discard change가 그 입�
   await user.type(area(container, "zh"), "空");
   await rerender(<TranslationWorkspace {...initial} detail={detailWith(["zh"])} />);
   expect(saveButton().disabled).toBe(true);
-  expect(footer(container)).toBe(w.footer.frozen([], ["zh"]));
+  expect(footer(container)).toBe(w.footer.frozen("", "zh"));
 
   await user.click(await clickable(w.detail.discardChange));
   expect(area(container, "zh").value).toBe("");
@@ -122,7 +122,8 @@ it("저장이 제거로 거부되면 입력을 남기고 그 칸을 곧바로 �
 
   expect(area(container, "zh").value).toBe("空");
   expect(area(container, "ko").value).toBe("없음");
-  expect(container.textContent).toContain(w.footer.removalPending("zh", 1));
+  expect(container.textContent).toContain(w.footer.removalPending.title("zh", 1));
+  expect(container.textContent).toContain(w.footer.removalPending.body);
   expect(container.textContent).not.toContain(w.footer.saveFailed.title);
   // 다시 누를 필요 없이 ①의 형이다 — 서버 상세를 기다리지 않고 얼리고, 서버 상태를 다시 읽는다.
   expect(area(container, "zh").readOnly).toBe(true);
@@ -134,8 +135,8 @@ it("저장이 제거로 거부되면 입력을 남기고 그 칸을 곧바로 �
   mocks.save.mockResolvedValue({ ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "없음" }] });
   await user.click(await clickable(w.footer.save));
   expect(mocks.save.mock.calls[1]?.[0]).toMatchObject({ changes: [{ localeCode: "ko", value: "없음" }] });
-  expect(container.textContent).not.toContain(w.footer.removalPending("zh", 1));
-  expect(footer(container)).toBe(w.footer.frozen([], ["zh"]));
+  expect(container.textContent).not.toContain(w.footer.removalPending.body);
+  expect(footer(container)).toBe(w.footer.frozen("", "zh"));
 });
 
 it("거부 뒤 도착한 서버 상세가 같은 언어를 읽기 전용으로 실어도 거부 문장은 남는다", async () => {
@@ -148,7 +149,7 @@ it("거부 뒤 도착한 서버 상세가 같은 언어를 읽기 전용으로 �
   await rerender(<TranslationWorkspace {...initial} detail={detailWith(["zh"])} />);
   expect(area(container, "zh").value).toBe("空");
   expect(area(container, "zh").readOnly).toBe(true);
-  expect(container.textContent).toContain(w.footer.removalPending("zh", 1));
+  expect(container.textContent).toContain(w.footer.removalPending.title("zh", 1));
 });
 
 it("세션 만료 중 저장이 거부돼도 얼린 입력과 다른 언어 입력이 남는다", async () => {

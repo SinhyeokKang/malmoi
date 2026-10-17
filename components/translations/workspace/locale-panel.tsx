@@ -6,6 +6,7 @@ import { useId, type ReactNode } from "react";
 import { LocaleBadge } from "@/components/translations/locale-badge";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
@@ -26,11 +27,13 @@ import { FilterMenu } from "./filter-menu";
  * 점선은 **지금 입력이 비어 있다**를 뜻한다(저장 여부와 독립).
  * ⚠️ **Enter는 줄바꿈**, Ctrl/Cmd+Enter가 키 저장, Escape는 그 입력만 되돌린다. blur·Tab은 저장하지 않는다.
  * ⚠️ **수는 저장된 값만 센다** — 입력 중에는 `N of M languages`가 움직이지 않는다.
+ * ⚠️ **제거 예정 언어(`readOnly`)는 분모에서 빠지고 칸이 얼는다** (locale-add 시안 T1) — 미저장 입력은 남고 그 아래 이유와 `Discard change`가 선다.
  */
 export type DetailView = {
   key: { id: string; key: string; namespace: string; sourceText: string; description: string | null; surfaceSlug: string };
   refs: { path: string; line: number; href: string | null }[];
-  locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
+  /** `readOnly` — 제거 예정 언어(`loadTranslationDetail`). 값은 보이되 편집·저장에서 빠진다(셀 얼리기 — draft의 `readOnly`가 같은 목록을 든다). */
+  locales: { code: string; isBase: boolean; readOnly: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
 };
 
 /**
@@ -156,6 +159,7 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
               saved={draft.saved[locale.code] ?? ""}
               sending={draft.inFlight !== undefined && Object.hasOwn(draft.inFlight.sent, locale.code) && draft.inFlight.sent[locale.code] === draft.draft[locale.code]}
               readOnly={readOnly}
+              frozen={draft.readOnly.includes(locale.code)}
               isBase={locale.code === base}
               sourceCode={base}
               invalidBy={invalid?.locales.includes(locale.code) ? invalid.describedBy : undefined}
@@ -226,7 +230,7 @@ function lastSegment(path: string): string {
   return path.split("/").at(-1) ?? path;
 }
 
-function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, sending, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
+function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, sending, readOnly, frozen, isBase, invalidBy, onEdit, onReset, onSave }: {
   keyName: string;
   sourceText: string;
   /** 겹친 원문의 언어 — 셀이 아니라 base의 방향을 든다. */
@@ -238,6 +242,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
   /** 이 셀의 지금 입력이 전송 중인 요청에 실려 있다 — 보낸 뒤 더 친 입력은 아니다(`draft`와 `inFlight.sent`가 같을 때만). */
   sending: boolean;
   readOnly: boolean;
+  /** 제거 예정 언어로 얼린 칸 — 편집만 막는다. Escape·`Discard change`(둘 다 `onReset`)는 그 입력을 버릴 수 있다. */
+  frozen: boolean;
   isBase: boolean;
   invalidBy?: string;
   onEdit: (value: string) => void;
@@ -257,7 +263,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       {...localeTextAttrs(locale.code)}
       rows={2}
       value={draft}
-      readOnly={readOnly}
+      readOnly={readOnly || frozen}
       aria-label={m.translations.cellLabel(keyName, locale.code)}
       aria-invalid={invalidBy === undefined ? undefined : true}
       aria-describedby={[empty ? helpId : undefined, invalidBy].filter(Boolean).join(" ") || undefined}
@@ -305,6 +311,16 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         {field}
         {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-translation">{sourceText}</span>}
       </div>
+      {/*
+        얼린 칸의 미저장 입력은 이유와 버리는 길이 한 줄로 선다 (시안 T1) — `Revert to last sent`는 이 칸에 거부되므로(`locale-removal-pending`)
+        버리는 길은 이것 하나다. 깨끗한 얼린 칸은 버릴 것이 없어 이 줄이 없다.
+      */}
+      {frozen && dirty && (
+        <div className="flex items-start gap-3">
+          <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-normal">{w.frozenReason(locale.code)}</span>
+          <Button size="sm" className="shrink-0" disabled={readOnly} onClick={onReset}>{w.discardChange}</Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1383,8 +1383,15 @@ export const ko = {
         selectKey: "번역할 키를 고르세요",
         selectKeyBody: "선택한 키의 언어별 번역이 여기에 표시됩니다.",
         keyGone: (source: string): string => `이 키는 더 이상 ${source} 소스에 없습니다`,
+        frozenReason: (locale: string): string => `${locale} 언어를 제거하는 중이라 이 변경은 저장할 수 없습니다.`,
+        discardChange: "변경 버리기",
       },
       footer: {
+        frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen} 저장할 수 없음` : `${savable} 저장 안 됨 · ${frozen} 저장할 수 없음`),
+        removalPending: {
+          title: (locales: string, _n: number): string => `${locales} 언어를 제거하는 중입니다`,
+          body: "이 키는 아무것도 저장되지 않았습니다. 다시 저장하세요.",
+        },
         unsaved: (n: number): string => `저장하지 않은 변경 사항 ${n.toLocaleString("ko-KR")}건`,
         saved: "저장됨",
         savedNotSent: "저장됨 · 미전송",

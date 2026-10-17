@@ -321,6 +321,13 @@ describe("읽기 전용(제거 예정) 언어", () => {
     expect(savableLocales(s)).toEqual([]);
   });
 
+  it("저장 거부가 알린 언어를 다음 서버 상세 전에 얼린다 — 입력은 남고 다른 언어만 저장된다", () => {
+    const s = reduceKeyDraft(edit(edit(start(), "ko", "mine"), "ja", "やあ"), { type: "freeze", locales: ["ko", "fr"] });
+    expect(s.readOnly).toEqual(["ko"]);
+    expect(s.draft.ko).toBe("mine");
+    expect(savableLocales(s)).toEqual(["ja"]);
+  });
+
   it("복구 사본은 활성 집합 밖의 언어를 들이지 않는다", () => {
     const s = start();
     expect(reduceKeyDraft(s, { type: "restore", locale: "fr", value: "x" })).toBe(s);

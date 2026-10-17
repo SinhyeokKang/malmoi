@@ -1373,8 +1373,15 @@ export const es = {
         selectKey: "Selecciona una clave para traducir",
         selectKeyBody: "Sus traducciones en todos los idiomas se abren aquí.",
         keyGone: (source: string): string => `Esta clave ya no está en ${source}`,
+        frozenReason: (locale: string): string => `Se está eliminando ${locale}, así que este cambio no se puede guardar.`,
+        discardChange: "Descartar cambio",
       },
       footer: {
+        frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen}: no se puede guardar` : `${savable} sin guardar · ${frozen}: no se puede guardar`),
+        removalPending: {
+          title: (locales: string, _n: number): string => `Se está eliminando ${locales}`,
+          body: "No se guardó nada de esta clave: vuelve a guardar.",
+        },
         unsaved: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "cambio sin guardar" : "cambios sin guardar"}`,
         saved: "Guardado",
         savedNotSent: "Guardado · sin enviar",

@@ -40,7 +40,7 @@ it("미저장이 있어도 View result는 결과를 연다 — 확인창은 Publ
       detail={{
         key: { id: "k1", key: "k", namespace: "common", sourceText: "Hi", description: null, surfaceSlug: "web" },
         refs: [],
-        locales: [{ code: "en", isBase: true, value: "Hi", needsReview: false, pending: false, actorLabel: null }, { code: "zh", isBase: false, value: null, needsReview: false, pending: false, actorLabel: null }],
+        locales: [{ code: "en", isBase: true, readOnly: false, value: "Hi", needsReview: false, pending: false, actorLabel: null }, { code: "zh", isBase: false, readOnly: false, value: null, needsReview: false, pending: false, actorLabel: null }],
       }}
       unpublished={0}
       publish={{ repo: { owner: "o", name: "r", branch: "main", syncBranch: "s" }, lastSentLabel: null, lastPrUrl: null }}

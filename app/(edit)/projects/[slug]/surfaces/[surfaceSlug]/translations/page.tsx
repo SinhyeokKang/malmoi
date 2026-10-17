@@ -128,7 +128,7 @@ export default async function TranslationsPage({
           // permalink는 서버가 만든다 — 그 판정이 사는 모듈(`lib/keys/view.ts`)은 어댑터를 물어 클라이언트가 읽으면 안 된다.
           return {
             key: labeled.key,
-            locales: labeled.locales.map(({ code, isBase, value, needsReview, pending, actorLabel }) => ({ code, isBase, value, needsReview, pending, actorLabel })),
+            locales: labeled.locales.map(({ code, isBase, readOnly, value, needsReview, pending, actorLabel }) => ({ code, isBase, readOnly, value, needsReview, pending, actorLabel })),
             refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoHost: project.repoHost, repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
           };
         })();

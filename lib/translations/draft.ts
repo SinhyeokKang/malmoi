@@ -32,6 +32,10 @@ export type KeyDraftState = {
 export type KeyDraftAction =
   | { type: "edit"; locale: string; value: string }
   | { type: "reset"; locale: string }
+  /** 세션 복구 사본의 입력 — 편집이 아니라 버린 적 없는 입력이라 얼린 칸에도 선다(다시 로그인한 탭이 그 입력을 잃지 않는다). */
+  | { type: "restore"; locale: string; value: string }
+  /** 저장 거부(`locale-removal-pending`)가 알린 언어를 다음 서버 상세 전에 얼린다 — 다시 누를 필요 없이 다른 언어만 저장하게 된다(시안 T1 ②′). */
+  | { type: "freeze"; locales: readonly string[] }
   | { type: "discard" }
   | { type: "submit"; requestId: string }
   | { type: "success"; requestId: string; keyId: string; cells: readonly { localeCode: string; value: string }[] }
@@ -73,6 +77,12 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
       if (!Object.hasOwn(state.saved, action.locale) || state.readOnly.includes(action.locale)) return state;
       return { ...state, draft: values([...Object.entries(state.draft), [action.locale, action.value]]) };
     }
+    case "restore": {
+      if (!Object.hasOwn(state.saved, action.locale)) return state;
+      return { ...state, draft: values([...Object.entries(state.draft), [action.locale, action.value]]) };
+    }
+    case "freeze":
+      return { ...state, readOnly: readOnlyOf(state.order, [...state.readOnly, ...action.locales]) };
     case "reset": {
       if (!Object.hasOwn(state.saved, action.locale)) return state;
       return { ...state, draft: values([...Object.entries(state.draft), [action.locale, state.saved[action.locale] ?? ""]]) };

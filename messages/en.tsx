@@ -2823,8 +2823,19 @@ export const en = {
         selectKey: "Select a key to translate",
         selectKeyBody: "Its translations in every language open here.",
         keyGone: (source: string): string => `This key is no longer in ${source}`,
+        /** 제거 예정 언어의 얼린 칸 아래 이유 (locale-add 시안 T1) — 입력은 남지만 저장되지 않는다. */
+        frozenReason: (locale: string): string => `${locale} is being removed, so this edit can't be saved.`,
+        /** 얼린 칸의 입력을 버리는 버튼 — 셀 Escape(`reset`)와 같은 동작이다. 같은 동작의 기존 낱말(`Discard change`)을 쓴다. */
+        discardChange: "Discard change",
       },
       footer: {
+        /** 얼린 칸의 미저장이 있을 때의 상태 줄 (시안 T1) — 저장될 언어와 저장될 수 없는 언어를 가른다. */
+        frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen} can't be saved` : `${savable} not saved · ${frozen} can't be saved`),
+        /** 렌더와 저장 사이에 제거가 도착한 저장 거부 (`locale-removal-pending`) — 저장은 키 단위라 다른 언어도 저장되지 않았다. */
+        removalPending: {
+          title: (locales: string, n: number): string => `${locales} ${n === 1 ? "is" : "are"} being removed`,
+          body: "Nothing in this key was saved — save again.",
+        },
         unsaved: (n: number): string => `${n.toLocaleString("en-US")} unsaved change${n === 1 ? "" : "s"}`,
         saved: "Saved",
         savedNotSent: "Saved · unsent",
