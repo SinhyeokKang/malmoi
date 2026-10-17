@@ -247,7 +247,9 @@ describe("Publish 미리보기 — ⑥ locale-plan-refused", () => {
     expect(text).not.toContain("Try again");
     expect(text).not.toContain("base language file");
     const open = [...modal().querySelectorAll("a")].find(a => a.textContent === "Open web");
-    expect(open?.getAttribute("href")).toBe(routes.sources("acme"));
+    // 고칠 자리로 바로 간다 — 소스 상세를 열고 그 언어 행에 포커스한다(E1 딥링크 계약 · R-E3 Y3).
+    expect(open?.getAttribute("href")).toBe(routes.sources("acme", { source: "web", language: "fr" }));
+    expect(open?.getAttribute("href")).toBe("/projects/acme/sources?source=web&language=fr");
     expect(button("Close")).toBeDefined();
   });
 
@@ -257,6 +259,13 @@ describe("Publish 미리보기 — ⑥ locale-plan-refused", () => {
     const text = modal().textContent ?? "";
     expect(text).toContain("Malmoi can't plan the language files for web. apps/web/i18n/fr.json belongs to another source.");
     expect(text).not.toContain("Two languages");
+  });
+
+  it("언어를 모르는 거부(안전하지 않은 경로)는 소스 상세만 연다", async () => {
+    mocks.preview.mockResolvedValue({ ...refused, path: "", plan: { refusal: "unsafe-path", surfaceSlug: "web", localeCode: null, ownerSlug: null } });
+    await render(<Host />); await click("Publish");
+    const open = [...modal().querySelectorAll("a")].find(a => a.textContent === "Open web");
+    expect(open?.getAttribute("href")).toBe("/projects/acme/sources?source=web");
   });
 
   it("EDITOR — Close 하나", async () => {
