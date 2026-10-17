@@ -30,7 +30,7 @@ import { formatMinute } from "@/lib/date-format";
 import { BaseLanguageForm } from "./base-language-form";
 import { RemoveSourceDialog } from "./remove-source-dialog";
 import { LanguagesCard } from "./languages-card";
-import { listedLanguageCount } from "./language-row";
+import { listedLanguageCount, repositoryLanguageCount } from "./language-row";
 import { planSurfaceRemoval, removalReason } from "@/lib/surfaces/plan-removal";
 import { IconTile } from "@/components/ui/icon-tile";
 
@@ -143,7 +143,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, fo
             {/* 보조 문장은 본문 색이다 — 톤은 칸과 낱말이 든다(§6.2 "Alert는 글자를 본문 색으로"와 같은 규칙, 옛 판은 호출부가 호박·빨강 글자를 골랐다). */}
             <span className="text-muted-foreground text-xs leading-body">
               {isImportFailureCode(detail.lastImportError) ? importFailureMessage(m, detail.lastImportError)
-                : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
+                : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, repositoryLanguageCount(detail))
                 : m.sources.notImportedHelp}
               {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
               {importStatus?.state === "failed-after" && canEdit && <> {m.settings.sources.rerun}</>}

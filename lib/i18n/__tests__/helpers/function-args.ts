@@ -383,7 +383,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "sources.locale.prRemoves": ["X"],
   "sources.locale.prAdds": ["X"],
   "sources.locale.discardLine": ["X"],
-  "sources.locale.untrackLine": ["X"],
+  "sources.locale.untrackLine": [2, "X"],
   "sources.locale.previewFailed": ["X"],
   "sources.locale.baselineUnknown": ["X"],
   "sources.locale.syncRunning": ["X"],

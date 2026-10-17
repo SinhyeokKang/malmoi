@@ -3730,7 +3730,9 @@ export const en = {
       /** `count`는 `repositorySync.unsentCount`를 굵게 든다. 제거는 마지막 전달 값으로 되돌린다(Revert 의미 — design §3). */
       discardLine: (count: ReactNode): ReactNode => <>{count} will be discarded. Each one goes back to the value last sent to the repository.</>,
       /** 추가 취소는 값을 남기고 Unsent 추적만 거둔다 — 그래서 warning이 아니라 neutral이다(시안 D2). */
-      untrackLine: (count: ReactNode): ReactNode => <>{count} stop being tracked. Add the language again to bring them back.</>,
+      untrackLine: (n: number, count: ReactNode): ReactNode => n === 1
+        ? <>{count} stops being tracked. Add the language again to bring it back.</>
+        : <>{count} stop being tracked. Add the language again to bring them back.</>,
       appCodeLine: "Update any code that loads this language (imports, supported language lists) in the same pull request.",
       previewFailed: (code: string): string => `We couldn't load what removing ${code} would change.`,
       changed: "This changed since you opened it. Check it again, then remove.",

@@ -151,7 +151,7 @@ export function RemoveLocaleDialog({ open, onOpenChange, slug, source, code, add
                       <p>{t.appCodeLine}</p>
                     </div>
                   </Alert>
-                  : ready.pendingCount > 0 && <Alert id={warningId} variant="neutral" size="sm" live="off">{t.untrackLine(<span className="font-medium">{m.repositorySync.unsentCount(ready.pendingCount)}</span>)}</Alert>}
+                  : ready.pendingCount > 0 && <Alert id={warningId} variant="neutral" size="sm" live="off">{t.untrackLine(ready.pendingCount, <span className="font-medium">{m.repositorySync.unsentCount(ready.pendingCount)}</span>)}</Alert>}
               </>}
         </div>}
     </DialogContent>

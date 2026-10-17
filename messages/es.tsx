@@ -2043,7 +2043,7 @@ export const es = {
       inOpenPr: "En la pull request abierta",
       couldntConfirm: "Sin confirmar",
       discardLine: (count: ReactNode): ReactNode => <>Se descartará lo siguiente: {count}. Cada edición vuelve al último valor enviado al repositorio.</>,
-      untrackLine: (count: ReactNode): ReactNode => <>Dejarán de seguirse: {count}. Añade el idioma de nuevo para retomar su seguimiento.</>,
+      untrackLine: (n: number, count: ReactNode): ReactNode => <>{n === 1 ? "Dejará" : "Dejarán"} de seguirse: {count}. Añade el idioma de nuevo para retomar su seguimiento.</>,
       appCodeLine: "Actualiza en la misma pull request el código que carga este idioma (imports, listas de idiomas admitidos).",
       previewFailed: (code: string): string => `No pudimos cargar lo que cambiaría al quitar ${code}.`,
       changed: "Esto cambió desde que lo abriste. Revísalo de nuevo y luego quítalo.",

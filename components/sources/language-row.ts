@@ -10,6 +10,14 @@ export function listedLanguageCount(detail: Pick<SourceDetail, "languages">): nu
   return detail.languages.length;
 }
 
+/**
+ * Sync 상태 줄(`importedSummary` — "…read from the repository")의 언어 수 — **리포에서 읽은 언어**만이다(RT4 #279). 앱에서 요청한 Adding은 리포에 아직
+ * 없고 Inactive는 리포에서 사라졌다. Removing은 Publish 전까지 리포에 있으니 센다. 서버 `locales`(작업 언어 — ADD 포함)와도, 목록 행 수(D14)와도 다른 수다.
+ */
+export function repositoryLanguageCount(detail: Pick<SourceDetail, "languages">): number {
+  return detail.languages.filter(row => !row.orphaned && row.change?.operation !== "ADD").length;
+}
+
 /** 행 동작의 꺼짐 이유 — 앞선 것이 이긴다(기준 언어 > 권한 > 포맷 > 전달 미확정). 문장 자리는 이유마다 다르다(시안 L1·L3·L4). */
 export type ActionBlock = "base" | "role" | "format" | "unconfirmed";
 

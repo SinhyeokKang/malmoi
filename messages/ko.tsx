@@ -2039,7 +2039,7 @@ export const ko = {
       inOpenPr: "열린 PR에 포함",
       couldntConfirm: "확인하지 못함",
       discardLine: (count: ReactNode): ReactNode => <>{count}이 버려집니다. 각 값은 리포지토리에 마지막으로 보낸 값으로 되돌아갑니다.</>,
-      untrackLine: (count: ReactNode): ReactNode => <>{count}은 더 이상 추적되지 않습니다. 언어를 다시 추가하면 돌아옵니다.</>,
+      untrackLine: (_n: number, count: ReactNode): ReactNode => <>{count}은 더 이상 추적되지 않습니다. 언어를 다시 추가하면 돌아옵니다.</>,
       appCodeLine: "이 언어를 불러오는 코드(import, 지원 언어 목록)도 같은 PR에서 고치세요.",
       previewFailed: (code: string): string => `${code} 언어를 제거하면 무엇이 바뀌는지 불러오지 못했습니다.`,
       changed: "창을 연 뒤 내용이 바뀌었습니다. 다시 확인한 뒤 제거하세요.",
