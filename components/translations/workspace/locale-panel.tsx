@@ -1,7 +1,7 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
 import { ChevronRight, FileJson2 } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
 import { Button } from "@/components/ui/button";
@@ -253,11 +253,13 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
   const m = useMessages();
   const w = m.translations.workspace.detail;
   const helpId = useId();
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
   const dirty = draft !== saved;
   const missing = locale.value === null || locale.value === "";
   const empty = draft === "";
   const field = (
     <Textarea
+      ref={fieldRef}
       data-locale={locale.code}
       /* ⚠️ 값이 자기 언어의 방향으로 선다 (malmoi#91) — 페이지의 `ltr`·`lang="en"`을 상속하면 RTL 값의 중립 문자가 반대 끝으로 튄다. */
       {...localeTextAttrs(locale.code)}
@@ -318,7 +320,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       {frozen && dirty && (
         <div className="flex items-start gap-3">
           <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-normal">{w.frozenReason(locale.code)}</span>
-          <Button size="sm" className="shrink-0" disabled={readOnly} onClick={onReset}>{w.discardChange}</Button>
+          {/* 누른 버튼이 이 클릭으로 사라진다 — 포커스가 body로 빠지지 않게 그 칸으로 옮긴다. */}
+          <Button size="sm" className="shrink-0" disabled={readOnly} onClick={() => { onReset(); fieldRef.current?.focus(); }}>{w.discardChange}</Button>
         </div>
       )}
     </div>
