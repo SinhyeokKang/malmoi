@@ -25,6 +25,8 @@ describe("planGate", () => {
     "lib/oauth-server/authorize.ts",
     "lib/oauth-server/revoke.ts",
     "lib/keys/source-counts.ts",
+    "lib/sources/query.ts",
+    "lib/sources/meters.ts",
     "lib/events/view.ts",
     "lib/push/apply.ts",
     "lib/pull/targets.ts",

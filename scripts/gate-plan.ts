@@ -29,6 +29,7 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "lib/auth/lock.ts",
       "lib/sync/run.ts",
       "lib/keys/",
+      "lib/sources/",
       "lib/events/",
       "lib/surfaces/",
       "lib/push/apply.ts",
