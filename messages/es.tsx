@@ -1405,13 +1405,13 @@ export const es = {
         selectKey: "Selecciona una clave para traducir",
         selectKeyBody: "Sus traducciones en todos los idiomas se abren aquí.",
         keyGone: (source: string): string => `Esta clave ya no está en ${source}`,
-        frozenReason: (locale: string): string => `Se está eliminando ${locale}, así que este cambio no se puede guardar.`,
+        frozenReason: (locale: string): string => `Se está quitando ${locale}, así que este cambio no se puede guardar.`,
         discardChange: "Descartar cambio",
       },
       footer: {
         frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen}: no se puede guardar` : `${savable} sin guardar · ${frozen}: no se puede guardar`),
         removalPending: {
-          title: (locales: string, n: number): string => `${n === 1 ? "Se está" : "Se están"} eliminando ${locales}`,
+          title: (locales: string, n: number): string => `${n === 1 ? "Se está" : "Se están"} quitando ${locales}`,
           body: "No se guardó nada de esta clave: vuelve a guardar.",
         },
         unsaved: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "cambio sin guardar" : "cambios sin guardar"}`,
@@ -1698,8 +1698,8 @@ export const es = {
         introOpen: (repo: string, n: number): string => `Va a ${repo} en la pull request #${n}.`,
         files: (added: number, removed: number): string => {
           const word = (n: number) => `${n.toLocaleString("es")} ${n === 1 ? "archivo" : "archivos"}`;
-          return added > 0 && removed > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}, ${removed.toLocaleString("es")} ${removed === 1 ? "eliminado" : "eliminados"}`
-            : added > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}` : `${word(removed)} ${removed === 1 ? "eliminado" : "eliminados"}`;
+          return added > 0 && removed > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}, ${removed.toLocaleString("es")} ${removed === 1 ? "quitado" : "quitados"}`
+            : added > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}` : `${word(removed)} ${removed === 1 ? "quitado" : "quitados"}`;
         },
         countsWithFiles: (n: number, keys: number, files: string): string =>
           `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} en ${keys.toLocaleString("es")} ${keys === 1 ? "clave" : "claves"}, ${files}.`,
@@ -1708,11 +1708,11 @@ export const es = {
         takenBackSummary: (n: number, files: number): string =>
           `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} \u00b7 ${files.toLocaleString("es")} ${files === 1 ? "archivo retirado" : "archivos retirados"}`,
         takenBackDescription: (pr: string, branch: string, what: "adding" | "removing" | "several"): string =>
-          `Ya no hay diferencias con ${branch}. Al cerrar ${pr} ${what === "several" ? "se retiran los archivos que cambiaba" : what === "adding" ? "se retira el archivo que añadía" : "se retira el archivo que eliminaba"}.`,
+          `Ya no hay diferencias con ${branch}. Al cerrar ${pr} ${what === "several" ? "se retiran los archivos que cambiaba" : what === "adding" ? "se retira el archivo que añadía" : "se retira el archivo que quitaba"}.`,
         label: {
           newFile: "Archivo nuevo",
           updated: "Actualizado",
-          removed: "Eliminado",
+          removed: "Quitado",
           notIncluded: "No incluido",
           held: "Retenido",
           takenBack: (pr: string | null): string => (pr === null ? "Retirado" : `Retirado de ${pr}`),
@@ -1723,9 +1723,9 @@ export const es = {
           `Este archivo ya está en ${branch}. Cuando se cierre la pull request abierta, ${code} se activará en la siguiente publicación o comprobación nocturna.`,
         takenBack: {
           create: (code: string, pr: string | null): string =>
-            `${code} se canceló después de ${pr === null ? "enviarse" : `abrirse ${pr}`}, así que el archivo que añade sale. Las traducciones se conservan en Malmoi.`,
+            `Se canceló añadir ${code} después de que se ${pr === null ? "enviara" : `abriera ${pr}`}, así que se quita el archivo que añadía. Las traducciones se conservan en Malmoi.`,
           delete: (code: string, pr: string | null): string =>
-            `La eliminación de ${code} se canceló después de ${pr === null ? "enviarse" : `abrirse ${pr}`}, así que el archivo se queda en el repositorio.`,
+            `La eliminación de ${code} se canceló después de que se ${pr === null ? "enviara" : `abriera ${pr}`}, así que el archivo se queda en el repositorio.`,
         },
         expiring: {
           addReached: (code: string): string => `${code} ya está en el repositorio, así que su solicitud se cierra.`,
@@ -1737,11 +1737,11 @@ export const es = {
           description: "No se envió nada.",
           title: "Estos cambios no se pueden publicar",
           conflict: (surface: string, code: string, path: string, owner: string): string =>
-            `Malmoi no puede planificar los archivos de idioma de ${surface}. ${code} se escribiría en ${path}, que ahora pertenece a la fuente ${owner}.`,
-          taken: (surface: string, path: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. ${path} pertenece a otra fuente.`,
-          duplicate: (surface: string, path: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. Dos idiomas se escribirían en ${path}.`,
-          unsafe: (surface: string): string => `Malmoi no puede planificar los archivos de idioma de ${surface}. Su plantilla de ruta no da a cada idioma su propio archivo.`,
-          unknown: "Malmoi no puede planificar los archivos de idioma.",
+            `Malmoi no puede determinar los archivos de idioma de ${surface}. ${code} se escribiría en ${path}, que ahora pertenece a la fuente ${owner}.`,
+          taken: (surface: string, path: string): string => `Malmoi no puede determinar los archivos de idioma de ${surface}. ${path} pertenece a otra fuente.`,
+          duplicate: (surface: string, path: string): string => `Malmoi no puede determinar los archivos de idioma de ${surface}. Dos idiomas se escribirían en ${path}.`,
+          unsafe: (surface: string): string => `Malmoi no puede determinar los archivos de idioma de ${surface}. Su plantilla de ruta no da a cada idioma su propio archivo.`,
+          unknown: "Malmoi no puede determinar los archivos de idioma.",
           open: (surface: string): string => `Abrir ${surface}`,
         },
         createdDescription: "Los cambios de idioma están en una pull request. Llegan al producto cuando alguien del equipo la fusione.",
@@ -1961,14 +1961,14 @@ export const es = {
     orphanStrip: (code: string): string => `${code} está inactivo.`,
     orphanStripRest: (translations: number): string =>
       `${translations === 1 ? "Su traducción se conserva" : `Sus ${translations.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
-    orphanStripOwner: "Añádelo de nuevo para recuperarlas.",
+    orphanStripOwner: "Añádelo de nuevo para recuperar sus traducciones.",
     orphanStripUnsupported: "Restaura el archivo en el repositorio y sincroniza.",
-    orphanStripEditor: "Un propietario puede añadirlo de nuevo.",
+    orphanStripEditor: "Un propietario del proyecto puede añadirlo de nuevo.",
     statusHelp: "Se actualiza con las sincronizaciones desde tu repositorio.",
     baseHelp: "El idioma base decide qué claves existen en esta fuente.",
     languagesHelp: "Los idiomas vienen del repositorio. Añade o quita los archivos allí.",
     languagesHelpOwner: "Añade o quita idiomas aquí. Publica para actualizar el repositorio.",
-    languagesHelpEditor: "Los propietarios pueden añadir o quitar idiomas.",
+    languagesHelpEditor: "Solo los propietarios del proyecto pueden añadir o quitar idiomas.",
     baseRow: "Origen de todas las claves de este archivo",
     needReview: (count: number): string => `${count.toLocaleString("es")} por revisar`,
     missingRepo: "Inactivo",
@@ -2010,8 +2010,8 @@ export const es = {
       fileToCreate: "Archivo que se creará",
       checkFailed: "No pudimos comprobar este idioma.",
       savedTranslations: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "traducción guardada" : "traducciones guardadas"}`,
-      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} estuvo antes en esta fuente. Al añadirlo de nuevo vuelven {count}, listas para publicar.</>,
-      reviveAgain: (count: ReactNode): ReactNode => <>Al añadirlo de nuevo vuelven {count}, listas para publicar.</>,
+      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} estuvo antes en esta fuente. Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
+      reviveAgain: (count: ReactNode): ReactNode => <>Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
       errors: {
         unreadable: "Malmoi no puede volver a leer este código desde el repositorio. Añade el archivo en el repositorio.",
         unsupportedLocale: "Las extensiones de Chrome no admiten este código de idioma.",
@@ -2042,11 +2042,11 @@ export const es = {
       prAdds: (pr: string): string => `${pr} añade este archivo`,
       inOpenPr: "En la pull request abierta",
       couldntConfirm: "Sin confirmar",
-      discardLine: (count: ReactNode): ReactNode => <>Se descartarán {count}. Cada una vuelve al último valor enviado al repositorio.</>,
-      untrackLine: (count: ReactNode): ReactNode => <>{count} dejan de seguirse. Añade el idioma de nuevo para recuperarlas.</>,
+      discardLine: (count: ReactNode): ReactNode => <>Se descartará lo siguiente: {count}. Cada edición vuelve al último valor enviado al repositorio.</>,
+      untrackLine: (count: ReactNode): ReactNode => <>Dejarán de seguirse: {count}. Añade el idioma de nuevo para retomar su seguimiento.</>,
       appCodeLine: "Actualiza en la misma pull request el código que carga este idioma (imports, listas de idiomas admitidos).",
       previewFailed: (code: string): string => `No pudimos cargar lo que cambiaría al quitar ${code}.`,
-      changed: "Esto cambió desde que lo abriste. Revísalo de nuevo y luego quita.",
+      changed: "Esto cambió desde que lo abriste. Revísalo de nuevo y luego quítalo.",
       baselineUnknown: (code: string): string => `Publica primero — algunas ediciones sin enviar de ${code} nunca se enviaron, así que no hay valor al que volver.`,
       syncRunning: (code: string): string => `Hay una sincronización en curso, así que aún no se puede quitar ${code}. Inténtalo de nuevo cuando termine.`,
       unsettledTitle: "No pudimos confirmar la última publicación",

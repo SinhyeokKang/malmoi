@@ -272,8 +272,8 @@ it("거부 뒤 저장 가능한 미저장이 0이 되면 거부 Alert를 걷는�
 });
 
 it("es 거부 제목은 언어 수에 동사를 맞춘다", () => {
-  expect(es.translations.workspace.footer.removalPending.title("de", 1)).toBe("Se está eliminando de");
-  expect(es.translations.workspace.footer.removalPending.title("de, fr", 2)).toBe("Se están eliminando de, fr");
+  expect(es.translations.workspace.footer.removalPending.title("de", 1)).toBe("Se está quitando de");
+  expect(es.translations.workspace.footer.removalPending.title("de, fr", 2)).toBe("Se están quitando de, fr");
 });
 
 it("얼린 칸은 muted 면·일반 테두리이고 거부 뒤에도 aria-invalid가 아니다 — 저장 가능한 칸만 거부 표시를 든다 (#274)", async () => {
