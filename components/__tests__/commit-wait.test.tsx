@@ -42,7 +42,7 @@ beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
   window.sessionStorage.clear();
   mocks.pr.mockResolvedValue(null);
-  mocks.prepare.mockResolvedValue({ approval: "d", unsent: 1 });
+  mocks.prepare.mockResolvedValue({ approval: "d", unsent: 1, languages: [] });
   mocks.preview.mockResolvedValue({ status: "ok", preview });
 });
 afterEach(() => { vi.useRealTimers(); });

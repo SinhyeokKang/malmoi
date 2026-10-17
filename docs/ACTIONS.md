@@ -4,6 +4,8 @@
 
 대상 리포는 워크플로 하나만 갖고, 실제 일은 말모이의 composite action(`.github/actions/malmoi-i18n-push`)이 한다. **페이로드를 셸·YAML로 조립하지 않는다** — 생산자는 `lib/push/payload.ts` 하나이고 action이 `scripts/push-local.ts`를 그대로 부른다 (POSTMORTEM 2026-08-31: 리터럴 조립이 계약 변경을 조용히 통과시켰다).
 
+**`/openapi.json`은 이 문서의 형태 파생본이고, 의미(동작·red 조건·안정성)의 정본은 이 문서다** (2026-10-15, agent-readiness) — 그 문서는 서버가 검증에 쓰는 Zod에서 생성한 `/api/push`·`/api/push/failure`의 요청·응답 형태만 싣고, 오류 갈래의 뜻은 여기 산문이 정한다.
+
 ## 1. 말모이 쪽 설정 (한 번만)
 
 **없다.** 말모이 리포가 public이라(2026-09-18) 어느 계정의 리포든 이 action을 참조할 수 있다. ⚠️ **private이던 동안에는** Settings > Actions > Access의 "Accessible from repositories owned by the user"가 필요했고 그 설정은 **소유자가 같은 리포만** 열어서, 다른 계정 리포는 자동 수집(push)이 원리적으로 안 돌았다 — `unable to resolve action`을 보면 리포가 다시 private이 됐는지부터 본다.
@@ -124,6 +126,7 @@ v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__test
 | `pending-edits` (`pendingCount` 있음) | exit 0 + 미전달 편집 경고 | 같다 |
 | `open-pr` | **exit 0, 경고 없음**(본문만 찍힌다) | exit 0 + `::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; the next push or the nightly sync imports these changes.` |
 | `pr-check-failed` | **exit 0, 경고 없음** | exit 0 + `::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Re-run this job later.` |
+| `locale-change-pending` (locale-add) | **exit 0, 경고 없음** | **exit 0, 경고 없음** — 발행된 v3 CLI도 모르는 사유라 본문만 찍는다. 경고 줄은 다음 **action 릴리스**(`@malmoi-i18n-push-vN` 축, 앱 릴리스와 별개)에서 `lib/cli/push-response.ts`가 더한다 |
 
 ⚠️ **v2가 새 사유에서 경고 없이 green인 것은 의도다** — v2 CLI(`lib/cli/push-response.ts`의 옛 판정)는 `pendingCount`가 정수일 때만 경고하므로, 서버가 수를 싣지 않는 사유는 조용히 지나간다. 거짓 "0 unsent translation changes"보다 낫다. 본문(`"status":"deferred","reason":"open-pr"`)은 v2 run 로그에도 찍힌다. 경고 문구는 `lib/cli/__tests__/push-response.test.ts`가 고정한다.
 
@@ -254,6 +257,7 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
 | **말모이 번역 PR(`malmoi-i18n/sync-<project>`)이 아직 열려 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"open-pr",…}`(`pendingCount` 없음, 2026-09-30 nightly-sync). 미전달 편집이 0이어도 그렇다 — Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전에 적재하면 그 PR의 번역이 DB에서 옛 리포 값으로 덮인다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: **그 PR을 머지하거나 닫는다** — 그 뒤 **현재 head의 새 push나 야간 동기화가 최신 리포 상태를 받는다.** ⚠️ **이 job을 다시 돌리지 않는다** — PR이 머지된 뒤 옛 커밋의 job을 다시 돌리면 그 커밋의 옛 값이 방금 머지된 번역을 strict로 덮는다(야간이 이미 더 새 커밋을 적재했으면 409 `stale commit`이다). 닫은(머지 안 한) PR은 열린 PR로 세지 않는다. ⚠️ **GitHub App 설치나 리포 고정(`installationId`·`repositoryId`)이 없는 프로젝트엔 이 게이트가 없다** — PR을 낼 수 없으니 열린 PR도 없다. v2 CLI는 경고 없이 본문만 찍는다(§2 "v3") |
 | **말모이가 열린 PR을 확인하지 못했다**(GitHub 오류·설치 토큰 실패·마감 초과) | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pr-check-failed",…}`. ⚠️ **"PR 없음"으로 읽지 않는다**(fail-closed) — 그렇게 읽으면 GitHub 장애 동안 열린 PR의 번역이 덮인다. 대가로 **CI 적재가 GitHub 가용성에 묶인다.** 할 일: 조회가 가능해지면 **현재 head의 새 push 또는 야간 동기화**로 최신 리포 상태를 받는다. 계속되면 말모이 설정의 GitHub 연결(설치·리포 선택)을 본다 |
 | **적재 확인 뒤 전달 확인이 바뀌었다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"publish-raced",…}`. 잠금 안에서 Last sent 또는 소스별 전달 확인 revision 변경을 감지하며 `no-changes` 완료도 포함한다. GitHub 조회 실패와 다른 사유다. 열린 말모이 PR이 있으면 머지하거나 닫은 뒤 현재 head의 새 push·야간 적재가 PR과 미전달을 다시 확인한다. 새 CLI는 별도 경고를 내며 이미 발행된 action 태그의 CLI는 본문만 표시할 수 있다 |
+| **말모이에 아직 안 보낸 언어 제거가 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"locale-change-pending",…}`(`pendingCount` 없음, locale-add). OWNER가 앱에서 어느 소스의 언어 제거를 요청했고 그 삭제가 아직 말모이 PR로 나가지 않았으면 **프로젝트 전체 적재를 보류**한다 — 리포에 남은 옛 파일이 그 요청 위로 적재되지 않게 한다. 미전달 편집 보류처럼 셀을 고르지 않는다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: 앱에서 Publish해 제거를 PR로 보내거나(그 뒤로는 위 열린 PR 보류가 맡는다) 제거를 취소한다. 그 뒤 **현재 head의 새 push 또는 야간 동기화**가 최신 리포 상태를 받는다. 앱에서 언어를 **추가**한 것만으로는 보류하지 않는다 — 적재는 돌고, 추가 중인 언어는 리포에 파일이 없어도 inactive로 바뀌지 않는다. ⚠️ **CLI 경고가 아직 없다** — 발행된 action 태그(v3 포함)의 CLI는 모르는 사유라 본문만 찍고 exit 0이다(경고 줄은 다음 action 릴리스 몫이다) |
 | **TS 키가 후행 spread·동적 computed에 가려졌다** | **현재 코드의 판정이며 발행된 v2·v3에는 없다**(v1.2.4에서 추가). 현재 CLI는 **red** — `key-shadowed` failure. 앞 문자열을 실행 시점의 값으로 확정할 수 없어 적재하지 않는다. 뒤의 명시적 리터럴은 자기 키를 다시 확정한다(ARCHITECTURE §1.4). 일반 리터럴 중복의 `duplicate-property` warning과 다르다 |
 | **malmoi가 관리하지 않는 값**(`ts-dict`·`code-dict`의 식·참조·shorthand, YAML의 숫자·불린 — `unmanaged`) | **green + 로그 경고** — 그 키만 적재에서 빠지고 파일의 값은 Publish가 그대로 남긴다(잃는 번역이 없다). CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍힌다. ⚠️ **v3 판정이다** — v2 태그의 스크립트는 이 값에서 **red**(exit 1)다(§2 "v3") |
 | **`PUSH_TOKEN` secret이 비었다**(미등록·오타 이름) | **red** (exit 1 — 적재·스캔 전에 멈춘다. **서버까지 가지 않고 실패 보고도 없다**). composite action은 `required: true`를 강제하지 않아 빈 문자열이 넘어오고, 스크립트가 그것을 없음으로 읽는다. 401이 아니라 로그의 `PUSH_TOKEN이 없다`로 구별된다 |

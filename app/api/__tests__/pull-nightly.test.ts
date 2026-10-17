@@ -35,6 +35,8 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/db", () => {
   const db = {
     deliveryConfirmation: { findMany: async () => [] },
+    // 언어 변경 의도 없음(locale-add) — 야간 판정의 `localeWork`·`localeChanges`가 0·false라 기존 순서다.
+    localeChange: { findMany: async () => [] },
     $executeRaw: async () => 0,
     project: {
       findMany: async () => state.rows,
@@ -152,6 +154,8 @@ describe("갈래별 호출", () => {
     expect(state.createGitClient).toHaveBeenCalledTimes(1);
     expect(state.runAutomationImport).toHaveBeenCalledWith(expect.anything(), {
       projectId: p.id, expectedLastPublishedAt: null, expectedDeliveryRevision: "[]", repository: { repositoryId: "r-moved", repoHost: "github", gitlabConnectionId: null, installationId: "77", repoOwner: "o", repoName: "moved", baseBranch: "main" },
+      // 게이트를 지난 적재다 — 표면 적재가 같은 잠금 안에서 언어 변경 만료를 겸하는 입력이다(locale-add).
+      pullRequest: "none-open",
     }, expect.any(Function));
     // 적재 사건은 적재가 쓴다 — 이 방문이 따로 쓰지 않는다(방문마다 최대 하나).
     expect(state.events).toEqual([]);

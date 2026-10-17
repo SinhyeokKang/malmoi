@@ -134,12 +134,14 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
         return content === undefined ? respond({ message: "404 Blob Not Found" }, 404) : respond({ size: Buffer.byteLength(content), encoding: "base64", content: Buffer.from(content).toString("base64"), sha: route.params[0] });
       }
       case "POST /repository/commits": {
-        const { branch, start_sha, force, actions } = json() as { branch: string; start_sha: string; force?: boolean; actions: { action: string; file_path: string; content: string }[] };
+        const { branch, start_sha, force, actions } = json() as { branch: string; start_sha: string; force?: boolean; actions: { action: string; file_path: string; content?: string }[] };
         if (branches.has(branch) && force !== true) return respond({ message: `A branch called '${branch}' already exists.` }, 400);
         const files = new Map(commits.get(start_sha) ?? []);
         for (const action of actions) {
           if (action.action === "create" && files.has(action.file_path)) return respond({ message: "A file with this name already exists" }, 400);
-          if (action.action === "update" && !files.has(action.file_path)) return respond({ message: "A file with this name doesn't exist" }, 400);
+          if ((action.action === "update" || action.action === "delete") && !files.has(action.file_path)) return respond({ message: "A file with this name doesn't exist" }, 400);
+          if (action.action === "delete") { files.delete(action.file_path); continue; }
+          if (action.content === undefined) return respond({ message: "content is missing" }, 400);
           files.set(action.file_path, action.content);
           blobs.set(blobSha(action.content), action.content);
         }
@@ -184,8 +186,9 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
       case "PUT /merge_requests/:n": {
         const mr = mergeRequests.find((row) => row.iid === Number(route.params[0]));
         if (mr === undefined) return respond({ message: "404 Not found" }, 404);
-        const update = json() as { title?: string; target_branch?: string; state_event?: string };
+        const update = json() as { title?: string; target_branch?: string; state_event?: string; description?: string };
         if (update.title !== undefined) mr.title = update.title;
+        if (update.description !== undefined) mr.description = update.description;
         if (update.target_branch !== undefined) mr.target_branch = update.target_branch;
         if (update.state_event === "close") mr.state = "closed";
         return respond(mr);

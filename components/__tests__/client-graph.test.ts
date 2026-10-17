@@ -102,6 +102,8 @@ const CLIENT_LIB_FILES = [
   "lib/auth/membership.ts",
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
+  // `/changelog`가 10개씩 드러낼 개수를 값으로 읽는다 — import 0인 잎이다(아래 잎 검사). 본문 렌더(`react-markdown`)는 서버에 남는다.
+  "lib/changelog/reveal.ts",
   "lib/compare.ts",
   // Logs의 필터 바가 값으로 읽는 잎 둘 — 조회(`lib/events/query.ts`)는 이 그래프에 없다.
   "lib/events/filter.ts",
@@ -144,6 +146,15 @@ const CLIENT_LIB_FILES = [
   "lib/landing/stage.ts",
   // 공개 셸 서랍의 GitHub 행이 헤더와 같은 저장소 URL을 읽는다 — `routes`와 사전 타입만 무는 잎이다.
   "lib/links.ts",
+  // Sources 언어 추가 Dialog(locale-add E1)가 포맷 지원·같은 파일 철자 판정(`supportsLocaleChanges`·`localeCollisionKey`)과 Chrome 목록을 값으로 읽는다.
+  // 판정 잎(`add-plan`)이 코드 모양 검사(`lib/locale-code.ts`)와 경로 소유(`lib/surfaces/plan.ts`)를 문다 — 아래 `lib/locales` 잎 검사가 그래프를 고정한다.
+  "lib/locale-code.ts",
+  "lib/locales/add-plan.ts",
+  "lib/locales/chrome-codes.ts",
+  // 추가 Dialog의 프리셋·구분자·거르기 — import 0인 잎이다.
+  "lib/locales/presets.ts",
+  // Publish 결과 갈래가 정리한 언어 요청이 리포에 닿았는지 읽는다(#267) — import 0인 잎이다.
+  "lib/locales/reached.ts",
   // LNB 프로젝트 스위처·사용자 메뉴·LNB 목록 구역의 목록 판정 — `lib/search/match.ts`(import 0) 하나만 무는 잎이다.
   "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
@@ -161,6 +172,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/slug.ts",
   // 리포 호스트의 웹 주소(`/projects` 띠의 compare) — import 0 잎.
   "lib/projects/repo-web.ts",
+  // Sources 언어 행의 `View pull request #N`(locale-add E1) — 저장된 Publish 주소에서 번호만 뽑는 import 0 잎이다(옛 자리 `remote-plan.ts`는 어댑터를 문다).
+  "lib/projects/review-number.ts",
   "lib/projects/import-failure.ts",
   // 프로젝트 목록이 검색을 로컬에서 거른다 (audit-ux #17) — 갈래·검색·하이라이트가 전부 I/O 없는 순수 함수다.
   "lib/projects/list.ts",
@@ -174,7 +187,7 @@ const CLIENT_LIB_FILES = [
   // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
   "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
-  // 상세 모달의 [Remove source] 사전 차단 — 서버와 같은 판정·문장(sources-add-remove). `./plan`·`lib/auth/message`까지 잎이다.
+  // 상세 모달의 [Detach source] 사전 차단 — 서버와 같은 판정·문장(sources-add-remove). `./plan`·`lib/auth/message`까지 잎이다.
   "lib/surfaces/plan-removal.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
@@ -460,6 +473,13 @@ describe("클라이언트 그래프", () => {
     expect([...stage.packages]).toEqual([]);
   });
 
+  /** `/changelog` 드러내기 판정 — 스테이지 수학과 같은 이유로 직접 건다. 파싱·로더(`./parse`·`./load`)를 물면 여기서 red다. */
+  it("`lib/changelog/reveal.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const reveal = walk([join(ROOT, "lib/changelog/reveal.ts")]);
+    expect([...reveal.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/changelog/reveal.ts"]);
+    expect([...reveal.packages]).toEqual([]);
+  });
+
   /** `/privacy` TOC가 스크롤마다 값으로 읽는 판정 — 스테이지 수학과 같은 이유로 직접 건다. */
   it("`lib/public-doc/toc.ts`는 잎이다 — 아무것도 물지 않는다", () => {
     const toc = walk([join(ROOT, "lib/public-doc/toc.ts")]);
@@ -484,6 +504,29 @@ describe("클라이언트 그래프", () => {
     const scheme = walk([join(ROOT, "lib/color-scheme/scheme.ts")]);
     expect([...scheme.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/color-scheme/scheme.ts"]);
     expect([...scheme.packages]).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **언어 추가·제거 판정 잎**(locale-add) — Sources의 Add Dialog·행 동작(클라이언트)이 목록·사전 차단 이유를 값으로 읽을 자리다.
+   * 소비자가 붙기 전에도 검사가 공허하지 않도록 여기서 직접 건다. 소비자가 생기면 닿는 파일을 `CLIENT_LIB_FILES`에 등재한다.
+   * `publish-plan`·`expiry`는 서버 판정이라 이 목록에 없다.
+   */
+  it("`lib/locales`의 클라이언트 잎은 패키지를 물지 않고 클라이언트 허용 파일만 닿는다", () => {
+    const leaves = ["lib/locales/chrome-codes.ts", "lib/locales/add-plan.ts", "lib/locales/change-plan.ts", "lib/locales/effects.ts"];
+    const { files, packages } = walk(leaves.map((leaf) => join(ROOT, leaf)));
+    const outside = [...files].map((file) => file.slice(ROOT.length))
+      .filter((rel) => !leaves.includes(rel) && rel !== "lib/locale-code.ts" && !CLIENT_LIB_FILES.includes(rel));
+    expect({ outside, packages: [...packages] }).toEqual({ outside: [], packages: [] });
+    const chrome = walk([join(ROOT, "lib/locales/chrome-codes.ts")]);
+    expect([...chrome.files].map((file) => file.slice(ROOT.length))).toEqual(["lib/locales/chrome-codes.ts"]);
+  });
+
+  it("`lib/locales/presets.ts`·`lib/projects/review-number.ts`는 잎이다 — 아무것도 물지 않는다(locale-add E1)", () => {
+    for (const leaf of ["lib/locales/presets.ts", "lib/projects/review-number.ts"]) {
+      const graph = walk([join(ROOT, leaf)]);
+      expect([...graph.files].map((file) => file.slice(ROOT.length))).toEqual([leaf]);
+      expect([...graph.packages]).toEqual([]);
+    }
   });
 
   it("`lib/shell/breakpoint.ts`는 잎이다 — 아무것도 물지 않는다", () => {
@@ -549,6 +592,8 @@ describe("클라이언트 그래프", () => {
       // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
       "lib/events/payload.ts",
       "lib/events/view.ts",
+      // 언어 만료 행의 글리프·문장이 "리포가 요청대로인가"를 Publish 결과와 같은 판정으로 읽는다(locale-add 시안 P3) — import 0인 잎이다.
+      "lib/locales/reached.ts",
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",

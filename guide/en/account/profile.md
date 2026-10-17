@@ -34,6 +34,8 @@ If you've already authorized Malmoi in GitLab, GitLab may return you here withou
 
 This also signs out the device you are using.
 
+It also ends your personal token and connected apps. AI agents lose access until you [create a new token](../ai-agents/token.md) or [connect them again](../ai-agents/browser.md).
+
 ![The Sign out everywhere? dialog with Cancel and Continue to GitHub buttons](/guide/sign-out-everywhere.webp "Continue to your sign-in provider to confirm.")
 
 ## What happens next {#next}

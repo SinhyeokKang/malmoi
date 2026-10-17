@@ -63,6 +63,8 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
       captured.push({ sql: query.strings.join(" ? "), values: [...query.values] });
       return Promise.resolve([{ filled: 1, changed: 1 }]);
     },
+    // 언어 변경 의도 없음(locale-add) — 적재가 남은 ADD를 orphan 대상에서 빼려고 읽는다.
+    localeChange: { findMany: async () => [] },
     $transaction: async (run: (tx: unknown) => Promise<unknown>): Promise<unknown> => {
       transactions += 1;
       return run(prisma);

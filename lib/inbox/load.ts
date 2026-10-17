@@ -22,7 +22,7 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
         surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, select: {
           id: true, slug: true, archivedAt: true, lastCommitSha: true,
           lastImportError: true, lastImportStartedAt: true, lastImportFailedAt: true,
-          locales: { select: { code: true, name: true, orphaned: true, createdAt: true } },
+          locales: { select: { code: true, name: true, orphaned: true, createdAt: true, change: { select: { operation: true } } } },
         } },
       } },
     },

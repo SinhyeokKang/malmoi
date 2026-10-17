@@ -30,25 +30,26 @@ export function classifySurfaceFailure(prepared: { error: "resource-limit" | "in
 
 export type ImportEventSummary = {
   result: Extract<EventResult, "imported" | "partial" | "superseded" | "failed" | "deferred">;
-  deferReason: Extract<DeferReason, "pending-edits" | "too-large" | "publish-raced"> | null;
+  deferReason: Extract<DeferReason, "pending-edits" | "too-large" | "publish-raced" | "locale-change-pending"> | null;
 };
 
 /**
  * 종료 사건의 결과. 수동은 소스별 결과 그대로이고, 자동화만 보류 둘이 더해진다.
  *
- * @param halted 표면별 사후 재집계가 표면을 롤백하고 루프를 멈췄다 — 앞 표면이 적재됐으면 `partial`, 아니면 `deferred(pending-edits)`.
+ * @param halted 표면별 사후 재집계(`pending-edits`)나 언어 게이트 재판정(`locale-change-pending`)이 표면을 롤백하고 루프를 멈췄다 — 앞 표면이
+ *   적재됐으면 `partial`, 아니면 그 사유의 `deferred`.
  *   ⚠️ 멈춘 표면은 결과 목록에 없으므로 나머지가 전부 `imported`여도 `partial`이다 — `summarizeImportEvent`에 맡기면 성공으로 접힌다.
  * @param held 스냅샷이 서버 한도(`truncated`)에 걸렸다.
  *
  * ⚠️ `too-large`는 **모든 표면이 한도 보류일 때만**이다 — 파싱 실패가 섞이면 `failed`, 적재가 섞이면 `partial`로 소스별 결과에 맡긴다.
  */
-export function summarizeRun(input: { automation: boolean; outcome: RepositoryImportOutcome; halted: boolean; held: boolean }): ImportEventSummary {
+export function summarizeRun(input: { automation: boolean; outcome: RepositoryImportOutcome; halted: false | "pending-edits" | "locale-change-pending"; held: boolean }): ImportEventSummary {
   const { outcome } = input;
   if (input.automation && input.held) return { result: "deferred", deferReason: "too-large" };
   if (!outcome.ok) return { result: "failed", deferReason: null };
   if (input.automation) {
     const applied = outcome.surfaces.some(surface => surface.status === "imported" || surface.status === "partial");
-    if (input.halted) return applied ? { result: "partial", deferReason: null } : { result: "deferred", deferReason: "pending-edits" };
+    if (input.halted !== false) return applied ? { result: "partial", deferReason: null } : { result: "deferred", deferReason: input.halted };
     if (outcome.surfaces.length > 0 && outcome.surfaces.every(surface => surface.reason === "resource-limit")) return { result: "deferred", deferReason: "too-large" };
   }
   return { result: summarizeImportEvent(outcome.surfaces), deferReason: null };

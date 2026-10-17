@@ -296,7 +296,7 @@ export async function openRepoReader(
         for (const entry of tree.data.tree) {
           if (entry.type !== "blob") continue;
           if (entry.path === undefined || entry.sha === undefined) continue;
-          files.push({ path: entry.path, sha: entry.sha, size: entry.size });
+          files.push({ path: entry.path, sha: entry.sha, size: entry.size, mode: entry.mode });
         }
         return { status: "ok", headSha, headCommittedAt: commit.data.committer.date, files };
       } catch (error) {
@@ -412,7 +412,7 @@ export async function createGitClient(
     /**
      * Git Data API 네 단계 — 트리(항목의 `content`가 blob을 암묵 생성한다) → 커밋(parent = base head 하나) → sync ref 생성 또는 강제 이동.
      * 트리 생성이 첫 외부 쓰기다 — 호출부가 그 앞에서 전달 확인을 무효화한다(`run.ts`).
-     * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓴다(`buildTreePayload`).
+     * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓰고, delete는 `base_tree` 위의 `sha: null` 항목이다(`buildTreePayload`).
      */
     async publishSnapshot({ branch, baseSha, changes, summary }) {
       const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...buildTreePayload(changes, baseSha) });
@@ -443,7 +443,8 @@ export async function createGitClient(
         state: "open",
       });
       const pr = res.data[0];
-      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title, base: pr.base.ref };
+      // 본문은 열린 PR 갱신의 비교 입력이다 — 빈 본문은 GitHub이 `null`로 준다.
+      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title, base: pr.base.ref, body: pr.body ?? "" };
     },
 
     async updatePrTitle(pullNumber, title) {
@@ -459,6 +460,14 @@ export async function createGitClient(
         ...base,
         pull_number: pullNumber,
         base: baseBranch,
+      });
+    },
+
+    async updatePr(pullNumber, body) {
+      await octokit.request("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", {
+        ...base,
+        pull_number: pullNumber,
+        body,
       });
     },
 

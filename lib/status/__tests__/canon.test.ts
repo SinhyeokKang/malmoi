@@ -66,7 +66,11 @@ describe("STATE", () => {
 it.each([
   ["expired", "Expired", "warning", "soft-amber"],
   ["waitingToApply", "Waiting to apply", "warning", "soft-amber"],
-  ["removedFromRepository", "Removed from repository", "danger", "soft-red"],
+  // 원인을 단정하지 않는다 — 리포에서 지운 것·추가 취소·만료로 접힌 것을 같은 낱말이 덮는다(locale-add spec 24, 시안 L).
+  ["removedFromRepository", "Inactive", "danger", "soft-red"],
+  // 언어 변경 의도 — 추가는 정상 흐름이라 Unsent와 같은 면, 제거는 편집이 잠겨 warning이다(시안 L "배지 셋은 톤을 나눈다").
+  ["adding", "Adding", "muted", "soft-neutral"],
+  ["removing", "Removing", "warning", "soft-amber"],
   // GitLab PAT 만료 임박(14일, D11) — 새 톤이 아니라 warning 상태 행이다(design §2 톤 표)
   ["expiresSoon", "Expires soon", "warning", "soft-amber"],
 ] as const)("실제 소비자 상태 %s의 기존 낱말·색", (key, label, tone, variant) => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
-import { PR_TITLE, SKIP_MARKER } from "@/lib/pull/payload";
+import { PR_TITLE, SKIP_MARKER, pullRequestBody } from "@/lib/pull/payload";
 import type { RenderKey } from "@/lib/pull/render";
 import { closedPrComment, runPull, type PullDeps, type PullState } from "@/lib/pull/run";
 import { createPublishExecution, planPublishFailure } from "@/lib/sync/execution";
@@ -116,7 +116,8 @@ describe("커밋 — 고정 base 위 스냅샷 + MR 하나", () => {
   });
 
   it("재사용 MR의 제목에 마커가 없으면 제목만, base가 바뀌었으면 target_branch만 PUT — 같으면 PUT 0", async () => {
-    const { repo, deps } = setup({ mergeRequests: [ownMr({ title: "sync translations", target_branch: "develop" })], branches: { main: BASE, [SYNC]: BASE } });
+    // 설명은 삭제를 말하지 않는다 — 이 스냅샷에도 삭제가 없어 설명을 다시 쓰지 않는다(아래 "열린 MR 본문 갱신").
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ title: "sync translations", target_branch: "develop", description: pullRequestBody([{ path: "locales/ko.json", kind: "updated" }]) })], branches: { main: BASE, [SYNC]: BASE } });
     await runPull(deps);
     const puts = repo.writes().filter((call) => call.method === "PUT").map((call) => JSON.parse(call.body!));
     expect(puts).toEqual([{ title: `sync translations ${SKIP_MARKER}` }, { target_branch: "main" }]);
@@ -262,5 +263,90 @@ describe("실패 — 성공으로 확정하지 않는다 · 재시도 0", () => 
     await expect(execution.run(() => runPull(deps))).rejects.toThrow();
     expect(execution.mutationDispatched).toBe(true);
     expect(repo.writes().map((call) => call.url.pathname.split("/").slice(-2).join("/"))).toEqual(["repository/commits"]);
+  });
+});
+
+/**
+ * **delete 계약** (locale-add design §2 Publish 변경 union) — 명시적 delete가 실제 GitLab 클라이언트를 지나 상태를 가진 가짜 리포에서 그 파일만 지운다.
+ * Chrome 디렉터리 레이아웃(`_locales/<code>/messages.json`)에서 같은 디렉터리의 다른 파일은 남아야 한다.
+ */
+describe("delete — 대상 파일만 지운다", () => {
+  const CHROME = { "_locales/en/messages.json": EN, "_locales/ko/messages.json": KO_OLD, "_locales/ko/notes.txt": "keep\n", "src/app.ts": "x\n" };
+  const open = (repo: ReturnType<typeof createFakeGitLabRepo>) =>
+    createGitLabClient({ host: "gitlab", owner: "g/sub", name: "app", repositoryId: REPO, connectionId: "conn-1" }, { token: "glpat-connector", expiresAt: null, gitlabUserId: "101" }, { fetch: repo.fetch });
+
+  it("삭제만 있는 스냅샷도 커밋된다 — 대상만 사라지고 같은 디렉터리의 다른 파일·나머지 리포는 그대로다", async () => {
+    const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: CHROME } });
+    const git = await open(repo);
+    const head = await git.publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ kind: "delete", path: "_locales/ko/messages.json" }] });
+    const files = repo.commits.get(head)!;
+    expect([...files.keys()].sort()).toEqual(["_locales/en/messages.json", "_locales/ko/notes.txt", "src/app.ts"]);
+    expect(repo.parents.get(head)).toBe(BASE);
+    const body = JSON.parse(repo.writes()[0]!.body!) as { actions: unknown[] };
+    expect(body.actions).toEqual([{ action: "delete", file_path: "_locales/ko/messages.json" }]);
+  });
+
+  it("upsert와 delete가 한 커밋에 같이 간다", async () => {
+    const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: CHROME } });
+    const head = await (await open(repo)).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "2 files", changes: [
+      { kind: "upsert", path: "_locales/en/messages.json", content: KO, inBase: true },
+      { kind: "delete", path: "_locales/ko/messages.json" },
+    ] });
+    expect(repo.commits.get(head)!.get("_locales/en/messages.json")).toBe(KO);
+    expect(repo.commits.get(head)!.has("_locales/ko/messages.json")).toBe(false);
+    expect(repo.commits.get(head)!.get("_locales/ko/notes.txt")).toBe("keep\n");
+  });
+
+  it("없는 파일의 delete는 GitLab처럼 400이다 — 계획(`planPullChanges`)이 base에 있는 경로만 delete로 내는 이유다", async () => {
+    const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: CHROME } });
+    await expect((await open(repo)).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ kind: "delete", path: "_locales/fr/messages.json" }] })).rejects.toThrow();
+    expect(repo.branches.has(SYNC)).toBe(false);
+  });
+});
+
+/**
+ * **열린 MR을 갱신하는 Publish도 정리 안내를 싣는다** (locale-add R-B2 Y3 — spec 수락 기준 7). 보통은 이미 열린 Publish MR 위로 제거가 얹힌다.
+ * 본문이 같으면 다시 쓰지 않는다(매 실행 PUT을 만들지 않는다).
+ */
+describe("열린 MR 본문 갱신 — 삭제 정리 안내", () => {
+  const removing = (): PullState => ({ ...state(0), surfaces: [{ ...state(0).surfaces[0]!,
+    localeChanges: { rows: [{ localeCode: "ko", operation: "REMOVE", requestedAt: new Date(0) }], valueCounts: new Map(), delivered: [], work: 1 } }] });
+
+  it("열린 MR + 새 삭제 → MR 설명에 (removed)와 앱 코드 정리 안내", async () => {
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: "Updated 1 file from the translation DB.\n\n- `locales/ko.json`" })] }, { state: removing() });
+    expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
+    const description = repo.mergeRequests[0]?.description ?? "";
+    expect(description).toContain("- `locales/ko.json` (removed)");
+    expect(description).toMatch(/app code/);
+  });
+
+  it("설명이 이미 같으면 PUT하지 않는다", async () => {
+    const body = "Updated 1 file from the translation DB.\n\n- `locales/ko.json` (removed)\n\nThis snapshot removes 1 language file. Before merging, remove references to that language in the app code (language lists, imports, routing) so the app does not load a missing catalog.\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.";
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: body })] }, { state: removing() });
+    await runPull(deps);
+    expect(write(repo).filter(call => call.startsWith("PUT /merge_requests"))).toEqual([]);
+  });
+
+  // 사람이 고친 설명을 덮지 않는다(B2 fix2) — 삭제 집합이 바뀔 때만 다시 쓴다.
+  const HUMAN = "Reviewer notes: please double-check the Korean wording before merging.";
+  it("사람이 고친 설명 + 삭제 변화 없음 → PUT 0", async () => {
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: HUMAN })] });
+    expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
+    expect(write(repo).filter(call => call.startsWith("PUT /merge_requests"))).toEqual([]);
+    expect(repo.mergeRequests[0]?.description).toBe(HUMAN);
+  });
+  it("사람이 고친 설명 + 새 삭제 → 정리 안내", async () => {
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: HUMAN })] }, { state: removing() });
+    await runPull(deps);
+    expect(repo.mergeRequests[0]?.description).toContain("- `locales/ko.json` (removed)");
+    expect(repo.mergeRequests[0]?.description).toMatch(/app code/);
+  });
+  it("삭제가 취소되면 정리 안내를 뺀다", async () => {
+    const stated = pullRequestBody([{ path: "locales/ko.json", kind: "removed" }]);
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: stated })] });
+    await runPull(deps);
+    const description = repo.mergeRequests[0]?.description ?? "";
+    expect(description).not.toMatch(/\(removed\)|app code/);
+    expect(description).toContain("- `locales/ko.json`");
   });
 });

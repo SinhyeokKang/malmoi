@@ -279,7 +279,9 @@ export async function reconnectGitLabRepository(raw: { slug: string }): Promise<
 
 export type RepositorySettingsResult =
   | { ok: true }
-  | { ok: false; error: RepositorySettingsError | AccessError | "invalid input" };
+  | { ok: false; error: RepositorySettingsError | AccessError | "invalid input" }
+  // 언어 변경 의도가 남은 소스가 있다(`changeBaseBranch`) — 화면이 그 소스 이름으로 전용 안내를 낸다(시안 P2).
+  | { ok: false; error: "locale-change-pending"; surfaceSlugs: string[] };
 
 /**
  * 기준 브랜치 — `Project.baseBranch`를 **즉시** 쓴다. `checkFormat`이 보지 않는 축이라 대기 개념이 없다.

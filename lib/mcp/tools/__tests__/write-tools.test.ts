@@ -34,6 +34,8 @@ vi.mock("@/lib/auth/members", async (orig) => ({ ...(await orig<object>()), revo
 vi.mock("@/lib/projects/archive", () => ({ runArchive: core("archive"), runUnarchive: core("unarchive") }));
 vi.mock("@/lib/onboarding-run/create", async (orig) => ({ ...(await orig<object>()), createProjectFromRepo: core("create") }));
 vi.mock("@/lib/onboarding-run/add", async (orig) => ({ ...(await orig<object>()), addSources: core("add") }));
+vi.mock("@/lib/locales/change", async (orig) => ({ ...(await orig<object>()),
+  addLocale: core("addLocale"), previewLocaleRemoval: core("previewLocaleRemoval"), removeLocale: core("removeLocale"), cancelLocaleRemoval: core("cancelLocaleRemoval") }));
 
 const { TOOLS } = await import("..");
 const run = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
@@ -48,7 +50,7 @@ const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope =
 const RESULTS: Record<string, unknown> = {
   save: { ok: true, results: [{ keyId: "k1", result: { ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "v" }] } }] },
   publish: { outcome: { status: "committed", pr: "created", delivered: 1, commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.json"] }, attempted: true },
-  preview: { status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } },
+  preview: { status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], fileChanges: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } },
   sync: { outcome: { ok: true, surfaces: [], remainingEdits: 0 }, attempted: true },
   revert: { status: "reverted", cells: [] },
   rename: { ok: true, name: "New" }, branch: { ok: true }, base: { ok: true }, remove: { ok: true },
@@ -57,6 +59,10 @@ const RESULTS: Record<string, unknown> = {
   revoke: { ok: true }, change: { ok: true }, archive: { ok: true }, unarchive: { ok: true },
   create: { ok: true, slug: "new", defaultSurfaceSlug: "i18n", pushToken: "raw", baseBranch: "main", surfaces: [], count: 1, yaml: "" },
   add: { ok: true, results: [], yaml: "" },
+  addLocale: { ok: true, action: "create", path: "i18n/fr.json", reissued: 0 },
+  previewLocaleRemoval: { ok: true, kind: "request-removal", path: "i18n/ko.json", translations: 3, pendingCount: 1, delivered: false, approval: "a".repeat(64) },
+  removeLocale: { ok: true, kind: "request-removal", discarded: 1 },
+  cancelLocaleRemoval: { ok: true, delivered: false },
 };
 
 let prisma: PrismaClient;
@@ -79,7 +85,7 @@ const WRITES: [string, Record<string, unknown>][] = [
   ["revert_to_last_sent", { ...S, keyId: "k1", confirmation: "c".repeat(64) }],
   ["update_project", { slug: "acme", name: "New" }],
   ["set_base_locale", { ...S, baseLocale: "en" }],
-  ["remove_source", { ...S, approval: null }],
+  ["detach_source", { ...S, approval: null }],
   ["rotate_push_token", { slug: "acme" }],
   ["invite_members", { slug: "acme", recipients: [{ email: "x@y.com", role: "EDITOR" }] }],
   ["revoke_invitation", { slug: "acme", invitationId: "i1" }],
@@ -87,6 +93,9 @@ const WRITES: [string, Record<string, unknown>][] = [
   ["archive_project", { slug: "acme" }],
   ["unarchive_project", { slug: "acme" }],
   ["add_sources", { slug: "acme", picks: [CONFIRMED] }],
+  ["add_locale", { ...S, localeCode: "fr" }],
+  ["remove_locale", { ...S, localeCode: "ko", approval: "a".repeat(64) }],
+  ["cancel_locale_removal", { ...S, localeCode: "ko" }],
 ];
 const roleOf = (name: string) => {
   const access = toolCatalog().find(t => t.name === name)!.access;
@@ -411,29 +420,235 @@ describe("preview_publish — 열린 PR 세 상태", () => {
 });
 
 /** 소스 제거 (sources-add-remove B-T8) — 웹 `removeSource`와 같은 코어. 거부 문장은 화면의 `removalReason`이다. */
-describe("remove_source", () => {
+describe("detach_source", () => {
   it("성공은 그 프로젝트 레이아웃과 목록을 무효화하고 워크플로 처방을 말한다", async () => {
-    expect(await run("remove_source", subject("owner"), { ...S, approval: "f" })).toMatchObject({ status: "ok", summary: en.mcp.summary.sourceRemoved("default") });
+    expect(await run("detach_source", subject("owner"), { ...S, approval: "f" })).toMatchObject({ status: "ok", summary: en.mcp.summary.sourceRemoved("default") });
     expect(h.core).toHaveBeenCalledWith("remove", prisma, { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, { ...S, approval: "f" });
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"], ["/projects"]]);
   });
 
   it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다 (POSTMORTEM 2026-09-24)", async () => {
     h.core.mockResolvedValue({ ok: false, error: "archived" });
-    expect(code(await run("remove_source", subject("owner"), { ...S, approval: null }))).toBe("archived");
+    expect(code(await run("detach_source", subject("owner"), { ...S, approval: null }))).toBe("archived");
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"]]);
   });
 
   it.each(["stale-approval", "last-source", "importing"] as const)("%s는 거부이고 화면과 같은 문장이며 무효화하지 않는다", async error => {
     h.core.mockResolvedValue({ ok: false, error });
-    expect(await run("remove_source", subject("owner"), { ...S, approval: null })).toEqual({ status: "refused", code: error, message: en.sources.removal.reasons[error] });
+    expect(await run("detach_source", subject("owner"), { ...S, approval: null })).toEqual({ status: "refused", code: error, message: en.sources.removal.reasons[error] });
     expect(h.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("approval은 생략할 수 없다 — 미전달이 없으면 null을 명시한다", async () => {
     // 입력 검증은 SDK 서버가 이 스키마로 한다(도구 본문 전).
-    const schema = TOOLS.find(t => t.name === "remove_source")!.inputSchema;
+    const schema = TOOLS.find(t => t.name === "detach_source")!.inputSchema;
     expect(schema.safeParse(S).success).toBe(false);
     expect(schema.safeParse({ ...S, approval: null }).success).toBe(true);
+  });
+});
+
+/**
+ * **언어 추가·제거·취소** (locale-add tasks §7). 웹 Action과 같은 코어(`lib/locales/change.ts`)의 형제 껍데기다 — Action을 부르지 않는다. 판정·잠금·사건은
+ * 코어가 하고(`lib/locales/__tests__/change.integration.ts`), 여기서는 입구(OWNER · project:settings grant)와 거부 문장이 영어인가를 잰다.
+ */
+describe("언어 변경 도구", () => {
+  const L = { ...S, localeCode: "ko" };
+  const OWNER = { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } };
+
+  it("add_locale — 코어에 그대로 넘기고 경로·되살림을 싣는다, 다시 그리는 화면은 그 프로젝트와 목록", async () => {
+    const outcome = await run("add_locale", subject("owner"), { ...S, localeCode: "fr" });
+    expect(h.core).toHaveBeenCalledWith("addLocale", prisma, OWNER, { ...S, localeCode: "fr" });
+    expect(outcome).toMatchObject({ status: "ok", data: { language: "fr", path: "i18n/fr.json", revived: false, reissuedEdits: 0 }, summary: en.mcp.summary.languageAdded("fr", "i18n/fr.json") });
+    expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"], ["/projects"]]);
+  });
+
+  it("preview_locale_removal — 읽기다: grant 없는 OWNER 토큰도 지문을 받고, 아무것도 다시 그리지 않는다", async () => {
+    const outcome = await run("preview_locale_removal", subject("owner", []), L);
+    expect(outcome).toMatchObject({ status: "ok", data: { change: "remove", path: "i18n/ko.json", translations: 3, unsentEdits: 1, delivered: false, approval: "a".repeat(64) } });
+    expect(h.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("preview_locale_removal — EDITOR는 forbidden, 범위 밖은 not-found, 둘 다 코어 전이다", async () => {
+    expect(code(await run("preview_locale_removal", subject("editor", ALL), L))).toBe("forbidden");
+    expect(code(await run("preview_locale_removal", subject("owner", ALL, { kind: "projects", projectIds: ["p2"] }), L))).toBe("not-found");
+    expect(h.core).not.toHaveBeenCalled();
+  });
+
+  it("추가 취소 미리보기는 change: cancel-add다", async () => {
+    h.core.mockResolvedValueOnce({ ok: true, kind: "cancel-add", path: "i18n/fr.json", translations: 0, pendingCount: 0, delivered: null, approval: "b".repeat(64) });
+    expect(await run("preview_locale_removal", subject("owner"), { ...S, localeCode: "fr" })).toMatchObject({ status: "ok", data: { change: "cancel-add", delivered: null } });
+  });
+
+  it("remove_locale — approval은 생략할 수 없다(null도 받지만 코어가 approval-required로 거부한다)", () => {
+    const schema = TOOLS.find(t => t.name === "remove_locale")!.inputSchema;
+    expect(schema.safeParse(L).success).toBe(false);
+    expect(schema.safeParse({ ...L, approval: null }).success).toBe(true);
+  });
+
+  it("remove_locale — 성공은 폐기 수를 싣는다", async () => {
+    expect(await run("remove_locale", subject("owner"), { ...L, approval: "a".repeat(64) }))
+      .toMatchObject({ status: "ok", data: { language: "ko", change: "remove", discardedEdits: 1 } });
+    h.core.mockResolvedValueOnce({ ok: true, kind: "cancel-add", discarded: 0 });
+    expect(await run("remove_locale", subject("owner"), { ...L, approval: "a".repeat(64) })).toMatchObject({ status: "ok", data: { change: "cancel-add" } });
+  });
+
+  it("cancel_locale_removal — 이미 보낸 제거를 취소하면 다음 Publish까지 보낼 변경이 남는다고 말한다", async () => {
+    h.core.mockResolvedValueOnce({ ok: true, delivered: true });
+    expect(await run("cancel_locale_removal", subject("owner"), L)).toMatchObject({ status: "ok", data: { language: "ko", delivered: true }, summary: en.mcp.summary.languageRemovalCancelled("ko", true) });
+  });
+
+  /** 코어 거부 코드 전부 — 모르는 코드는 `unavailable`(재시도)로 접히므로, 영어 문장이 없으면 에이전트가 같은 거부를 되풀이한다. */
+  const REFUSALS = ["unsupported-format", "invalid-code", "unsupported-locale", "already-active", "locale-collision", "unsafe-path", "path-conflict",
+    "base-locale", "not-found", "removal-pending", "no-removal", "approval-required", "stale-approval", "publish-unsettled", "baseline-unknown",
+    "baseline-stale", "sync-running", "archived", "forbidden"] as const;
+  it.each(REFUSALS)("%s는 그 코드의 영어 문장으로 거부되고 다시 그리지 않는다", async error => {
+    h.core.mockResolvedValue({ ok: false, error });
+    for (const [name, input] of [["add_locale", L], ["preview_locale_removal", L], ["remove_locale", { ...L, approval: null }], ["cancel_locale_removal", L]] as const) {
+      const result = toToolResult(await run(name, subject("owner"), input));
+      expect(result.isError, name).toBe(true);
+      expect(result.structuredContent.status, name).toBe(error);
+      expect(result.content[0]?.text, name).toMatch(/^[\x20-\x7E—’]+$/);
+    }
+    expect(h.revalidatePath.mock.calls.filter(([path]) => path !== "/projects/acme")).toEqual([]);
+  });
+
+  it("언어가 없을 때의 not-found는 프로젝트 문장이 아니라 언어 문장이다", async () => {
+    h.core.mockResolvedValue({ ok: false, error: "not-found" });
+    expect(toToolResult(await run("remove_locale", subject("owner"), { ...L, approval: null })).content[0]?.text).toBe(en.mcp.errors.languages["not-found"]);
+  });
+
+  it("publish-unsettled와 sync-running은 기다리면 풀리는 거부다(retryable)", async () => {
+    for (const error of ["publish-unsettled", "sync-running"]) {
+      h.core.mockResolvedValueOnce({ ok: false, error });
+      expect(toToolResult(await run("remove_locale", subject("owner"), { ...L, approval: null })).structuredContent).toMatchObject({ status: error, retryable: true });
+    }
+  });
+
+  it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다", async () => {
+    h.core.mockResolvedValue({ ok: false, error: "archived" });
+    expect(code(await run("add_locale", subject("owner"), L))).toBe("archived");
+    expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"]]);
+  });
+});
+
+/** locale-add — 언어 변경이 다른 도구에 낳는 거부도 화면과 같은 판정·영어 문장이다(모르는 코드로 접혀 `unavailable`이 되지 않는다). */
+describe("언어 변경이 다른 도구에 낳는 거부", () => {
+  it("set_base_locale · update_project(baseBranch)의 locale-change-pending은 영어 문장이다", async () => {
+    h.core.mockResolvedValue({ ok: false, error: "locale-change-pending" });
+    for (const [name, input] of [["set_base_locale", { ...S, baseLocale: "fr" }], ["update_project", { slug: "acme", baseBranch: "next" }]] as const) {
+      const result = toToolResult(await run(name, subject("owner"), input));
+      expect(result.structuredContent, name).toMatchObject({ status: "locale-change-pending", message: en.mcp.errors.languages["locale-change-pending"] });
+    }
+  });
+
+  // 언어 전용 문장은 언어 도구만 싣는다 — 같은 코드를 다른 뜻으로 쓰는 도구(소스 경로 충돌·소스 제거 승인)에 새면 엉뚱한 파일을 고치게 된다.
+  it("다른 도구의 같은 코드(path-conflict·stale-approval·approval-required)에 언어 문장이 붙지 않는다", async () => {
+    h.core.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [] });
+    expect(toToolResult(await run("add_sources", subject("owner"), { slug: "acme", picks: [CONFIRMED] })).content[0]?.text).not.toBe(en.mcp.errors.languages["path-conflict"]);
+    for (const code of ["stale-approval", "approval-required", "invalid-code"]) {
+      expect(toToolResult({ status: "refused", code }).content[0]?.text, code).not.toBe((en.mcp.errors.languages as Record<string, unknown>)[code]);
+    }
+  });
+
+  it("set_translations — 제거 예정 언어의 키 거부는 그 언어를 말한다(일반 저장 실패 문장이 아니다)", async () => {
+    h.core.mockResolvedValueOnce({ ok: true, results: [{ keyId: "k1", result: { ok: false, error: "locale-removal-pending", localeCodes: ["ko"] } }] });
+    const outcome = await run("set_translations", subject("editor"), { ...S, entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "v" }] }] });
+    expect(outcome.status === "ok" && outcome.data.results).toEqual([
+      { keyId: "k1", status: "rejected", error: "locale-removal-pending", message: en.mcp.errors.languages["locale-removal-pending"]("ko"), localeCodes: ["ko"] },
+    ]);
+  });
+
+  it("preview_publish — locale-plan-refused는 Logs와 같은 문장이고 경로·브랜치를 싣는다(base 파일 문장으로 떨어지지 않는다)", async () => {
+    h.core.mockResolvedValueOnce({ status: "refused", reason: "locale-plan-refused", path: "i18n/fr.json", branch: "main" });
+    const result = toToolResult(await run("preview_publish", subject("editor", []), { slug: "acme" }));
+    expect(result.content[0]?.text).toBe(en.logs.reasons["locale-plan-refused"]);
+    expect(result.structuredContent).toMatchObject({ status: "locale-plan-refused", path: "i18n/fr.json", branch: "main" });
+  });
+
+  it("publish — locale-plan-refused 실패는 configError가 아니라 같은 문장이다", async () => {
+    h.core.mockResolvedValueOnce({ outcome: { status: "failed", delivery: "not-started", error: "x", code: "locale-plan-refused", retryable: false }, attempted: true });
+    const result = toToolResult(await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" }));
+    expect(result.content[0]?.text).toBe(en.logs.reasons["locale-plan-refused"]);
+    expect(result.structuredContent).toMatchObject({ status: "locale-plan-refused", delivery: "not-started" });
+  });
+
+  it("preview_publish — 파일 종류(new·updated·removed)와 언어 안내를 싣고, 언어 파일만 있어도 \"Nothing to send\"가 아니다", async () => {
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 },
+      changedFiles: ["i18n/ko.json"], fileChanges: [{ path: "i18n/ko.json", kind: "removed" }],
+      locales: { withheld: [], empty: [{ surfaceSlug: "default", localeCode: "fr" }] } } });
+    const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
+    expect(outcome).toMatchObject({ status: "ok", data: {
+      fileChanges: [{ path: "i18n/ko.json", kind: "removed" }],
+      languages: { withheld: [], empty: [{ surfaceSlug: "default", localeCode: "fr" }] },
+    }, summary: en.mcp.summary.publishPreview(0, 1) });
+    expect(en.mcp.summary.publishPreview(0, 1)).not.toBe(en.mcp.summary.publishPreview(0, 0));
+  });
+
+  /**
+   * #265 — 전달된 의도를 취소하면 파일 diff가 0이어도 Publish가 열린 PR에서 옛 삭제·새 파일을 거둔다. "Nothing to send."를 믿은 에이전트가
+   * Publish하지 않으면 취소한 변경이 PR에 남는다(머지하면 그대로 나간다). 거둘 효과는 `languages.withdrawn`에 실리고 문장이 그것을 말한다.
+   */
+  it.each([["delete", "ko"], ["create", "fr"]] as const)("preview_publish — 전달된 %s 취소(파일 변경 0)는 거둘 언어 변경을 말한다, \"Nothing to send.\"가 아니다", async (effect, localeCode) => {
+    const withdrawn = [{ surfaceSlug: "default", localeCode, effect }];
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 }, total: 0, keys: 0, withdrawnLocales: withdrawn } });
+    const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
+    expect(outcome).toMatchObject({ status: "ok", data: { fileChanges: [], languages: { withheld: [], empty: [], withdrawn } }, summary: en.mcp.summary.publishPreview(0, 0, 1) });
+    expect(outcome.status === "ok" && outcome.summary).not.toContain("Nothing to send");
+  });
+
+  it("preview_publish — 거둘 것이 없으면 languages.withdrawn은 빈 목록이고 문장은 그대로다", async () => {
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 } } });
+    expect(await run("preview_publish", subject("editor", []), { slug: "acme" })).toMatchObject({ status: "ok", data: { languages: { withdrawn: [] } }, summary: "Nothing to send." });
+  });
+
+  /**
+   * #267 — 전달된 언어 변경의 PR/MR이 머지 없이 닫혔으면 Publish가 그 요청을 버린다. 미리보기는 삭제를 약속하지 않고 그 사실을 말하며, 실행 결과는
+   * "리포에 이미 있다"(거짓)가 아니라 요청을 버렸다고 말한다.
+   */
+  it("preview_publish — 버려질 언어 요청을 languages.expiring에 싣고 문장이 그것을 말한다", async () => {
+    const expiring = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }];
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 }, total: 0, keys: 0, expiringLocales: expiring } });
+    const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
+    expect(outcome).toMatchObject({ status: "ok", data: { fileChanges: [], languages: { expiring } }, summary: en.mcp.summary.publishPreview(0, 0, 0, 1, 0) });
+  });
+
+  it("preview_publish — 머지된 요청(리포가 요청대로)은 \"closed without\"라고 말하지 않는다 (fix1 R1)", async () => {
+    const expiring = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "orphan" }];
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 }, total: 0, keys: 0, expiringLocales: expiring } });
+    const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
+    expect(outcome).toMatchObject({ status: "ok", summary: en.mcp.summary.publishPreview(0, 0, 0, 0, 1) });
+    expect(outcome.status === "ok" && outcome.summary).not.toContain("closed");
+  });
+
+  it.each([
+    [[{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }], [1, 0]],
+    [[{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "orphan" }], [0, 1]],
+  ] as const)("publish — 버린·반영된 요청을 갈라 말한다, \"already has these values\"가 아니다 (%#)", async (expired, [dropped, reached]) => {
+    h.core.mockResolvedValueOnce({ outcome: { status: "skipped", reason: "no-edits", expired }, attempted: true });
+    const outcome = await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" });
+    expect(outcome).toMatchObject({ status: "ok", data: { outcome: { expired } }, summary: en.mcp.summary.published(dropped > 0 ? "partial" : "no-changes", dropped, reached) });
+    expect(outcome.status === "ok" && outcome.summary).not.toContain("already has these values");
+  });
+
+  it("버린·반영된 요청 문장 — 미리보기·결과·GitLab", () => {
+    expect(en.mcp.summary.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The pull request for 1 language change was closed without the change reaching the repository, so publishing drops it. Publish with this fingerprint.");
+    expect(en.mcp.summary.publishPreview(0, 0, 0, 0, 1)).toBe("Nothing to send. 1 language change already reached the repository, so publishing only clears its request. Publish with this fingerprint.");
+    expect(en.mcp.summary.publishPreview(2, 0, 0, 2)).toBe("The pull request for 2 language changes was closed without the changes reaching the repository, so publishing drops them first and asks you to preview again. After that, 2 changes would be sent in a pull request.");
+    expect(en.mcp.summary.publishPreview(2, 0, 0, 0, 1)).toBe("1 language change already reached the repository, so publishing clears its request first and asks you to preview again. After that, 2 changes would be sent in a pull request.");
+    expect(en.mcp.summary.gitlab.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The merge request for 1 language change was closed without the change reaching the repository, so publishing drops it. Publish with this fingerprint.");
+    expect(en.mcp.summary.published("partial", 1)).toBe("Nothing was sent. The pull request for 1 language change was closed without the change reaching the repository, so Malmoi dropped it.");
+    expect(en.mcp.summary.published("no-changes", 0, 2)).toBe("Nothing was sent. 2 language changes already reached the repository, so Malmoi cleared their requests.");
+    expect(en.mcp.summary.gitlab.published("partial", 2)).toBe("Nothing was sent. The merge request for 2 language changes was closed without the changes reaching the repository, so Malmoi dropped them.");
+    // 버린 요청이 없으면 옛 문장 그대로다.
+    expect(en.mcp.summary.published("no-changes")).toBe("Nothing changed — the repository already has these values.");
+    expect(en.mcp.summary.published("partial")).toBe("Some changes weren't sent. See the result for why.");
+    expect(en.mcp.summary.publishPreview(0, 0, 0, 0)).toBe("Nothing to send.");
+  });
+
+  it("publishPreview 문장 — 거둘 언어 변경만 있을 때·편집과 함께일 때·GitLab", () => {
+    expect(en.mcp.summary.publishPreview(0, 0, 1)).toBe("No new changes to send, but publishing undoes 1 language change that was already sent. Publish with this fingerprint.");
+    expect(en.mcp.summary.publishPreview(2, 1, 2)).toBe("2 changes and 1 new or removed language file would be sent in a pull request, and 2 language changes that were already sent would be undone. Publish with this fingerprint.");
+    expect(en.mcp.summary.gitlab.publishPreview(1, 0, 1)).toBe("1 change would be sent in a merge request, and 1 language change that was already sent would be undone. Publish with this fingerprint.");
+    expect(en.mcp.summary.gitlab.publishPreview(0, 0, 1)).toBe(en.mcp.summary.publishPreview(0, 0, 1));
   });
 });

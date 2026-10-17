@@ -18,6 +18,8 @@ After an update, Home's **Sync** tab shows the last sync, its result, and how ma
 
 If any translation has an unsent edit, the workflow succeeds and reports `deferred`: the repository update is held, and Logs shows it as **Held**. New and removed keys are held too; the repository is not partially loaded. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why. Publish the edits and run the workflow again, or a project owner can resolve them with [Undo and resync](revert.md).
 
+A language removal that hasn't been published yet holds the update the same way, with the reason `locale-change-pending`: Logs shows **Held**, and **Held because** says a language removal is still unsent. Publish the removal or cancel it, then run the workflow again. Adding a language doesn't hold updates. See [Cancel a change](../setup/languages.md#cancel).
+
 ![A project's Home with one unsent edit to send and a note that repository updates are held](/guide/home-paused.webp "Repository updates are held until the unsent edits are published.")
 
 ## Merge or close the open pull request {#open-pull-request}

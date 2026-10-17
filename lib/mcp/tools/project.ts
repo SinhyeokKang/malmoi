@@ -9,9 +9,11 @@ import { parseRepoHost, repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { en } from "@/messages/en";
 import { loadProjectListAggregates, loadSurfaceCounts } from "@/lib/keys/query";
+import { readLocaleStates } from "@/lib/locales/work";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { workflowSurfaceOf } from "@/lib/onboarding/workflow";
 
+import { languageChangesOf, languageChangeTotals } from "../locale-view";
 import { checkProjectTool } from "./access";
 import { ciFileOf } from "@/lib/onboarding/ci-file";
 import { defineTool, ok } from "./define";
@@ -44,13 +46,16 @@ export const getProject = defineTool({
       },
     });
     if (project === null) return { status: "refused", code: "not-found" };
-    const [aggregates, counts, health] = await Promise.all([
+    const [aggregates, counts, languageStates, health] = await Promise.all([
       loadProjectListAggregates(prisma, [access.projectId]),
       loadSurfaceCounts(prisma, access.projectId),
+      readLocaleStates(prisma, access.projectId),
       // Home과 같은 판단 — GitHub 설정 오류(던짐)가 조회 전체를 죽이지 않는다. 모르면 `unknown`이다.
       loadConnectionHealth(repoTargetOf(project)).catch((error: unknown) => { logFailure("mcp-connection-health", error); return { status: "unknown" as const }; }),
     ]);
     const keysOf = new Map(counts.map(c => [c.surfaceId, c.keys]));
+    const languageStateOf = new Map(languageStates.map(state => [state.surfaceId, state]));
+    const languageWork = languageChangeTotals(languageStates);
     const gitlab = parseRepoHost(project.repoHost) === "gitlab";
     const newKeys = aggregates.newKeys.get(access.projectId) ?? 0;
     return ok({
@@ -66,6 +71,8 @@ export const getProject = defineTool({
       // GitLab의 참조 비움(`connection-removed`)·못 쓰는 토큰(`connection-unusable`)도 화면에서 같은 Disconnected라 같은 값으로 접는다(D26).
       connection: health.status === "unpinned" || health.status === "connection-removed" || health.status === "connection-unusable" ? "not-connected" : health.status,
       toSend: aggregates.unsent.get(access.projectId) ?? 0,
+      // 언어 추가·제거 중 아직 보내지 않은 것(locale-add) — 셀 편집 수(`toSend`)와 따로 센다. 둘 중 하나라도 있으면 Publish할 것이 있다.
+      languageChangesToSend: languageWork.total,
       /**
        * ⚠️ **필드 이름은 리포 호스트의 어휘다** (D26) — GitHub 프로젝트는 기존 이름 그대로(기존 클라이언트 호환), GitLab 프로젝트는 GitLab
        * 이름이다. GitLab 프로젝트를 읽던 클라이언트는 없었으니 깨지는 소비자가 없다. 어느 쪽인지는 `repositoryHost`가 말한다.
@@ -77,6 +84,9 @@ export const getProject = defineTool({
       sources: project.surfaces.map(surface => ({
         slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
         declaredBaseLocale: surface.declaredBaseLocale, keys: keysOf.get(surface.id) ?? 0, locales: surface.locales.map(l => l.code),
+        // `locales`는 그대로다(외부 계약) — 제거 예정 언어도 아직 활성이라 거기 있고, 상태·편집 가능 여부는 이 목록이 말한다.
+        languageChanges: languageChangesOf(languageStateOf.get(surface.id) ?? { rows: [], delivered: [] }),
+        languageChangesToSend: languageWork.bySurface.get(surface.id) ?? 0,
       })),
     }, en.mcp.summary.project(project.name));
   },

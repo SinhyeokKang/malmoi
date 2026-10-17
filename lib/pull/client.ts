@@ -17,11 +17,15 @@ import type { PullChange } from "./plan";
  * GitHub 구현 안에 산다. **무효화 순서는 호출부(`run.ts`)가 든다** — 첫 비읽기 메서드가 `invalidateDelivery` 뒤다.
  */
 
-/** Publish 한 번에 올리는 파일 하나. `inBase`는 base 트리에 이미 있는가다 — 생성과 갱신을 가르는 호스트가 있다(GitHub은 보지 않는다). */
-export type SnapshotChange = PullChange & { inBase: boolean };
+/**
+ * Publish 한 번에 올리는 파일 하나. upsert의 `inBase`는 base 트리에 이미 있는가다 — 생성과 갱신을 가르는 호스트가 있다(GitHub은 보지 않는다).
+ * delete는 base에 있는 경로에만 생긴다(`planPullChanges`)라 `inBase`가 없다.
+ */
+export type SnapshotChange = (Extract<PullChange, { kind: "upsert" }> & { inBase: boolean }) | Extract<PullChange, { kind: "delete" }>;
 
 /** 리포 읽기 스냅샷의 blob 하나. */
-export type GitTreeBlob = { path: string; sha: string; size?: number };
+/** `mode`는 리더 스냅샷이 싣는다(링크도 `type: blob`이다) — 언어 변경 만료의 정규 파일 판정 입력이다(`observeLocaleFiles`). */
+export type GitTreeBlob = { path: string; sha: string; size?: number; mode?: string };
 
 /** Publish 비교 트리는 비정규 경로도 보존한다 — 누락시키면 없는 파일로 오인해 재생성한다. */
 export type GitTreeEntry = GitTreeBlob & { mode: string };
@@ -83,7 +87,7 @@ export type GitClient = {
    * @param branch **sync 브랜치 이름만** 넘긴다. GitHub 구현이 `owner:branch`를 조립한다 — 브랜치명만 넘기면 GitHub이 필터를
    *   조용히 무시하고 전체 목록을 주므로 재사용 판정이 무너져 PR이 중복 생성된다. 호출부마다 조립하던 함정을 경계 안으로 옮겼다.
    */
-  findOpenPr(branch: string): Promise<{ url: string; number: number; title: string; base: string } | null>;
+  findOpenPr(branch: string): Promise<{ url: string; number: number; title: string; base: string; body: string } | null>;
 
   createPr(headBranch: string, baseBranch: string, title: string, body: string): Promise<string>;
 
@@ -92,6 +96,12 @@ export type GitClient = {
 
   /** 재사용하는 PR의 base를 설정의 base로 옮긴다 — 어긋날 때만 부른다. */
   updatePrBase(pullNumber: number, base: string): Promise<void>;
+
+  /**
+   * 재사용하는 PR/MR의 본문을 이 스냅샷의 본문으로 다시 쓴다(locale-add R-B2 Y3). **본문이 말하는 삭제 파일 집합이 바뀔 때만** 부른다(`bodyNeedsRefresh`) —
+   * 열린 PR에 파일 삭제가 얹히거나 빠지면 앱 코드 정리 안내가 따라가야 하고, 그 밖에는 리뷰어가 고친 본문을 덮지 않는다. 빈 본문은 `""`다(`findOpenPr`의 `body`).
+   */
+  updatePr(pullNumber: number, body: string): Promise<void>;
 
   /**
    * 코멘트를 남기고 PR을 닫는다 (B1 r3). no-changes 경로가 sync 브랜치를 base로 되돌리기 **전에** 부른다 — 되돌리면 GitHub이 그 PR을 스스로

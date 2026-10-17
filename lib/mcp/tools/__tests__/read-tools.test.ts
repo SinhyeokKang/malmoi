@@ -92,7 +92,7 @@ describe("역할 × 빈 grants", () => {
   it.each([
     ["preview_sync", { slug: "acme" }],
     ["preview_revert", { ...SURFACE, keyId: "k1" }],
-    ["preview_source_removal", SURFACE],
+    ["preview_source_detach", SURFACE],
     ["get_workflow", { slug: "acme" }],
   ] as const)("%s는 OWNER만 — EDITOR는 forbidden이고 코어에 닿지 않는다", async (name, input) => {
     expect(status(await call(name, subject("editor"), input))).toBe("forbidden");
@@ -168,7 +168,7 @@ describe("범위", () => {
     ["get_project", { slug: "acme" }], ["list_keys", SURFACE], ["get_key", { ...SURFACE, keyId: "k1" }], ["preview_sync", { slug: "acme" }],
     ["preview_revert", { ...SURFACE, keyId: "k1" }], ["list_events", { slug: "acme" }], ["get_workflow", { slug: "acme" }],
     ["list_members", { slug: "acme" }], ["list_branches", { slug: "acme" }], ["detect_formats", { slug: "acme" }],
-    ["preview_source_removal", SURFACE],
+    ["preview_source_detach", SURFACE],
   ];
 
   it.each(PROJECT_TOOLS)("범위 밖 프로젝트의 %s는 not-found — 역할·보관이 새지 않는다", async (name, input) => {
@@ -335,20 +335,20 @@ describe("preview_revert — sync-running", () => {
 });
 
 /** 소스 제거 미리보기 (sources-add-remove B-T8) — 웹 `previewSourceRemoval`과 같은 코어. 지문·미전달 수·열린 PR 여부를 그대로 싣는다. */
-describe("preview_source_removal", () => {
+describe("preview_source_detach", () => {
   it("코어 결과를 그대로 싣고 요약이 미전달 수를 말한다", async () => {
     h.previewSurfaceRemoval.mockResolvedValue({ ok: true, pendingCount: 2, approval: "f", openPr: "unknown" });
-    const outcome = await call("preview_source_removal", subject("owner"), SURFACE);
+    const outcome = await call("preview_source_detach", subject("owner"), SURFACE);
     expect(outcome).toMatchObject({ status: "ok", data: { approval: "f", unsentEdits: 2, pullRequest: "unknown" }, summary: en.mcp.summary.sourceRemovalPreview(2) });
     // 제거가 편집을 버린다고 말하지 않는다 — 재추가가 리포 값으로 바꾼다(사용자 결정 2026-10-06).
-    expect(en.mcp.summary.sourceRemovalPreview(2)).toBe("The source can be removed. Re-adding it later replaces 2 unsent edits with the repository's values. Remove it with this approval.");
+    expect(en.mcp.summary.sourceRemovalPreview(2)).toBe("The source can be detached. Re-adding it later replaces 2 unsent edits with the repository's values. Detach it with this approval.");
     expect(en.mcp.summary.sourceRemovalPreview(1)).toContain("replaces 1 unsent edit with");
     expect(h.previewSurfaceRemoval).toHaveBeenCalledWith(expect.anything(), { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, SURFACE);
   });
 
   it("마지막 소스는 거부이고 화면과 같은 문장이다", async () => {
     h.previewSurfaceRemoval.mockResolvedValue({ ok: false, error: "last-source" });
-    expect(await call("preview_source_removal", subject("owner"), SURFACE)).toEqual({ status: "refused", code: "last-source", message: en.sources.removal.reasons["last-source"] });
+    expect(await call("preview_source_detach", subject("owner"), SURFACE)).toEqual({ status: "refused", code: "last-source", message: en.sources.removal.reasons["last-source"] });
   });
 });
 

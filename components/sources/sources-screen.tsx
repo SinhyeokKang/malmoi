@@ -32,8 +32,10 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { useCommitWait } from "@/components/commit-wait";
 
 type Result = { tone: "success" | "warning" | "danger"; text?: string; added?: SurfaceAdded[]; source?: string; removed?: string };
-export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = false }: {
+export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = false, deepLink }: {
   slug: string; role: Role; data: SourcesData; adapters: AdapterChoice[]; now: Date; initialOpen?: boolean;
+  /** `?source=&language=` — 그 소스의 상세를 열고 그 언어 행에 포커스한다(Publish 결과의 `Open <source>`). 모르는 소스면 무시한다. */
+  deepLink?: { source: string; language: string | null };
 }) {
   const m = useMessages();
   const router = useRouter();
@@ -66,6 +68,12 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   // 재검증 커밋만으로 클라이언트 상세는 바뀌지 않는다. 화면 소유자는 유지하고 열린 상세만 다시 읽는다 — 첫 적재 뒤의 유일한 재조회다.
   useEffect(() => { if (selection.current) void load(selection.current, true); }, [data, load]);
   useEffect(() => { if (initialOpen && canEdit) setAdding(true); }, [initialOpen, canEdit]);
+  /** 딥링크로 연 상세의 언어 — 첫 열림 한 번만 쓴다. 닫으면 버리고 주소에서도 걷는다(다시 그려도 같은 모달이 열리지 않게). */
+  const [linked, setLinked] = useState<{ source: string; language: string | null } | null>(null);
+  useEffect(() => {
+    if (deepLink === undefined || !data.sources.some(source => source.slug === deepLink.source)) return;
+    selection.current = deepLink.source; setSelected(deepLink.source); setLinked(deepLink); void load(deepLink.source, false);
+  }, [deepLink?.source, deepLink?.language]); // 데이터 갱신마다 다시 열지 않는다 — 주소가 바뀔 때만이다.
   /*
     제거 성공 — **닫기와 배너를 재검증 커밋 뒤로 미룬다** (추가와 같은 `useCommitWait` 규칙, 시안 R8). 먼저 닫으면 배너가 선 뒤에야 행이 사라진다.
     ⚠️ 응답 즉시 `selection`을 비운다 — 커밋이 바꾼 `data`를 받는 위 effect가 제거된 소스를 다시 읽지 않게.
@@ -80,7 +88,10 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   }, [removed, commit.waiting]);
   const reload = () => { if (selected) void load(selected, true); };
   const closeAdd = () => { setAdding(false); if (initialOpen) router.replace(routes.sources(slug), { scroll: false }); };
-  const close = () => { if (busy) return; ++request.current; selection.current = null; setSelected(null); };
+  const close = () => {
+    if (busy) return; ++request.current; selection.current = null; setSelected(null);
+    if (linked !== null) { setLinked(null); router.replace(routes.sources(slug), { scroll: false }); }
+  };
   return <div data-sources-screen className="flex min-h-0 flex-1 flex-col">
     <PanelHeader><div className={PANEL_HEAD_ROW}>
       {/* 총계는 카드 머리 한 곳이다(4-Y6) — 바로 아래 카드가 같은 제목·같은 배지를 든다. 머리 컨테이너 640 미만이면 제목 첫 줄 · [Add sources] 둘째 줄 오른쪽이다(`PANEL_HEAD_ROW` — B1a). */}
@@ -141,7 +152,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       </Card>
     </PanelBody>
     {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} server={data} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
-    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} sources={data.sources} onBusy={setBusy} onClose={close} onRemoved={surfaceSlug => { ++request.current; selection.current = null; commit.wait(); setRemoved(surfaceSlug); }}
+    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} focusLanguage={linked !== null && linked.source === selected ? linked.language : null} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} sources={data.sources} onBusy={setBusy} onClose={close} onRemoved={surfaceSlug => { ++request.current; selection.current = null; commit.wait(); setRemoved(surfaceSlug); }}
       onLost={() => {
         // 상세를 먼저 닫는다 — refresh 트리가 제거된 소스를 다시 읽으면 상세째 결과가 사라진다. 오프라인이면 부르지 않는다(MPA 폴백, `sync-button.tsx`).
         ++request.current; selection.current = null; setBusy(false); setSelected(null);

@@ -72,10 +72,11 @@ export const IMPORT_SOURCES = ["ci", "manual", "first", "reported-failure", "nig
 export type ImportSource = (typeof IMPORT_SOURCES)[number];
 
 /**
- * 적재 보류 사유 넷 (nightly-sync). 같은 조건은 CI·야간 모두 `deferred` + 이 낱말이다 — 결과어를 조건마다 새로 만들면
+ * 적재 보류 사유 (nightly-sync). 같은 조건은 CI·야간 모두 `deferred` + 이 낱말이다 — 결과어를 조건마다 새로 만들면
  * 같은 사실이 두 소비자에서 다른 어휘로 선다(POSTMORTEM 2026-09-27). `too-large`는 야간 전용이다.
+ * `locale-change-pending`은 전달 안 된 언어 제거가 있어 자동 적재 전체를 멈춘 것이다(locale-add design §1 "보류").
  */
-export const DEFER_REASONS = ["pending-edits", "open-pr", "pr-check-failed", "publish-raced", "too-large"] as const;
+export const DEFER_REASONS = ["pending-edits", "open-pr", "pr-check-failed", "publish-raced", "too-large", "locale-change-pending"] as const;
 
 export type DeferReason = (typeof DEFER_REASONS)[number];
 
@@ -84,6 +85,45 @@ export type DeferReason = (typeof DEFER_REASONS)[number];
  * 아니다: 옛 행에는 없고, 읽는 쪽 폴백(`?? "ci"`)이 야간 행을 CI로 읽는다.
  */
 export const NIGHTLY_SUBTYPES = ["import.nightly", "nightly.skip"] as const;
+
+/**
+ * **언어 변경 사건의 subtype** (locale-add design §6). 생산자(`lib/locales/change.ts`·`lib/locales/expire.ts`)와 뷰(`./view`)가 이 목록 하나를
+ * 본다 — 철자가 갈리면 뷰 폴백이 그 사건을 "소스 추가"로 그린다.
+ */
+export const LOCALE_CHANGE_SUBTYPES = ["surface.localeAdded", "surface.localeRemovalRequested", "surface.localeChangeCancelled", "surface.localeChangeResolved"] as const;
+
+export type LocaleChangeSubtype = (typeof LOCALE_CHANGE_SUBTYPES)[number];
+
+/**
+ * **언어 변경 사건의 맥락** (locale-add design §6) — SURFACE subtype `surface.localeAdded`·`surface.localeRemovalRequested`·
+ * `surface.localeChangeCancelled`·`surface.localeChangeResolved`가 싣는다. 관측하지 않은 칸은 `null`이다.
+ */
+export type LocaleChangeDetail = {
+  locale: string;
+  /** 요청·취소·만료된 의도의 종류. 취소면 취소된 쪽이다. */
+  operation: "ADD" | "REMOVE";
+  /** 추가가 orphan 행을 되살렸나. */
+  revived: boolean | null;
+  /** 승인으로 폐기한 그 언어의 미전달 편집 수. */
+  discarded: number | null;
+  /** 만료 뒤 base 관측이 정한 상태. */
+  outcome: "active" | "orphan" | null;
+  /** 되살린 추가가 편집 토큰을 다시 준 셀 수(`addLocale`의 `reissued`). 새로 만든 추가·다른 subtype·옛 행은 `null`. */
+  reissued: number | null;
+  /**
+   * 해소된 의도를 실었던 PR/MR — 마지막 전달 확인 실행의 저장된 주소에서 뽑은 번호다(GitHub `#N`·GitLab `!N` 모두 숫자만). 효과가 전달 목록에
+   * 없던 의도·주소 없는 실행·옛 행은 `null`. `surface.localeChangeResolved`만 싣는다.
+   */
+  pullRequest: { number: number } | null;
+  /**
+   * 만료(`surface.localeChangeResolved`)를 일으킨 실행 — `publish`(사람의 Publish) · `sync`(승인한 수동 Sync) · `nightly`(야간 방문·야간 Publish) · `ci`(CI 적재).
+   * 행위자 컬럼만으로는 야간·CI가 같은 AUTOMATION이라 Logs가 야간 만료를 "CI"로 그렸다(시안 P3). 다른 subtype·옛 행은 `null`이다.
+   */
+  via: LocaleChangeVia | null;
+};
+
+export const LOCALE_CHANGE_VIAS = ["publish", "sync", "nightly", "ci"] as const;
+export type LocaleChangeVia = (typeof LOCALE_CHANGE_VIAS)[number];
 
 /** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
 export type ValueChange = { before: string | null; after: string | null };
@@ -147,6 +187,8 @@ export type EventPayload =
       surfaceSlug: string;
       adapter: string | null;
       baseLocale: ValueChange | null;
+      /** 언어 변경 사건만 — 옛 행·소스 사건에는 **필드가 없다**(읽는 쪽이 만들지 않는다). */
+      localeChange?: LocaleChangeDetail;
     }
   | {
       /** ⚠️ **원문 이메일이 아니라 마스킹 라벨이다** (sec-audit 발견 4). */
@@ -243,8 +285,10 @@ export function readPayload(kind: EventKind, value: unknown): EventPayload | nul
       };
     case "PUBLISH":
       return { kind, surfaceSlugs: strings(raw, "surfaceSlugs"), refusal: oneOfRaw(NOT_STARTED_REASONS, str(raw, "refusal")) };
-    case "SURFACE":
-      return { kind, surfaceSlug: str(raw, "surfaceSlug") ?? "", adapter: str(raw, "adapter"), baseLocale: change(raw, "baseLocale") };
+    case "SURFACE": {
+      const localeChange = localeChangeOf(raw);
+      return { kind, surfaceSlug: str(raw, "surfaceSlug") ?? "", adapter: str(raw, "adapter"), baseLocale: change(raw, "baseLocale"), ...(localeChange === null ? {} : { localeChange }) };
+    }
     case "MEMBER":
       return { kind, targetLabel: str(raw, "targetLabel") ?? "", role: change(raw, "role") };
     default:
@@ -272,6 +316,29 @@ function change(raw: Record<string, unknown>, key: string): ValueChange | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const inner = value as Record<string, unknown>;
   return { before: str(inner, "before"), after: str(inner, "after") };
+}
+
+const LOCALE_OPERATIONS = ["ADD", "REMOVE"] as const;
+const LOCALE_OUTCOMES = ["active", "orphan"] as const;
+
+/** `locale`·`operation`이 읽히지 않으면 맥락이 없다 — 다른 칸은 틀리면 그 칸만 `null`이다. */
+function localeChangeOf(raw: Record<string, unknown>): LocaleChangeDetail | null {
+  const value = Object.hasOwn(raw, "localeChange") ? raw.localeChange : undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const inner = value as Record<string, unknown>;
+  const locale = str(inner, "locale");
+  const operation = oneOfRaw(LOCALE_OPERATIONS, str(inner, "operation"));
+  if (locale === null || operation === null) return null;
+  const revived = Object.hasOwn(inner, "revived") && typeof inner.revived === "boolean" ? inner.revived : null;
+  return { locale, operation, revived, discarded: num(inner, "discarded"), outcome: oneOfRaw(LOCALE_OUTCOMES, str(inner, "outcome")),
+    reissued: num(inner, "reissued"), pullRequest: pullRequestOf(inner), via: oneOfRaw(LOCALE_CHANGE_VIAS, str(inner, "via")) };
+}
+
+function pullRequestOf(raw: Record<string, unknown>): { number: number } | null {
+  const value = Object.hasOwn(raw, "pullRequest") ? raw.pullRequest : undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const number = num(value as Record<string, unknown>, "number");
+  return number !== null && Number.isSafeInteger(number) && number > 0 ? { number } : null;
 }
 
 function outcomes(raw: Record<string, unknown>): SurfaceOutcome[] {

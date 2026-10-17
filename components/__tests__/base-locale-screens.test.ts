@@ -179,8 +179,10 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
    * 그것이고, 배지만 달고 설명이 없으면 그 이유가 성립하지 않는다.
    */
   it("orphaned 행이 danger 배지와 설명을 든다", () => {
-    const src = read(LOCALES_PAGE);
-    expect(src).toContain('<StatusBadge state="removedFromRepository"');
+    // 언어 행은 Languages 카드로 옮겨 갔다(locale-add E1) — 배지 키는 행 판정이 고른다.
+    const src = read("components/sources/languages-card.tsx");
+    expect(read("components/sources/language-row.ts")).toContain('badge: "removedFromRepository"');
+    expect(src).toContain("<StatusBadge state={plan.badge}");
     expect(src).toMatch(/orphaned/);
     expect(src).toMatch(/m\.sources\.orphanStrip/);
     expect(src).toMatch(/m\.sources\.orphanStripRest/);

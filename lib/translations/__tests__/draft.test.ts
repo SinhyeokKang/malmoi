@@ -5,6 +5,7 @@ import {
   keyEditCommand as command,
   planDraftRecovery,
   reduceKeyDraft,
+  savableLocales,
   type KeyDraftState,
 } from "../draft";
 
@@ -223,4 +224,117 @@ it("활성 집합에서 빠진 로케일은 draft와 제출에서 빠지고 늦�
   expect(state.order).toEqual(["en", "ja"]);
   expect(Object.hasOwn(state.saved, "ko")).toBe(false);
   expect(dirtyLocales(state)).toEqual([]);
+});
+
+/**
+ * 제거 예정 언어의 셀 얼리기 (locale-add tasks §6 · design §6 · spec 23). 서버 갱신이 REMOVE를 알리면 그 언어의 미저장 입력을 **버리지 않고**
+ * 읽기 전용으로 얼린다 — 저장에서 빠지고, 셀 reset으로만 버린다. 제거가 취소되면(다음 서버 갱신에 읽기 전용이 없으면) 그대로 편집할 수 있다.
+ */
+describe("읽기 전용(제거 예정) 언어", () => {
+  const removing = (s: KeyDraftState, values: Record<string, string> = { en: "Hello", ko: "안녕", ja: "" }, readOnly = ["ko"]) =>
+    reduceKeyDraft(s, { type: "server", keyId: "k1", values, readOnly });
+
+  it("REMOVE가 도착해도 그 언어의 미저장 입력을 남기고 읽기 전용으로 둔다", () => {
+    const s = removing(edit(start(), "ko", "mine"));
+    expect(s.draft.ko).toBe("mine");
+    expect(s.readOnly).toEqual(["ko"]);
+    // 이탈 확인·세션 복구는 얼린 입력도 센다 — 버린 적이 없다.
+    expect(dirtyLocales(s)).toEqual(["ko"]);
+    expect(planDraftRecovery(s)).toMatchObject({ kind: "write" });
+  });
+
+  it("폐기로 서버 값이 마지막 전달 값으로 돌아가도 얼린 입력은 남는다", () => {
+    const s = removing(edit(start(), "ko", "mine"), { en: "Hello", ko: "보낸 값", ja: "" });
+    expect(s.saved.ko).toBe("보낸 값");
+    expect(s.draft.ko).toBe("mine");
+  });
+
+  it("얼린 언어는 편집을 받지 않는다", () => {
+    const s = edit(removing(edit(start(), "ko", "mine")), "ko", "more");
+    expect(s.draft.ko).toBe("mine");
+  });
+
+  it("얼린 입력은 저장 payload에서 빠지고 다른 언어만 보낸다", () => {
+    const s = edit(removing(edit(start(), "ko", "mine")), "ja", "やあ");
+    expect(savableLocales(s)).toEqual(["ja"]);
+    expect(submit(s).inFlight?.sent).toEqual({ ja: "やあ" });
+  });
+
+  it("얼린 입력만 남으면 제출이 요청을 만들지 않는다", () => {
+    const s = removing(edit(start(), "ko", "mine"));
+    expect(savableLocales(s)).toEqual([]);
+    expect(submit(s)).toBe(s);
+  });
+
+  it("셀 reset이 얼린 입력을 버린다", () => {
+    const s = reduceKeyDraft(removing(edit(start(), "ko", "mine")), { type: "reset", locale: "ko" });
+    expect(s.draft.ko).toBe("안녕");
+    expect(dirtyLocales(s)).toEqual([]);
+    expect(s.readOnly).toEqual(["ko"]);
+  });
+
+  it("제거가 취소되면 얼린 입력을 그대로 편집·저장할 수 있다", () => {
+    let s = removing(edit(start(), "ko", "mine"));
+    s = reduceKeyDraft(s, { type: "server", keyId: "k1", values: { en: "Hello", ko: "안녕", ja: "" } });
+    expect(s.readOnly).toEqual([]);
+    expect(s.draft.ko).toBe("mine");
+    s = edit(s, "ko", "mine!");
+    expect(submit(s).inFlight?.sent).toEqual({ ko: "mine!" });
+  });
+
+  it("다른 언어 저장 성공 뒤에도 얼린 입력과 읽기 전용이 남는다", () => {
+    let s = submit(edit(removing(edit(start(), "ko", "mine")), "ja", "やあ"));
+    s = reduceKeyDraft(s, { type: "success", requestId: "r1", keyId: "k1", cells: [{ localeCode: "ja", value: "やあ" }] });
+    expect(s.saved.ja).toBe("やあ");
+    expect(s.draft.ko).toBe("mine");
+    expect(s.readOnly).toEqual(["ko"]);
+    expect(dirtyLocales(s)).toEqual(["ko"]);
+  });
+
+  it("저장 실패 뒤에도 읽기 전용이 남는다", () => {
+    const s = reduceKeyDraft(submit(edit(removing(edit(start(), "ko", "mine")), "ja", "x")), { type: "failure", requestId: "r1" });
+    expect(s.readOnly).toEqual(["ko"]);
+    expect(s.inFlight).toBeUndefined();
+  });
+
+  it("전체 취소(discard)도 읽기 전용을 지킨다", () => {
+    const s = reduceKeyDraft(removing(edit(start(), "ko", "mine")), { type: "discard" });
+    expect(s.readOnly).toEqual(["ko"]);
+    expect(dirtyLocales(s)).toEqual([]);
+  });
+
+  it("처음부터 읽기 전용으로 열 수 있다 — 상세가 제거 예정 언어를 싣는 경우", () => {
+    const s = initKeyDraft("k1", { en: "Hello", ko: "안녕" }, ["ko"]);
+    expect(s.readOnly).toEqual(["ko"]);
+    expect(edit(s, "ko", "x").draft.ko).toBe("안녕");
+  });
+
+  it("활성 집합 밖의 읽기 전용 코드는 버린다 — 순서를 따르는 목록이다", () => {
+    const s = reduceKeyDraft(start(), { type: "server", keyId: "k1", values: { en: "Hello", ko: "안녕" }, readOnly: ["fr", "ko", "ko"] });
+    expect(s.readOnly).toEqual(["ko"]);
+  });
+
+  it("복구 사본(restore)은 얼린 칸의 입력도 되살린다 — 편집이 아니라 버린 적 없는 입력이다", () => {
+    const s = reduceKeyDraft(initKeyDraft("k1", { en: "Hello", ko: "안녕" }, ["ko"]), { type: "restore", locale: "ko", value: "mine" });
+    expect(s.draft.ko).toBe("mine");
+    expect(dirtyLocales(s)).toEqual(["ko"]);
+    expect(savableLocales(s)).toEqual([]);
+  });
+
+  it("저장 거부가 알린 언어를 다음 서버 상세 전에 얼린다 — 입력은 남고 다른 언어만 저장된다", () => {
+    const s = reduceKeyDraft(edit(edit(start(), "ko", "mine"), "ja", "やあ"), { type: "freeze", locales: ["ko", "fr"] });
+    expect(s.readOnly).toEqual(["ko"]);
+    expect(s.draft.ko).toBe("mine");
+    expect(savableLocales(s)).toEqual(["ja"]);
+  });
+
+  it("복구 사본은 활성 집합 밖의 언어를 들이지 않는다", () => {
+    const s = start();
+    expect(reduceKeyDraft(s, { type: "restore", locale: "fr", value: "x" })).toBe(s);
+  });
+
+  it("읽기 전용을 싣지 않은 서버 갱신은 기존처럼 전부 편집 가능하다", () => {
+    expect(reduceKeyDraft(start(), { type: "server", keyId: "k1", values: { en: "Hello", ko: "안녕", ja: "" } }).readOnly).toEqual([]);
+    expect(start().readOnly).toEqual([]);
+  });
 });

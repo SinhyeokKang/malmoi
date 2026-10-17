@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { matchGlobPaths, namespaceOf } from "@/lib/adapters/index";
 import { compareKeys } from "@/lib/adapters/shared";
 import type { Adapter, AdapterFile, DetectedFormat, FileProbe, ReadResult } from "@/lib/adapters/types";
@@ -162,24 +164,36 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
  *
  * ⚠️ **이름 있는 타입이어야 한다** — 본문이 인라인 리터럴이던 동안은 산문에만 있는 union이라 `applied`가 빠져도
  * 컴파일러가 몰랐다. `deferred`는 큐에 넣었다는 뜻이 아니므로 202가 아니다. 실제 오류는 계속 4xx/5xx다.
+ *
+ * ⚠️ **정의는 이 Zod 하나이고 타입은 `z.infer`다** (agent-readiness — ARCHITECTURE §8.1) — `/openapi.json`의 응답 스키마가 여기서 생성되므로 생산자
+ * 타입과 공개 명세가 갈라질 수 없다. `z.object`(strict 아님)이고 명세는 `io: "input"`으로 뽑는다 — 생산자 타입은 닫혀 있되 명세는
+ * 열린 형이라, 응답 필드 하나를 더해도 생성된 클라이언트 검증기가 깨지지 않는다. deferred 두 갈래는 `status`가 같아 판별 union이 안 된다.
  */
-export type PushResponse =
-  | {
-      status: "applied";
-      projectId: string;
-      commitSha: string;
-      inserted: number;
-      updated: number;
-      orphaned: number;
-      unorphaned: number;
-      staleTranslations: number;
-      translationsFilled: number;
-      orphanedLocales: number;
-      refs: number;
-    }
-  | { status: "deferred"; reason: "pending-edits"; pendingCount: number; projectId: string; commitSha: string }
+export const PushResponseSchema = z.union([
+  z.object({
+    status: z.literal("applied"),
+    projectId: z.string(),
+    commitSha: z.string(),
+    inserted: z.number().int(),
+    updated: z.number().int(),
+    orphaned: z.number().int(),
+    unorphaned: z.number().int(),
+    staleTranslations: z.number().int(),
+    translationsFilled: z.number().int(),
+    orphanedLocales: z.number().int(),
+    refs: z.number().int(),
+  }),
+  z.object({ status: z.literal("deferred"), reason: z.literal("pending-edits"), pendingCount: z.number().int(), projectId: z.string(), commitSha: z.string() }),
   /**
    * 열린 Malmoi PR 게이트 (nightly-sync). **`pendingCount`가 없다** — 미전달 편집 0에서 선 보류라 수가 거짓 "0 unsent"가 된다.
    * v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 이 갈래는 경고 없이 green이다.
    */
-  | { status: "deferred"; reason: "open-pr" | "pr-check-failed" | "publish-raced"; projectId: string; commitSha: string };
+  z.object({
+    status: z.literal("deferred"),
+    reason: z.enum(["open-pr", "pr-check-failed", "publish-raced", "locale-change-pending"]),
+    projectId: z.string(),
+    commitSha: z.string(),
+  }),
+]);
+
+export type PushResponse = z.infer<typeof PushResponseSchema>;

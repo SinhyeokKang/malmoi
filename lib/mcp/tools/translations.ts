@@ -55,6 +55,8 @@ function keyRejection(r: { error: string; localeCodes?: string[] }): string {
   const footer = en.translations.workspace.footer;
   if (r.error === "cannot-clear") return `${footer.cannotClear.title((r.localeCodes ?? []).join(", "))} ${footer.cannotClear.body}`;
   if (r.error === "key-unavailable") return footer.keyGone;
+  // 제거 예정 언어(locale-add) — 키 단위 저장이라 같은 키의 다른 언어도 저장되지 않았다. 화면 전용 문구는 시안 배치 몫이다.
+  if (r.error === "locale-removal-pending") return en.mcp.errors.languages["locale-removal-pending"]((r.localeCodes ?? []).join(", "));
   return footer.saveFailed.body;
 }
 
@@ -69,6 +71,8 @@ const REVERT_BLOCKED = {
   nothing: en.translations.workspace.revert.failed.body,
   "key-unavailable": en.errors.access["not-found"],
   "sync-running": en.repositorySync.errors["already-running"],
+  // 제거 예정 언어(locale-add) — 전용 문장은 화면 문구 배치가 정한다. 그 전까지 화면의 "되돌릴 수 없음" 문장이다.
+  "locale-removal-pending": en.translations.workspace.revert.unavailable,
 } satisfies Record<RevertBlockReason, string>;
 
 export const revertToLastSent = defineTool({

@@ -177,6 +177,19 @@ describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키�
     expect(PushPayload.safeParse(valid).success).toBe(true);
   });
 
+  /**
+   * `format.nestedByPath`도 다른 필드처럼 상한이 있다 (2026-10-17 보안 감사) — 표면 JSON 컬럼에 그대로 저장되고 번역 화면·pull이
+   * 매번 읽는다. 키는 파일 경로라 `MAX_NAME`, 개수는 키 상한(`MAX_KEYS`)을 넘지 않는다.
+   */
+  it("nestedByPath는 경로 길이·개수 상한을 넘으면 거부한다", () => {
+    const withNested = (nestedByPath: Record<string, boolean>) => ({ ...valid, format: { ...valid.format, nestedByPath } });
+    expect(PushPayload.safeParse(withNested({ "i18n/en.json": true, "i18n/ko.json": false })).success).toBe(true);
+    expect(PushPayload.safeParse(withNested({ ["a".repeat(1_001)]: true })).success).toBe(false);
+    expect(PushPayload.safeParse(withNested({ "": true })).success).toBe(false);
+    const many = Object.fromEntries(Array.from({ length: 20_001 }, (_, i) => [`i18n/${i}.json`, false]));
+    expect(PushPayload.safeParse(withNested(many)).success).toBe(false);
+  });
+
   it("commitSha가 40자 hex가 아니면 거부한다", () => {
     for (const sha of ["", "abc", "z".repeat(40), "a".repeat(41)]) {
       expect(PushPayload.safeParse({ ...valid, commitSha: sha }).success).toBe(false);

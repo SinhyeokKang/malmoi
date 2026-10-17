@@ -46,6 +46,9 @@ app/
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
   llms.txt/ · llms-full.txt/  route.ts — 가이드 목차·원고 전문(text/plain). force-static이 전제인 이유는 sitemap과 같다.
                         인가가 없다(entry-points의 EXEMPT에 이름으로 등재)
+  not-found.md/         route.ts — 매칭 없는 경로 + Accept text/markdown의 404 Markdown(agent-readiness 2026-10-15, ARCHITECTURE §8.1).
+                        next.config.ts의 fallback rewrite가 보내는 목적지이고 직접 요청해도 늘 404다. 일곱 메서드 · force-dynamic(본문이 런타임 배포 모드로 갈린다)
+  openapi.json/         route.ts — CI push API의 OpenAPI 3.1(lib/openapi). force-static · 인가 없음(EXEMPT). 의미의 정본은 docs/ACTIONS.md다
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
   fonts/geist/          Geist 정방향 가변 WOFF2 원본과 SIL OFL 라이선스·출처/SHA. git 추적 자산이며 next/font/local이 자사 호스트/swap/preload한다.
@@ -61,6 +64,8 @@ app/
                         · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · docs-responsive(좁은 `/docs` — 캡슐 라벨·접근 이름·장 내비 시트 포커스·`lg` 넘김 정리, 2026-10-10 responsive-public)
                         · well-known(OAuth 발견 문서)
+                        · agent-routes(무인증 공개 응답 셋 — 메서드·헤더·소스 스캔) · rewrites(next.config를 불러서 — fallback 하나·내부 목적지·Accept 판정 표 ·
+                        최상위 동적 세그먼트 0)
                         · api/__tests__/ github-callback · push-failure · push-open-pr · pull-nightly · route-diagnostics ·
                         surface-boundary · mcp-route · images-route · images-email-route
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
@@ -114,7 +119,8 @@ app/
         loading.tsx     Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
       translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
       locales/         Sources 목록으로 보내는 legacy redirect
-      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale · removeSource · 읽기 전용 loadSourceDetail/previewSourceRemoval) · loading.tsx 골격
+      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale · removeSource · 읽기 전용 loadSourceDetail/previewSourceRemoval · 언어 변경 넷 addSourceLocale/removeSourceLocale/cancelSourceLocaleRemoval + 읽기 전용 미리보기 둘 previewSourceLocaleAdd/previewSourceLocaleRemoval — 코어 lib/locales/change.ts를 감싸고 코드만 돌려준다. 호출자는 components/sources/의 Languages 카드와 Dialog 둘이다) · loading.tsx 골격
+                        page.tsx는 딥링크 쿼리 `?source=&language=`를 읽어 상세 모달·그 언어 행의 동작 버튼으로 착지시킨다(`routes.sources(slug, { source, language })` — Publish 거부 ⑥의 Open web이 쓴다)
                         제거는 미전달 편집이 있으면 소스별 승인 지문을 요구하고 미리보기는 쓰지 않는다
       surfaces/[surfaceSlug]/translations/  번역 작업 화면(트리·키 목록·로케일 세 패널 — translation-rework C4).
                         URL 계약은 lib/translations/query.ts 하나다(화면 층 — 옛 주소는 정규 주소로 redirect). 전 소스를 한 번 읽고 범위로 자른다.
@@ -186,6 +192,9 @@ app/
                         인가·속도 제한 없음(EXEMPT에 등재) · 키는 isStoredImageKey만 · 실패는 전부 빈 404
   api/images/email/[...key]/  초대 메일 썸네일의 PNG 변환판(2026-09-28, #140) — 위와 같은 검증·읽기 뒤 emailThumbnailPng(96×96).
                         Gmail이 WebP 알파를 버린다. 프로젝트 썸네일 키만. /api/images/ 아래라 WAF 규칙이 그대로 덮는다
+  api/[[...path]]/      route.ts — 어떤 route도 받지 않는 /api 경로(/api 자신 포함)의 404 JSON, 일곱 메서드(agent-readiness 2026-10-15).
+                        더 구체적인 세그먼트가 항상 이기고, dynamicParams = false route의 목록 밖 요청(/api/search-index/fr)도 여기로 온다.
+                        ⚠️ app/api 바로 아래에 동적 세그먼트·route.ts를 두지 않는다(이 catch-all과 충돌)
   api/auth/[...nextauth]/  Auth.js 핸들러(auth.ts의 handlers를 그대로 내보낸다). 인가를 지나지 않는 것이
                         당연해서 entry-points의 면제 목록에 이름으로 든다
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
@@ -281,6 +290,8 @@ components/
                         가드 → 내부 동작 → 소비자다(조합 중이면 소비자 onEscapeKeyDown도 안 부른다). ref를 가져 훅이다.
                         ⚠️ 불리언이 아니라 조합을 시작한 노드를 든다 — 조합 중에 닫히면 compositionend가 안 와 재오픈 뒤 Esc가 막혔다.
                         노드가 문서에서 떨어지면 조합이 끝난 것으로 본다
+  ui/combobox.tsx     Combobox — 입력 + 목록 Popover(locale-add 언어 추가 칸이 첫 소비자). 값은 자유 입력이고 목록 행은 `onSelect`로 값을 준다 — 거르기·행 구성은 소비자가 `groups`로 넘긴다.
+                        ⚠️ ui/command.tsx와 다르다 — Command는 ⌘K 이동 전용이라 행이 링크이고 Enter가 a[href]를 누른다. 이쪽은 폼 값을 고른다. 활성 판정(lib/search/keys의 nextActive·reconcileActive)과 IME 가드(use-ime-guard)는 같은 것을 쓰고, 포커스는 늘 입력에 있다(aria-activedescendant)
   ui/command.tsx      Command/CommandInput/CommandStatus/CommandList/CommandGroup/CommandItem — combobox/listbox.
                         활성 id·실제 링크 click·입력 포커스·sr 결과 수를 소유하며 검색/필터 판정은 소비자다.
                         행은 ListRow + 28 타일(icon 필수, 활성 = selected 7%), 상태 줄은 CommandStatus lines 묶음 하나다
@@ -433,7 +444,11 @@ components/
                         READING_ARTICLE · READING_TOC_SLOT — 선언 @container/reading은 호출부 리터럴, 질의는 이 상수라 부모/자식이 갈린다)
   changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 버전 h1 = 그 판의 GitHub Release 링크 · formatDay, UTC 고정) ·
                         release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
-                        rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
+                        rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다) ·
+                        release-list("use client" 잎 — ReleaseList · RevealItem: 서버가 렌더한 전 항목의 숨김만 10개씩 푼다.
+                        스크롤러 바닥 근처를 IntersectionObserver로 보고 자동으로 드러낸다(묶음마다 새 관찰자) · Show older releases 버튼은
+                        키보드 폴백(새 첫 h1로 포커스) · 진입 해시는 landDocumentHeading으로 착지 · 끝 문장은 다 드러난 뒤.
+                        import는 lib/changelog/reveal · lib/public-doc/landing · ui/button 셋 — 본문 렌더는 서버에 남는다)
   public-doc-toc.tsx · public-doc-table.tsx
                         두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
                         lib/public-doc/toc의 currentSection, 클릭·검색 착지는 lib/public-doc/landing의 공통48 오프셋 + 절 h2 포커스 + 목차 현재 절 고정)와 표
@@ -502,8 +517,13 @@ components/
   onboarding/repo-input.ts
                         repoInputOf — ① 리포 행 → Action 입력(GitHub { owner, repo } · GitLab 숫자 id 하나). 모달의 다섯 호출이 이 함수 하나로 입력을 만든다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        remove-source-dialog · sources-archived 일곱 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
-                        remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
+                        remove-source-dialog · sources-archived · languages-card · add-locale-dialog · remove-locale-dialog 열 컴포넌트 + `.ts` 둘 — language-row.ts(아래) · row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
+                        languages-card(locale-add, 2026-10-17)는 상세 모달의 Languages 카드다 — 머리 [Add language] · 행(코드·진행률·상태 배지·동작 하나·[Open]) · Inactive 띠 · 결과 notice · 포커스 예약을 든다.
+                        language-row는 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
+                        add-locale-dialog는 추가 Dialog(json은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
+                        화면이 템플릿을 채우지 않는다. remove-locale-dialog는 **제거 요청·추가 취소 공용** 확인 창이다(remove-source-dialog와 같은 형 — 지문은 여는 순간 받는다).
+                        ⚠️ 두 Dialog는 결과를 호스트(languages-card)로 올리고 닫히며, 포커스는 호스트가 옮긴다.
+                        remove-source-dialog는 상세 모달 바닥 왼쪽 [Detach source]의 확인 창이다(Sync 확인 창 형 — 지문은
                         여는 순간 받는다). 성공·응답 유실은 목록 소유자(sources-screen)가 상세를 닫고 배너로 받는다.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
                         sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
@@ -609,6 +629,10 @@ components/
                         files-sequential · home-stack · members-narrow · repo-branch-narrow · responsive-activity · settings-narrow · admin-panel-head — 2026-10-11 responsive-app
                         (⚠️ jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약·data-pane·포커스 대상만 단언하고 픽셀은 런타임 실측 몫이다)
                         ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
+                        · source-languages · add-locale-dialog · remove-locale-dialog · combobox · publish-language · translation-workspace-frozen — 2026-10-17 locale-add
+                        (Languages 카드 행 판정 표 · 추가·제거 Dialog 상태 전이 · 프리미티브 키보드·IME · Publish 모달 언어 갈래 · 얼린 칸. 접힘·Popover 위치·실 IME는 jsdom 밖이라 런타임 몫이다)
+                        helpers/(dom · result-alert · workspace-props · layer — 테스트 전용 공유 조각. ⚠️ layer의 `waitForLayer`는 상세 모달·중첩 Dialog·Combobox 목록을 연 **직후**
+                        클릭 전에 그 Content의 `pointer-events`가 열릴 때까지 기다린다 — Radix는 DOM을 먼저 붙이고 다음 렌더에서야 여는데, 그 사이에 누르면 CI에서만 깨진다, POSTMORTEM 2026-10-08)
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -681,7 +705,7 @@ lib/
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
-  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
+  push/ pull/ sync/     payload(생산자 하나 · 응답 PushResponseSchema — 타입은 그 z.infer, /openapi.json이 같은 정의를 쓴다) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
                         SyncRun.changedValues) · delivery-revision(CI·야간의 전달 장벽 — 모든 소스 확인의 surfaceId·revision 집합, no-changes 포함) /
@@ -711,12 +735,13 @@ lib/
                         ⚠️ run.ts 안에 두지 않는 이유: 그 판정이 "야간이 CI로 건강한 프로젝트를 실패로 뒤집지 않는다"의 전부라
                         I/O 없이 표로 고정해야 한다(`__tests__/automation.test.ts`). 수동 Sync는 이 분류를 타지 않는다
   events/               **프로젝트 활동 스트림** (2026-09-20, logs-rework) — payload(어휘·종류별 맥락·
-                        `runToken` 조립·`readPayload`) · view(결과 열·값 상태·보는 사람의 시간대 날짜 카드·수집 경계선) ·
+                        `runToken` 조립·`readPayload` · 언어 변경 사건 subtype 넷 LOCALE_CHANGE_SUBTYPES — view가 "source added" 폴백 앞에서 갈라 읽는다) · view(결과 열·값 상태·보는 사람의 시간대 날짜 카드·수집 경계선) ·
                         filter(URL 판정 — 시간대 무관 · 커서 · 시간대 구간 parseDateRange · 프리셋 presetRange) · search(검색 문자열의 **유일한 관문**) /
                         query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label ·
-                        trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 컬럼**
-                        (`actorKind`·`kind`·`subtype`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다. ⚠️ query.ts가 아니라
-                        따로인 이유: query는 `server-only`라 단위 테스트가 그 경계를 못 넘는다 — Prisma는 타입으로만 문다)
+                        trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 칸**
+                        (`actorKind`·`kind`·`subtype` + 언어 만료의 payload `localeChange.via`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다.
+                        ⚠️ query.ts가 아니라 따로인 이유: query는 `server-only`라 단위 테스트가 그 경계를 못 넘는다 — Prisma는 `AnyNull` 표식 하나만 **값으로** 문다
+                        (via 없는 옛 행의 JSON 경로 비교가 SQL NULL이라, `ci`를 `NOT nightly`로 적으면 그 행이 어느 쪽에도 안 든다 — ARCHITECTURE §5.10.7))
                         ⚠️ **앞의 넷은 잎이다** — 클라이언트가 값으로 읽고, 조회를 물면 그 순간 Prisma가
                         번들에 온다(POSTMORTEM 2026-09-07의 7.2MB). `client-graph.test.ts`가 파일 집합을
                         정확 일치로 고정한다
@@ -735,11 +760,13 @@ lib/
                         · translation-rework 서버 경로 넷(2026-09-23 — 화면은 C4에서 붙는다): translation-list(트리·요약 목록·상세
                         조회, oracle은 `lib/translations/summary.ts`) · save-key(키 단위 저장 + 복원 기준 기록) · revert(Revert
                         미리보기·실행) · delivery(전달 확인 상태 — 저장과 Revert가 같은 판정을 쓴다). 넷 다 `server-only`가 없다(격리 PG가 직접 부른다)
+                        · work-locale(**작업 언어 술어** — workLocaleWhere · notRemoving: 활성이고 REMOVE 행이 없는 로케일. 진행률·결측 분모·Keys 검색·Home/Inbox·Sources 수가 쓴다.
+                        `pendingWhere`는 이 술어를 쓰지 않는다 — ARCHITECTURE §5.10.1. 순수 판정은 translations/summary의 localeRole)
   translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙었다).
                         query(URL 계약 두 층 — 아래는 MCP `list_keys`가 쓰는 동결 파서·직렬화(요청값, 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음),
                         위는 화면 층(`screenQuery` — 옛 주소 접기·`scope` 파생 · Status · 트리/검색/키 선택 쿼리 · 빈 상태 표 · 목록 세대 키, translation-tree-range)) ·
-                        summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · text-direction(값 셀 dir·lang — RTL 값이 페이지 ltr을 상속하지 않게, malmoi#91) ·
-                        draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
+                        summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion · localeRole — work | read-only | inactive) · text-direction(값 셀 dir·lang — RTL 값이 페이지 ltr을 상속하지 않게, malmoi#91) ·
+                        draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본 — 제거 예정 언어 칸은 readOnly로 얼리고 savableLocales에서 빼며 reset만 받는다) · saved-rows · navigation ·
                         tree-narrow(목록 범위 — 전 소스 행을 트리 위치·전 소스 검색으로 자르고(`inRange`) 노드별 일치 수를 센다(`tallyRows`·`countTree` —
                         숨기지 않고 숫자만 바꾼다). 트리 이동의 첫 키 `firstRowAt`도 여기다. translation-tree-range) ·
                         baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지키고 772 미만은 single) ·
@@ -787,6 +814,15 @@ lib/
                         ⚠️ plan에 **열린 PR 게이트**(`planOpenPrGate`, 2026-09-30 nightly-sync)가 산다 — `/api/push` 사전 판정과
                         야간 판정이 공유한다. `planProtectedImport`와 합치지 않은 이유는 트랜잭션 안 재판정(push/apply)이 GitHub을
                         못 부르기 때문이다(ARCHITECTURE §5.5.2)
+  locales/              **언어 추가·제거(locale-add, 2026-10-14 — ARCHITECTURE §5.10)**. 순수 판정은 잎이고 I/O 코어만 DB를 문다.
+                        add-plan(코드·충돌·포맷·경로 → create | revive | 거부, localeFilePath · localeCollisionKey) · change-plan(planLocaleChange — 추가/제거·추가 취소/제거 취소 전이와 거부 순서,
+                        planBaseLocaleCandidate) · effects(행 + 값 수 → 정규 효과 목록 · 목록 비교) · publish-plan(의도 × base 경로 → 생성·삭제·보류) ·
+                        expiry(planLocaleExpiry — 만료 조건 · ADD 자기 증거 · 빈 관측 보류) · presence(strict 적재와 공유하는 존재 판정 liveLocalesOf/localePresence) ·
+                        reached(reachedRepository — 만료 뒤 존재로 리포가 요청대로인지, import 0인 잎이라 클라이언트 결과 갈래도 부른다) ·
+                        chrome-codes(Chrome 지원 목록 54개 — 출처 URL·확인일이 머리 주석) · presets(추가 Dialog의 프리셋 — 고정 목록·소스별 구분자·이름 거르기·코드 모양. ⚠️ **클라이언트 잎**이고 표시 규칙만 든다 — 받을지는 서버 미리보기가 정한다) · fingerprint(localeChangeFingerprint — 서버 발급 승인 지문, node:crypto)
+                        / work(server-only 없음 — 전달 목록 읽기·localeWork·readLocaleStates·countLocaleWork) · expire(expireLocaleChanges — 잠금 안 만료 I/O,
+                        적재·야간·모든 Publish가 같이 부른다) · change(**웹 Action·MCP가 같은 코어** — addLocale · previewLocaleRemoval · removeLocale · cancelLocaleRemoval, server-only)
+                        ⚠️ 순수 판정에 server-only를 붙이지 않는다. 격리 PG 시나리오(__tests__/*.integration.ts — change · expire)는 scripts/gate-plan.ts 트리거에 lib/locales/가 들어 있어 pnpm gate가 붙인다
   nightly/              **야간 판정** (2026-09-30, nightly-sync — ARCHITECTURE §3.05). plan(`planNightly` — 프로젝트 하나를
                         Publish / 적재 / 스킵 / 사건 없음으로 가르는 **한 함수**, I/O 0). 껍데기는 `need`를 받을 때마다 그 입력만
                         조회해 다시 부른다 — "무엇을 묻지 않는가"(편집이 있으면 head를, head가 같으면 PR 목록을)가 이 함수에서
@@ -816,7 +852,13 @@ lib/
   pull/undeliverable.ts 전달 불가 셀의 좌표 보류(잎) — writer 오류를 보류(비-base 파일 부재 · 키 자리 없음)와 거부로
                         가르고 캡처 편집을 실린 것/보류된 것으로 나눈다. 미리보기(publish/read)는 같은 판정을 행 단위로 따로 든다
   import/locales.ts     localesToKeep — 다운로드 실패 로케일을 재탐지 목록에 되살린다(경로 → 로케일은 onboarding/confirm의
-                        localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다)
+                        localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다). ⚠️ 심볼릭 링크된 언어 파일도 센다 — 만료의 관측(pull/locales)과 이 한 군데만 다르다(ARCHITECTURE §5.10.2)
+  import/observe.ts     observeSurfaceLocales(tree, surface) — 같은 head 야간 방문·야간 적재 만료의 base 관측. pull/locales의 observeLocaleFiles에 위임하는 얇은 껍데기(순수)
+  push/locale-gate.ts   planLocaleImportGate(소스별 언어 변경 작업 → apply | defer `locale-change-pending`) · keptAddLocales(orphan 대상에서 뺄 ADD 코드) — 잎. CI(route)·야간 적재가 같이 부른다
+  pull/locales.ts       **언어 변경의 Publish 배선** — planProjectLocales(소스·트리 → lib/locales/publish-plan을 펴서 렌더 제외·delete·create·보류 계획, 거부는 locale-plan-refused) ·
+                        observeLocaleFiles(**base 관측의 유일한 함수** — 정규 파일 100644·100755만, mode를 모르면 unreadable) · observedLocalesOf · deliverableLocaleWork(조기 종료 판정) ·
+                        capturedBySurface(확인 tx가 쓸 캡처 목록) · localeFingerprintInput(Publish 지문 입력) · expiryCheckApplies(1층 앞 만료 판정) ·
+                        expiringLocalesOf·afterExpiry(미리보기의 읽기 전용 만료 판정·만료 뒤 상태, #267). 순수
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
   repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
@@ -885,7 +927,7 @@ lib/
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
-                        일치만, 이름으로 고르지 않는다) · catalog(도구 31 — 이름·순서·annotations·요구 조건의 코드 정본) ·
+                        일치만, 이름으로 고르지 않는다) · catalog(도구 35 — 이름·순서·annotations·요구 조건의 코드 정본) · locale-view(get_project·list_keys가 같이 쓰는 언어 변경 투영 languageChangesOf · languageChangeTotals — 코드를 객체 키로 쓰지 않는다) ·
                         docs(read_docs 판정 — sectionSlices · planDocsRead. 절 단위가 검색 색인 docsSearchEntries와 같아야 결과에 원고 조각을 붙인다).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveBearer — 개인 토큰 분기는 resolveApiToken) · tools/.
                         ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
@@ -894,7 +936,7 @@ lib/
                         순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
   mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define(appUrl — needs-browser 링크를 허용 호스트 origin의 절대 URL로) ·
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
-                        account·project·keys·repos·sync·publish·translations·settings·sources·members·onboarding · docs(read_docs — guide/en을 fs로 읽는다,
+                        account·project·keys·repos·sync·publish·translations·settings·sources·locales(언어 변경 도구 넷 add_locale · preview_locale_removal · remove_locale · cancel_locale_removal — 코어 lib/locales/change.ts)·members·onboarding · docs(read_docs — guide/en을 fs로 읽는다,
                         그래서 next.config.ts가 /api/mcp에 원고를 싣는다) · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
   oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) · authorize-view(화면 판정 순서 ·
@@ -971,7 +1013,10 @@ lib/
                         열림 · 없음(null) · 확인 못 함(undefined → 행 띠 "Couldn't check…"). PR·compare는 따로 settle한다
   projects/remote-plan.ts
                         그 판정의 순수 부분(변경된 로케일 **파일 수** · PR 번호 파싱). ⚠️ 키 수가
-                        아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
+                        아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다. 번호 파싱(`reviewNumberFrom`·`pullNumberFrom`)은 review-number로 옮겼고 이 파일은 같은 이름을 다시 내보낸다
+  projects/review-number.ts
+                        reviewNumberFrom·pullNumberFrom — 저장된 PR/MR 주소에서 번호를 뽑는 **클라이언트 잎**(GitHub `/pull/N` · GitLab `/-/merge_requests/N`). remote-plan이 lib/adapters를 물어 클라이언트가 못 읽어서 분리했다.
+                        소비자: Sources Languages 카드는 이 잎을 직접 읽고(저장된 `lastPrUrl`), Home 메타 열·사건 payload의 PR 번호(lib/locales/expire)·projects/remote는 remote-plan의 재수출을 읽는다
   projects/open-pr.ts   server-only. installation 토큰으로 sync 브랜치의 **열린 PR 하나**를 찾는다 —
                         Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
                         `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
@@ -1018,17 +1063,21 @@ lib/
                         Intl.DisplayNames([code])는 그 로케일 데이터가 없으면 보는 사람의 시스템
                         언어로 떨어져 Chrome(ko)에서 az-AZ가 "azərbaycan (아제르바이잔)"이었다
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
-                        한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
+                        한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다. ⚠️ `languageDisplay: "standard"`다(2026-10-17, locale-add D13) —
+                        기본(dialect)은 `pt-BR`을 "Brazilian Portuguese"로 읽어 `Portuguese (Brazil)`인 시안·가이드와 갈렸다. 밑줄 코드(`en_AU`)는 `Intl.DisplayNames`가 RangeError라 코드 그대로 낸다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
   landing/              랜딩(`/`) 스테이지의 수학 — stage(deviceForViewport · fitScale · PLAY · pinnedSpan · trackHeight · sceneAt · typedPrefix · frame).
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
                         계정(publicAccount — 로그인이면 아바타 메뉴의 이름·사진)도 그 파일이다
-  changelog/            `/changelog`의 원문 읽기. parse(parseReleases — Zod 검증 · 앱 태그 v<x.y.z>만 · published_at 내림차순, 같은
-                        시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
-                        imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
-                        남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
+  changelog/            `/changelog`의 원문 읽기. parse(parseReleasePage — 한 페이지 Zod 검증 · 앱 태그 v<x.y.z>만 · full = 거르기 전
+                        100칸 / mergeReleasePages — 태그로 중복을 걷고 합친 뒤 한 번 정렬: published_at 내림차순, 같은 시각은 semver 숫자순) ·
+                        markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog · imagesToLinks) · load(server-only 껍데기 — 페이지를
+                        최대 3장 따라 읽는다 · revalidate 3600 · 전체 3초 타임아웃 하나 · 둘째 페이지부터 실패는 읽은 데까지 + truncated ·
+                        ⚠️ 던지지 않는다, 로그엔 page·status·남은 한도만) · reveal(import 0 잎 — REVEAL_STEP · nextVisible · visibleToInclude,
+                        components/changelog/release-list가 값으로 읽어 client-graph의 정확한 목록에 든다).
+                        ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
   inbox/                Inbox(attention-inbox, 2026-10-05 · inbox-page, 2026-10-09 — ARCHITECTURE §6.365). plan(순수 — planInbox · isUnread · badgeLabel ·
                         clampSeenAt(페이지가 보낸 at을 toISOString 왕복 형만 받아 서버 시각으로 자른다), projectId를 입력에 두지 않는다.
                         클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
@@ -1054,7 +1103,11 @@ lib/
                         환경별로 안 바뀐다 · metadataOrigin(링크 미리보기 og/twitter의 metadataBase — 배포 모드 origin, canonical은 그대로) · OG_IMAGE · DOCS_TITLE · pageMetadata — 매번 완전한 객체, Next 병합이 얕다) · crawl(robotsFor —
                         production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
                         LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
-                        ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
+                        ⚠️ 잎, 전 페이지 클라이언트 번들에 든다) · agent-errors(markdownNotFound — 모드별 Markdown 404 본문, self-hosted는 상대 링크만 ·
+                        apiNotFoundBody — /api JSON 404 본문. 영어 고정)
+  openapi/              document(openApiDocument(version) — CI push API의 OpenAPI 3.1. 스키마는 서버 검증 Zod에서 z.toJSONSchema(io: "input")로
+                        생성하고 의미는 docs/ACTIONS.md가 정본이다 — agent-readiness 2026-10-15, ARCHITECTURE §8.1). __tests__/__snapshots__/openapi.json이
+                        골든이다 — 계약이 바뀌면 이 파일의 diff로 드러난다
   app-version.ts        ⚠️ 잎. 현재 앱 버전 `x.y.z` — `next.config`의 `env`가 `package.json`의 version을 빌드 때 박은 `APP_VERSION`을 읽는다
                         (LNB Changelog 배지). `package.json`을 import하지 않는다 — 사이드바(클라이언트)가 의존성 목록까지 싣는다
   links.ts              외부 링크(GitHub 리포 좌표 GITHUB_REPO 하나에서 리포·Releases·API·releaseTagUrl을 파생)와 푸터 링크 목록 —
@@ -1067,6 +1120,7 @@ lib/
                         /oauth/authorize는 lib/oauth/authorize(Object.hasOwn). Object.create(null)로 만든다(키를 주소창이 정한다)
   locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다.
                         isLocaleShaped는 별개 축(로케일인가) — `package`가 `package.json`을 겨누지 않게
+                        looksLikeLocale(어댑터 `read`의 로케일 이름 판정 — locale-add가 adapters/shared에서 옮겼다. 추가 입력이 관측할 수 있는 코드로 좁혀지는 근거)
   failure.ts            500 본문 판정 — 우리 메시지는 그대로, 남의 라이브러리 메시지는 ref만.
                         응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
                         logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
@@ -1119,7 +1173,7 @@ messages/ko-privacy.tsx  ko 방침 본 — en의 publicDocs.privacy와 같은 �
 prisma/schema.prisma    모델·enum 목록은 이 파일이 정본이다(TranslationSurface가 2026-09-14에 들어와 표면 축이 생겼고,
                         ProjectEvent·EventKind·ActorKind가 2026-09-20 활동 스트림에서, DeliveryConfirmation·
                         TranslationBaseline이 2026-09-23 translation-rework에서, ApiToken이 2026-09-28 mcp-connector에서,
-                        OAuthConnection·OAuthRefreshHistory·OAuthAuthorizationRequest·OAuthCode가 2026-09-29 mcp-oauth에서 붙었다).
+                        OAuthConnection·OAuthRefreshHistory·OAuthAuthorizationRequest·OAuthCode가 2026-09-29 mcp-oauth에서 붙었다, LocaleChange와 DeliveryConfirmation.deliveredLocaleChanges가 2026-10-14 locale-add에서 붙었다 — 마이그레이션 *_locale_change).
                         ⚠️ Auth.js 4테이블의 모양은 어댑터가 정한다 — 컬럼 하나만
                         빠져도 linkAccount가 런타임에 던지고 타입 검사는 못 본다
 prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다(additive-first)

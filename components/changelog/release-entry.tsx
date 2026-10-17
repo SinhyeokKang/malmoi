@@ -12,7 +12,8 @@ const FOCUS = "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outlin
 
 /**
  * 항목 틀 — 위 선 + 위아래 48(시안 1a는 40 — 2026-09-28 사용자가 눈으로 맞췄다). ⚠️ **첫 항목도 같다** — 소개 아래 40 뒤에 선이 한 번 서야 목록이 소개와 갈린다.
- * 실패·빈 목록·100건 문장(1c·1d)도 첫 항목 자리의 **이 틀**에 선다(`app/changelog/page.tsx`).
+ * 실패·빈 목록·옛 판(`truncated`) 문장(1c·1d)도 첫 항목 자리의 **이 틀**에 선다(`app/changelog/page.tsx`).
+ * 항목이 드러내기 래퍼(`RevealItem`, `display:none`)에 싸여도 선·여백은 항목마다 이 틀이 들어 깨지지 않는다 — 목록에 형제 선택자가 없다.
  */
 export const ENTRY_BLOCK = "border-border border-t py-12";
 
@@ -24,7 +25,7 @@ export const ENTRY_BLOCK = "border-border border-t py-12";
  *
  * ⚠️ **버전 글자가 곧 그 판의 GitHub Release 링크다**(같은 날 — 옛 자기 앵커 `#v1.0.1`과 본문 아래 `View on GitHub` 버튼 대체).
  * compare가 없는 첫 판에도 서도록 Release 페이지(`releaseTagUrl`)로 간다. 버전 주소의 해시 착지·포커스는 `h1`의 `id`를 `PublicScroller`가
- * 그대로 받는다. 태그가 `v<x.y.z>`만 지나오므로(`parseReleases`) `id`로 안전하다.
+ * 그대로 받는다(숨은 판이면 `ReleaseList`가 펼친 뒤 착지시킨다). 태그가 `v<x.y.z>`만 지나오므로(`parseReleasePage`) `id`로 안전하다.
  */
 export function ReleaseEntry({ m, uiLocale, release, latest = false }: { m: Messages; uiLocale: UiLocale; release: Release; latest?: boolean }) {
   const { tag, publishedAt, body } = release;

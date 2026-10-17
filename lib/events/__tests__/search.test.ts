@@ -22,6 +22,13 @@ describe("buildSearchText — 무엇이 들어가나", () => {
     for (const payload of payloads) expect(buildSearchText(REF, payload), payload.kind).toContain(REF);
   });
 
+  it("언어 변경은 언어 코드를 싣는다", () => {
+    const text = buildSearchText(REF, { kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null,
+      localeChange: { locale: "pt_BR", operation: "ADD", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null, via: null } });
+    expect(text).toContain("pt_br");
+    expect(text).toContain("web");
+  });
+
   it("번역은 키·소스·로케일을 싣는다", () => {
     const text = buildSearchText(REF, { kind: "TRANSLATION", surfaceSlug: "web-app", key: "home.title", locale: "ko", before: "before", after: "after" });
     expect(text).toContain("home.title");

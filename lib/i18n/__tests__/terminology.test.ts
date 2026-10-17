@@ -225,6 +225,9 @@ const GUIDE_ALLOWED: Readonly<Record<string, readonly string[]>> = {
 const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   // 코드의 `import` 문을 말한다 — Sync가 아니다.
   "adapterErrors.shorthand-property": ["import"],
+  // 언어 제거 확인의 앱 코드 경고 — 그 언어를 불러오는 코드의 `import` 문을 말한다(시안 D1). Sync가 아니다.
+  "sources.locale.appCodeLine": ["import"],
+  "sources.locale.onGitLab.appCodeLine": ["import"],
   // ①은 개발자가 고르는 화면이고 GitHub이 보여 주는 값이다 (DESIGN §10.1).
   "newProject.repo.pushedAt": ["push"],
   // 설정의 CI 카드 — 워크플로가 실제로 하는 일을 개발자에게 말한다 (DESIGN §10.1).
@@ -238,6 +241,9 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   "locales.field.help": ["locale"],
   // OG 이미지에 그려진 파일 경로(`src/i18n/locales.json`)를 그대로 묘사한다 — 화면 용어가 아니라 그림 속 글자다.
   "seo.ogImageAlt": ["locale"],
+  // 에이전트가 읽는 404 — 엔드포인트 이름 `/api/push`의 CI API를 가리킨다. 편집자 화면이 아니라 개발자 계약의 이름이다(agent-readiness).
+  "seo.agentNotFound.openapi": ["push"],
+  "seo.apiNotFound": ["push"],
 
   // ── 보류(Held) — 미전달 편집·열린 PR·PR 조회 실패·너무 큼 (DESIGN §2.4). held는 이 키들 아래만 선다.
   "logs.status.deferred": ["held"],
@@ -248,6 +254,8 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   "home.cards.held.*": ["held"],
   "repositorySync.kept": ["held"],
   "mcp.summary.synced": ["held"],
+  // 열린 PR 동안 그 언어만 보류된다(`proposal-path-exists` — locale-add 시안 P1 ③). 같은 보류 개념의 파일 머리 낱말이다.
+  "translations.publish.language.label.held": ["held"],
   // ── Publish 일부 보류(Held back) — 결과 모달·Logs의 Publish 결과만.
   "translations.publish.*": ["held back"],
   "logs.status.notSent": ["held back"],

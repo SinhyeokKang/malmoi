@@ -90,6 +90,17 @@ describe("splitEdits — 캡처 편집을 실린 것/보류된 것으로 가른�
     expect(out.withheldBy).toEqual({ file: 1, key: 0 });
   });
 
+  /**
+   * 언어 변경이 뺀 언어(보류된 ADD 등 — `ProjectLocalePlan.exclude`)의 편집은 파일 보류에 들되 따로 센다(R-E3 Y1). 화면이 그 수를 "파일이 아직 없다"
+   * 문장에서 빼고 Held 행이 이유를 말한다. 파일 보류 수 자체(`file`)는 그대로라 `SyncRun.withheld`·MCP 수가 바뀌지 않는다.
+   */
+  it("언어 변경이 뺀 언어의 편집은 file에 들고 language로도 센다", () => {
+    const withheld = { locales: new Set(["s1\0fr", "s1\0de"]), cells: new Set<string>(), languages: new Set(["s1\0fr"]) };
+    const out = splitEdits([edit("e1", "ko", "k1"), edit("e2", "fr", "k1"), edit("e3", "de", "k1")], withheld, keyOf);
+    expect(out.withheld.map(e => e.id)).toEqual(["e2", "e3"]);
+    expect(out.withheldBy).toEqual({ file: 2, key: 0, language: 1 });
+  });
+
   it("셀 좌표 안 편집 → withheld (key 사유) · 같은 로케일 다른 키 → delivered", () => {
     const withheld = { locales: new Set<string>(), cells: new Set(["s1\0fr\0z"]) };
     const out = splitEdits([edit("e1", "fr", "k1"), edit("e2", "fr", "k2")], withheld, keyOf);

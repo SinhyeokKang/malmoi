@@ -13,13 +13,15 @@ Malmoi reúne los archivos en una única solicitud de cambios (un *pull request*
 1. Elige **Publicar** en la parte superior de **Inicio** o de **Traducciones**.
 2. Revisa en la vista previa los textos (claves) y los idiomas y usa la acción que se describe abajo.
 
-![La vista previa de publicación con un valor cambiado, el idioma y un botón para abrir una nueva pull request](/guide/publish-preview.webp "Revisa cada cambio antes de publicar.")
+![La vista previa de publicación con 14 cambios agrupados por archivo, cada uno con su clave, idioma, valor anterior y nuevo y quién lo editó, y un botón para abrir una nueva pull request](/guide/publish-preview.webp "Revisa cada cambio antes de publicar.")
 
 ## Publica los cambios {#publish}
 
 Elige **Abrir pull request** o Reemplazar pull request #N. Si tus cambios ya coinciden con los archivos y no hay ningún pull request abierto, el botón es **Publicar**. Cuando hay un pull request abierto y los archivos coinciden, la acción es Cerrar pull request #N.
 
 En un proyecto de GitLab, los mismos botones nombran una merge request, numerada como `!128`: **Abrir merge request**, Reemplazar la merge request !N y Cerrar la merge request !N.
+
+Un propietario del proyecto también puede añadir o quitar un idioma, lo que sale en la misma publicación como un archivo de idioma nuevo o borrado. Cuando solo cambian archivos de idioma, la vista previa se titula **Publicar cambios de idioma**. Consulta [Publica el cambio](../setup/languages.md#publish).
 
 Si Publicar está desactivado, puede que no haya ediciones sin enviar o que publicar no esté disponible temporalmente. Espera a que termine una sincronización en curso; pregunta a un propietario del proyecto si sigue sin estar disponible.
 

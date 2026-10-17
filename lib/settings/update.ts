@@ -26,7 +26,14 @@ export const BaseBranchInput = z.object({
   baseBranch: z.string().min(1),
 });
 
-export type BaseBranchResult = { ok: true } | { ok: false; error: RepositorySettingsError | AccessError };
+/**
+ * `locale-change-pending` — 언어 추가·제거 의도가 남은 동안은 기준 브랜치를 바꾸지 않는다(locale-add design §1 끝). 의도는 옛 브랜치를 보고 승인됐고,
+ * 바꾸면 그 삭제가 승인 없이 다른 브랜치로 간다. `surfaceSlugs`는 의도가 남은 활성 소스(slug순)다 — Settings가 그 이름으로 안내한다(시안 P2).
+ */
+export type BaseBranchResult =
+  | { ok: true }
+  | { ok: false; error: RepositorySettingsError | AccessError }
+  | { ok: false; error: "locale-change-pending"; surfaceSlugs: string[] };
 
 /**
  * 기준 브랜치 — `Project.baseBranch`를 **즉시** 쓴다. `checkFormat`이 보지 않는 축이라 대기 개념이 없다.
@@ -55,6 +62,12 @@ export async function changeBaseBranch(prisma: PrismaClient, subject: Subject, i
     const project = await tx.project.findUnique({ where: { id: projectId }, select: { baseBranch: true } });
     if (project === null) return { ok: false, error: "not-found" } as const;
     if (baseBranch !== project.baseBranch) {
+      // 잠금 뒤에 센다 — 언어 변경 tx도 Project 잠금을 먼저 잡으므로 경합한 요청이 이 판정을 비켜 가지 못한다. 보관된 소스의 행은 의도가 아니다.
+      const pending = await tx.localeChange.findMany({ where: { projectId, locale: { surface: { archivedAt: null } } }, select: { locale: { select: { surface: { select: { slug: true } } } } } });
+      if (pending.length > 0) {
+        const surfaceSlugs = [...new Set(pending.map(row => row.locale.surface.slug))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+        return { ok: false, error: "locale-change-pending", surfaceSlugs } as const;
+      }
       await tx.project.update({ where: { id: projectId }, data: { baseBranch } });
       // 브랜치는 되돌릴 수 있어 context 지문만으로는 옛 확인이 부활한다 — 같은 tx에서 무효화한다 (ARCHITECTURE §5.8).
       await invalidateDeliveryConfirmations(tx, projectId);

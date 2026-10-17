@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 #
 # 셀프 호스팅 이미지 한 벌 (self-hosting design §5). web(`next start`)·migrate(`prisma migrate deploy` + bootstrap)·키 운영
 # (`pnpm credentials:self-hosted`)이 같은 이미지·같은 digest에서 돈다.
@@ -10,7 +10,9 @@
 # ⚠️ 빌드 플랫폼 = 실행 플랫폼이어야 한다 — sharp·Prisma 엔진은 설치 때 그 플랫폼 바이너리를 받는다(`--platform linux/amd64`).
 #
 # Node 메이저 == `.nvmrc`, pnpm == `packageManager`, `.npmrc` 복사를 `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다.
-FROM node:24-bookworm-slim
+# ⚠️ 서드파티 이미지는 `tag@sha256:…`(멀티 아키텍처 index digest)로 고정한다 — 같은 태그의 재빌드가 발행 이미지의 베이스를 조용히 바꾸지 않게
+#    (2026-10-17 보안 감사). 올릴 때는 태그와 digest를 함께 바꾼다. 같은 게이트가 tag@digest 모양을 센다.
+FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5
 
 # GHCR이 이 라벨로 패키지를 리포에 잇는다(리포의 Packages 탭) — 패키지를 새로 만들어도 연결이 따라온다.
 LABEL org.opencontainers.image.source=https://github.com/SinhyeokKang/malmoi

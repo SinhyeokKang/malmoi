@@ -370,7 +370,9 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   적으면 그 왕복이 예고 없이 닥치고 두 번째 확인이 실패로 읽힌다. ⚠️ **이 기기도 함께 닫힌다**
   (`all devices, this one included`). 결과는 `routes.signIn({ sessions })`·
   `routes.account({ sessionRevocation })`가 실어 나른다 — 갈래 다섯이고, **확인 상대를 못 고르는
-  갈래**(`pickLoginAccount`가 `null`)가 하나 더 있다
+  갈래**(`pickLoginAccount`가 `null`)가 하나 더 있다. ⚠️ **세션만 끝내지 않는다** (2026-10-17 보안 감사) — 같은 트랜잭션에서
+  그 사용자의 MCP 개인 토큰·OAuth 앱 연결·미교환 authorization code도 지운다. 세션 하나면 그 둘을 발급할 수 있어서, 세션만 지우면
+  잃어버린 기기에서 만든 자격증명이 회수 뒤에도 `/api/mcp`에서 쓰기를 계속한다. 확인창(`confirmHint`)과 `/privacy` 보존 절이 그렇게 말한다
 - **MCP 커넥터 — `/mcp`** (2026-09-28 사용자 판정, `mcp-connector` — §4.3 ⑤를 열었다). CLI·코딩 에이전트가
   `https://mal-moi.com/api/mcp`에 붙어 화면과 같은 일을 한다 — 생성·번역·Publish·설정·멤버. ⚠️ **연결 방식이 둘이다**
   (2026-09-29 사용자 판정, `mcp-oauth` — 병행이고 대체가 아니다): **브라우저 로그인(OAuth)** — 헤더 없이 서버 URL만 등록하면
@@ -397,7 +399,7 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   그래서 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과 같다. 이 기기의 첫 로그인 순간 한 번의 전환은 남는다. "기기 설정 따르기" 같은 넷째 선택지는 없다.
   ③ **번역하는 것**: 앱·공개 셸의 화면 문구 전부, 화면 숫자(`formatNumber`, 화면 언어별 구분자)·날짜(형식만 — 시간대는 아래 "표시 시간대"이고 오프셋 라벨은 세 언어 모두 남는다)·상대 시각·언어 이름, `/docs` 원고(언어별 세 벌 — 스크린샷만 en 공유),
   `/privacy` 본문(**en·ko 두 벌 — es 화면은 en 본문**). **영어로 고정되는 것**: MCP 도구 응답 · 초대 메일(받는 사람의 언어를 모른다) · SEO 메타·탭 제목·
-  `llms*.txt`·sitemap(크롤러는 쿠키가 없다) · `/api/*` JSON · cron·서버 로그 · CLI 출력 · 가이드 스크린샷 · changelog 본문(GitHub Release) ·
+  `llms*.txt`·sitemap(크롤러는 쿠키가 없다) · Markdown 404·`/openapi.json`(에이전트가 읽는다) · `/api/*` JSON · cron·서버 로그 · CLI 출력 · 가이드 스크린샷 · changelog 본문(GitHub Release) ·
   리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 바뀌면 안 된다).
   ④ **검수**: ko(사전·가이드·방침)는 사용자가 검수하고 **es는 원어민 검수 없이 에이전트 초안으로 낸다**(사용자 결정 — 품질 위험을 감수했다).
   이 리포의 사전을 Malmoi 자신으로 관리하는 dogfooding은 하지 않는다 — 사전 값에 함수·ReactNode가 섞여 `ts-dict` 어댑터의 문자열 사전과 맞지 않는다.
@@ -489,6 +491,10 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   부르지 않고, 외부 에이전트의 저장은 `Save`를 누른 편집자의 저장이다(2026-09-28 사용자 확정). 이 비범위는 Malmoi가 번역을
   **생성하는** 기능에 남는다.
 - **실시간 공동 편집** — 위 "동시 편집"의 연장.
+- **OpenAPI 대상 확장** (2026-10-15, agent-readiness) — `/openapi.json`은 CI push API 둘(`/api/push`·`/api/push/failure`)만 싣는다.
+  `/oauth/*`(RFC 8414 발견 문서가 이미 있다)·`/api/mcp`(JSON-RPC)·`/api/pull`(cron 전용)을 싣는 것과 오류 갈래 열거는 비범위다.
+- **일반 페이지의 Markdown 협상** (2026-10-15, agent-readiness) — `Accept: text/markdown`에 Markdown을 내는 것은 어떤 라우트에도 매칭되지 않는
+  경로의 404뿐이다. `/docs/*` 등 페이지를 Markdown으로 내지 않는다 — 원고는 이미 `/llms-full.txt`가 낸다.
 - **범용 알림 시스템** — 멤버 초대 메일(§4.1) 밖의 발송은 없다(ARCHITECTURE §6.00). 발송 이력·배달·발송물(메일)의 열람 추적, 자동 재시도·작업 큐, 캠페인 발송도 만들지 않는다.
   ⚠️ **Inbox(헤더 드롭다운 · `/inbox` 페이지)는 이것이 아니다** — 발송 없이 현재 상태를 모으며 읽음은 사용자당 시각 하나다. 항목별 읽음·발송·구독·사건 기반 알림을 더하는 순간 이 비범위에 든다.
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
@@ -636,14 +642,14 @@ sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Pro
 다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는 겹칠 수 없다.
 신규 생성에서는 후보 여럿을 체크해 한 번에 추가한다. 기본 표면은 체크된 후보 중 탐지 순서가 가장 앞선 표면이다.
 **소스 제거·재추가** (2026-10-05, sources-add-remove — 옛 판정 "표면 보관·복원은 다음 라운드"의 결론). OWNER가 소스 상세 모달
-바닥 왼쪽의 [Remove source]로 소스를 뺀다. 제거는 `TranslationSurface.archivedAt`을 세울 뿐 키·번역·이력을 지우지 않고 리포 파일도
+바닥 왼쪽의 [Detach source]로 소스를 뺀다(화면 낱말은 Detach — 2026-10-16 사용자: 리포 파일을 지우지 않으므로 Remove는 거짓이다. 리포 파일을 실제로 지우는 언어 제거만 Remove다). 제거는 `TranslationSurface.archivedAt`을 세울 뿐 키·번역·이력을 지우지 않고 리포 파일도
 건드리지 않는다 — Sources 목록·셸 전환·Home·Inbox·검색·Publish·야간 적재에서 사라지고 그 URL은 `notFound()`다. "보관됨" 목록·Restore
 UI는 없다 — **같은 경로를 다시 추가하는 것이 유일한 복원 길이다**: 같은 `pathTemplate` + 같은 어댑터면 옛 행이 되살아나고(`id`·`slug`·이력
 유지, 화면에서는 새 추가와 구별되지 않는다), 어댑터가 다르면 새 행(slug 접미사)이다. **마지막 활성 소스는 제거할 수 없다**(`last-source`).
 보관된 프로젝트에서는 `archived`, 적재(동기화)가 진행 중인 소스는 `importing`으로 거부된다(CI·수동 Sync — 끝난 뒤 다시). 기본 소스를 빼면 남은 활성 소스 중 slug 오름차순 첫째가
 기본이 된다(화면 안내 없음). 확인 창은 대상을 slug로 부르고 — 미전달 편집 n건은 나중에 다시 추가하면 리포 값으로 바뀐다(있을 때 · ⚠️ "버려진다"가 아니다 — 제거는 번역을 건드리지 않고 재추가 첫 적재가 리포에 값이 있는 칸만 덮는다, 사용자 결정 2026-10-06) · 열린 Malmoi PR의 이 소스 변경은 다음
 Publish에서 빠진다(PR이 있을 때) · 워크플로의 이 소스 step을 지우지 않으면 다음 실행이 실패하고 뒤 step의 다른 소스도 적재되지 않는다(**항상** —
-앱은 워크플로 등록 여부를 모른다) · 리포 파일은 바뀌지 않는다(항상)를 한 Alert에 담는다. MCP `remove_source`가 같은 코어를 쓴다.
+앱은 워크플로 등록 여부를 모른다) · 리포 파일은 바뀌지 않는다(항상)를 한 Alert에 담는다. MCP `detach_source`가 같은 코어를 쓴다.
 **Logs는 예외다** — 사건을 지우지 않으므로 소스 필터에 제거된 소스가 `(removed)` 표시로 남고, 그 소스로 거를 수 있다(링크는 없다).
 
 설정은 General·Repository·CI integration·Archive 네 카드다. CI 카드의 Sources 링크가 소스 관리로 잇는다.
@@ -655,9 +661,21 @@ orphaned를 제외한 활성 키·언어 수다. 워크플로의 SHA 없는 소�
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 
-SaaS UI에서 로케일을 **추가·삭제하지 않는다.** 별도 화면이 필요하면 편집 기능이 아니라 **발견 결과와
-활성 상태를 보여주는 진단 화면**이어야 한다. 리포에서 사라진 로케일은 `Locale.orphaned`가 이미
-비파괴적으로 든다(ARCHITECTURE §5.5.16).
+로케일 존재의 정본은 여전히 리포다. 리포에서 사라진 로케일은 `Locale.orphaned`가 비파괴적으로 든다(ARCHITECTURE §5.5.16).
+
+⚠️ **OWNER는 UI·MCP에서 언어 추가·제거를 요청할 수 있다** (2026-10-14, locale-add — 이전 "추가·삭제하지 않는다"를 해제했다).
+요청은 리포를 직접 바꾸지 않고 **기존 Publish PR/MR로 파일 집합 변경을 제안**할 뿐이다. 범위는 좁다:
+
+- **지원 포맷**: `json-catalog`·`chrome-locales`(언어마다 파일이 따로인 재생성 어댑터)뿐이다. `ts-dict`·`yaml-catalog`·`code-dict`의 언어 구성 변경과
+  공유 파일 안 로케일 객체 삭제는 하지 않는다.
+- **단위**: 소스별 언어 하나씩 추가·제거·취소. **기준 언어는 제거할 수 없다** — 다른 활성 언어로 기준을 바꾼 뒤 제거한다.
+- **권한**: OWNER(`project:settings`), 비보관 프로젝트. 웹과 MCP가 같은 코어를 쓴다.
+- **보존**: 제거해도 로케일·번역·사건 행은 지우지 않는다(불변식 3). 같은 코드를 다시 추가하면 되살아난다.
+- **미전달 편집**: 그 언어의 미전달 편집은 서버 발급 지문 승인으로 폐기한 뒤 제거·추가 취소가 진행되고, 제거 요청 중에는 그 언어 편집이 잠긴다.
+- **의도는 만료된다**: 열린 PR/MR이 없음을 성공한 조회로 확인하고 base를 관측하면 요청 행이 사라지고, 그 뒤 존재 여부는 다시 리포가 정한다.
+  PR/MR을 머지하지 않고 닫으면 리포에 파일이 그대로 있으므로 언어도 그대로 활성이다.
+
+번역 생성·포맷 설정 UI(§4.2)는 이 해제와 무관하게 비범위다.
 
 ### 7.3 자동 탐지는 추천이지 진실이 아니다
 
@@ -818,11 +836,14 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
 /changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
+                               수집 = GitHub 페이지를 따라 읽는다(최대 3페이지 · 전체 3초 · 둘째 페이지부터 실패하면 읽은 데까지 + 끝 문장) · 표시 = 처음 10개, 스크롤(또는 버튼)로 10개씩, 끝 문장은 다 드러난 뒤 (2026-10-16, changelog-pagination)
                                원문 = 사용자 체감 변화 + `/merge` 9-b가 붙이는 `**Self-hosting image:**` 문단 하나(끝의 Full changelog 줄은 걷힌다) (2026-10-12, image-publish-workflow)
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences·/inbox 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
                                self-hosted는 Vercel이 아니라 `VERCEL_ENV`가 비어 늘 Disallow: / — 거기에 middleware가 모든 페이지에 noindex, sitemap·llms 세 경로를 404로 더한다(색인 계약은 hosted만의 것) ← self-hosting (2026-10-09)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
 /llms.txt · /llms-full.txt     ✅ 가이드 목차·현재 도입 사실·Optional 링크 · 원고 전문(Source 줄·내부 문서 링크의 공개 절대 URL) — text/plain · en 원고만 ← seo-geo
+/openapi.json                  ✅ CI push API(POST /api/push · /api/push/failure)의 OpenAPI 3.1 — Zod에서 생성한 형태의 파생본(의미는 ACTIONS) · 서버 URL 상대 / · 무인증 ← agent-readiness (2026-10-15)
+                               매칭 없는 경로 + Accept text/markdown → 404 Markdown(Docs·llms.txt·/openapi.json 링크, self-hosted는 상대 링크 둘) · 어떤 route도 받지 않는 /api/* → 404 JSON ← agent-readiness
                                색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
@@ -854,7 +875,13 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 GitHub는 내비가 아니라 헤더 우측 primary 왼쪽에 돌아왔다(아래 랜딩 문단, `components/public-shell/header.tsx`). ③ 절대 날짜·시각 형이 `Sep 27, 2026` / `Sep 27, 2026 16:34 UTC` 하나로 모였다 — 날짜만
 쓰는 자리와 시각을 쓰는 자리가 서로 달랐고 이 페이지가 셋째 형을 들일 참이었다("UTC를 말한다"는 그때 그대로였다 — 2026-10-05부터 앱 안은 보는 사람이 고른 시간대이고 `/changelog`는 UTC로 남는다, §4.1 "표시 시간대"). **원문의 정본은
 GitHub Release**라 소스에 사본이 없고, 본문 이미지는 `<img>`가 아니라 링크로 나간다(CSP·방침 전송처를 넓히지 않는다).
-비범위: 버전별 하위 페이지 · 검색·필터·페이지네이션(100건 초과분은 GitHub 링크 한 문장) · RSS·구독·새 버전 배지(§4.2 알림
+**페이지네이션은 범위로 들어왔다** (2026-10-16 사용자, changelog-pagination) — 처음 출시 때 일부러 뺀 결정을 되돌린다. 근거: 앱 릴리스가
+하루 약 1.9개씩 쌓여 2026년 11월 말이면 GitHub 한 요청 상한(100건)에 닿고, 그 뒤 옛 판은 앱 안에서 볼 수 없다. 판정은 둘로 나눈다.
+**수집**: GitHub Releases를 다음 페이지까지 따라 읽는다 — 최대 3페이지(원 배열 300건), 콜드 캐시 첫 진입의 총 대기 상한은 페이지 수와
+무관하게 3초 하나, 첫 페이지가 실패하면 지금과 같은 안내이고 둘째 페이지부터 실패·타임아웃이면 읽은 데까지 보인다. 상한에 닿거나
+부분 실패면 목록 끝에 `Older releases are on GitHub Releases.` 문장이 선다. **표시**: 처음 10개만 보이고, 목록 끝 근처로 스크롤하면 다음 10개가 자동으로
+드러난다(키보드·스크린리더용 버튼이 같은 자리에 있다). 끝 문장은 모든 항목이 드러난 뒤에만 선다. 서버가 받은 전 목록을 렌더하므로 추가 요청·새 진입점은 없다.
+비범위: 버전별 하위 페이지 · 검색·필터 · RSS·구독·새 버전 배지(§4.2 알림
 비범위 인접) · 앱 안 작성 UI · `/merge` 직후 즉시 반영.
 ⚠️ **새 버전 배지는 계속 비범위다** — 릴리스 사건 기반 알림이라 현재 상태를 모으는 Attention inbox의 예외에 들지 않는다.
 
@@ -1072,7 +1099,8 @@ Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`�
 다시 돌리고, 적재된 뒤면 고칠 곳이 대상 리포의 CI다)로 선다. ⚠️ **새 토큰을 만들지 않았다**(같은
 `PUSH_TOKEN`이라 인증 경로가 늘지 않는다) ⚠️ **아무것도 적재하지 않는다**(`lastCommitSha`·
 `lastCommitAt`도 안 움직인다 — 전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를
-받는다). 외부 계약의 정본은 [ACTIONS.md](./ACTIONS.md)다.
+받는다). 외부 계약의 정본은 [ACTIONS.md](./ACTIONS.md)다 — **의미(동작·red 조건·안정성)는 ACTIONS가 정하고,
+`/openapi.json`(§7.7)은 서버 검증 Zod에서 생성한 형태의 파생본이다**(2026-10-15, agent-readiness).
 
 ⚠️ **조회 방향이 중요하다** (2026-09-07 구현에서 확정):
 `sha256(Bearer)`로 **행을 찾고**, 페이로드의 `projectSlug`는 그 행의 slug와 **나중에** 대조한다. 페이로드
@@ -1146,7 +1174,8 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 멈춤" 한 줄 모델이 된다. 보관된 프로젝트를 다시 보관하는 것은 쓰기가 아니라 no-op이라 성공으로 둔다.
 판정은 잠금 안에서 한다(`lockProjectAccess` — ARCHITECTURE §5.6.4).
 **초대 수락도 `archived`로 거부한다** (2026-09-24, audit #79) — 보관 중에는 멤버가 새로 들지 않는다. 초대 화면이
-수락 버튼 대신 까닭을 보이고, 초대는 **소비하지 않는다**: 복원 뒤 만료 전이면 같은 링크가 산다.
+수락 버튼 대신 까닭을 보이고, 초대는 **소비하지 않는다**: 복원 뒤 만료 전이면 같은 링크가 산다. 판정은 `Project` 잠금
+뒤에 한 번 더 한다(2026-10-17) — 수락이 잠금을 기다리는 사이 보관이 커밋돼도 멤버가 들지 않는다.
 
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
 - **열린 `malmoi-i18n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을

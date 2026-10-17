@@ -39,6 +39,7 @@ export function PublicScroller({ children }: { children: ReactNode }) {
     // ⚠️ **해시 착지는 대상 헤딩이 포커스를 받는다**(DESIGN §6.61) — 스크롤러가 가져가면 Tab이 문서 첫머리에서
     // 다시 시작한다. 대상이 `tabIndex`를 든 것(원고 h2·방침 h2)일 때만이다 — 못 받는 요소에 주면 포커스가 body로 샌다.
     // 자식 effect가 먼저 돌아 여기가 마지막 판정이므로 다른 잎이 따로 옮기면 여기서 덮인다.
+    // 예외 하나 — `/changelog`의 숨은(`hidden`) 판은 여기서 포커스를 못 받고, `ReleaseList`가 펼친 렌더 뒤에 착지·포커스시킨다.
     const target = hashTarget(window.location.hash);
     (target && scroller.contains(target) && target.hasAttribute("tabindex") ? target : scroller).focus({ preventScroll: true });
 

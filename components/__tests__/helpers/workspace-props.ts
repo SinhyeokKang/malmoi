@@ -21,9 +21,9 @@ export function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
       key: { id: "k1", key: "common.empty", namespace: "common", sourceText: "Nothing here", description: "Shown on the empty list.", surfaceSlug: "web" },
       refs: [{ path: "src/empty.tsx", line: 24, href: "https://github.com/o/r/blob/abc/src/empty.tsx#L24" }],
       locales: [
-        { code: "en", isBase: true, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
-        { code: "ko", isBase: false, value: "비어 있음", needsReview: false, pending: true, actorLabel: "Editor" },
-        { code: "zh", isBase: false, value: null, needsReview: false, pending: false, actorLabel: null },
+        { code: "en", isBase: true, readOnly: false, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
+        { code: "ko", isBase: false, readOnly: false, value: "비어 있음", needsReview: false, pending: true, actorLabel: "Editor" },
+        { code: "zh", isBase: false, readOnly: false, value: null, needsReview: false, pending: false, actorLabel: null },
       ],
     },
     unpublished: 1,

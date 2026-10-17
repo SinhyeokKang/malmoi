@@ -130,7 +130,7 @@ describe("쓰기 — publishSnapshot · resetSyncBranch (첫 외부 쓰기는 �
     const { fake, open } = client({ [`POST ${P}/repository/commits`]: { status: 201, body: { id: "c".repeat(40), parent_ids: [BASE] } } });
     const git = await open();
     const sha = await git.publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "2 files", changes: [
-      { path: "locales/ko.json", content: "{}\n", inBase: true }, { path: "locales/fr.json", content: "{}\n", inBase: false },
+      { kind: "upsert", path: "locales/ko.json", content: "{}\n", inBase: true }, { kind: "upsert", path: "locales/fr.json", content: "{}\n", inBase: false },
     ] });
     expect(sha).toBe("c".repeat(40));
     expect(keys(writes(fake.calls))).toEqual([`POST ${P}/repository/commits`]);
@@ -151,7 +151,7 @@ describe("쓰기 — publishSnapshot · resetSyncBranch (첫 외부 쓰기는 �
   it("⚠️ 쓰기 실패(보호 브랜치 403·force 400·5xx)는 한 번만 보내고 던진다 — 재시도·우회 없음", async () => {
     for (const status of [403, 400, 502]) {
       const { fake, open } = client({ [`POST ${P}/repository/commits`]: { status, body: { message: "You are not allowed to push into this branch" } } });
-      await expect((await open()).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ path: "a.json", content: "x", inBase: true }] })).rejects.toThrow();
+      await expect((await open()).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ kind: "upsert", path: "a.json", content: "x", inBase: true }] })).rejects.toThrow();
       expect(writes(fake.calls), String(status)).toHaveLength(1);
     }
   });
@@ -174,7 +174,7 @@ describe("MR 생명주기 — findOpenPr · createPr · updatePrTitle · updateP
     const pages = [json([mr({ iid: 9, source_project_id: 5 })], 200, { "x-next-page": "2" }), json([mr()], 200, { "x-next-page": "" })];
     let n = 0;
     const { fake, open } = client({ [`GET ${P}/merge_requests`]: () => pages[n++]! });
-    expect(await (await open()).findOpenPr(SYNC)).toEqual({ url: "https://gitlab.com/g/sub/app/-/merge_requests/3", number: 3, title: "t", base: "main" });
+    expect(await (await open()).findOpenPr(SYNC)).toEqual({ url: "https://gitlab.com/g/sub/app/-/merge_requests/3", number: 3, title: "t", base: "main", body: "" });
     const list = fake.calls.filter((call) => call.url.pathname.endsWith("/merge_requests"));
     expect(list.map((call) => [call.url.searchParams.get("state"), call.url.searchParams.get("source_branch"), call.url.searchParams.get("page")])).toEqual([["opened", SYNC, "1"], ["opened", SYNC, "2"]]);
   });
@@ -238,9 +238,10 @@ describe("openGitLabReader — 온보딩·Sync의 스냅샷 (값으로 준다)",
     return { fake, open: () => openGitLabReader(TARGET, CREDENTIAL, { fetch: fake.fetch }) };
   };
 
+  // mode는 언어 변경 만료의 정규 파일 판정 입력이다(`observeLocaleFiles` — 링크도 blob으로 온다).
   it("snapshot: head·커밋 시각(ISO UTC)·blob만 — files[].size는 비어 있다(크기는 `sizes`)", async () => {
     const { open } = reader({ ...head, ...tree });
-    expect(await (await open()).snapshot("main")).toEqual({ status: "ok", headSha: BASE, headCommittedAt: "2026-10-12T08:47:45.000Z", files: [{ path: "locales/en.json", sha: "e1" }] });
+    expect(await (await open()).snapshot("main")).toEqual({ status: "ok", headSha: BASE, headCommittedAt: "2026-10-12T08:47:45.000Z", files: [{ path: "locales/en.json", sha: "e1", mode: "100644" }] });
   });
 
   it("snapshot: base 404는 base-branch-missing · 그 밖의 실패는 unavailable · 페이지 상한은 truncated", async () => {

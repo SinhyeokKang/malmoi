@@ -18,7 +18,7 @@ export type FakeCall = { method: keyof GitClient; args: unknown[] };
  * 어느 쪽에도 없는 새 키를 red로 만든다.
  */
 export const GIT_READS = ["getRefSha", "getTree", "getBlobText", "findOpenPr", "compareToBase", "isPullRequestOpen"] as const satisfies readonly (keyof GitClient)[];
-export const GIT_MUTATIONS = ["publishSnapshot", "resetSyncBranch", "closePr", "createPr", "updatePrTitle", "updatePrBase"] as const satisfies readonly (keyof GitClient)[];
+export const GIT_MUTATIONS = ["publishSnapshot", "resetSyncBranch", "closePr", "createPr", "updatePrTitle", "updatePrBase", "updatePr"] as const satisfies readonly (keyof GitClient)[];
 type Unclassified = Exclude<keyof GitClient, (typeof GIT_READS)[number] | (typeof GIT_MUTATIONS)[number]>;
 const everyMethodClassified: [Unclassified] extends [never] ? true : Unclassified = true;
 void everyMethodClassified;
@@ -35,7 +35,7 @@ export type FakeGitOptions = {
   /** blob SHA → 내용. 주입되지 않은 SHA를 요구하면 던진다. */
   blobs?: Record<string, string>;
   /** 열린 PR. 없으면 `null`이 되어 생성 경로를 태운다. `title`은 마커 유무 판정의 입력이다. */
-  openPr?: { url: string; number: number; title: string; base?: string };
+  openPr?: { url: string; number: number; title: string; base?: string; body?: string };
   /**
    * 이 메서드가 호출되면 던진다. 실패 후 상태(`lastPulledAt` 미갱신)를 검증하는 입력이다.
    * 객체로 주면 `nth`번째 호출(1부터)만 던지고, `status`가 있으면 그 HTTP 상태를 실은 오류다(`httpStatus`가 읽는다) — 분류기가 상태로 가르는 경로의 입력이다.
@@ -92,7 +92,7 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     async findOpenPr(branch) {
       record("findOpenPr", [branch]);
       // base를 안 주면 테스트 프로젝트의 기본 base(`dev`)다 — 어긋남 경로는 명시할 때만 탄다.
-      return opts.openPr === undefined ? null : { ...opts.openPr, base: opts.openPr.base ?? "dev" };
+      return opts.openPr === undefined ? null : { ...opts.openPr, base: opts.openPr.base ?? "dev", body: opts.openPr.body ?? "" };
     },
     async createPr(headBranch, baseBranch, title, body) {
       record("createPr", [headBranch, baseBranch, title, body]);
@@ -103,6 +103,9 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     },
     async updatePrBase(pullNumber, base) {
       record("updatePrBase", [pullNumber, base]);
+    },
+    async updatePr(pullNumber, body) {
+      record("updatePr", [pullNumber, body]);
     },
     async closePr(pullNumber, comment) {
       record("closePr", [pullNumber, comment]);

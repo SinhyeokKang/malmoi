@@ -272,6 +272,7 @@ describe("classifySyncError — 안정적 오류 코드", () => {
       "stale",
       "unknown",
       "reconfirm",
+      "locale-plan-refused",
     ]);
   });
 });

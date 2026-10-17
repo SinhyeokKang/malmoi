@@ -343,7 +343,7 @@ describe("planPullChanges — 2층 blob SHA 비교", () => {
       [{ path: "i18n/ko.json", content: KO }],
       [{ path: "i18n/ko.json", sha: blobSha(EN) }],
     );
-    expect(changes).toEqual([{ path: "i18n/ko.json", content: KO }]);
+    expect(changes).toEqual([{ kind: "upsert", path: "i18n/ko.json", content: KO }]);
   });
 
   it("base 트리에 없는 경로는 신규로 포함한다", () => {
@@ -351,7 +351,7 @@ describe("planPullChanges — 2층 blob SHA 비교", () => {
     expect(changes.map((c) => c.path)).toEqual(["i18n/fr.json"]);
   });
 
-  it("base에만 있는 경로는 삭제하지 않는다 — 파일을 지우는 pull은 없다", () => {
+  it("base에만 있는 경로는 삭제 의도가 없으면 건드리지 않는다", () => {
     const changes = planPullChanges(
       [{ path: "i18n/ko.json", content: KO }],
       [
@@ -400,6 +400,62 @@ describe("planPullChanges — 2층 blob SHA 비교", () => {
       { path: "i18n/en.json", content: EN },
     ];
     expect(planPullChanges(local, [])).toEqual(planPullChanges(local, []));
+  });
+
+  // 삭제는 명시적 의도만이다(locale-add design §2) — 렌더 결과에서 빠졌다고 지우지 않는다.
+  it("delete 의도가 base에 있는 경로면 delete를 낸다 — 같은 디렉터리의 다른 파일은 건드리지 않는다", () => {
+    const changes = planPullChanges(
+      [{ path: "_locales/en/messages.json", content: EN }],
+      [
+        { path: "_locales/en/messages.json", sha: blobSha(EN) },
+        { path: "_locales/ko/messages.json", sha: blobSha(KO) },
+        { path: "_locales/ko/README.md", sha: blobSha(KO) },
+      ],
+      ["_locales/ko/messages.json"],
+    );
+    expect(changes).toEqual([{ kind: "delete", path: "_locales/ko/messages.json" }]);
+  });
+
+  it("delete 의도라도 base에 없는 경로면 아무것도 내지 않는다", () => {
+    expect(planPullChanges([], [{ path: "i18n/en.json", sha: blobSha(EN) }], ["i18n/fr.json"])).toEqual([]);
+  });
+
+  it("렌더에서 빠졌다는 것(content null·출력 없음)은 삭제가 아니다 — 의도 없이는 delete 0", () => {
+    const base = [{ path: "i18n/ko.json", sha: blobSha(KO) }, { path: "i18n/fr.json", sha: blobSha(EN) }];
+    expect(planPullChanges([{ path: "i18n/ko.json", content: null }], base)).toEqual([]);
+    expect(planPullChanges([{ path: "i18n/ko.json", content: null }], base, [])).toEqual([]);
+  });
+
+  it("upsert와 delete가 경로순으로 섞여 정렬된다", () => {
+    const changes = planPullChanges(
+      [{ path: "i18n/ko.json", content: KO }, { path: "i18n/ar.json", content: EN }],
+      [{ path: "i18n/en.json", sha: blobSha(EN) }],
+      ["i18n/en.json"],
+    );
+    expect(changes).toEqual([
+      { kind: "upsert", path: "i18n/ar.json", content: EN },
+      { kind: "delete", path: "i18n/en.json" },
+      { kind: "upsert", path: "i18n/ko.json", content: KO },
+    ]);
+  });
+
+  it("같은 경로를 렌더하면서 지우려 하면 계획 오류로 던진다 — base와 내용이 같아 upsert가 안 나가도 마찬가지다", () => {
+    expect(() => planPullChanges([{ path: "i18n/ko.json", content: KO }], [{ path: "i18n/ko.json", sha: blobSha(EN) }], ["i18n/ko.json"])).toThrow(/upsert and delete/);
+    expect(() => planPullChanges([{ path: "i18n/ko.json", content: KO }], [{ path: "i18n/ko.json", sha: blobSha(KO) }], ["i18n/ko.json"])).toThrow(/upsert and delete/);
+  });
+
+  it("렌더가 그 경로를 맡는 한(content null 포함) delete를 함께 내면 던진다", () => {
+    expect(() => planPullChanges([{ path: "i18n/ko.json", content: null }], [{ path: "i18n/ko.json", sha: blobSha(KO) }], ["i18n/ko.json"])).toThrow(/upsert and delete/);
+  });
+
+  it("같은 경로의 delete 의도가 둘이면 던진다", () => {
+    expect(() => planPullChanges([], [{ path: "i18n/ko.json", sha: blobSha(KO) }], ["i18n/ko.json", "i18n/ko.json"])).toThrow(/duplicate delete/);
+  });
+
+  it("delete만 있는 입력도 결정적이다", () => {
+    const base = [{ path: "b.json", sha: blobSha(EN) }, { path: "a.json", sha: blobSha(EN) }];
+    expect(planPullChanges([], base, ["b.json", "a.json"])).toEqual(planPullChanges([], base, ["a.json", "b.json"]));
+    expect(planPullChanges([], base, ["b.json", "a.json"]).map((c) => c.path)).toEqual(["a.json", "b.json"]);
   });
 });
 

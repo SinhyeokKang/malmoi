@@ -40,6 +40,28 @@ const GITLAB_ACCESS_ERRORS = {
 /** GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 설정·온보딩 화면과 MCP `get_workflow` 거부가 같은 문장이다(문구 두 벌 금지). */
 const GITLAB_CI_UNAVAILABLE = "The GitLab CI file isn't available in this version of Malmoi yet. For now, sync from Malmoi to load repository changes.";
 
+/**
+ * MCP Publish 문장의 언어 요청 정리 절(#267 — 영어 고정 표면). `dropped`는 PR/MR이 닫혔는데 리포가 요청대로가 아닌 것, `reached`는 리포가 이미 요청대로인 것이다
+ * (`reachedRepository`). ⚠️ 열린 PR 조회는 머지·미머지 종료를 가르지 못한다 — 리포 관측으로 말하고 "merged"·"without merging"을 단정하지 않는다(fix1 R1).
+ */
+const languageRequests = (review: "pull request" | "merge request") => {
+  const changes = (n: number) => `${n.toLocaleString("en-US")} language ${n === 1 ? "change" : "changes"}`;
+  const dropped = (n: number, doer: string, verb: string) =>
+    `The ${review} for ${changes(n)} was closed without the ${n === 1 ? "change" : "changes"} reaching the repository, so ${doer} ${verb} ${n === 1 ? "it" : "them"}`;
+  const reached = (n: number, doer: string, verb: string) => `${changes(n)} already reached the repository, so ${doer} ${verb} ${n === 1 ? "its request" : "their requests"}`;
+  return {
+    /** 미리보기 — `rest`는 정리 뒤 보낼 것의 절(없으면 `null`). 정리가 있고 보낼 것도 있으면 실행이 정리 뒤 다시 확인을 요구한다(지문이 바뀐다). */
+    preview: (d: number, r: number, rest: string | null): string => {
+      if (rest === null) return ["Nothing to send.", ...(d === 0 ? [] : [`${dropped(d, "publishing", "drops")}.`]), ...(r === 0 ? [] : [`${reached(r, "publishing", "only clears")}.`]), "Publish with this fingerprint."].join(" ");
+      if (r === 0) return `${dropped(d, "publishing", "drops")} first and asks you to preview again. After that, ${rest}.`;
+      if (d === 0) return `${reached(r, "publishing", "clears")} first and asks you to preview again. After that, ${rest}.`;
+      return `${dropped(d, "publishing", "drops")}. ${reached(r, "publishing", "only clears")}. Publishing does this first and asks you to preview again. After that, ${rest}.`;
+    },
+    result: (d: number, r: number): string =>
+      ["Nothing was sent.", ...(d === 0 ? [] : [`${dropped(d, "Malmoi", "dropped")}.`]), ...(r === 0 ? [] : [`${reached(r, "Malmoi", "cleared")}.`])].join(" "),
+  };
+};
+
 export const en = {
   search: {
     label: "Search",
@@ -202,6 +224,20 @@ export const en = {
      * 그것을 참조하면 Archive를 고칠 때 이 화면이 조용히 따라 움직인다 (2026-09-13 리뷰).
      */
     seeOpen: "See what's open",
+    /**
+     * 승인하면 사라지는 언어 변경 (locale-add 시안 P4) — 셀 편집 블록과 따로 센다("요청이 없어진다"). 줄마다 Sync 뒤 그 언어의 결과다.
+     * 추가는 값이 있을 때만 수를 말한다 — 값 0개 추가에 "0 translations are kept"는 할 말이 없다.
+     */
+    /** ⚠️ **수 조각만 medium이다** (시안 P4 · #275) — `unsent`·`unsentCount`와 같은 형으로 조각을 따로 낸다. */
+    languageCount: (n: number): string => `${n.toLocaleString("en-US")} language ${n === 1 ? "change" : "changes"}`,
+    languagesDropped: (n: number, count: ReactNode): ReactNode => <>{count} will be dropped.</>,
+    /** 언어 줄의 결과 문장 — 코드는 앞의 44 칸이 든다(시안 P4 · #275). 문장은 그 코드를 주어로 읽힌다. */
+    languageNotAdded: (translations: number): string =>
+      translations === 0 ? "won't be added." : `won't be added. Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+    languageNotRemoved: "won't be removed. It stays in this source.",
+    /** 소스가 둘 이상일 때 줄이 소스를 함께 말한다 — "this source"가 어느 소스인지. */
+    languageInSource: (code: string, source: string): string => `${code} (${source})`,
+    languagesMore: (n: number): string => `and ${n.toLocaleString("en-US")} more`,
     /** ⚠️ `Alert.title`은 **구두점 없는 문장 조각**이다 (DESIGN §10) — 헤드라인에서 마침표를 뗀다. */
     completed: (n: number, branch: string): string => `Synced ${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"} from ${branch}`,
     /**
@@ -478,6 +514,17 @@ export const en = {
       "The headline Connect your projects, Translate & ship together above a synced GitHub project card for your-project (src/i18n/locales.json) and three translation key cards, welcome.title, team.invite and common.save, each with Korean, English and Japanese values",
     /** `/signin` 탭 제목 — `signIn.title`("Sign in to Malmoi")을 쓰면 템플릿과 브랜드가 두 번 선다. */
     signInTitle: "Sign in",
+    /**
+     * 어떤 라우트에도 매칭되지 않는 경로를 `Accept: text/markdown`으로 요청한 에이전트의 404 본문(ARCHITECTURE §8.1).
+     * 제목은 `notFound.title`, Docs 라벨은 `publicDocs.docs.title`을 재사용한다 — 같은 개념에 셋째 변형을 만들지 않는다.
+     */
+    agentNotFound: {
+      body: "There's no page at this address. Start from the docs, or read the machine-readable descriptions below.",
+      llms: "llms.txt",
+      openapi: "OpenAPI for the CI push API",
+    },
+    /** 어떤 route도 받지 않는 `/api/*`의 JSON 404 `message` — OpenAPI가 다루는 범위(CI push API)만 말한다. 전체 목록처럼 말하면 거짓이다. */
+    apiNotFound: "There's no API endpoint at this path. The CI push API is described in the OpenAPI document.",
   },
 
   /**
@@ -713,7 +760,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-10-14",
+      effectiveDate: "2026-10-17",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -859,13 +906,13 @@ export const en = {
                 "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
                 "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from the last time you chose a theme or signed in with a theme saved to your account.",
                 "When you last opened or viewed your Inbox — the list in the header or the Inbox page: one time per account, replaced each time you open the list or the page and kept until you ask us to delete your account. There is no record of which items you saw, and no cookie.",
-                "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
+                "A session stops working 7 days after you sign in. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
                 "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the email itself, with the link, the project's name, the address of its picture if it has one, and your role — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
-                "An AI agent token stops working when it expires (30, 90 or 365 days after you create it) or as soon as you rotate or revoke it. Its row is deleted when you rotate or revoke it, or with your account; until then an expired token stays listed so you can see what it allowed.",
-                "An app connection stops working when it expires (30, 90 or 365 days after you authorize it) or as soon as you disconnect it or authorize the same app again. Its row, with the hashes of the refresh tokens it used, is deleted then, or with your account; an expired connection stays listed until it is deleted. The hand-off from the connection screen to the app lasts one minute and is deleted when the app uses it.",
+                "An AI agent token stops working when it expires (30, 90 or 365 days after you create it) or as soon as you rotate or revoke it or sign out everywhere. Its row is deleted when you rotate or revoke it, when you sign out everywhere, or with your account; until then an expired token stays listed so you can see what it allowed.",
+                "An app connection stops working when it expires (30, 90 or 365 days after you authorize it) or as soon as you disconnect it, authorize the same app again or sign out everywhere. Its row, with the hashes of the refresh tokens it used, is deleted then, or with your account; an expired connection stays listed until it is deleted. The hand-off from the connection screen to the app lasts one minute and is deleted when the app uses it.",
               ],
             },
           ],
@@ -929,7 +976,7 @@ export const en = {
                 label: "Cookies Malmoi sets",
                 head: ["Cookie", "How long it lasts", "What it does"],
                 rows: [
-                  ["Session", "24 hours from your last activity", "Keeps you signed in"],
+                  ["Session", "7 days from when you sign in", "Keeps you signed in"],
                   [
                     "Sign-in request check",
                     "Until you close the browser",
@@ -962,7 +1009,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-14 — Revised the Korean wording. No change to data collection, use, retention, sharing or deletion.", "2026-10-13 — GitLab is also a sign-in provider. This policy now covers receiving your name (or username), email address and GitLab account id for sign-in, and using gitlab.com for that purpose. Malmoi does not receive a profile picture from GitLab.", "2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-17 — Signing out everywhere also ends your AI agent token and app connections, and deletes their records.", "2026-10-15 — A session now lasts 7 days from when you sign in. Activity does not extend it.", "2026-10-14 — Revised the Korean wording. No change to data collection, use, retention, sharing or deletion.", "2026-10-13 — GitLab is also a sign-in provider. This policy now covers receiving your name (or username), email address and GitLab account id for sign-in, and using gitlab.com for that purpose. Malmoi does not receive a profile picture from GitLab.", "2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1018,8 +1065,12 @@ export const en = {
     /** 시안 1c의 "Read them"은 단수 changelog를 받지 못해 고쳤다. 재시도 버튼은 없다 — 성공만 캐시되니 새로고침이 곧 재시도다. */
     failed: (releases: ReactNode): ReactNode => <>The changelog couldn&apos;t be loaded from GitHub just now. Read it on {releases}.</>,
     empty: (releases: ReactNode): ReactNode => <>No releases have been published yet. New versions appear here and on {releases}.</>,
-    /** GitHub 한 요청 상한(100건)에 닿았을 때 목록 끝 — 페이지네이션은 없다. */
+    /**
+     * 읽지 못한 옛 판이 있을 수 있을 때(페이지 상한 3에 닿았거나 둘째 페이지부터 실패) 목록 끝 — **모든 항목이 드러난 뒤에만** 버튼 자리에 선다.
+     */
     truncated: (releases: ReactNode): ReactNode => <>Older releases are on {releases}.</>,
+    /** 목록 끝의 드러내기 버튼 — 다음 10개를 보인다(`lib/changelog/reveal.ts`). */
+    showOlder: "Show older releases",
   },
 
   /**
@@ -1420,6 +1471,8 @@ export const en = {
        * (`resource-limit` 문구와 같은 방향) · 예산 밖 경로인 리포 워크플로. 야간의 주 대상이 워크플로 없는 프로젝트라 앞엣것이 먼저다.
        */
       "too-large": "The repository change is too large for a server-side sync. Nothing was synced. Reduce the files' size, or deliver it with the repository workflow.",
+      /** 전달 안 된 언어 제거가 자동 적재 전체를 멈췄다(locale-add). 푸는 길은 둘 — Publish로 보내거나 제거를 취소한다. */
+      "locale-change-pending": "A language removal in Malmoi is still unsent, so nothing was synced. Syncing resumes once it's published or the removal is cancelled.",
     },
     empty: {
       title: "No activity yet",
@@ -1464,6 +1517,11 @@ export const en = {
       noPullRequest: "no pull request",
       /** 기준 언어는 **선언**이고 CI의 다음 push가 확정한다 (`checkFormat`). */
       declarationOnly: "declaration only",
+      /** 언어 사건의 사실 (시안 P3) — 되살린 번역 수 · 제거 요청이 함께 버린 미전달 편집 수 · 사람의 실행이 일으킨 만료. */
+      translationsBack: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation" : "translations"} back`,
+      editsDiscarded: (n: number): string => `${n.toLocaleString("en-US")} unsent ${n === 1 ? "edit" : "edits"} discarded`,
+      whilePublishing: "while publishing",
+      whileSyncing: "while syncing",
       nothingImported: "nothing was synced",
       archivedEffect: "editing stopped and nightly publishes ended",
       restoredEffect: "editing and nightly publishes resumed",
@@ -1518,6 +1576,7 @@ export const en = {
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitHub didn&rsquo;t answer about pull requests</>,
           "publish-raced": (who: ReactNode): ReactNode => <>{who} held the sync — Publish finished after the sync checks</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large for a server-side sync</>,
+          "locale-change-pending": (who: ReactNode): ReactNode => <>{who} held the sync — a language removal is still unsent</>,
         },
       },
       member: {
@@ -1530,10 +1589,36 @@ export const en = {
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} added the {source} source</>,
         /** 소스 제거 (sources-add-remove). 되살림은 `added`와 같은 사건이라 문장이 따로 없다. */
-        removed: (who: ReactNode, source: string): ReactNode => <>{who} removed the {source} source</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} detached the {source} source</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} changed the base language of {source}</>
         ),
+      },
+      /**
+       * 언어 사건 (locale-add 시안 P3). **요청은 `asked to remove`다** — 리포는 아직 그대로다. 만료(`…Closed`)만 관측한 사실을 `outcome`으로 붙인다.
+       * 코드는 그대로 쓴다(`zh_CN`) — 행 배지와 같은 낱말이다. 옛 행은 결과 절(`outcome = null`)이나 언어(`unknown`)가 빠진다.
+       */
+      locale: {
+        added: (who: ReactNode, code: string, source: string): ReactNode => <>{who} added {code} to {source}</>,
+        addedAgain: (who: ReactNode, code: string, source: string): ReactNode => <>{who} added {code} to {source} again</>,
+        removalRequested: (who: ReactNode, code: string, source: string): ReactNode => <>{who} asked to remove {code} from {source}</>,
+        removalCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} cancelled removing {code} from {source}</>,
+        addCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} stopped adding {code} to {source}</>,
+        removalClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} closed the removal of {code} in {source}</> : <>{who} closed the removal of {code} in {source} — {outcome}</>
+        ),
+        addClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} closed the addition of {code} in {source}</> : <>{who} closed the addition of {code} in {source} — {outcome}</>
+        ),
+        /** 만료 뒤 리포 관측. ⚠️ PR 번호는 마지막 전달 확인 실행의 것이라(R-E0 W3) "그 PR이 해소했다"보다 강하게 말하지 않는다. */
+        outcome: {
+          gone: "the file is gone from the repository",
+          present: "the file is in the repository",
+          stillPresent: "the file is still in the repository",
+          absent: "the file isn't in the repository",
+          notMerged: (pr: string, fact: string): string => `${pr} closed without merging, ${fact}`,
+        },
+        unknown: (who: ReactNode, source: string): ReactNode => <>{who} changed a language in {source}</>,
       },
       settings: {
         created: (who: ReactNode): ReactNode => <>{who} created this project</>,
@@ -1654,6 +1739,8 @@ export const en = {
       "base-unreadable": "We couldn't read your repository. Ask your developers to check the app's access.",
       "not-installed": "The app wasn't connected to the repository. Ask your developers to reconnect it.",
       "glob-matched-nothing": "The translation files weren't where we expected. Ask your developers.",
+      /** 언어 추가·제거의 파일 경로가 쓸 수 없거나 다른 소스의 것이다(locale-add R-B2 Y2) — 다시 해도 같다. */
+      "locale-plan-refused": "A language change can't be published because its file path is unusable or belongs to another source. Ask your developers to check the source's file path.",
       "github-error": `GitHub didn't answer. ${NIGHTLY_RETRY}`,
       "db-unavailable": `We couldn't reach our own storage. ${NIGHTLY_RETRY}`,
       stale: "This run stopped before it finished.",
@@ -1671,7 +1758,7 @@ export const en = {
       "repo-replaced": "The connected repository changed.",
       "not-installed": "The app wasn't connected to the repository.",
       /** 제거된 소스로 온 CI — 처방은 워크플로에서 그 step을 지우는 것이다(ACTIONS). */
-      "surface-removed": "This source was removed from the project. Remove its step from your GitHub workflow.",
+      "surface-removed": "This source was detached from the project. Remove its step from your GitHub workflow.",
       fallback: "The run was refused before it started.",
     },
     /** GitLab 프로젝트의 Logs 문장 — merge request · GitLab · `.gitlab-ci.yml`(gitlab-repositories). 연결 끊김(`not-installed`)은 App이 아니라 GitLab 연결이다. */
@@ -1710,7 +1797,7 @@ export const en = {
         "not-installed": "This project's GitLab connection was removed or can't be used. A project owner can reconnect it in Settings.",
       },
       refusals: {
-        "surface-removed": "This source was removed from the project. Remove its job from your .gitlab-ci.yml.",
+        "surface-removed": "This source was detached from the project. Remove its job from your .gitlab-ci.yml.",
         "not-installed": "This project's GitLab connection was removed or can't be used.",
       },
     },
@@ -2149,7 +2236,7 @@ export const en = {
     sessions: {
       title: "Sign out everywhere",
       confirmTitle: "Sign out everywhere?",
-      confirmHint: "You'll confirm with the account you sign in with, then every device is signed out — including this one.",
+      confirmHint: "You'll confirm with the account you sign in with, then every device is signed out — including this one. Your personal token and connected apps stop working too.",
       /**
        * ⚠️ **확정 라벨이 결과를 말한다** — 이 버튼은 일을 **끝내지 않는다.** 누르면 provider로
        * 나가고 거기서 확인해야 로그아웃이 일어난다. "Sign out everywhere"라 적으면 그 왕복이
@@ -2781,8 +2868,19 @@ export const en = {
         selectKey: "Select a key to translate",
         selectKeyBody: "Its translations in every language open here.",
         keyGone: (source: string): string => `This key is no longer in ${source}`,
+        /** 제거 예정 언어의 얼린 칸 아래 이유 (locale-add 시안 T1) — 입력은 남지만 저장되지 않는다. */
+        frozenReason: (locale: string): string => `${locale} is being removed, so this edit can't be saved.`,
+        /** 얼린 칸의 입력을 버리는 버튼 — 셀 Escape(`reset`)와 같은 동작이다. 같은 동작의 기존 낱말(`Discard change`)을 쓴다. */
+        discardChange: "Discard change",
       },
       footer: {
+        /** 얼린 칸의 미저장이 있을 때의 상태 줄 (시안 T1) — 저장될 언어와 저장될 수 없는 언어를 가른다. */
+        frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen} can't be saved` : `${savable} not saved · ${frozen} can't be saved`),
+        /** 렌더와 저장 사이에 제거가 도착한 저장 거부 (`locale-removal-pending`) — 저장은 키 단위라 다른 언어도 저장되지 않았다. */
+        removalPending: {
+          title: (locales: string, n: number): string => `${locales} ${n === 1 ? "is" : "are"} being removed`,
+          body: "Nothing in this key was saved — save again.",
+        },
         unsaved: (n: number): string => `${n.toLocaleString("en-US")} unsaved change${n === 1 ? "" : "s"}`,
         saved: "Saved",
         savedNotSent: "Saved · unsent",
@@ -2824,6 +2922,7 @@ export const en = {
         confirm: "Revert translations",
         unavailable: "The last sent version isn't available for every changed language.",
         unsaved: "Save or discard your changes first.",
+        frozen: (list: string, n: number): string => `Discard the ${list} change${n === 1 ? "" : "s"} first.`,
         busy: "This stays off while a save, publish, or sync is running.",
         forbidden: "Only project owners can revert to a sent version.",
         failed: { title: "We couldn't revert this key", body: "No changes were made. Try again, or check the last sync." },
@@ -2968,11 +3067,31 @@ export const en = {
               {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}.
             </>
           ),
+          languageBody: (n: number, files: number): ReactNode => (
+            <>
+              A second merge request isn&apos;t opened. !{n} will hold{" "}
+              <span className="text-foreground">everything unsent</span>, not just{" "}
+              {files === 1 ? "this language change" : `these ${files.toLocaleString("en-US")} language changes`}.
+            </>
+          ),
         },
         prNone: { title: (repo: string): string => `A new merge request opens on ${repo}` },
         prUnknown: { title: "Couldn't check for an open merge request" },
         openPr: "Open merge request",
         replacePr: (n: number): string => `Replace merge request !${n}`,
+        language: {
+          intro: (repo: string): string => `Goes to ${repo} as one merge request.`,
+          introOpen: (repo: string, n: number): string => `Goes to ${repo} in merge request !${n}.`,
+          held: (code: string, branch: string): string =>
+            `This file is already on ${branch}. After the open merge request closes, ${code} becomes active at the next publish or nightly check.`,
+          expiring: {
+            addNotReached: (code: string): string => `${code} wasn't added — its merge request closed without merging. Its translations stay in Malmoi.`,
+            removeNotReached: (code: string): string => `${code} wasn't removed — its merge request closed without merging. It stays in this source.`,
+          },
+          createdDescription: "The language changes are in a merge request. They reach the product once someone on the team merges it.",
+          updatedDescription: (n: number): string =>
+            `!${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
+        },
         progressDescription: "Writing the translation files and opening a merge request. This usually takes a few seconds.",
         progress: (branch: string): readonly string[] => ["Rendering the translation files", `Committing to ${branch}`, "Opening the merge request"],
         createdDescription: (n: number): string =>
@@ -3099,6 +3218,14 @@ export const en = {
             {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}.
           </>
         ),
+        /** 번역 변경 0 · 언어 파일 변경만 (locale-add 시안 P1 ① — 결정 D10). 언어 파일 변경 수로 센다 — "these 0"이 서지 않는다. */
+        languageBody: (n: number, files: number): ReactNode => (
+          <>
+            A second pull request isn&apos;t opened. #{n} will hold{" "}
+            <span className="text-foreground">everything unsent</span>, not just{" "}
+            {files === 1 ? "this language change" : `these ${files.toLocaleString("en-US")} language changes`}.
+          </>
+        ),
       },
       prNone: {
         title: (repo: string): string => `A new pull request opens on ${repo}`,
@@ -3106,6 +3233,11 @@ export const en = {
           changes === 1
             ? "Nothing is open right now, so this change goes out on its own."
             : `Nothing is open right now, so these ${changes.toLocaleString("en-US")} changes go out on their own.`,
+        /** 번역 변경 0 · 언어 파일 변경만 (시안 P1 ① — D10). 호스트 낱말이 없어 GitLab 덮기가 없다. */
+        languageBody: (files: number): string =>
+          files === 1
+            ? "Nothing is open right now, so this language change goes out on its own."
+            : `Nothing is open right now, so these ${files.toLocaleString("en-US")} language changes go out on their own.`,
       },
       prUnknown: {
         title: "Couldn't check for an open pull request",
@@ -3113,6 +3245,91 @@ export const en = {
       },
       openPr: "Open pull request",
       replacePr: (n: number): string => `Replace pull request #${n}`,
+      /**
+       * **언어 변경의 Publish** (locale-add 시안 P1). 번역 변경이 0이고 파일만 바뀌면 `Publish 0 changes`가 할 일이 없다고 읽혀 제목·바닥·PR 줄이
+       * 파일로 말한다. 파일 머리 오른쪽 낱말은 그 파일에 생기는 일이다 — 새 배지가 아니라 `fileSummary`·`otherFile.label` 자리다.
+       * ⚠️ 삭제 파일의 번역을 전달 수에 더하지 않는다 — 번역은 Malmoi에 남는다(`removedBody`).
+       */
+      language: {
+        title: "Publish language changes",
+        progressTitle: "Publishing language changes",
+        intro: (repo: string): string => `Goes to ${repo} as one pull request.`,
+        introOpen: (repo: string, n: number): string => `Goes to ${repo} in pull request #${n}.`,
+        /** 파일 수 조각 — 설명문에서 번역 수 뒤(`, 1 file added.`)나 홀로(`1 file removed.`) 선다. */
+        files: (added: number, removed: number): string => {
+          const word = (n: number) => `${n.toLocaleString("en-US")} ${n === 1 ? "file" : "files"}`;
+          return added > 0 && removed > 0 ? `${word(added)} added, ${removed.toLocaleString("en-US")} removed` : added > 0 ? `${word(added)} added` : `${word(removed)} removed`;
+        },
+        countsWithFiles: (n: number, keys: number, files: string): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} in ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}, ${files}.`,
+        leftOut: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language is" : "languages are"} left out.`,
+        summary: (files: number): string => `0 changes \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`,
+        takenBackSummary: (n: number, files: number): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"} taken back`,
+        /** 파일 diff 0 · 전달된 언어 변경을 거둔다(시안 P1 ④⑤) — 제목은 `same.closeAction`이다. `pr`은 호스트 표기(`#128`·`!128`). */
+        takenBackDescription: (pr: string, branch: string, what: "adding" | "removing" | "several"): string =>
+          `Nothing differs from ${branch} anymore. Closing ${pr} takes back ${what === "several" ? "the files it was changing" : `the file it was ${what}`}.`,
+        label: {
+          newFile: "New file",
+          updated: "Updated",
+          removed: "Removed",
+          notIncluded: "Not included",
+          held: "Held",
+          takenBack: (pr: string | null): string => (pr === null ? "Taken back" : `Taken back from ${pr}`),
+        },
+        removed: "Translations stay in Malmoi.",
+        notIncluded: (code: string): string => `${code} has no translations yet, so no file is created. It goes out once it has one.`,
+        /** 보류(`proposal-path-exists`)는 열린 PR이 있을 때만 생긴다 — 수동 Sync를 권하지 않는다(그건 다른 편집까지 버린다). */
+        held: (code: string, branch: string): string =>
+          `This file is already on ${branch}. After the open pull request closes, ${code} becomes active at the next publish or nightly check.`,
+        takenBack: {
+          create: (code: string, pr: string | null): string =>
+            `${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file it adds comes out. Translations stay in Malmoi.`,
+          delete: (code: string, pr: string | null): string =>
+            `Removing ${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file stays in the repository.`,
+        },
+        /**
+         * 언어를 거둔 Publish의 결과 (#281 — 시안 P1 ④⑤의 결과). 미리보기 `takenBack`과 같은 사실을 끝난 일로 말한다 — 일반 no-changes 원인("같은 값이 동기화됐다")이
+         * 아니다. `pr`은 호스트 표기(`#128`·`!128`)이고 호스트 낱말을 넣지 않아 GitLab 덮기가 없다. 제거 취소 줄은 미리보기 `takenBack.delete`가 그대로 참이다.
+         */
+        takenBackDone: {
+          description: (pr: string, branch: string): string => `${pr} was closed because the language changes it carried were taken back. Nothing differs from ${branch} anymore.`,
+          noPr: (branch: string): string => `The language changes were taken back. Nothing differs from ${branch} anymore.`,
+          create: (code: string, pr: string | null): string =>
+            `${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file it was adding is no longer sent. Translations stay in Malmoi.`,
+        },
+        /** 이 Publish가 먼저 정리할 언어 요청(#267 — R-F2b) — 그 언어를 이름으로 말한다. 리포가 요청대로인지가 갈린다(`reachedRepository`). */
+        expiring: {
+          addReached: (code: string): string => `${code} is already in the repository, so its request is closed.`,
+          addNotReached: (code: string): string => `${code} wasn't added — its pull request closed without merging. Its translations stay in Malmoi.`,
+          removeReached: (code: string): string => `${code} is already gone from the repository, so its request is closed.`,
+          removeNotReached: (code: string): string => `${code} wasn't removed — its pull request closed without merging. It stays in this source.`,
+        },
+        /** 결정적 언어 계획 거부(시안 P1 ⑥) — 다시 받아도 같다. Try again이 없고 고칠 자리(소스 상세)로 보낸다. */
+        refused: {
+          description: "Nothing was sent.",
+          title: "These changes can't be published",
+          conflict: (surface: string, code: string, path: string, owner: string): string =>
+            `Malmoi can't plan the language files for ${surface}. ${code} would be written to ${path}, which now belongs to the ${owner} source.`,
+          /** 경로 충돌인데 그 경로를 쥔 소스를 모른다(계획 뒤 경합). */
+          taken: (surface: string, path: string): string => `Malmoi can't plan the language files for ${surface}. ${path} belongs to another source.`,
+          duplicate: (surface: string, path: string): string => `Malmoi can't plan the language files for ${surface}. Two languages would be written to ${path}.`,
+          unsafe: (surface: string): string => `Malmoi can't plan the language files for ${surface}. Its path template doesn't give each language its own file.`,
+          unknown: "Malmoi can't plan the language files.",
+          open: (surface: string): string => `Open ${surface}`,
+        },
+        /** 결과 — 번역 0인 Publish의 PR. "N changes"·"published"를 말하지 않는다(머지 전이다). */
+        createdDescription: "The language changes are in a pull request. They reach the product once someone on the team merges it.",
+        updatedDescription: (n: number): string =>
+          `#${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
+        /**
+         * 셀 편집 0 · 언어 작업만 있을 때 켜진 [Publish]의 sr 설명 — 배지는 셀 수라 서지 않는다. ⚠️ **준비됐다고 단정하지 않는다** — 작업이 보류된 추가뿐이어도
+         * 켜진다(버튼은 base를 읽지 않는다). 그때는 모달이 Held 행으로 이유를 말한다(R-E3 ⚪2).
+         */
+        ready: "There are language changes to publish.",
+        /** 만료 안내가 여러 소스에 걸칠 때 언어에 소스를 붙인다(`fr (web)`) — "this source"가 어느 소스인지. */
+        inSource: (code: string, source: string): string => `${code} (${source})`,
+      },
 
       /**
        * `1c` — 단계 셋은 **하는 일의 목록**이고 진행 표시가 아니다 (audit-ux #23). 전엔 2.5초·6.5초 타이머가 체크를 넘겼는데,
@@ -3360,12 +3577,15 @@ export const en = {
       reasons: {
         "last-source": "A project needs at least one source.",
         importing: "This source is syncing. Try again when it finishes.",
-        "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was removed. Open Remove again to review.",
+        "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was detached. Open Detach again to review.",
       },
-      /** [Remove source] — 트리거와 확인 창 확정이 같은 낱말이다(시안 R4). */
-      action: "Remove source",
+      /**
+       * [Detach source] — 트리거와 확인 창 확정이 같은 낱말이다(시안 R4). ⚠️ **Remove가 아니다**(2026-10-16 사용자) — 리포 파일은 그대로이고
+       * 다시 더하면 돌아온다. 리포 파일을 실제로 지우는 언어 제거만 Remove다. `Disconnect`도 아니다 — 자격증명 연결과 `Disconnected` 상태의 낱말이다.
+       */
+      action: "Detach source",
       /** 멤버 `confirmRemove`와 같은 골격(§10). 대상은 slug다. */
-      title: (slug: string): string => `Remove ${slug} from this project?`,
+      title: (slug: string): string => `Detach ${slug} from this project?`,
       /** 늘 선다 — 어디까지 사라지나의 경계(여기서 멈춘다 / 리포는 그대로 / 다시 더하면 돌아온다). */
       body: "It stops syncing here. Files in the repository aren't changed. Add it again anytime to bring its translations back.",
       /**
@@ -3381,11 +3601,11 @@ export const en = {
       /** 늘 선다 — 앱은 대상 리포 워크플로에 그 step이 있는지 알 수 없다(PRODUCT §7.1). */
       workflowLine: "Remove its step from your GitHub workflow — otherwise the next run fails and stops the sources after it.",
       /** 지문 발급 실패 — Sync와 달리 확정을 막고 [Try again]이 다시 받는다(시안 R6 · 닫힌 결정 1). */
-      previewFailed: "We couldn't check its unsent edits. Try again before you remove it.",
+      previewFailed: "We couldn't check its unsent edits. Try again before you detach it.",
       /** 응답 유실 — 서버가 끝냈을 수 있다. 다시 실행하지 않고 화면을 다시 읽는다. */
-      unconfirmed: "We couldn't confirm whether it was removed. The list shows the current state.",
+      unconfirmed: "We couldn't confirm whether it was detached. The list shows the current state.",
       /** 성공 배너 첫 줄(시안 R8). */
-      removed: (slug: string): string => `Removed ${slug}.`,
+      removed: (slug: string): string => `Detached ${slug}.`,
       /** 성공 배너 둘째 줄 — `link`는 Settings 링크다. */
       workflowStep: (link: ReactNode): ReactNode => <>Remove its step from the workflow in {link}.</>,
     },
@@ -3418,17 +3638,139 @@ export const en = {
     waiting: "Waiting to apply",
     pendingHelp: "If your CI passes the base language for this source, update its workflow entry to the requested language.",
     // ⚠️ 파일이 사라졌다고 단정하지 않는다 — 한 파일에 여러 언어가 드는 형식에서는 파일이 남아도 언어가 빠진다.
-    orphanReason: "This language was removed from the repository.",
-    orphanStrip: (code: string): string => `${code} was removed from the repository.`,
-    orphanStripRest: (translations: number, active: number): string =>
-      `The ${translations.toLocaleString("en-US")} translations are kept and stay read-only. It comes back when the language is in the repository again and the next sync runs. It isn't counted in the ${active.toLocaleString("en-US")} active languages.`,
+    orphanReason: "This language is inactive.",
+    orphanStrip: (code: string): string => `${code} is inactive.`,
+    /** 띠 둘째 문장 — 보존 수만 말한다. 복구 길은 뒤 문장 셋 중 하나가 든다(역할·포맷이 고른다, 시안 L3·L4). */
+    orphanStripRest: (translations: number): string =>
+      `Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+    orphanStripOwner: "Add it again to bring them back.",
+    orphanStripUnsupported: "Restore the file in the repository, then sync.",
+    orphanStripEditor: "A project owner can add it again.",
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
     statusHelp: "Updated by syncs from your repository.",
     baseHelp: "The base language decides which keys exist in this source.",
+    /** 비지원 포맷(수술적 치환·공유 파일)의 카드 설명이자 꺼진 동작의 사유다. OWNER·지원 포맷과 EDITOR는 아래 둘이다(시안 L1·L4). */
     languagesHelp: "Languages come from the repository. Add or remove the files there.",
+    languagesHelpOwner: "Add or remove languages here. Publish to update the repository.",
+    languagesHelpEditor: "Only project owners can add or remove languages.",
     baseRow: "Source of every key in this file",
     needReview: (count: number): string => `${count.toLocaleString("en-US")} need review`,
-    missingRepo: "Removed from repository",
+    missingRepo: "Inactive",
+    adding: "Adding",
+    removing: "Removing",
+    /** 기준 언어 선언이 언어 변경에 막혔다(`locale-change-pending`, 시안 P2) — 일반 실패 문구로 접지 않는다. */
+    localeChangePending: "A language change in this source is still pending. Finish or cancel the language change first.",
+    /**
+     * 언어 추가·제거·취소 (locale-add — 시안 L·A·D). 결과는 서버가 코드로 주고 문장은 여기서 고른다.
+     * ⚠️ PR/MR 낱말은 `onGitLab`이 덮는다 — 화면에 "PR/MR"을 쓰지 않는다.
+     */
+    locale: {
+      addLanguage: "Add language",
+      removeLanguage: "Remove language",
+      cancelRemoval: "Cancel removal",
+      /** 행 동작의 접근 이름 — 보이는 라벨은 행마다 같아도 낭독이 코드로 갈린다(시안 L1). */
+      addLabel: (code: string): string => `Add ${code}`,
+      removeLabel: (code: string): string => `Remove ${code}`,
+      cancelLabel: (code: string): string => `Cancel removing ${code}`,
+      baseReason: "Choose another base language before removing this one.",
+      noFileYet: "Publishing creates the file once it has a translation.",
+      readOnly: "Read-only until the removal is published or cancelled.",
+      /** 제거가 이미 PR에 실렸다 — 남은 일은 머지(또는 취소)다(RT4 #285). */
+      readOnlyDelivered: "Read-only until the pull request is merged or the removal is cancelled.",
+      notConfirmed: "Not confirmed in the pull request",
+      notConfirmedHelp: "Publish again first. The last publish couldn't finish, so Malmoi can't tell what the pull request contains.",
+      publishToUpdate: "Publish to update the pull request.",
+      /** `pr`은 호스트 표기 번호(`#128` · `!128` — `home.meta.pr`). */
+      viewPullRequest: (pr: string): string => `View pull request ${pr}`,
+      staysIn: (code: string, source: string): string => `${code} stays in ${source}.`,
+      cancelUnsettled: (code: string): string => `We couldn't cancel removing ${code}. The last publish couldn't finish — publish again first.`,
+      cancelFailed: (code: string): string => `We couldn't cancel removing ${code}. Nothing was changed.`,
+      cancelUnconfirmed: (code: string): string => `We couldn't confirm whether removing ${code} was cancelled. The list shows the current state.`,
+      addTitle: (source: string): string => `Add a language to ${source}`,
+      addAgainTitle: (code: string, source: string): string => `Add ${code} to ${source} again`,
+      addBody: "The file is created in the repository when you publish.",
+      codeLabel: "Language code",
+      codePlaceholder: "Choose or type a code",
+      codeHelp: "Pick one, or type a code: a lowercase language, with an optional region (fr, pt-BR, zh_TW).",
+      chromeLabel: "Language",
+      chromePlaceholder: "Choose a language",
+      /** 프리셋 목록의 접근 이름. */
+      listLabel: "Languages",
+      previously: "Previously in this source",
+      common: "Common languages",
+      added: "Added",
+      translationCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation" : "translations"}`,
+      useCode: "Use this code",
+      fileToCreate: "File to create",
+      checkFailed: "We couldn't check this language.",
+      savedTranslations: (n: number): string => `${n.toLocaleString("en-US")} saved ${n === 1 ? "translation" : "translations"}`,
+      /** 되살림 안내 — `count`는 `savedTranslations`를 굵게 든다. 행에서 열면 코드가 제목에 있어 둘째 형이다(시안 A4). */
+      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} was in this source before. Adding it again brings back {count}, ready to publish.</>,
+      reviveAgain: (count: ReactNode): ReactNode => <>Adding it again brings back {count}, ready to publish.</>,
+      /** 필드 자리의 거부 — 도움말을 대신한다(시안 A2). */
+      errors: {
+        unreadable: "Malmoi can't read this code back from the repository. Add the file in the repository instead.",
+        unsupportedLocale: "Chrome extensions don't support this language code.",
+        alreadyActive: (code: string): string => `${code} is already in this source.`,
+        collision: (code: string, existing: string): string => `${code} points to the same file as ${existing}, which this source already has.`,
+        removalPending: (code: string): string => `${code} is being removed. Cancel the removal instead.`,
+        unsafePath: (path: string): string => `Malmoi can't create a file at ${path}.`,
+        pathConflict: "That file belongs to another source.",
+      },
+      archived: "This project is archived. Restore it to change languages.",
+      addFailed: "We couldn't add the language. Nothing was changed.",
+      addUnsettled: "We couldn't add the language. The last publish couldn't finish — publish again first.",
+      addUnconfirmed: (code: string): string => `We couldn't confirm whether ${code} was added. The list shows the current state.`,
+      addedNotice: (code: string): string => `Added ${code}. Open it to start translating.`,
+      addedAgain: (code: string, n: number): string => `Added ${code} again. ${n.toLocaleString("en-US")} saved ${n === 1 ? "translation is" : "translations are"} back and unsent.`,
+      removeTitle: (code: string, source: string): string => `Remove ${code} from ${source}?`,
+      removeBody: "Publishing removes this language file from the repository. Saved translations are kept.",
+      cancelAddBody: "This language will become inactive. Saved translations are kept.",
+      cancelAddDeliveredBody: "Publish again to remove this file from the open pull request.",
+      factLanguage: "Language",
+      factFile: "File",
+      factTranslations: "Translations",
+      factPullRequest: "Pull request",
+      keptInMalmoi: (n: number): string => `${n.toLocaleString("en-US")} kept in Malmoi`,
+      notCreatedYet: (path: string): string => `${path} — not created yet`,
+      /** 아직 어느 PR에도 실리지 않았다 — 상태 낱말 Unsent 그대로다(DESIGN §2.4 개념 색인 — "Not sent yet"은 쓰지 않는 말). */
+      notSentYet: "Unsent",
+      prRemoves: (pr: string): string => `${pr} removes this file`,
+      prAdds: (pr: string): string => `${pr} adds this file`,
+      /** 전달됐지만 저장된 주소에서 번호를 못 뽑았다 — 번호를 지어내지 않는다. */
+      inOpenPr: "In the open pull request",
+      couldntConfirm: "Couldn't confirm",
+      /** `count`는 `repositorySync.unsentCount`를 굵게 든다. 제거는 마지막 전달 값으로 되돌린다(Revert 의미 — design §3). */
+      discardLine: (count: ReactNode): ReactNode => <>{count} will be discarded. Each one goes back to the value last sent to the repository.</>,
+      /** 추가 취소는 값을 남기고 Unsent 추적만 거둔다 — 그래서 warning이 아니라 neutral이다(시안 D2). */
+      untrackLine: (n: number, count: ReactNode): ReactNode => n === 1
+        ? <>{count} stops being tracked. Add the language again to bring it back.</>
+        : <>{count} stop being tracked. Add the language again to bring them back.</>,
+      appCodeLine: "Update any code that loads this language (imports, supported language lists) in the same pull request.",
+      previewFailed: (code: string): string => `We couldn't load what removing ${code} would change.`,
+      changed: "This changed since you opened it. Check it again, then remove.",
+      baselineUnknown: (code: string): string => `Publish first — some unsent edits in ${code} were never sent, so there's no value to go back to.`,
+      syncRunning: (code: string): string => `A sync is running, so ${code} can't be removed yet. Try again when it finishes.`,
+      unsettledTitle: "We couldn't confirm the last publish",
+      /** `link`는 Logs 링크(앱 안 이동)다. */
+      checkLogs: (link: ReactNode): ReactNode => <>Check the latest publish in {link}.</>,
+      removeFailed: (code: string): string => `We couldn't remove ${code}. Nothing was changed.`,
+      removeUnconfirmed: (code: string): string => `We couldn't confirm whether ${code} was removed. The list shows the current state.`,
+      /** 제거 요청 성공 — 행은 제자리에 Removing으로 남는다. 리포 파일은 Publish 뒤에 사라진다. */
+      removeRequested: (code: string): string => `Removing ${code}. Publishing removes its file from the repository.`,
+      cancelAddDone: (code: string, n: number): string => `${code} is inactive. Its ${n.toLocaleString("en-US")} ${n === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+      onGitLab: {
+        notConfirmed: "Not confirmed in the merge request",
+        readOnlyDelivered: "Read-only until the merge request is merged or the removal is cancelled.",
+        notConfirmedHelp: "Publish again first. The last publish couldn't finish, so Malmoi can't tell what the merge request contains.",
+        publishToUpdate: "Publish to update the merge request.",
+        viewPullRequest: (pr: string): string => `View merge request ${pr}`,
+        cancelAddDeliveredBody: "Publish again to remove this file from the open merge request.",
+        factPullRequest: "Merge request",
+        inOpenPr: "In the open merge request",
+        appCodeLine: "Update any code that loads this language (imports, supported language lists) in the same merge request.",
+      },
+    },
     editorBase: "Only project owners can change the base language of a source.",
     started: "started",
     addedAgo: "added",
@@ -3468,9 +3810,6 @@ export const en = {
   locales: {
     /** base 배지 — 가장 흔한 상태가 조용해야 하므로 나머지 행에는 배지가 없다 (DESIGN §6.2). */
     base: "Base",
-    orphaned: {
-      badge: "Removed from repository",
-    },
     empty: {
       description: "They appear after the first sync reads your translation files.",
     },
@@ -3840,6 +4179,14 @@ export const en = {
         save: "Save",
       saved: "Saved",
         failed: "We couldn't save this. Try again in a moment.",
+        /**
+         * 언어 변경이 남아 브랜치를 못 바꾼다 (locale-add 시안 P2) — 일반 실패로 접지 않는다. 그 소스를 이름으로 말하고 할 일을 말한다.
+         * 둘 이상이면 수로 센다(소스 이름을 나열하지 않는다 — 한 줄 캡션이다).
+         */
+        localeChangePending: (source: string): string =>
+          `${source} has a language change that isn't published yet. Finish or cancel the language change first, then change the branch.`,
+        localeChangesPending: (sources: number): string =>
+          `${sources.toLocaleString("en-US")} sources have language changes that aren't published yet. Finish or cancel those language changes first, then change the branch.`,
       },
 
     },
@@ -4082,21 +4429,49 @@ export const en = {
        * 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.
        */
       gitlab: GITLAB_ACCESS_ERRORS,
+      /**
+       * 언어 추가·제거·취소의 거부(locale-add — `LocaleChangeError`)와 언어 변경이 다른 도구에 낳는 거부. 화면 문구는 시안 배치가 정하므로 아직 화면 사전에 없다 —
+       * 그때 화면 키가 생기면 여기를 그 키로 바꾼다(같은 거부에 문구 두 벌 금지). 다음 행동을 함께 말한다 — 모르는 코드로 접히면 에이전트가 같은 호출을 되풀이한다.
+       */
+      languages: {
+        "unsupported-format": "Languages can be added or removed only for JSON catalog and Chrome extension messages sources.",
+        "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
+        "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
+        "already-active": "That language is already in this source.",
+        "locale-collision": "This source already has that language, written with different capitalization or separators.",
+        "unsafe-path": "The file path for that language isn't safe to write. Ask your developers to check the source's file path.",
+        "path-conflict": "Another source already uses the file path for that language.",
+        "base-locale": "The base language can't be removed.",
+        // 입구가 프로젝트를 이미 확인했다 — 여기 닿는 not-found는 소스나 언어다. 공용 문장("You can't open this project")은 거짓이 된다.
+        "not-found": "That source or language isn't in this project. Check them with get_project.",
+        "removal-pending": "That language is already set to be removed. Cancel the removal with cancel_locale_removal instead.",
+        "no-removal": "That language isn't set to be removed.",
+        "approval-required": "Removing a language needs the approval from preview_locale_removal. Preview it first, then pass its approval.",
+        "stale-approval": "Something changed after the preview, so nothing was removed. Preview again, then pass the new approval.",
+        // 제거의 폐기는 Revert와 같다 — 되돌릴 마지막 전송 값이 없거나 낡았다. 길은 Publish 하나다(`lib/locales/change.ts` `planDiscard`).
+        "baseline-unknown": "Some unsent edits in that language have no sent version to go back to, so it can't be removed yet. Publish them first.",
+        "baseline-stale": "The sent version of some edits in that language is out of date, so it can't be removed yet. Publish first, then preview again.",
+        // 저장의 키 거부 — 키 단위 저장이라 같은 키의 다른 언어도 저장되지 않았다(B1 handoff).
+        "locale-removal-pending": (languages: string): string =>
+          `${languages} is set to be removed, so this key wasn't saved in any language. Cancel the removal to edit it, or save the key without that language.`,
+        // 기준 브랜치·기준 언어 — 의도는 지금 설정을 보고 승인됐다.
+        "locale-change-pending": "A language is still being added or removed here. Publish it or cancel that change first.",
+      },
     },
     /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
     tools: {
       whoami: "Show who this token belongs to, whether GitHub is connected, and what the token may do (permissions, projects, expiry).",
       list_projects: "List the projects you can use with this token, with your role, repository, and whether each is ready.",
-      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
+      get_project: "Show a project's overview: sources, languages (with languageChanges: languages being added or removed and whether each was sent), key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
       list_repositories: "List the repositories you can connect to a new project — GitHub by default, or GitLab with host: \"gitlab\" (uses the GitLab token connected on your Account page). Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new GitHub project, { host: \"gitlab\", repositoryId } for a new GitLab project, or { slug } for an existing one — only one of them.",
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
-      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page.",
+      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page. Also returns the source's languages being added or removed (languageChanges).",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
-      preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
-      preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
+      preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, fileChanges (new, updated, or removed files), and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
+      preview_sync: "Preview a sync from the repository, how many unsent edits it would discard, and which pending language changes it would drop. Returns an approval to pass to sync_repository.",
       preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
-      preview_source_removal: "Preview removing a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown — mergeRequest for a GitLab project). Returns an approval to pass to remove_source when there are unsent edits.",
+      preview_source_detach: "Preview detaching a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown — mergeRequest for a GitLab project). Returns an approval to pass to detach_source when there are unsent edits.",
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
       get_workflow: "Get the CI file for the project's repository: the GitHub Actions workflow, or .gitlab-ci.yml for a GitLab project. It reads the push token from PUSH_TOKEN (a GitHub secret or a GitLab CI/CD variable).",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
@@ -4109,7 +4484,11 @@ export const en = {
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
-      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
+      detach_source: "Detach a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_detach first and pass its approval. The last source can't be detached.",
+      preview_locale_removal: "Preview removing a language from a source, or stopping a language that's being added: how many translations it has, how many unsent edits it has, and whether the change was already sent. Returns an approval to pass to remove_locale.",
+      add_locale: "Add a language to a source. Only JSON catalog and Chrome extension messages sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
+      remove_locale: "Remove a language from a source, or stop adding it. Call preview_locale_removal first and pass its approval. A removal deletes the language's file in the next Publish, and until then its translations can't be edited; its unsent edits go back to the last sent version. The base language can't be removed.",
+      cancel_locale_removal: "Cancel a pending language removal. If the removal was already sent, the next Publish puts the file back.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, update the PUSH_TOKEN CI/CD variable.",
       invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
       revoke_invitation: "Revoke a pending invitation.",
@@ -4135,9 +4514,27 @@ export const en = {
       repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
       branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
       formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
-      publishPreview: (n: number): string => n === 0 ? "Nothing to send." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a pull request. Publish with this fingerprint.`,
-      published: (view: string): string =>
-        view === "created" ? "Sent for review in a new pull request."
+      publishPreview: (n: number, languageFiles = 0, withdrawn = 0, dropped = 0, reached = 0): string => {
+        // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
+        const sent = [
+          ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
+          ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
+        ];
+        // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 그것을 거둔다(#265) — "Nothing to send."를 믿으면 취소한 변경이 PR에 남는다.
+        const undone = `${withdrawn.toLocaleString("en-US")} language ${withdrawn === 1 ? "change that was" : "changes that were"} already sent`;
+        const rest = sent.length === 0 && withdrawn === 0 ? null
+          : sent.length === 0 ? `no new changes would be sent, but publishing undoes ${undone}`
+          : `${sent.join(" and ")} would be sent in a pull request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}`;
+        // 열려 있지 않은 PR의 언어 요청은 Publish가 먼저 정리한다(#267).
+        if (dropped + reached > 0) return languageRequests("pull request").preview(dropped, reached, rest);
+        if (rest === null) return "Nothing to send.";
+        if (sent.length === 0) return `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
+        return `${rest}. Publish with this fingerprint.`;
+      },
+      published: (view: string, dropped = 0, reached = 0): string =>
+        // 보낼 것 없이 언어 요청만 정리했다(#267) — 그것이 이 결과의 이유다. 리포에 닿지 못한 요청이 있으면 "이미 있다"가 거짓이다.
+        (view === "no-changes" || view === "partial") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
+        : view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
         : "Nothing changed — the repository already has these values.",
@@ -4162,9 +4559,9 @@ export const en = {
         ? "Synced from the repository."
         : `Synced from the repository. ${kept.toLocaleString("en-US")} unsent ${kept === 1 ? "edit remains" : "edits remain"}, so automatic updates stay held.`,
       sourceRemovalPreview: (unsent: number): string => unsent === 0
-        ? "The source can be removed. It has no unsent edits."
-        : `The source can be removed. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Remove it with this approval.`,
-      sourceRemoved: (slug: string): string => `Removed ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
+        ? "The source can be detached. It has no unsent edits."
+        : `The source can be detached. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Detach it with this approval.`,
+      sourceRemoved: (slug: string): string => `Detached ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
       guidePages: (n: number): string => `${n.toLocaleString("en-US")} guide ${n === 1 ? "page" : "pages"}.`,
       guidePage: (title: string): string => `Guide page ${title}.`,
       guideMatches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "guide section matches" : "guide sections match"}.`,
@@ -4177,9 +4574,25 @@ export const en = {
        */
       gitlab: {
         workflow: "CI file for the repository. Store the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
-        publishPreview: (n: number): string => n === 0 ? "Nothing to send." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a merge request. Publish with this fingerprint.`,
-        published: (view: string): string =>
-          view === "created" ? "Sent for review in a new merge request."
+        publishPreview: (n: number, languageFiles = 0, withdrawn = 0, dropped = 0, reached = 0): string => {
+          // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
+          const sent = [
+            ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
+            ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
+          ];
+          // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 그것을 거둔다(#265) — "Nothing to send."를 믿으면 취소한 변경이 PR에 남는다.
+          const undone = `${withdrawn.toLocaleString("en-US")} language ${withdrawn === 1 ? "change that was" : "changes that were"} already sent`;
+          const rest = sent.length === 0 && withdrawn === 0 ? null
+            : sent.length === 0 ? `no new changes would be sent, but publishing undoes ${undone}`
+            : `${sent.join(" and ")} would be sent in a merge request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}`;
+          if (dropped + reached > 0) return languageRequests("merge request").preview(dropped, reached, rest);
+          if (rest === null) return "Nothing to send.";
+          if (sent.length === 0) return `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
+          return `${rest}. Publish with this fingerprint.`;
+        },
+        published: (view: string, dropped = 0, reached = 0): string =>
+          (view === "no-changes" || view === "partial") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
+          : view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."
           : view === "partial" ? "Some changes weren't sent. See the result for why."
           : "Nothing changed — the repository already has these values.",
@@ -4191,11 +4604,25 @@ export const en = {
         sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Get the updated .gitlab-ci.yml with get_workflow and replace the Malmoi jobs with it.`,
         sourcesAddedWithoutCi: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. The GitLab CI file isn't available yet, so sync from Malmoi to load repository changes.`,
         // 소스마다 job이 따로 있어 병렬이다 — 남긴 job만 실패하고 다른 소스는 계속 들어온다(GitHub의 "뒤 step이 멈춘다"와 다르다).
-        sourceRemoved: (slug: string): string => `Removed ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still sync.`,
+        sourceRemoved: (slug: string): string => `Detached ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still sync.`,
       },
-      syncPreview: (unsent: number): string => unsent === 0
+      syncPreview: (unsent: number, languageChanges = 0): string => (unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
-        : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,
+        : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`)
+        + (languageChanges === 0 ? "" : ` It also drops ${languageChanges.toLocaleString("en-US")} pending language ${languageChanges === 1 ? "change" : "changes"}.`),
+      languageAdded: (language: string, path: string): string => `Added ${language}. Publish creates ${path} once it has translations.`,
+      /** `kind` — 제거 요청이면 파일 삭제를, 추가 취소면 보내지 않음을 말한다. 미전달 편집의 결과가 둘이 다르다(되돌림 vs 남지만 안 보냄). */
+      languageRemovalPreview: (kind: string, language: string, unsent: number): string => kind === "cancel-add"
+        ? `Adding ${language} can be stopped.${unsent === 0 ? "" : ` Its ${unsent.toLocaleString("en-US")} unsent ${unsent === 1 ? "edit stays" : "edits stay"} saved but won't be sent.`} Pass this approval to remove_locale.`
+        : `${language} can be removed. The next Publish deletes its file.${unsent === 0 ? "" : ` ${unsent.toLocaleString("en-US")} unsent ${unsent === 1 ? "edit goes" : "edits go"} back to the last sent version.`} Pass this approval to remove_locale.`,
+      languageRemoved: (kind: string, language: string): string => kind === "cancel-add"
+        ? `Stopped adding ${language}.`
+        : `${language} is set to be removed. Publish to delete its file; until then its translations can't be edited.`,
+      /** `delivered` — 이미 보낸 삭제를 취소했다면 다음 Publish가 그 파일을 되돌린다. `null`은 확인 무효화 중이라 모른다. */
+      languageRemovalCancelled: (language: string, delivered: boolean | null): string =>
+        delivered === true ? `Cancelled removing ${language}. The removal was already sent — publish again to keep its file.`
+        : delivered === null ? `Cancelled removing ${language}. We couldn't confirm whether the removal was already sent — preview_publish shows whether there's anything to send.`
+        : `Cancelled removing ${language}.`,
     },
     /**
      * 브라우저가 필요한 갈래 — 설치·인가는 state 쿠키가 방어선인 왕복이라 도구가 대신하지 않는다(ARCHITECTURE §6.4).

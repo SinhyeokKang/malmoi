@@ -27,6 +27,8 @@ export type KeySaveResult =
   | { ok: true; keyId: string; cells: { localeCode: string; value: string }[] }
   | Exclude<KeySavePlan, { ok: true }>
   | { ok: false; error: "key-unavailable" }
+  /** 제거 예정 언어(locale-add)가 바뀐 셀에 있다 — 키 저장 전체를 거부한다(저장은 키 단위다). 화면 문구는 그 화면 배치가 정한다. */
+  | { ok: false; error: "locale-removal-pending"; localeCodes: string[] }
   | SyncRunning
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
@@ -114,7 +116,9 @@ async function saveKeysLocked(tx: Prisma.TransactionClient, target: KeySaveTarge
   const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true, adapterName: true } });
   // 비우기 판정의 입력이라 잠금 안에서 읽는다(delivery-invariants D2). 모르는 어댑터는 수술적으로 친다 — 비우기를 막는 쪽이 안전하다.
   const writeStrategy = ADAPTERS.find(adapter => adapter.name === surface.adapterName)?.writeStrategy ?? "surgical";
-  const locales = await tx.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true } });
+  // 언어 변경 행을 같은 질의로 읽는다 — 제거 예정 언어는 편집이 잠긴다(locale-add design §1). 잠금 뒤 읽으므로 렌더 뒤 도착한 제거도 거부된다.
+  const locales = await tx.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true, change: { select: { operation: true } } } });
+  const removing = new Set(locales.filter(locale => locale.change?.operation === "REMOVE").map(locale => locale.code));
   const rows = keys.length === 0 ? [] : await tx.translation.findMany({
     where: { projectId, surfaceId, keyId: { in: keys.map(key => key.id) } },
     select: { keyId: true, localeCode: true, value: true, pendingEditToken: true },
@@ -132,6 +136,8 @@ async function saveKeysLocked(tx: Prisma.TransactionClient, target: KeySaveTarge
   for (const { keyId, changes } of entries) {
     const key = keyOf.get(keyId);
     if (key === undefined) { results.push({ ok: false, error: "key-unavailable" }); continue; }
+    const locked = [...new Set(changes.filter(change => removing.has(change.localeCode)).map(change => change.localeCode))];
+    if (locked.length > 0) { results.push({ ok: false, error: "locale-removal-pending", localeCodes: locked }); continue; }
     const plan = planKeySave(new Map(locales.map(l => [l.code, cells.get(cellKey(keyId, l.code))?.value ?? null])), changes, { writeStrategy, baseLocale: surface.baseLocale, sourceText: key.sourceText });
     if (!plan.ok) { results.push(plan); continue; }
     if (plan.writes.length === 0) { results.push({ ok: true, keyId, cells: [] }); continue; }

@@ -27,7 +27,9 @@ const names: Partial<Record<UiLocale, Intl.DisplayNames>> = {};
 export function languageName(code: string, uiLocale: UiLocale): string {
   if (code === "") return code;
   try {
-    const display = (names[uiLocale] ??= new Intl.DisplayNames([uiLocale], { type: "language" }));
+    // ⚠️ **standard형이다**(D13 2026-10-17) — 기본값 dialect는 `Brazilian Portuguese` 옆에 `Chinese (China)`가 서듯 한 목록 안에서 형이 섞이고,
+    // 코드의 지역(`pt-BR`)과 나란히 읽히지 않는다. standard는 `Portuguese (Brazil)`이다.
+    const display = (names[uiLocale] ??= new Intl.DisplayNames([uiLocale], { type: "language", languageDisplay: "standard" }));
     // ⚠️ 매핑이 없으면 `of`가 **코드를 그대로** 돌려준다 — 그 경우와 성공을 값으로 가르지 않는다.
     return display.of(code) ?? code;
   } catch {

@@ -24,7 +24,7 @@ describe("classifySurfaceFailure", () => {
 const surface = (status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"] = null): SurfaceImportResult =>
   ({ surfaceSlug: "s", status, reason, count: 0, failed: status === "failed" ? 1 : 0, unmanaged: 0, errors: [] });
 const ok = (...surfaces: SurfaceImportResult[]): RepositoryImportOutcome => ({ ok: true, surfaces, remainingEdits: 0 });
-const auto = (outcome: RepositoryImportOutcome, over: { halted?: boolean; held?: boolean } = {}) =>
+const auto = (outcome: RepositoryImportOutcome, over: { halted?: false | "pending-edits" | "locale-change-pending"; held?: boolean } = {}) =>
   summarizeRun({ automation: true, outcome, halted: over.halted ?? false, held: over.held ?? false });
 
 describe("summarizeRun — 자동화", () => {
@@ -41,8 +41,12 @@ describe("summarizeRun — 자동화", () => {
     expect(auto(ok(surface("failed", "resource-limit"), surface("imported")))).toEqual({ result: "partial", deferReason: null });
   });
   it("재집계로 멈춤 — 앞 표면 적재면 partial, 아니면 deferred pending-edits", () => {
-    expect(auto(ok(surface("imported")), { halted: true })).toEqual({ result: "partial", deferReason: null });
-    expect(auto(ok(), { halted: true })).toEqual({ result: "deferred", deferReason: "pending-edits" });
+    expect(auto(ok(surface("imported")), { halted: "pending-edits" })).toEqual({ result: "partial", deferReason: null });
+    expect(auto(ok(), { halted: "pending-edits" })).toEqual({ result: "deferred", deferReason: "pending-edits" });
+  });
+  it("언어 게이트로 멈춤(표면 tx 재판정, R-B3 Y2) — 앞 표면 적재면 partial, 아니면 deferred locale-change-pending", () => {
+    expect(auto(ok(surface("imported")), { halted: "locale-change-pending" })).toEqual({ result: "partial", deferReason: null });
+    expect(auto(ok(), { halted: "locale-change-pending" })).toEqual({ result: "deferred", deferReason: "locale-change-pending" });
   });
   it("실패 반환 → failed", () => expect(auto({ ok: false, error: "unavailable" })).toEqual({ result: "failed", deferReason: null }));
   it("표면 0개는 too-large가 아니다", () => expect(auto(ok())).toEqual({ result: "failed", deferReason: null }));

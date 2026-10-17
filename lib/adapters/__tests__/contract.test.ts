@@ -68,6 +68,10 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     ignoreOrder?: boolean;
     firstFile?: boolean;
     nullWithOriginal?: boolean;
+    /** 표현 출처를 무시한다 — 새 언어 파일이 늘 2칸이다. */
+    ignoreRepresentation?: boolean;
+    /** 표현 출처를 원본처럼 읽어 그 값·키까지 싣는다. */
+    copyRepresentation?: boolean;
   };
 
   const fakeRegenerating = (b: Break): Adapter => ({
@@ -106,8 +110,10 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
       // 원본이 있으면 빈 객체, 없으면 null이다(audit #1). `b.nullWithOriginal`이 고치기 전의 동작이다.
       if (list.length === 0 && !b.neverNull) return own === undefined || b.nullWithOriginal ? null : "{}\n";
       const out: Record<string, string> = {};
+      // 표현 출처의 값까지 싣는 위반 — 원본처럼 읽어 키를 앞에 붙인다.
+      if (b.copyRepresentation && own === undefined && _f.representationSource !== undefined) Object.assign(out, JSON.parse(_f.representationSource) as Record<string, string>);
       for (const e of list) out[e.key] = e.message;
-      const observed = observeJsonStyle(own?.content).indent;
+      const observed = observeJsonStyle(own?.content ?? (b.ignoreRepresentation ? undefined : _f.representationSource)).indent;
       const space = b.indent === undefined ? observed : b.indent;
       return JSON.stringify(out, null, space) + (b.noTrailingNewline ? "" : "\n");
     },
@@ -125,6 +131,8 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     ["입력 순서를 그대로 따름", { respectInputOrder: true }, /입력 순서 무관|정렬/],
     ["order를 무시하고 늘 코드 유닛 순", { ignoreOrder: true }, /order: LocaleEntry\.order 순서를 따르지 않는다/],
     ["원본을 경로가 아니라 [0]으로 고름", { firstFile: true }, /원본 파일 둘/],
+    ["새 언어 파일이 표현 출처를 무시", { ignoreRepresentation: true }, /표현 출처: 4칸 기준 파일을 출처로 줬는데/],
+    ["표현 출처의 값을 새 파일에 복사", { copyRepresentation: true }, /표현 출처의 값·키가 새 파일에 새어 나왔다/],
   ];
 
   for (const [name, brk, pattern] of cases) {

@@ -16,21 +16,26 @@ import { GITLAB_API } from "./transport";
  */
 
 /** commit API의 action 하나. `execute_filemode`를 넣지 않는다 — 수정 파일이 `100644`로 남는다(W0 실측, GitHub `buildTreePayload`와 같은 동작). */
-export type GitLabCommitAction = { action: "create" | "update"; file_path: string; content: string; encoding: "text" };
+export type GitLabCommitAction =
+  | { action: "create" | "update"; file_path: string; content: string; encoding: "text" }
+  | { action: "delete"; file_path: string };
 
 /**
- * 고정 base 위 스냅샷의 actions. **삭제를 내지 않는다** — 호출부(`planPullChanges`)가 삭제를 만들지 않는 것과 같다.
+ * 고정 base 위 스냅샷의 actions. **명시적 삭제 의도만 delete가 된다** — `planPullChanges`가 의도 중 base에 있는 경로만 delete로 내고,
+ * writer의 `null`은 삭제로 읽지 않는다. 빈 변경·경로 안전·중복 검사는 두 종류 모두에 건다(같은 경로의 update+delete도 중복이다).
  * ⚠️ 경로는 JSON 본문 값이라 인코딩하지 않는다(왕복 동일). 대신 리포 밖·다른 파일을 가리키는 모양은 조립 전에 던진다 —
  * 경로는 이미 `resolveLocalePaths`를 지났지만, 쓰기 직전의 마지막 문이 여기다.
  */
 export function buildCommitActions(changes: readonly SnapshotChange[]): GitLabCommitAction[] {
   if (changes.length === 0) throw new AppError("unreachable: a GitLab commit needs at least one change");
   const seen = new Set<string>();
-  return changes.map(({ path, content, inBase }) => {
+  return changes.map((change): GitLabCommitAction => {
+    const { path } = change;
     if (!isSafeRepoPath(path)) throw new AppError(`unsafe repository path for a GitLab commit: ${JSON.stringify(path)}`);
     if (seen.has(path)) throw new AppError(`duplicate path in one GitLab commit: ${JSON.stringify(path)}`);
     seen.add(path);
-    return { action: inBase ? "update" : "create", file_path: path, content, encoding: "text" };
+    if (change.kind === "delete") return { action: "delete", file_path: path };
+    return { action: change.inBase ? "update" : "create", file_path: path, content: change.content, encoding: "text" };
   });
 }
 
@@ -154,6 +159,8 @@ const MergeRequest = z.object({
   source_project_id: z.number().int(),
   target_project_id: z.number().int(),
   state: z.string(),
+  // 열린 MR 갱신의 비교 입력(locale-add R-B2 Y3) — 설명이 없으면 GitLab이 `null`을 준다.
+  description: z.string().nullable().optional(),
 });
 
 /**
@@ -164,12 +171,12 @@ const MergeRequest = z.object({
  * 서버 필터(`state`·`source_branch`)를 믿지 않고 다시 본다 — 필터가 조용히 무시되면 다른 MR이 섞인다(GitHub `head` 필터의 함정과 같은 형).
  * ⚠️ 모양이 다르면 **던진다** — `null`(없음)로 접으면 게이트가 열린다.
  */
-export function selectOwnMergeRequest(body: unknown, repositoryId: string, branch: string): { url: string; number: number; title: string; base: string } | null {
+export function selectOwnMergeRequest(body: unknown, repositoryId: string, branch: string): { url: string; number: number; title: string; base: string; body: string } | null {
   const parsed = z.array(MergeRequest).safeParse(body);
   if (!parsed.success) throw new AppError("unexpected GitLab merge request list");
   const id = Number(repositoryId);
   const own = parsed.data.find((mr) => mr.state === "opened" && mr.source_branch === branch && mr.source_project_id === id && mr.target_project_id === id);
-  return own === undefined ? null : { url: own.web_url, number: own.iid, title: own.title, base: own.target_branch };
+  return own === undefined ? null : { url: own.web_url, number: own.iid, title: own.title, base: own.target_branch, body: own.description ?? "" };
 }
 
 const Compare = z.object({

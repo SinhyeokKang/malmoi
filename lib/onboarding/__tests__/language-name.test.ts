@@ -26,7 +26,10 @@ describe("languageName", () => {
    * 바뀐 것이므로 눈으로 보고 값을 갱신한다.
    */
   it("지역·문자 하위태그를 구별해 읽는다", () => {
-    expect(languageName("pt-BR", "en")).toBe("Brazilian Portuguese");
+    // standard형이다(D13 2026-10-17) — 방언형(`Brazilian Portuguese`)은 한 목록 안에서 `Chinese (China)`와 형이 섞이고, 코드의 지역과 나란히 읽히지 않는다.
+    expect(languageName("pt-BR", "en")).toBe("Portuguese (Brazil)");
+    expect(languageName("en-AU", "en")).toBe("English (Australia)");
+    expect(languageName("en-AU", "es")).toBe("inglés (Australia)");
     expect(languageName("zh-Hans", "en")).not.toBe(languageName("zh-Hant", "en"));
   });
 

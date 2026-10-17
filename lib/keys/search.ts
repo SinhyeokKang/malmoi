@@ -5,6 +5,7 @@ import type { KeyHit } from "@/lib/search/key-href";
 import { KEY_QUERY_MIN, SEARCH_GROUP_LIMIT } from "@/lib/search/match";
 import { Q_MAX_LENGTH } from "@/lib/translations/query";
 import { likePattern } from "./translation-list";
+import { notRemoving } from "./work-locale";
 
 export function keySearchQuery(q: string): { pattern: string } | null {
   const query = q.trim().slice(0, Q_MAX_LENGTH);
@@ -66,6 +67,7 @@ export async function searchKeys(prisma: PrismaClient, { userId, q, activeSlug }
   // 남겨 통계 없는 다중 조인이 셀을 키마다 재탐색하지 못하게 한다. 집계 뒤에만 키 메타데이터를 붙인다.
   // matched 경계도 필요하다. 합치면 통계 없는 집계가 전체 셀 정렬로 돌아간다(B3 실측).
   // (keyId, localeCode)가 유일하므로 C 정렬 배열의 최솟값은 첫 로케일과 그 값 한 쌍이다.
+  // 제거 예정 언어의 값은 검색 대상이 아니다 — 작업에서 빠진 언어다(locale-add spec 22, `notRemoving`).
   const second = await prisma.$queryRaw<KeyHit[]>(Prisma.sql`
     WITH matched AS MATERIALIZED (
       SELECT t.* FROM unnest(${members}) member(id)
@@ -76,7 +78,7 @@ export async function searchKeys(prisma: PrismaClient, { userId, q, activeSlug }
       WHERE t.value ILIKE ${pattern} AND t."keyId" <> ALL(${excluded}::text[])
         AND ((t."projectId", t."surfaceId", t."localeCode") IN (
           SELECT l."projectId", l."surfaceId", l.code FROM "Locale" l
-          WHERE l."projectId" = ANY(${members}) AND NOT l.orphaned
+          WHERE l."projectId" = ANY(${members}) AND NOT l.orphaned AND ${notRemoving("l")}
         )) IS TRUE
     ), first_match AS MATERIALIZED (
       SELECT t."projectId", t."surfaceId", t."keyId", min(ARRAY[t."localeCode", t.value] COLLATE "C") AS cell

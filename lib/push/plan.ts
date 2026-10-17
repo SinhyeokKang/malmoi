@@ -87,8 +87,13 @@ const Format = z.object({
    *
    * optional인 것은 이 필드를 내지 않는 어댑터(chrome·ts-dict는 정의상 flat)와 구 CI를 받기
    * 위해서다 — 없으면 write가 `nested`로 폴백한다.
+   *
+   * 키는 파일 경로라 `MAX_NAME`, 개수는 `MAX_KEYS`다 — 표면 JSON 컬럼에 그대로 저장되고 번역 화면·pull이 매번 읽는다(2026-10-17 보안 감사).
    */
-  nestedByPath: z.record(z.string(), z.boolean()).optional(),
+  nestedByPath: z
+    .record(z.string().min(1).max(MAX_NAME), z.boolean())
+    .refine((byPath) => Object.keys(byPath).length <= MAX_KEYS, { message: `nestedByPath must list at most ${MAX_KEYS} files` })
+    .optional(),
   baseLocale: LocaleCode,
 });
 

@@ -12,6 +12,8 @@ El contenedor web arranca con `pnpm preflight && next start`. Cuando la comproba
 | `incomplete-pair` | Un proveedor de inicio de sesión tiene solo uno de sus dos valores; la línea nombra el que falta (como `AUTH_GITLAB_SECRET`) | Rellena el valor que falta, o vacía los dos para desactivar ese proveedor |
 | `no-login-provider` | No hay ningún proveedor de inicio de sesión activo; tres líneas nombran `AUTH_GITHUB_ID`, `AUTH_GITLAB_ID` y `AUTH_GOOGLE_ID` | Rellena al menos un par completo ([configuración](install.md#settings)) |
 | `incomplete-group` | Solo están definidos algunos de los cinco valores `GITHUB_APP_*` | Completa los cinco para repositorios de GitHub o vacía los cinco si solo usas GitLab |
+| `too-short` | `AUTH_SECRET`, `APP_SIGNING_SECRET` o `CRON_SECRET` tiene menos de 32 caracteres | Vuelve a generarlo con el comando de la [configuración](install.md#settings) |
+| `reused` | `APP_SIGNING_SECRET` tiene el mismo valor que `AUTH_SECRET` | Genera un valor distinto para `APP_SIGNING_SECRET` |
 | `invalid-format` | Formato incorrecto: `RESEND_API_KEY` debe empezar por `re_`, `INVITATION_EMAIL_FROM` debe ser `Nombre <dirección>` o una dirección, `GITHUB_APP_SLUG` es `[a-z0-9-]`, `AUTH_TRUST_HOST` debe ser `true` | Ese valor |
 | `malformed` · `not-https` · `userinfo` | Un problema de forma en `MALMOI_ORIGIN` o `MALMOI_PRIVACY_URL`: espacios, barras invertidas o una URL ilegible, `http://`, `user:pw@` | Una URL `https://` sin datos de usuario |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | Solo `MALMOI_ORIGIN` (una ruta o query en la URL de privacidad está bien): una ruta, `?`, `#`, un literal IPv6, un dominio no ASCII | `MALMOI_ORIGIN=https://<domain>` |
@@ -73,7 +75,7 @@ Significado de las columnas — recopilado: valores que hay que declarar como re
 | `User` | Una persona que inició sesión. El nombre y el correo vienen de GitHub, GitLab o Google; las imágenes vienen de GitHub o Google, nunca de GitLab. Estos valores se cifran con la clave PII; el índice de correo es un HMAC de la dirección. Los tres ajustes de visualización y la hora de lectura de la Bandeja de entrada son ajustes guardados en la cuenta | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
 | `Account` | Un método de inicio de sesión vinculado (GitHub, GitLab o Google): el ID de cuenta del proveedor. No se guardan los tokens de inicio de sesión. Las filas separadas de GitHub App guardan el token de usuario recibido al conectar un repositorio (cifrado con la clave de tokens) y su caducidad | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
 | `GitLabConnection` | Conexión PAT de GitLab de una cuenta, independiente del inicio de sesión con GitLab: el PAT se cifra con la clave de tokens; el ID de usuario de GitLab, el nombre de usuario, la caducidad y los alcances se guardan sin cifrar. Se conserva hasta la desconexión o eliminación de la cuenta; la sustitución sobrescribe el PAT y sus metadatos. La caducidad o revocación detiene el acceso, pero no elimina la fila guardada | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
-| `Session` | Una sesión iniciada. Solo se guarda un resumen del valor de la cookie; caduca 24 horas después de la última actividad | — | `expires` | `sessionToken`, `userId` | — |
+| `Session` | Una sesión iniciada. Solo se guarda un resumen del valor de la cookie; caduca 7 días después de iniciar sesión y la actividad no la prolonga | — | `expires` | `sessionToken`, `userId` | — |
 | `VerificationToken` | Comprobaciones para vincular un método de inicio de sesión y para cerrar otras sesiones. `identifier` contiene el ID de usuario y el ID de cuenta del proveedor en una cadena JSON. De 5 a 10 minutos | `identifier`, `token` | `expires` | — | — |
 | `ProjectMember` | Pertenencia a un proyecto y rol | `userId`, `role`, `createdAt`, `updatedAt` | — | — | `projectId` |
 | `ProjectInvitation` | Una invitación. La dirección se cifra (clave PII) con un índice; el token es un hash. Caduca a los 7 días, pero la fila, dirección incluida, se queda | `createdAt`, `email`, `emailLookup`, `role`, `tokenHash`, `acceptedAt`, `invitedBy` | `expiresAt` | — | `id`, `projectId` |
@@ -97,7 +99,7 @@ Los prefijos `__Host-` y `__Secure-` se añaden con HTTPS (los nombres de abajo 
 
 | Cookie | Duración | Para qué sirve |
 | --- | --- | --- |
-| `authjs.session-token` | 24 horas después de la última actividad | Mantiene tu sesión iniciada |
+| `authjs.session-token` | 7 días después de iniciar sesión | Mantiene tu sesión iniciada |
 | `authjs.csrf-token` | Hasta cerrar el navegador | Confirma que una solicitud de inicio de sesión empezó en este sitio |
 | `authjs.callback-url` | Hasta cerrar el navegador | La página a la que volver tras iniciar sesión |
 | `authjs.state` · `authjs.pkce.code_verifier` | 15 minutos | Demuestra que la respuesta de un proveedor pertenece al inicio de sesión que empezó |

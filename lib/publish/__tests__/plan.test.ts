@@ -54,6 +54,21 @@ it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
   expect(planPublishButton(en, { count: 0, paused: true, otherPending: true, publishPending: true })).toMatchObject({ mode: "progress", disabled: false, badge: null });
   expect(planPublishButton(en, { count: 2, paused: false, otherPending: true, publishPending: false }).disabled).toBe(true);
 });
+/** 언어 변경이 뺀 언어의 편집(`withheld.language`)은 파일 복구 권유에서 빠진다 — 언어 줄(Held)이 이유를 말한다(R-E3 Y1). */
+it("보류 줄은 언어 보류를 빼고 센다", () => {
+  const w = en.translations.publish.withheld;
+  expect(planWithheldLines(en, { status: "committed", pr: "created", prUrl: "u", commitSha: "c", changedValues: null, delivered: 1, changed: [], withheld: { file: 1, key: 0, language: 1 } }, "OWNER")).toEqual([]);
+  expect(planWithheldLines(en, { status: "committed", pr: "created", prUrl: "u", commitSha: "c", changedValues: null, delivered: 1, changed: [], withheld: { file: 3, key: 0, language: 1 } }, "EDITOR"))
+    .toEqual([`${w.file(2)} ${w.editor}`]);
+});
+/** 셀 편집 0 · 언어 작업만 (locale-add 시안 P1 ①④) — 켜지고 배지는 없으며(셀 수) 켜진 이유를 hint가 sr로 말한다. 멈춤 사유가 그보다 앞선다. */
+it("언어 작업만 있으면 켜지고 배지 없이 이유를 말한다", () => {
+  expect(planPublishButton(en, { count: 0, languageWork: 1, paused: false, otherPending: false, publishPending: false }))
+    .toEqual({ mode: "preview", disabled: false, badge: null, hint: en.translations.publish.language.ready });
+  expect(planPublishButton(en, { count: 0, languageWork: 1, paused: true, otherPending: false, publishPending: false, pausedReason: "Archived." }))
+    .toMatchObject({ disabled: true, hint: "Archived." });
+  expect(planPublishButton(en, { count: 3, languageWork: 1, paused: false, otherPending: false, publishPending: false })).toMatchObject({ disabled: false, badge: 3, hint: "" });
+});
 const cell = (over: Partial<PublishCell> = {}): PublishCell => ({ surface: "web", path: "ko.json", keyId: "k1", key: "hello", localeCode: "ko", after: "new", author: "Editor", updatedAt: "2026-09-16", ...over });
 it("파일·키·로케일로 정렬하고 키 병합과 상한 초과 수를 센다", () => {
   const rows = [cell({ localeCode: "ko" }), cell({ localeCode: "en" }), cell({ keyId: "k2", key: "z" })];
@@ -106,4 +121,14 @@ it("base와 같은 값의 행은 same이고 diff가 그 수를 센다 · 다른 
   const rows = diff.groups.flatMap(g => g.rows);
   expect(rows.map(r => [r.key, r.same])).toEqual([["bye", false], ["hello", true]]);
   expect(diff.same).toBe(1);
+});
+
+/**
+ * fix1 Y1 (#267) — 머지 없이 닫힌 PR/MR의 언어 요청을 버리고 끝난 no-edits는 "파일이 같았다"가 아니다. 그 언어의 편집은 나가지 않았다 — Not sent 틀이다.
+ * 리포가 이미 요청대로였으면(머지) "이미 리포에 있다"가 참이라 No changes 그대로다.
+ */
+it("no-edits + 리포에 없는 채로 버린 언어 요청은 Not sent 틀이다 — 리포에 반영된 요청만이면 No changes", () => {
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" }] })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" }] })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("no-changes");
 });

@@ -82,7 +82,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
   */
   it("Sync 성공: refresh를 부르지 않고 결과는 호스트에 닿는다", async () => {
     mocks.checkOpenPullRequest.mockResolvedValue(null);
-    mocks.prepareRepositorySync.mockResolvedValue({ approval: "d", unsent: 0 });
+    mocks.prepareRepositorySync.mockResolvedValue({ approval: "d", unsent: 0, languages: [] });
     mocks.runRepositoryImport.mockResolvedValue({ ok: true, remainingEdits: 0, surfaces: [] });
     function Host() {
       const [open, setOpen] = useState(false);
@@ -113,7 +113,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
 
   const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: null, lastCommitAt: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null, createdAt: new Date("2026-09-19T00:00:00Z"), keys: 0, locales: 1, orphanedLocales: 0, progress: { total: 0, done: 0, review: 0, percent: 0 } };
   const data: SourcesData = { installed: true, repoHost: "github", sources: [source], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } };
-  const detail: SourceDetail = { ...source, installed: true, repoHost: "github", importActive: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 0, translated: 0, needsReview: 0, untranslated: 0, percent: 0 }] };
+  const detail: SourceDetail = { ...source, installed: true, repoHost: "github", pullRequestUrl: null, importActive: false, localeDelivery: "confirmed", languages: [{ code: "en", isBase: true, orphaned: false, total: 0, translated: 0, needsReview: 0, untranslated: 0, percent: 0, change: null, unsent: false }] };
 
   it("Sources 첫 적재: 상세는 재검증된 data로 한 번만 다시 읽는다 — refresh·직접 재조회 없음", async () => {
     mocks.loadSourceDetail.mockResolvedValue({ ok: true, detail });

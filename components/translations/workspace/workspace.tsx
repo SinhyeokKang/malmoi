@@ -30,7 +30,7 @@ import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib
 import { RepoHostScope, useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
+import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, savableLocales, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { clearTreeIntent, initialPane, issueTreeIntent, peekTreeIntent, reducePane, takeTreeIntent } from "@/lib/translations/compact-pane";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL, type SplitLayout } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
@@ -40,7 +40,7 @@ import {
 } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
 import { countTree, type NodeCount } from "@/lib/translations/tree-narrow";
-import { summarizeKey } from "@/lib/translations/summary";
+import { summarizeKey, workLocaleCodes } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
@@ -75,7 +75,8 @@ export type WorkspaceProps = {
   /** `null`은 선택 없음, `absent`는 URL의 키가 사라졌다(부재 안내 — 다른 키로 바꾸지 않는다). */
   detail: DetailView | { absent: true; surfaceSlug: string } | null;
   unpublished: number;
-  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string; host?: string }; lastSentLabel: string | null; lastPrUrl: string | null };
+  /** `languageWork` — 언어 변경 작업 수(`countLocaleWork`). 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). 없으면 0이다. */
+  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string; host?: string }; lastSentLabel: string | null; lastPrUrl: string | null; languageWork?: number };
   sync: { name: string; branch: string };
   /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). 옛 헤더에서 옮겨 왔다. */
   baseLocale: string | null;
@@ -102,6 +103,11 @@ function valuesOf(detail: DetailView | null): Record<string, string> {
   return out;
 }
 
+/** 제거 예정 언어 — draft가 얼리는 칸이다(locale-add design §6). */
+function readOnlyOf(detail: DetailView | null): string[] {
+  return detail?.locales.filter(locale => locale.readOnly).map(locale => locale.code) ?? [];
+}
+
 type FooterStatus =
   | { kind: "saved" }
   | { kind: "save-failed" }
@@ -111,6 +117,11 @@ type FooterStatus =
   | { kind: "save-unknown" }
   /** 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2) — 아무것도 저장되지 않았다. 입력은 그대로 남는다. */
   | { kind: "cannot-clear"; locales: string[] }
+  /**
+   * 렌더와 저장 사이에 제거가 도착했다 (`locale-removal-pending`, 시안 T1 ②) — 저장은 키 단위라 다른 언어도 저장되지 않았다. 그 칸은 곧바로 얼고
+   * 이 문장은 다음 저장 시도까지 남는다 — 무엇이 저장되지 않았는지 사용자가 아직 확인하지 않았다.
+   */
+  | { kind: "removal-pending"; locales: string[] }
   | { kind: "session" }
   | { kind: "archived" }
   | { kind: "lost-access" }
@@ -131,7 +142,10 @@ const REVERT_REASONS = {
   busy: (m: Messages) => m.translations.workspace.revert.busy,
   unavailable: (m: Messages) => m.translations.workspace.revert.unavailable,
 } as const;
-type RevertReason = keyof typeof REVERT_REASONS;
+type RevertReason = keyof typeof REVERT_REASONS | { frozen: string[] };
+/** 얼린 칸(제거 중)은 저장을 거부하므로 이유가 Discard를 가리킨다 (#284). 차단은 그대로다 — 미저장 입력이 남은 채 되돌리면 그 칸의 화면 값과 되돌린 값이 갈린다(저장 가능한 칸과 같은 이유). */
+const revertReasonText = (m: Messages, reason: RevertReason) =>
+  typeof reason === "string" ? REVERT_REASONS[reason](m) : m.translations.workspace.revert.frozen(reason.frozen.join(", "), reason.frozen.length);
 
 /**
  * **재마운트 착지 표식** (translation-tree-range design §4.4 · POSTMORTEM 2026-09-24) — 다른 소스로의 이동(트리 클릭 · 전 소스 결과의 다른 소스 키 ·
@@ -240,14 +254,17 @@ function WorkspaceBody(props: WorkspaceProps) {
   useLayoutEffect(() => { clearTreeIntent(); }, []);
 
   // ── draft ────────────────────────────────────────────────────────────────
-  const [draft, dispatch] = useReducer(draftReducer, undefined, () => initKeyDraft(keyId ?? "", valuesOf(detail)));
+  const [draft, dispatch] = useReducer(draftReducer, undefined, () => initKeyDraft(keyId ?? "", valuesOf(detail), readOnlyOf(detail)));
   useEffect(() => {
     if (detail === null) { dispatch({ type: "replace", state: initKeyDraft("", valuesOf(null)) }); return; }
-    if (detail.key.id !== draft.keyId) dispatch({ type: "replace", state: initKeyDraft(detail.key.id, valuesOf(detail)) });
-    else dispatch({ type: "server", keyId: detail.key.id, values: valuesOf(detail) });
+    if (detail.key.id !== draft.keyId) dispatch({ type: "replace", state: initKeyDraft(detail.key.id, valuesOf(detail), readOnlyOf(detail)) });
+    // 읽기 전용은 매 갱신이 정한다 — 제거가 도착하면 미저장 입력을 남긴 채 얼고, 취소되면 그대로 풀린다.
+    else dispatch({ type: "server", keyId: detail.key.id, values: valuesOf(detail), readOnly: readOnlyOf(detail) });
     // 같은 키의 재검증은 서버 값만 받는다 — draft는 보존된다(POSTMORTEM 2026-09-12).
   }, [detail]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = useMemo(() => (keyId === undefined ? [] : dirtyLocales(draft)), [draft, keyId]);
+  /** 저장에 실을 수 있는 미저장 — 얼린 칸을 뺀다. 이탈 확인·복구는 `dirty`(얼린 칸 포함)를 본다. */
+  const savable = useMemo(() => (keyId === undefined ? [] : savableLocales(draft)), [draft, keyId]);
   /*
     ⚠️ **복구 문구는 그것이 말하는 미저장보다 오래 살지 않는다** (malmoi#100) — 되돌려 0이 되면 지운다. effect로 가장자리를 보면
     복구 자신의 첫 커밋(아직 0)에 지워지므로, 편집이 만드는 다음 상태로 판정한다.
@@ -286,7 +303,18 @@ function WorkspaceBody(props: WorkspaceProps) {
     setRevertedLocales(new Set());
     setSavedLocales(new Set());
     setRevertReason(null);
+    // 제거 거부 문장은 그 제거가 취소되면 더는 참이 아니다 — 서버 상세가 그 언어를 얼리지 않으면 걷는다(시안 T1 ③).
+    const frozen = new Set(readOnlyOf(detail));
+    setStatus(prev => (prev?.kind === "removal-pending" && !prev.locales.some(code => frozen.has(code)) ? null : prev));
   }, [detail]);
+  /*
+    ⚠️ **"save again"은 다시 저장할 것이 있을 때만 참이다** (R-E2 🟡1) — 얼린 언어만 고친 저장이 거부됐거나, 거부 뒤 Escape·Discard로 저장 가능한
+    미저장이 0이 되면 Save가 꺼져 그 문장을 따를 수 없다. 그때는 상태 줄(`footer.frozen`)과 셀 이유가 사실을 말한다. 표시는 렌더에서 바로 거르고
+    (거부 커밋에 Alert가 한 번 서거나 포커스가 빈 결과 줄에 내려앉지 않게), 상태는 effect가 걷는다.
+  */
+  const removalUnactionable = status?.kind === "removal-pending" && savable.length === 0;
+  const footerStatus = removalUnactionable ? null : status;
+  useEffect(() => { if (removalUnactionable) setStatus(null); }, [removalUnactionable]);
 
   // ── 세션 복구 사본 — 이 탭 sessionStorage의 한 키 draft, 사용자별 (spec §3.5) ───────────────────
   const restoredFor = useRef<string | null>(null);
@@ -311,7 +339,8 @@ function WorkspaceBody(props: WorkspaceProps) {
       let count = 0;
       for (const [code, value] of Object.entries(copy.draft as Record<string, unknown>)) {
         if (typeof value !== "string" || !Object.hasOwn(locales, code) || value === saved[code]) continue;
-        dispatch({ type: "edit", locale: code, value });
+        // 편집이 아니라 버린 적 없는 입력이다 — 그새 얼린 칸에도 되살린다(`edit`는 얼린 칸을 거절한다).
+        dispatch({ type: "restore", locale: code, value });
         count += 1;
       }
       if (count > 0 && first) setStatus({ kind: "restored", count });
@@ -528,9 +557,9 @@ function WorkspaceBody(props: WorkspaceProps) {
   const [syncLock, setSyncLock] = useState<Date | null>(null);
   async function save() {
     // Publish가 도는 동안은 잠긴다 (audit-ux #10 · D3) — Action이 순서대로 실행돼 PR 생성 뒤에 줄을 선다. 단축키도 이 문을 지난다.
-    if (detail === null || savingRef.current || dirty.length === 0 || publish.pending) return;
+    if (detail === null || savingRef.current || savable.length === 0 || publish.pending) return;
     const requestId = `r${++requestSeq.current}`;
-    const changes = dirty.map(code => ({ localeCode: code, value: draft.draft[code] ?? "" }));
+    const changes = savable.map(code => ({ localeCode: code, value: draft.draft[code] ?? "" }));
     savingRef.current = true;
     setSaving(true);
     setStatus(null);
@@ -545,7 +574,7 @@ function WorkspaceBody(props: WorkspaceProps) {
         // 목록 행은 자리에 남기고 수만 최신 저장값으로 — 조건 이탈 여부는 재검증(`mergeServerRows`)이 정한다.
         const saved = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
         const summary = summarizeKey({
-          activeLocales: detail.locales.map(l => l.code),
+          activeLocales: workLocaleCodes(detail.locales),
           cells: detail.locales.map(l => ({ localeCode: l.code, value: saved[l.code] ?? null, needsReview: l.needsReview && !result.cells.some(c => c.localeCode === l.code), pending: l.pending || result.cells.some(c => c.localeCode === l.code) })),
         });
         setRows(prev => {
@@ -559,6 +588,16 @@ function WorkspaceBody(props: WorkspaceProps) {
           다시 눌러도 lease가 끝날 때까지 같은 거부다. 상태 줄은 비운다.
         */
         if (result.error === "sync-running") { setSyncLock(result.reopensBy); return; }
+        /*
+          제거가 렌더와 저장 사이에 도착했다 — 그 칸을 곧바로 얼리고(다시 누르면 다른 언어만 간다) 서버 상태를 다시 읽는다.
+          ⚠️ 일반 `save-failed`("Try again")로 접지 않는다 — 다시 해도 같은 칸 때문에 같은 거부다.
+        */
+        if (result.error === "locale-removal-pending") {
+          dispatch({ type: "freeze", locales: result.localeCodes });
+          setStatus({ kind: "removal-pending", locales: result.localeCodes });
+          router.refresh();
+          return;
+        }
         setStatus(result.error === "unauthorized" ? { kind: "session" }
           : result.error === "archived" ? { kind: "archived" }
           : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
@@ -611,7 +650,7 @@ function WorkspaceBody(props: WorkspaceProps) {
       if (result.status === "reverted") {
         revertCommit.wait();
         const values = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
-        dispatch({ type: "server", keyId: detail.key.id, values });
+        dispatch({ type: "server", keyId: detail.key.id, values, readOnly: draft.readOnly });
         setRevertedLocales(new Set(result.cells.map(c => c.localeCode)));
         setStatus({ kind: "reverted" });
         // 성공 뒤 Revert가 사라지고 Save는 꺼져 있다 — 포커스를 결과 영역으로 옮긴다(disabled 버튼은 포커스를 못 받는다).
@@ -689,7 +728,8 @@ function WorkspaceBody(props: WorkspaceProps) {
   const pendingLocales = detail?.locales.filter(isPending).map(l => l.code) ?? [];
   // 사유 문장("…while a save, publish, or sync is running")이 말하는 넷을 그대로 본다 (audit-ux #3) — 전엔 저장·Revert뿐이라 서버의 `busy`로만 멈췄다.
   const revertBlocked: RevertReason | null = role === "EDITOR" ? "forbidden"
-    : dirty.length > 0 ? "unsaved"
+    : savable.length > 0 ? "unsaved"
+    : dirty.length > 0 ? { frozen: dirty }
     : saving || revertBusy || syncPending || publish.pending ? "busy"
     : revertReason;
 
@@ -932,7 +972,7 @@ function WorkspaceBody(props: WorkspaceProps) {
               const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
-              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} pausedReason={connectionBlock ?? undefined} />
+              <PublishButton id={publishButtonId} count={props.unpublished} languageWork={props.publish.languageWork} publish={publish} disabled={syncPending || !availability.publish} pausedReason={connectionBlock ?? undefined} />
             </span>
 
           </span>
@@ -1073,12 +1113,14 @@ function WorkspaceBody(props: WorkspaceProps) {
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
-                invalid={status?.kind === "cannot-clear" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
+                invalid={footerStatus?.kind === "cannot-clear" || footerStatus?.kind === "removal-pending" ? { locales: footerStatus.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
                     alertId={footerAlertId}
                     dirty={dirty.length}
-                    status={status}
+                    frozen={dirty.filter(code => !savable.includes(code))}
+                    savable={savable}
+                    status={footerStatus}
                     saving={saving}
                     resultRef={resultRef}
                     saveRef={saveRef}
@@ -1086,7 +1128,7 @@ function WorkspaceBody(props: WorkspaceProps) {
                     revertBlocked={revertBlocked}
                     revertBusy={revertBusy}
                     publishing={publish.pending}
-                    saveDisabled={dirty.length === 0 || status?.kind === "archived" || status?.kind === "lost-access"}
+                    saveDisabled={savable.length === 0 || status?.kind === "archived" || status?.kind === "lost-access"}
                     onSave={() => void save()}
                     onRevert={() => void openRevert()}
                     onCheck={() => { setStatus(null); router.refresh(); }}
@@ -1100,7 +1142,7 @@ function WorkspaceBody(props: WorkspaceProps) {
         </div>
       </div>
 
-      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={props.unpublished} repo={props.publish.repo} role={role} />
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={props.unpublished} languageWork={props.publish.languageWork} repo={props.publish.repo} role={role} />
       <WorkspaceDialog
         dialog={dialog}
         keyName={detail?.key.key ?? ""}
@@ -1115,8 +1157,11 @@ function WorkspaceBody(props: WorkspaceProps) {
   );
 }
 
-function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, publishing, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
-  alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>; saveRef: React.RefObject<HTMLButtonElement | null>;
+function Footer({ alertId, dirty, frozen, savable, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, publishing, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
+  alertId: string; dirty: number;
+  /** 얼린 칸의 미저장 · 저장할 수 있는 미저장 — 얼린 칸이 있으면 상태 줄이 둘을 가른다(시안 T1). */
+  frozen: readonly string[]; savable: readonly string[];
+  status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>; saveRef: React.RefObject<HTMLButtonElement | null>;
   hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; publishing: boolean; saveDisabled: boolean;
   onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
@@ -1130,7 +1175,10 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
   */
   const saveLocked = publishing && !saveDisabled;
   // 복구 문구는 미저장이 남은 동안의 말이다 — 0이면 `edit`가 이미 지웠다 (malmoi#100).
-  const text = dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : status?.kind === "restored" ? w.footer.session.restored(status.count) : w.footer.unsaved(dirty))
+  // 거부 문장이 서 있는 동안은 그것이 상태를 말한다(시안 T1 ②′) — 같은 미저장을 두 줄로 말하지 않는다.
+  const text = status?.kind === "removal-pending" ? ""
+    : frozen.length > 0 ? w.footer.frozen(savable.join(", "), frozen.join(", "))
+    : dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : status?.kind === "restored" ? w.footer.session.restored(status.count) : w.footer.unsaved(dirty))
     : status?.kind === "saved" ? (hasPending ? w.footer.savedNotSent : w.footer.saved)
     : status?.kind === "reverted" ? w.revert.reverted
     : "";
@@ -1152,7 +1200,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
             className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-warning-foreground" : "text-muted-foreground")}>
             {text}
           </span>
-          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked](m)}</span>}
+          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{revertReasonText(m, revertBlocked)}</span>}
           {saveLocked && <span id={saveReasonId} className="text-muted-foreground min-w-0 text-xs">{m.repositorySync.waitPublish}</span>}
         </span>
         <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -1178,6 +1226,9 @@ const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { m: Messages; onCheck:
   // 거부 단위는 키 전체다 — 제목이 로케일을, 본문이 "아무것도 저장되지 않았다"를 말한다(delivery-invariants D2).
   "cannot-clear": ({ m, status }) => status.kind === "cannot-clear" && (
     <Alert variant="danger" title={m.translations.workspace.footer.cannotClear.title(status.locales.join(", "))}>{m.translations.workspace.footer.cannotClear.body}</Alert>
+  ),
+  "removal-pending": ({ m, status }) => status.kind === "removal-pending" && (
+    <Alert variant="danger" title={m.translations.workspace.footer.removalPending.title(status.locales.join(", "), status.locales.length)}>{m.translations.workspace.footer.removalPending.body}</Alert>
   ),
   "save-failed": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
   "key-gone": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,

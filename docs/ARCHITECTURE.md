@@ -20,12 +20,16 @@
    ⚠️ **셋째 길 — 제거된 소스를 다시 추가하는 첫 적재** (2026-10-05, sources-add-remove · §5.9). 소스 제거는 번역을 건드리지 않고
    `TranslationSurface.archivedAt`만 세운다. 같은 경로·어댑터로 다시 추가하면 그 행이 되살아나고, 그 첫 적재가 **그 소스의 미전달 토큰
    전부를 승인**한 strict 적재라(수동 Sync와 같은 `approvedTokens` 장치) 남아 있던 편집을 리포 값으로 덮는다. 미전달 편집이 있으면 제거
-   자체가 **그 소스에만 묶인** 서버 발급 지문을 요구한다 — 사람의 승인은 제거 시점에 받는다. 셋 다 OWNER(`project:settings`) 전용이다.
+   자체가 **그 소스에만 묶인** 서버 발급 지문을 요구한다 — 사람의 승인은 제거 시점에 받는다.
+   ⚠️ **넷째 길 — 언어 제거·추가 취소** (2026-10-14, locale-add · §5.10). 그 소스·언어의 미전달 토큰만 서버 발급 지문으로 승인해 버린다. 제거는 마지막 전달 값으로 되돌리고(`translation.reverted`), 추가 취소는 토큰만 비우고 값은 유지한다. 넷 다 OWNER(`project:settings`) 전용이다.
    ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
    로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
    ⚠️ **셋째 경우: per-locale base 원본에 그 키가 없다** (2026-09-27, B3.4 — 코드에서 지웠다). base 키 집합은 원본이 정하므로 그 셀은 보류되고
    토큰이 남는다. 풀리는 길은 키 복구 · Revert · 폐기 승인 Sync다. **대가**: 그 토큰이 미전달 수를 0 위에 붙들어 CI 적재가 계속 `deferred`라
    DB가 그 키의 orphan을 배우지 못한다 — 위 둘과 같은 모양의 감수다(OWNER 안내는 Revert를 먼저 가리킨다).
+   ⚠️ **언어 추가·제거 요청은 로케일 존재의 정본을 옮기지 않는다** (2026-10-14, locale-add — PRODUCT §7.2). DB의 요청(`LocaleChange`)이
+   바꾸는 것은 ① Publish가 제안하는 파일 집합과 ② 자동 적재 보류(`locale-change-pending`) 둘뿐이다. 요청이 만료된 뒤 최종 존재는 strict 적재와
+   같은 판정(관측된 base 파일 집합에 경로가 있으면 활성, 없으면 orphan)이 정한다. **요청과 리포 관측을 비교해 하나를 고르는 코드는 없다.**
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
    ⚠️ **Revert도 이 불변식 안에 선다 (§5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
    현재 리포를 읽어 고르지 않는다. "옛 DB 값과 새 리포 값 중 고르는" Sync 되돌리기는 여전히 만들지 않는다(PRODUCT §3).
@@ -41,9 +45,12 @@
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
    ⚠️ **소스(표면) 제거도 삭제가 아니다** (2026-10-05, §5.9) — `archivedAt`을 세울 뿐 키·로케일·번역·이력 행은 그대로이고,
    재추가가 같은 행을 되살린다(`id`·`slug` 유지). 하드 삭제·보존 기간은 없다.
+   ⚠️ **언어 제거도 삭제가 아니다** (2026-10-14, locale-add · §5.10) — 리포 파일 삭제와 앱 비활성(`orphaned`)일 뿐 로케일 행·번역·이력은 그대로이고, 같은 코드의 재추가가 같은 행을 되살린다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 미리보기와 실행의 공통 `planDelivery`가 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 키·파일 부재로 이미 보류된 셀은 이 전체 거부에서 제외한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
+   ⚠️ **언어 추가·제거 요청(`LocaleChange`)도 "DB 상태"다** (2026-10-14, locale-add) — 같은 요청 행 + 같은 원본이면 같은 파일 집합·같은 바이트다.
+   ADD의 새 파일 표현은 그 소스의 **기준 언어 파일 하나**에서만 빌린다(형제 파일 중 아무거나가 아니다).
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
    포맷·base 선언·적재 상태·키·로케일·번역은 TranslationSurface가 소유한다. 표면별 역할은 없다.
@@ -71,6 +78,8 @@
 9. **버린 값을 성공으로 숨기지 않는다** — 실패한 sync는 마지막 성공 상태를 전진시키지 않는다.
    ⚠️ **전달 기준도 같다 (§5.8)** — Publish는 첫 외부 쓰기 **전에** 그 소스의 전달 확인을 무효화하고, 성공 확정 tx에서만
    다시 세운다. 실패·결과 미확인·FAILED 종료는 옛 기준을 되살리지 않는다.
+   ⚠️ **언어 파일 변경의 전달 목록도 같은 경계를 따른다** (2026-10-14, locale-add) — `DeliveryConfirmation.deliveredLocaleChanges`는 같은 무효화로
+   "확인 안 됨"이 되고 같은 성공 tx에서만 다시 쓴다. 파일 삭제 성공을 셀 편집 전달로 기록하지 않는다.
    ⚠️ **실리지 않은 셀은 확인하지 않는다** (2026-09-24, delivery-invariants D3·D4) — pull은 렌더 출력의 좌표(파일 부재·키 자리 없음)로
    못 실은 셀을 가려 그 토큰을 남기고, 결과가 그 수(`withheld`)를 말한다. 전에는 수술적 writer가 조용히 건너뛴 셀(비운 셀·ts-dict의
    빈 자리)의 토큰까지 해제해 "보냈다"가 거짓이었다.
@@ -920,7 +929,7 @@ sha1("blob " + byteLength + "\0" + content)
 
 clone하지 않는다.
 
-**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5) + **온보딩 스냅샷 읽기**(`openRepoReader` — §3.1)를 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
+**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5) + **온보딩 스냅샷 읽기**(`openRepoReader` — §3.1)를 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. ⚠️ 예외 하나 — 언어 변경 효과가 전달된 소스는 1층 스킵 전에 스냅샷 전 만료(PR 조회)를 돈다(§5.10). `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
 
 순서 — ⚠️ **0단계가 리포 호스트 앞에 있다**: `repoTargetOf(project)`가 `ok`가 아니면(GitHub 설치 없음·리포 id 미고정 / GitLab 연결 참조 비어 있음) 부르기 전에 `not-installed`로 던진다(`lib/pull/run.ts`). 연결이 없는 프로젝트에 대해 조용히 빈 PR을 내는 대신 즉시 알린다. 그 결과가 `createGitClient`(`lib/repo-host` — 호스트 구현을 고르는 유일한 자리)의 인자다. 아래 1~6은 GitHub 구현이고, GitLab은 §3.02다.
 
@@ -1580,7 +1589,7 @@ namespace `"unresolved"`와 지역 이름 `unsupported`도 정상 사용자 문�
   기존 `Project` 관계와 같은 **Restrict**다: 삭제가 조용히 번지면 **마지막 OWNER가 사라진 프로젝트를
   되살릴 수 없다.**
 - **`Session`·`VerificationToken`·`ProjectMember`에 PRIMARY KEY가 없다.** 각자의 unique 제약이 Prisma의
-  식별자 역할을 한다. 단일 행은 unique로 조회하며 전체 세션 회수는 `Session.userId`와 `VerificationToken.identifier` 목적 접두로 조회·삭제 범위를 제한한다.
+  식별자 역할을 한다. 단일 행은 unique로 조회하며 전체 세션 회수는 `Session.userId`와 `VerificationToken.identifier` 목적 접두로 조회·삭제 범위를 제한한다(같은 tx의 `ApiToken`·`OAuthConnection`·`OAuthCode` 삭제도 `userId`로 좁힌다 — §6).
 - **`ProjectInvitation`의 `(projectId, emailLookup)`은 index이지 unique가 아니다.** `acceptedAt`을 남기는 설계라
   수락·만료된 행이 이메일을 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이
   된다. 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가른다.
@@ -1761,7 +1770,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ⚠️ **보류와 잠금은 다르다** (2026-10-01, sync-lock) — 보류는 미전달 편집이 **적재를** 막는 것이고(값을 안 보고 적재 전체를 미룬다), 잠금은 살아 있는 적재 lease가 **번역 쓰기를** 막는 것이다(§5.6.1 "번역 쓰기 ↔ 적재 lease"). 방향이 반대이고 둘 다 셀을 고르지 않는다.
 
-**보류 사유는 다섯이다** (`DEFER_REASONS` — `lib/events/payload.ts`). CI·야간 공통 넷과 야간 전용 `too-large`다. IMPORT 사건의 `deferReason`과 Logs 문장이 다섯을 가르며 `m.logs.deferReasons`의 `satisfies Record<…>`가 누락을 잡는다(`lib/events/view.ts`). 편집 보호 수는 `pending-edits`만 표시한다.
+**보류 사유는 여섯이다** (`DEFER_REASONS` — `lib/events/payload.ts`). CI·야간 공통 다섯과 야간 전용 `too-large`다. IMPORT 사건의 `deferReason`과 Logs 문장이 여섯을 가르며 `m.logs.deferReasons`의 `satisfies Record<…>`가 누락을 잡는다(`lib/events/view.ts`). 편집 보호 수는 `pending-edits`만 표시한다.
 
 | 사유 | 누가 내나 | 뜻 | 풀리는 길 |
 |---|---|---|---|
@@ -1769,6 +1778,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | `open-pr` | CI · 야간 | 열린 Malmoi PR이 있다 | PR 리뷰어가 머지하거나 닫는다 |
 | `pr-check-failed` | CI · 야간 | PR 조회가 실패하거나 마감(`GITHUB_WAIT_MS`)을 넘겼다 — **fail-closed** | 다음 실행이 다시 묻는다 |
 | `publish-raced` | CI · 야간 | 사전 판정 뒤 Last sent 또는 전달 확인 revision 집합이 바뀌었다(`no-changes` 포함) — GitHub 장애가 아니다 | 현재 head의 새 push·야간 동기화가 PR·미전달을 다시 확인한다 |
+| `locale-change-pending` | CI · 야간 | 어느 소스에 PR/MR로 아직 안 나간 **언어 제거**가 있다(2026-10-14, locale-add — 프로젝트 전체 보류, 호스트를 부르지 않는다). 언어 **추가**만으로는 보류하지 않는다 — §5.10.3 | Publish로 제거를 PR/MR에 싣거나(그 뒤는 `open-pr`이 맡는다) 제거를 취소한다 |
 | `too-large` | **야간만** | 서버 적재의 영구 한도(파일 예산 `resource-limit` · 트리 잘림) — 아래 "야간의 서버 전용 한도" | 파일을 줄이거나 리포 워크플로로 받는다(CI 경로엔 이 예산이 없다) |
 
 **열린 PR 게이트** (2026-09-30, nightly-sync — `planOpenPrGate` in `lib/protection/plan.ts`). 입력은 조회의 삼상태 `string | null | undefined` 하나이고 결과는 `apply` 또는 적재 **전체**의 `defer`다 — `pending-edits`와 같은 부류라 셀을 고르지 않는다. ACTIONS의 옛 판정 "열린 PR 경고는 차단이 아니다 — 막으면 '어느 쪽이 이기는지'를 CI가 판정한다"의 반전이고, 그 판정이 막으려던 것(값을 견줘 승자를 고르는 것)은 여전히 0곳이다. 닫는 창은 §3 "머지 전 손실 창".
@@ -1776,7 +1786,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 - ⚠️ **`planProtectedImport`와 합치지 않는다** — `applyProtectedPush` 안의 재판정은 GitHub을 부르지 않으므로 늘 `null`을 박는 호출자가 되거나, 선택 입력이면 `undefined`로 모든 CI가 조용히 보류된다. 사전 판정(route·야간)만 게이트를 부른다.
 - ⚠️ **`installationId`·`repositoryId`가 null이면 게이트가 없다**(`null`) — PR을 낼 수 없는 프로젝트엔 열린 Malmoi PR도 없다(`loadOpenPrForImportGate` in `lib/projects/open-pr.ts`). 설정 화면용 `loadOpenPrUrl`은 `repositoryId null`을 `undefined`로 읽는데, 그것을 그대로 쓰면 고정 전 옛 행의 CI가 영구 보류된다. prod에서 installation이 있고 `repositoryId`가 null인 행은 0이다(2026-09-30 prod 읽기 전용 조회) — 이 갈래는 옛 행의 안전판이다.
 - ⚠️ **조회는 installation 토큰 GET이다** — `lib/github.ts`의 `createGitClient` → `findOpenPr`(`<owner>:malmoi-i18n/sync-<slug>`, `state=open`)라 자격증명 분리(`credential-separation.test.ts`)와 충돌하지 않는다. 닫힌(머지 안 된) PR은 열린 PR로 세지 않는다.
-- 응답: `PushResponse`의 `deferred`가 **사유별 union**이다 — `{ reason: "pending-edits", pendingCount }` | `{ reason: "open-pr" | "pr-check-failed" | "publish-raced" }`(`pendingCount` 없음). 생산자 `deferred()`에도 이 타입이 붙는다(POSTMORTEM 2026-08-31). v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 새 사유는 **경고 없이 green**이고, v3 CLI가 사유별 경고를 낸다(ACTIONS).
+- 응답: `PushResponse`의 `deferred`가 **사유별 union**이다 — `{ reason: "pending-edits", pendingCount }` | `{ reason: "open-pr" | "pr-check-failed" | "publish-raced" | "locale-change-pending" }`(`pendingCount` 없음). 생산자 `deferred()`에도 이 타입이 붙는다(POSTMORTEM 2026-08-31). v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 새 사유는 **경고 없이 green**이고, v3 CLI가 사유별 경고를 낸다(ACTIONS). ⚠️ `locale-change-pending`은 v3 CLI도 모르는 사유라 본문만 찍고 exit 0이다 — CLI 경고(`lib/cli/push-response.ts`)는 action 릴리스 축이라 다음 action 릴리스 몫으로 미뤘다(ACTIONS).
 
 - `/api/push`는 가드(보관·오배송·포맷·역행) 뒤에 사전 집계 → 0이 아니면 **200 `{status: "deferred", reason: "pending-edits", pendingCount}`** 이고 어떤 컬럼도 쓰지 않는다(진행 표시 포함). 0이면 `applyProtectedPush`가 Project 잠금 안에서 다시 세고, upsert 뒤 **재집계**가 0이 아니면 트랜잭션 전체를 롤백하고 `deferred`다 — 조건 불일치는 0행이라 조용하므로(POSTMORTEM 2026-09-14) 재집계 예외가 그 무음을 깬다. ⚠️ **저장도 같은 `Project` → `TranslationSurface` 잠금 안이라**(§5.7.1) "판정과 upsert 사이에 커밋된 저장"은 끼지 못한다 — 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다(사전 집계는 orphan을 빼서 0이었다가 키·로케일이 되살아나면 1이 된다).
 - 수동 Sync는 OWNER가 Dialog를 열 때 받은 **폐기 승인 지문**(사용자·프로젝트·**리포 연결(`repositoryId`·`installationId`·owner·name)과 기준 브랜치**·활성 표면의 revision과 설정·pending `(id, token)`의 sha256)을 되돌려 줄 때만 편집을 덮는다. ⚠️ **리포·브랜치가 입력인 이유** (audit #3): Action은 실행 시점의 Project로 대상 리포를 만들므로 승인과 실행 사이의 설정 변경은 `repo-replaced`에 안 걸리고, 연결·브랜치 변경은 `importRevision`도 안 올린다 — 빠지면 `main` 기준 승인이 `release`를 덮는다. ⚠️ **Dialog의 건수·라벨·경고는 지문과 같은 응답의 `unsent`다** (audit #2) — 호출부의 화면 건수로 그리면 동료가 방금 만든 편집의 지문을 "지울 것이 없다"는 창으로 승인시킨다(`components/home/sync-button.tsx`). 서버가 Project 잠금 뒤 재계산해 대조하고(POSTMORTEM 2026-09-13), 승인 집합의 토큰만 upsert 가드를 통과한다 — 승인 뒤 저장은 살아남아 결과의 `remainingEdits`로 선다.
@@ -2352,6 +2362,214 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   `409 surface removed` + 거부 기록, 거부 어휘 `NOT_STARTED_REASONS`의 일곱째다. 잠금 뒤 `ApplyGuardError`도 `archived`와 `surface-removed`로 갈린다.
 - **Publish는 활성 소스만 렌더한다** — 열린 PR에 있던 제거된 소스의 변경은 다음 Publish에서 빠진다. 리포 파일은 건드리지 않는다.
 
+## 5.10 언어 추가·제거 (locale-add — 2026-10-14)
+
+OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 파일이 따로인 재생성 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
+웹 Server Action 다섯(`addSourceLocale`·`previewSourceLocaleAdd`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
+`app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다. 호출자는 Sources 상세의 Languages 카드와 Dialog 둘이다(DESIGN §6.66).
+⚠️ 추가 미리보기 `previewSourceLocaleAdd`는 MCP에 짝이 없다(`add_locale`은 바로 실행하고 거부 코드로 답한다).
+요청은 리포를 직접 바꾸지 않는다 — **기존 Publish PR/MR만 파일 집합 변경을 제안한다.** 정본 경계 문장은 §0 불변식 1·3·4·9의 locale-add 메모이고 이 절은 그 구현 계약이다.
+순수 판정은 `lib/locales/{add-plan,change-plan,effects,publish-plan,expiry,presence,chrome-codes}.ts`, I/O 코어는 `change.ts`·`expire.ts`·`work.ts`다(DIRECTORY).
+
+### 5.10.1 상태 — 의도 한 행, 전달 목록 하나
+
+- **`LocaleChange`** 는 소스·언어당 **현재 의도 한 행**이다(PK `(projectId, surfaceId, localeCode)`, `operation` = `ADD` | `REMOVE`, `requestedAt`; Locale 복합 FK는 Restrict).
+  일반 로케일은 행이 없다. **제거 요청이 바로 `orphaned`를 세우지 않는다** — base에 파일이 있고 취소하면 편집을 다시 허용해야 한다. `requestedAt`은 승인 지문의 입력이라
+  취소 뒤 다시 요청하면 옛 승인이 통하지 않는다.
+- **`DeliveryConfirmation.deliveredLocaleChanges`** (jsonb, 소스당 확인 행에 같이 산다)가 **마지막으로 PR/MR 경계까지 확인된 Publish가 실은 파일 집합 변경**의 정규화 목록이다.
+  원소는 `(localeCode, effect)`, effect는 `create`(값이 하나 이상인 ADD) 또는 `delete`(REMOVE)이고 코드순이다(`normalizeLocaleEffects`). 새 테이블이 아니라 확인 행에 둔 이유는
+  revision을 새로 찍고 확인을 되살리는 upsert(`confirmDelivery` 성공 tx)와 첫 외부 쓰기 전 무효화(`invalidatePublishDelivery`)를 그대로 따르게 하려는 것이다(§5.8).
+  `invalidatedAt`이 있으면 **"확인 안 됨"** 이다(`deliveredOf` → `null`). 확인 행이 없는 소스는 `[]`다.
+- **현재 효과 목록**은 같은 규칙으로 행에서 계산한다(`localeEffects`) — **값 0개 ADD는 파일을 내지 않으므로 목록에 없다.** **언어 변경 작업 = 현재 효과 목록 ≠ 전달 목록**
+  (`localeWork`, `null`은 `[]`로 본다). 전이 이력·실행 참조는 따로 두지 않는다 — sync 브랜치를 매번 base에서 다시 만들므로 "이전에 무엇을 보냈나"는 이 목록 하나로 충분하다.
+- ⚠️ **확인보다 뒤에 낸 요청의 효과는 전달로 세지 않는다** (2026-10-14, locale-add F1). 전달 목록은 그 효과가 어느 요청의 것인지 모른다. 전달 후 취소로 행 없이 남은 목록은
+  PR이 머지 없이 닫혀도 만료할 행이 없어 그대로 남고, 그 뒤 같은 언어를 다시 요청하면 현재 = 전달이 되어 Publish가 싣지 않고 다음 방문이 새 요청을 지운다.
+  그래서 `requestedAt`이 확인 시각 이후(같은 밀리초 포함)인 행의 코드는 견줄 목록에서 뺀다(`deliveredForRequests`, `lib/locales/work.ts`). `readLocaleStates`를 지나는 소비자가
+  모두 이 규칙 하나를 쓴다 — 작업 수(`localeWork`·`countLocaleWork`), Publish 계획(`deliverableLocaleWork`·`planLocalePublish`), 거둘 효과(`withdrawnLocalesOf`),
+  적재 보류 게이트(`planLocaleImportGate`), 만료(`planLocaleExpiry`), MCP `get_project`·`list_keys`의 언어별 `delivered`(`lib/mcp/locale-view.ts`).
+  - **확인 시각 = 확인 행의 `syncRunId`가 가리키는 `SyncRun.startedAt`**이다. 실행 시작 tx가 `Project` 잠금 뒤에 찍고, 스냅샷 캡처는 그 뒤에 뜨며, 언어 요청도 같은 잠금 뒤에 쓴다.
+    그래서 이 시각보다 앞선 요청은 그 스냅샷에 실렸다. 시작 뒤·캡처 전의 요청은 실렸어도 미전달로 세는데, 그 대가는 Publish 한 번 더다(안전한 쪽).
+    ⚠️ 성공 확정 시각(`finishedAt`·`lastPublishedAt`)을 쓰면 캡처 뒤에 낸 요청이 전달로 세어져 같은 결함이 돌아온다.
+  - ⚠️ **두 시각 모두 `Project` 잠금 뒤의 앱 시계다** — `startedAt`은 `startRun`이 잠금 뒤 `new Date()`로, `requestedAt`(`@default(now())`)은 Prisma 클라이언트가 잠금 뒤
+    `create` 시점에 채운다. 남는 틈은 서버리스 인스턴스 사이의 시계 차이뿐이다. **요청을 raw SQL `INSERT`로 쓰는 경로를 만들지 않는다** — DB `CURRENT_TIMESTAMP`는 트랜잭션
+    **시작** 시각(잠금 대기 전)이라 이 순서 논증이 깨진다.
+  - ⚠️ **그 요청이 현재 효과를 낼 때만 뺀다.** 값 0개 ADD처럼 파일을 내지 않는 요청까지 빼면, 열린 PR에 남았을 수 있는 옛 새 파일이 작업에서 사라져 Publish가 거두지 않는다.
+  - 판정은 뺀 목록으로 하고, 만료가 효과를 빼고 다시 쓸 때는 저장된 목록(`storedDelivered`)을 쓴다.
+  - ⚠️ **취소의 답은 저장된 목록으로 한다**(`lib/locales/change.ts` — 제거 취소 결과·추가 취소 미리보기의 `delivered`, 2026-10-14 F1 fix2). 취소 뒤에는 행이 없어 작업 판정도
+    저장 목록으로 돌아가므로, 뺀 목록으로 답하면 확인 뒤 재요청을 다시 취소했을 때 `delivered: false`라 말하는데 작업은 1이고 열린 PR에는 옛 삭제가 남는다.
+    새 제거 요청의 미리보기는 요청 행이 아직 없어 `false`다 — 아직 내지 않은 요청은 어느 확인보다도 뒤다.
+- ⚠️ **`pendingWhere`는 바꾸지 않는다.** 제거 동안 편집이 잠기고 승인 폐기로 토큰이 0이라 셀 편집 수에 언어 변경을 섞지 않는다. 셀 편집 수와 **언어 변경 작업 수**(`countLocaleWork`)는
+  따로 싣고, 조기 종료 세 자리(`shouldSkipPull`·`runPull`의 전부 보류 스킵·`planNightly`의 `upToDate`)가 둘을 함께 본다.
+- 전이:
+
+| 현재 | 입력 | 결과 |
+|---|---|---|
+| 일반 활성 | 제거 요청(미리보기 지문 승인) | REMOVE 행, 그 언어의 미전달 편집을 **마지막 전달 값으로 되돌리고** 토큰을 비운다(Revert 의미), 편집 잠금 |
+| 없음 · orphan | 추가 | ADD 행 + 활성. 되살림이면 값 있는 활성 셀에 **새 편집 토큰**(값·저자 유지, baseline 새로 만들지 않음) |
+| ADD | 제거 = **추가 취소**(지문 승인) | ADD 행 삭제 + orphan. 그 언어 토큰만 비운다 — **값은 유지**한다(재추가가 되살린다) |
+| REMOVE | 제거 취소 | 행 삭제, 편집 허용. 전달된 적이 있으면 목록 차이로 다음 Publish 작업이 생긴다 |
+| 어느 행이든 | Publish가 PR/MR 경계까지 성공 | **스냅샷 때 캡처한 효과 목록**을 전달 목록으로 쓴다. 행은 유지 |
+| 어느 행이든 | 만료(5.10.2) | 행 삭제, base 관측으로 활성/orphan, **전달 목록에서 그 효과를 뺀다** |
+| 어느 행이든 | 승인한 수동 Sync 성공 | **승인된 행만** 삭제하고 리포 파일 집합대로 활성/orphan. **전달 목록은 유지**한다 |
+
+- ⚠️ **폐기는 값을 마지막 전달 값으로 되돌린다 — 제거에만.** 토큰만 비우면 값이 DB에 남아 제거를 취소한 뒤 다음 Publish에 추적 없이 실린다. 그래서 제거 폐기는
+  `planKeyRevert`와 같은 판정으로 복원 기준(`TranslationBaseline`)을 쓰고 `translation.reverted` 사건을 셀마다 남긴다. 복원 기준이 없는 미전달 셀이 있으면 거부한다(fail-closed).
+  추가 취소는 언어가 orphan이 되어 렌더에서 빠지므로 값이 새지 않아 되돌리지 않는다. 폐기 집합은 **그 소스·언어의 토큰 전부**(orphan 키 포함)이고 미리보기 수·지문·실제 폐기가 같은 집합이다 —
+  다른 언어·다른 소스의 같은 코드는 건드리지 않는다(`s-app`의 같은 코드 회귀가 고정한다).
+- **지문**(`localeChangeFingerprint`, 접두 `"locale-change"`)은 변경 행(연산·`requestedAt`) · 그 소스·언어 토큰 전부 · 소스 설정(어댑터·경로·기준·선언된 기준) · 그 소스 확인 행의 `{revision, invalidated}`에 묶인다.
+  제거·추가 취소는 **항상** 지문 승인을 요구한다(추가와 제거 취소는 아니다). 대조는 잠금 뒤 다시 계산한 값과 한다.
+
+### 5.10.2 만료 — 요청은 영구 소유가 아니다
+
+DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 동안만** 파일 집합을 쥔다(만료 조건은 아래). 의도가 만료되면 최종 존재는 다시 리포 관측이 정하고, 그 판정은 strict 적재와 **같은 순수 함수**(`lib/locales/presence.ts`의 `localePresence` — 관측된 파일 집합에 경로가 있으면 활성, 없으면 orphan)다.
+의도와 리포를 견줘 고르는 코드는 없다.
+
+- **만료 조건** (`planLocaleExpiry` — 순수): 열린 sync PR/MR이 없다고 **성공한 조회로** 확인됨 ∧ 현재 효과 목록 = 전달 목록 ∧ 그 base head의 파일 트리를 관측함. 조회 실패(`pr-check-failed`)·응답 유실·확인 안 된 전달 목록은 **만료로 접지 않고 의도를 유지**한다.
+- ⚠️ **ADD 행은 자기 증거가 하나 더 필요하다** — 자기 `create` 효과가 전달 목록에 있거나 자기 경로가 base에서 관측될 때만 만료한다. 값 0개 ADD는 효과 목록에 없어 목록 일치만으로는 "보낼 것이 남았다"를 못 본다 —
+  이 조건이 없으면 첫 값 저장 전의 적재·야간 방문이 방금 추가한 언어를 orphan한다(2026-10-14, locale-add). 경로가 관측된 ADD는 목록 비교 없이(PR 없음 확인은 여전히 필요하다) 관측 그대로 활성으로 만료한다 — 리포에 직접 만든 파일이 보류된 ADD(`proposal-path-exists`)를 푸는 길이다.
+- ⚠️ **관측된 로케일 파일이 0개면 만료하지 않고 보류한다**(`base-empty`) — 0개는 "비었다"는 증거가 아니다(POSTMORTEM 2026-09-15). `expireLocaleChanges`는 이를 `base-unreadable`로 접어 돌려준다(보류, 실패 아님).
+  base를 못 읽은 것도 파일 부재가 아니다(2026-09-27).
+- **모순 행**(orphan인데 ADD 행 — 구버전 롤백 구간의 잔재)은 PR·목록과 무관하게 만료한다. base 관측은 여전히 요구한다.
+- ⚠️ **만료는 그 행의 효과를 전달 목록에서도 뺀다** (2026-10-14, locale-add RT #266). 만료 조건이 열린 PR 없음을 확인했으므로 그 효과는 더 이상 어느 PR에도 실려 있지 않다.
+  남겨 두면 미머지 종료 뒤 같은 언어를 다시 요청했을 때 현재 = 전달이 되어 Publish가 싣지 않고, 다음 방문이 새 요청을 지운다. 같은 tx에서 만료된 코드의 효과만 빼고
+  나머지는 정규형으로 남긴다. 그래서 만료 뒤 목록을 비우는 수렴 Publish가 따로 돌지 않는다. 무효화 중(`null`)인 목록은 무엇이 실렸는지 몰라 건드리지 않는다.
+  ⚠️ **`revision`은 바꾸지 않는다** — 새 전달 관측이 아니고, 자동 적재·야간 만료의 장벽(`readDeliveryRevision`)이 revision 변화를 "Publish가 끼었다"로 읽어 사전 판정을 마친 다른 소스의 적재를
+  `publish-raced`로 보류시킨다.
+- **누가 만료를 도는가** — 어디서든 `Project`→`TranslationSurface` 잠금 **안에서** 행·목록을 다시 읽고 판정한다(`expireLocaleChanges`, 호출 계약: Project 잠금 뒤의 tx에서만 부른다. 사람 경로는 `lockProjectAccess` 뒤. 함수가 `Project`→`Surface`를 스스로 다시 잠그지만 같은 tx의 재잠금은 대기하지 않는다):
+  1. **자동 적재(CI·야간 적재)** — 적재 tx가 겸한다(`applyPushInTransaction`의 `localeChanges: "expire"`).
+  2. **같은 base SHA라 적재를 건너뛰는 야간 방문** — `LocaleChange` 행이 있는 소스에 한해 PR/MR 조회와 만료를 `upToDate` 출구 앞에서 먼저 돈다(`lib/nightly/run.ts`). 행이 없는 프로젝트는 기존 순서 그대로 조회 0회다.
+  3. **모든 Publish(수동·MCP·야간 cron)가 스냅샷을 뜨기 전** — `expireLocalesForPublish`(`lib/pull/load.ts`). 사람 주체가 없는 cron은 AUTOMATION 주체로 만료한다. 만료가 있으면 스냅샷을 다시 읽는다.
+     머지 없이 닫힌 REMOVE가 다음 Publish에 다시 실리지 않게 하는 자리다 — cron도 빠지지 않는다(2026-10-14, locale-add).
+     ⚠️ **1층 스킵보다 먼저다** (2026-10-14, #267) — 판정은 `expiryCheckApplies`(`lib/pull/locales.ts`) 하나다: 행이 있고, 작업이 있거나 **작업이 0이어도 그 행 소스의
+     전달 목록이 비지 않았으면** 돈다. 전달된 언어 변경의 PR/MR이 머지됐거나 머지 없이 닫힌 뒤 방문 전인 창은 현재 = 전달이라 작업이 0인데, 1층이 먼저 끝나면
+     만료가 돌지 않고 결과가 "리포에 이미 있다"는 거짓을 말했다. **1층 "API 0회"의 유일한 예외**다 — 그 창의 편집 없는 Publish는 head·열린 PR·트리(GET 셋,
+     blob 없음)를 읽는다. 전달된 효과가 없는 행(값 0개 ADD)·확인 안 된 목록(`null`)은 1층 그대로 0회다. 사람 Publish만 해당한다 — 야간 cron은 작업 0이면
+     Publish를 부르지 않는다(`lib/nightly/plan.ts`, 그 창은 2번 갈래가 맡는다). 열린 PR 조회 실패는 그대로 실패다(fail-closed). 만료 뒤 보낼 것이 없으면
+     결과는 `no-edits` + `expired`(요청마다 `presence`)이고 지문 대조 전에 끝난다.
+     **미리보기는 같은 판정을 읽기만 한다** — `expiringLocalesOf`가 같은 스냅샷·트리에 `planLocaleExpiry`를 대 보고(열린 PR 조회 모름이면 아무것도 말하지 않는다),
+     `afterExpiry`가 만료 뒤 상태(행·전달 효과 빼기 + **`presence`대로 활성 목록** + 작업 수)로 계획을 세운다. 비활성이 되는 언어의 미발송 편집은 보낼 수·미발송 수에서
+     빠지고, 만료 뒤 보낼 것이 없으면 파일 변경을 약속하지 않는다. 정리할 요청은 `expiringLocales`로 싣는다. ⚠️ **열린 PR 조회는 "열림/없음"만 안다** —
+     머지와 미머지 종료는 base 관측이 가른다(`reachedRepository`, `lib/locales/reached.ts` — 제거는 orphan, 추가는 active면 리포가 요청대로다). presence를 버리면
+     머지된 제거가 지운 파일을 new로, 머지 없이 닫힌 추가가 버린 파일을 new로 약속한다(review-F2 R1·R2). 리포에 닿지 못한 요청을 정리한 `no-edits`는
+     화면 결과 갈래가 Not sent 틀이다(`planPublishView` — 그 언어의 편집은 나가지 않았다).
+- **base 관측 함수는 하나다** — `observeLocaleFiles`(`lib/pull/locales.ts`). 어댑터 읽기(`localeFromPath`)가 읽는 경로 + **정규 파일(모드 100644·100755)만** 센다. 링크(120000)·하위 모듈(160000)은 관측이 아니고,
+  템플릿에 맞는 경로의 mode를 모르거나 언어 변경을 받지 않는 어댑터·경로 미정이면 `unreadable`(fail-closed)이다. Publish(`observedLocalesOf`)·같은 head 야간(`observeSurfaceLocales`, `lib/import/observe.ts`)·야간 적재 만료가 모두 이 함수에 위임한다.
+  CI `/api/push`는 트리가 없어 페이로드의 `locales`가 유일한 관측이다.
+  ⚠️ **알려진 잔여 차이**: strict 적재의 존재 판정(`localesToKeep`, `lib/import/locales.ts`)은 아직 심볼릭 링크된 언어 파일을 센다(파싱은 실패해 부분 적재가 된다). 링크된 언어 파일에서만 만료 판정과 갈리고, 적재 코어를 바꾸는 일이라 이 기능 범위 밖에 남겼다.
+- **수동 Sync는 전달 목록을 유지한다** — 승인한 수동 Sync가 행만 지우고 목록까지 비우면, 열린 PR에 실린 삭제가 작업 0으로 남아 그 PR을 머지할 때 폐기한 제거가 리포에 들어간다. 목록을 남기면 작업 1이 되어
+  다음 Publish가 `no-changes`로 수렴하고 목록을 쓴다. 소스 제거는 그 소스의 행과 목록을 비운다(재등록으로 삭제가 새지 않게). 수동 Sync 중에 들어온 요청이 승인 없이 지워지지 않도록,
+  lease에 **승인된 행**(`approvedLocaleChanges` — 소스·코드·연산·`requestedAt`)을 실어 완전한 적재만 그 행을 지운다. 부분 적재(파싱 실패 파일)는 의도를 남긴다.
+
+### 5.10.3 자동 적재 보류와 승인 경계
+
+- **`locale-change-pending`** — 어느 소스든 `current: delete`인데 `delivered ≠ delete`인 작업(= 아직 PR/MR로 안 나간 제거)이 있으면 CI·야간 적재 **프로젝트 전체**를 보류한다(`planLocaleImportGate`, `lib/push/locale-gate.ts`).
+  200 `deferred` + 이 사유, 사건 `import.ci`/`import.nightly` `deferred`. 판정 위치는 미전달 편집 보류 **뒤**, 열린 PR 게이트 **앞**이고 보류해도 리포 호스트를 부르지 않는다. 잠금 뒤에 다시 판정한다.
+  셀을 고르지 않고 적재 전체를 보류하므로 병합이 아니다. 전달된 뒤에는 기존 열린 PR 보호가 맡는다.
+  **ADD만 있으면 보류하지 않는다** — 그 언어를 orphan 대상에서 빼고(`keptAddLocales`) 적재한다. 야간 적재는 표면 tx가 쓰기 전에 게이트를 다시 보고(`LocaleChangeDuringImport`), 걸리면 그 표면을 롤백하고 루프를 멈춘다.
+- **같은 이유로 거부하는 자리**: 기준 브랜치 변경(`changeBaseBranch`)은 비보관 소스 어디에든 행이 하나라도 남아 있으면 `locale-change-pending`으로 거부한다 — 의도는 옛 브랜치를 보고 승인됐다.
+  기준 언어 선언(`planBaseLocaleCandidate`)은 **추가 중·제거 예정인 그 언어만** 같은 코드로 거부한다(그 언어가 기준 후보에서 빠진다) — 다른 언어에 행이 있어도 선언된다. 기준 언어는 **제거할 수 없다**(`base-locale`, 선언된 기준 포함). 리포 연결 변경은 거부하지 않는다 — 리포 정체성(고정된 id)을 바꾸지 못해 삭제가 다른 리포로 새지 않는다.
+- **승인 지문이 언어 변경을 묶는다** — 수동 Sync 폐기 지문(`discardFingerprint`)·소스 제거 지문(`removalFingerprint`)에 소스별 `localeChanges`(코드·연산·`requestedAt`·전달 목록 또는 `null`)를 넣는다.
+  셀 편집이 0이어도 언어 변경 행이 있으면 승인을 요구하고, 추가·제거·취소·새 편집·전달이 승인 뒤에 일어나면 `stale-approval`이다.
+  ⚠️ **확인 Dialog가 말하는 언어 목록은 지문과 같은 읽기에서 나온다** — `prepareSync`(`lib/import/prepare.ts`)가 `{ approval, unsent, languages }`를 돌려주고, `languages`(`SyncLanguageChange` — 소스 slug·코드·연산·추가 언어의 값 있는 번역 수)는
+  `readDiscardApproval`이 지문을 만든 그 읽기의 `readLocaleStates` 결과다. 화면이 따로 모으면 동료가 방금 낸 요청을 못 본 채 승인하게 된다. 웹 `prepareRepositorySync`와 MCP `preview_sync`가 같은 코어를 부르지만
+  MCP는 아직 언어 목록을 `readLocaleStates`로 따로 읽는다(합칠 수 있다 — 범위 밖).
+- **번역 저장·Revert의 편집 잠금** — 제거 예정 언어 칸이 든 키 저장은 **키 단위로 전체 거부**한다(`locale-removal-pending` + `localeCodes`; 저장이 키 단위라 다른 언어도 저장되지 않는다). Revert도 같은 사유로 막는다.
+  제거 폐기는 Revert처럼 적재 lease 동안(`sync-running`) 거부한다.
+
+### 5.10.4 Publish — 명시적 delete와 전달 확인
+
+- **변경 union**: `PullChange = { kind: "upsert", path, content } | { kind: "delete", path }`, `SnapshotChange`는 upsert에 `inBase`가 붙는다(`lib/pull/plan.ts`·`client.ts`). **삭제는 별도 의도 입력**으로만 만든다 —
+  출력에서 언어를 빼거나 `content === null`인 것만으로는 삭제가 되지 않는다(명시적 의도 외에는 Publish가 파일을 지우지 않는다). delete는 **경로가 base에 있을 때만** 만들고,
+  같은 경로의 upsert·delete나 중복 delete는 계획 오류(`unreachable:`)다. 정렬은 기존 결정적 비교(`compareKeys`)다.
+- **호스트 가드**: GitHub `TreeEntry`는 delete를 `base_tree` 위 `sha: null` 항목으로 내고(`buildTreePayload`, 삭제 경로도 `isPathSafeRepoPath`), GitLab `buildCommitActions`는 `{action: "delete", file_path}`를 낸다(경로 검사는 `lib/gitlab/plan.ts`의 자체 `isSafeRepoPath`).
+  **빈 변경 throw는 유지**하되 삭제만 있는 변경은 통과하고, 중복·경로 안전 검사는 두 종류 모두에 건다. 변경 0은 기존 `no-changes` 경로로 간다.
+- **파일 집합의 목표** (`planProjectLocales` → `planLocalePublish`): 활성 일반 언어·ADD는 렌더 대상, REMOVE는 렌더에서 제외한다. **REMOVE 경로가 base에 있으면 delete를 추가하고 없으면 diff 항목이 없다.**
+  ⚠️ **REMOVE는 행이 있는 한 매 스냅샷에 다시 적용한다** — sync 브랜치를 매번 base에서 재생성하므로 한 번 보낸 뒤 의도를 지우면 삭제가 사라진다. 그래서 삭제 PR이 열린 채 다른 언어를 편집해 재Publish해도 삭제 diff가 남는다.
+- **삭제 경로의 경계**: 소스의 `pathTemplate`로 서버가 계산한 정확한 경로 하나다(Action·MCP는 경로를 받지 않는다). 소유(다른 소스의 경로), 비정규 파일(모드 100644·100755 밖)·링크된 상위 디렉터리는 `renderProject`의 기존 파일 종류 가드(`GitFileKindError`)에 삭제 경로도 태워 거부한다.
+  디렉터리·glob 삭제는 없고 Chrome의 같은 디렉터리 다른 파일은 건드리지 않는다. `renderProject` 진입에서 delete·create가 그 소스의 REMOVE·ADD 행 경로와 같은지 단언한다. 계획이 거부되면(`path-conflict`·`duplicate-path`·`unsafe-path`)
+  **`locale-plan-refused`** 다 — 결정적이라 재시도 불가(`LocalePlanRefused`, 미리보기는 `refused`). ⚠️ base를 못 읽은 것은 파일 부재가 아니다 — 삭제·`no-changes`를 하지 않는다.
+- **ADD의 새 파일 표현**: 원본이 없으므로 그 소스의 **기준 언어 파일 하나**에서 **표현만**(들여쓰기·CRLF·BOM·이스케이프·한 줄 컨테이너·Chrome 필드 순서) 빌린다 — `DetectedFormat.representationSource`, 재생성 writer가 원본이 없을 때만 본다.
+  **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). Chrome의 `placeholders`·`description`은 복사하지 않는다. 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  미전달 ADD의 경로가 이미 base에 있으면 **그 언어만** `proposal-path-exists`로 보류하고 나머지 편집은 나간다. **값 0개 ADD는 파일을 내지 않고** Publish 작업으로 세지 않는다(미리보기가 `empty`로 알린다).
+- **조기 종료 · 전부 보류**: 셀 편집 0·`maxUpdatedAt = null`이어도 언어 변경 작업이 있으면 실행하고(`at: null`이면 `lastPulledAt`을 쓰지 않는다), **번역이 전부 보류여도 안전한 삭제는 전달한다.**
+  판정은 보류 ADD까지 센 `localeWorkOf`가 아니라 **전달 가능한 작업**(`deliverableLocaleWork` — 캡처 ≠ 전달인 소스 수)이 한다. 빈 ADD만 있으면 원격 쓰기가 0이다.
+- **전달 확인은 캡처한 목록만 쓴다** — 스냅샷이 그때의 효과 목록을 캡처하고(`capturedBySurface`) 확인 tx가 그 캡처를 `deliveredLocaleChanges`에 정규형으로 쓴다. **committed 또는 `no-changes`로 실제 수렴한 경우만** 기록하고,
+  실패·응답 유실·부분 완료는 기록하지 않는다. 캡처 컨텍스트는 활성 소스 전부라 언어 변경만 있는 소스도 확인 행이 생긴다. 확인 행이 없는 소스의 첫 Publish가 미확인으로 끝나면 첫 외부 쓰기 전 무효화가
+  **무효화된 행**을 만든다(`createMany skipDuplicates`) — 그래야 그 상태가 `delivered: null`로 읽혀 취소가 작업 0으로 접히지 않는다. 실행 중 새 요청·취소는 현재 목록을 바꾸므로 확인 뒤에도 작업으로 남는다.
+  ⚠️ **삭제 성공을 번역 전달로 세지 않는다** — delete는 `split.delivered`·`countChangedValuesOf`·baseline 확인 대상이 아니다.
+- **취소의 `no-changes` 수렴**: 전달 전 취소는 현재 목록이 전달 목록으로 돌아가 작업이 저절로 0이다. **전달 후 취소**(추가 취소·제거 취소)는 목록이 달라 다음 Publish가 정리한다 — 스냅샷이 base와 같으면 기존 `no-changes` 경로(sync 브랜치 reset + PR 닫기)가
+  맡고, **그 정리가 끝나기 전에는 전달 목록을 갱신하지 않는다.** UI는 그 전까지 "취소 완료"라고 말하지 않는다(`cancelLocaleRemoval`의 `delivered: true`).
+- **미리보기의 거둘 효과** (`withdrawnLocales`, 2026-10-14 RT #265): 전달 후 취소로 되돌린 파일은 base와 같아 `fileChanges`에 없지만, 열린 PR에는 옛 삭제·새 파일이 남아 있고
+  Publish가 그것을 거둔다. 미리보기는 **전달 목록에 있는데 이번 캡처에 없는 효과**(`withdrawnLocalesOf`, `lib/pull/locales.ts` — 소스 slug·코드순)를 싣고, 비면 필드가 없다.
+  확인 안 된 목록(`null`)은 무엇이 실렸는지 몰라 말하지 않는다(그동안 취소는 거부된다). MCP `preview_publish`는 이를 `languages.withdrawn`으로 싣고, 파일 변경이 0이어도
+  "Nothing to send."가 아니라 이미 보낸 언어 변경을 되돌린다고 말한다. 웹 Publish 모달도 같은 목록을 읽는다 — 파일 diff가 0이어도 `Taken back` 행이 열린 PR에서 무엇을 거두는지 말하고, 바뀐 파일이 없고 열린 PR이 있으면 제목이 PR 닫기가 된다(DESIGN §6.646).
+  `WithdrawnLocale`·`LocaleNotes.empty[]`·`LocaleNotes.withheld[]`는 **대상 파일 경로**(`path`)를 같이 싣는다 — 화면이 템플릿을 채우지 않는다. `empty[]`·`WithdrawnLocale`은 서버가 `localeFilePath`로 계산한 값이라 템플릿을 모르면 `null`이고, `withheld[].path`는 계획이 원래 싣던 값(`string`, `null` 없음)이다.
+- **언어만 있는 Publish에 닿는 길** (`languageWork`): 셀 편집이 0이어도 `countLocaleWork`(`lib/locales/work.ts` — 소스별 현재 효과 ≠ 전달 효과의 합)가 0보다 크면 Publish 버튼이 켜진다.
+  **버튼과 모달이 같은 값을 받는다** — Home(`(home)/page.tsx`)과 번역 화면(`translations/page.tsx`)이 서버에서 한 번 세어 `PublishButton`(`planPublishButton`)과 `PublishModal` 둘에 넘기고,
+  모달은 그 값으로 미리보기를 기다리는 동안의 제목(`Publish language changes`)과 진행 제목을 고른다. ⚠️ **버튼은 base를 읽지 않는다** — 작업이 보류된 ADD(`proposal-path-exists`)뿐이어도 켜지고,
+  그때 모달이 `Nothing can be sent yet` + `Held` 행으로 이유를 말한다(실행도 아무것도 쓰지 않는다 — 미리보기 = 실행). 배지는 셀 수라 서지 않는다.
+- **언어 계획이 뺀 언어의 편집 수** (`withheld.language` · `withoutFileLanguage`): `ProjectLocalePlan.exclude`(보류된 ADD 등)의 언어에 사는 미전달 편집은 파일 보류로 센다 — 실행 결과 `withheld.file`·`SyncRun.withheld`·MCP 수는 그대로 `file + key`다.
+  그 중 계획이 뺀 언어의 몫은 따로도 센다(`WithheldCoordinates.languages` → `splitEdits`의 `withheldBy.language` → 결과 `withheld.language`, 미리보기는 `withoutFileLanguage` — 같은 `excluded` 갈래라 **미리보기 = 실행**).
+  화면은 "언어 파일이 아직 없다" 줄과 결과의 파일 복구 권유에서 이 수를 뺀다 — 그 언어는 `Held`·`Not included` 행이 설명하고, "파일이 아직 없다"로 또 세면 같은 표 안에서 `이미 리포에 있다`와 모순이다. 모집단(`sendable`·`delivered`)은 바뀌지 않는다.
+- **결정적 거부의 자리** (`LocalePlanRefused.site`): `locale-plan-refused`(`path-conflict`·`duplicate-path`·`unsafe-path`)가 거부한 소스·언어·경로를 쥔 소스(`LocaleRefusalSite` = `{ surfaceSlug, localeCode, ownerSlug }`)를 싣는다.
+  미리보기 `refused`는 이를 `plan: { refusal, surfaceSlug, localeCode, ownerSlug }`로 옮기고 화면이 어느 소스의 어느 언어가 무엇에 막혔는지 말한 뒤 그 소스 상세로 보낸다(Sources 딥링크 `?source=&language=`).
+  안전하지 않은 경로는 계산하지 못해 언어를 모르고(`localeCode: null`), 경로 충돌인데 그 경로를 쥔 소스를 못 찾으면 `ownerSlug: null`이고 화면이 "다른 소스의 것"이라는 사실만 말한다(방어용 — 소유 소스는 계획과 같은 메모리 `formats`에서 찾아 `path-conflict`면 늘 나온다).
+- **결과 미확정 동안 언어 변경은 거부한다** — 새 사유 코드를 만들지 않고 기존 `publish-unsettled` 장벽(`planPublishBarrier`)과 RUNNING 실행권을 재사용한다. 응답이 유실된 실행은 원격에 새 파일·삭제를 실었을 수 있는데 전달 목록은 갱신되지 않아,
+  그 사이 취소를 받으면 PR에 stale diff가 남는다. **확인이 무효화된 동안(`delivered: null`)도 같다** — 대상 행의 효과가 현재 목록에 있으면(REMOVE, 값 있는 ADD) 두 취소를 막는다. 새 요청(작업을 늘리는 쪽)과 값 0개 ADD의 취소는 막지 않는다.
+- **PR/MR 본문**: 삭제 파일이 있으면 `(removed)` 표시와 "앱 코드의 이 언어 참조(import·지원 언어 목록 등)를 정리해야 한다" 안내를 붙인다(`pullRequestBody` — 두 호스트 공통, 삭제가 없으면 옛 본문과 바이트 동일).
+  열린 PR/MR을 갱신하는 Publish는 **본문이 말하는 삭제 파일 집합이 이 스냅샷과 다를 때만** 본문 전체를 다시 쓴다(`bodyNeedsRefresh`·`GitClient.updatePr` — GitHub `PATCH pulls`, GitLab `PUT merge_requests`).
+  그 밖의 차이(낡은 파일 목록·리뷰어 문장)는 건드리지 않는다. 다만 다시 쓰는 순간에는 사람이 고친 문장도 함께 사라진다.
+- **지문**: Publish 지문(`publishFingerprint`)에 소스별 행(코드·연산·요청 시각)·전달 목록(`null` 구분)·행 경로의 base blob SHA·삭제 경로를 묶는다 — 언어 변경이 없으면 옛 바이트 그대로다. 미리보기와 실행 사이에 대상 blob이 달라지면 `reconfirm`이다.
+
+### 5.10.5 전달과 리포 반영은 다르다
+
+**PR/MR에 실린 제거 의도는 머지 전 재Publish에서도 유지한다.** 머지 여부를 브랜치 부재나 HTTP 실패로 추측하지 않는다. 열린 PR/MR이 없음을 **성공한 조회로** 확인한 뒤 base 관측으로 실제 파일 집합을 확인한다(5.10.2).
+
+| 일어난 일 | 결과 |
+|---|---|
+| 삭제 PR/MR이 머지됨 | base에 파일이 없다 → 제거 의도 만료, 그 언어 orphan(`Inactive`). 값·행·이력은 남는다 |
+| 머지 없이 닫힘 | base에 파일이 남았다 → 만료, 그 언어 활성. **제거 요청은 사라진다**(다시 제거하려면 새로 요청) |
+| 추가 PR/MR이 머지됨 | 경로가 관측됨 → 만료, 활성(일반 언어) |
+| 추가 PR/MR이 머지 없이 닫힘 | 전달 목록에 `create`가 있어 만료 조건이 선다 → base에 파일이 없으면 그 언어 orphan(값 보존) |
+| PR/MR 조회 실패·응답 유실 | 만료하지 않고 의도 유지 |
+
+webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 야간 방문 또는 Publish까지 최대 하루 늦을 수 있다. Sources는 진입 시 호스트를 부르지 않고 서버가 마지막으로 관측한 결과만 쓴다.
+**Sources 언어 행의 PR 링크 출처는 저장된 `Project.lastPrUrl` 하나다** (2026-10-17 사용자) — `loadSourceDetail`이 `pullRequestUrl: string | null`로 싣고(호스트 호출 0 · `projectId`로 좁힘 · 역할 무관 — 번역 화면의 `lastPrUrl`과 같다),
+번호는 화면이 `reviewNumberFrom(url, repoHost)`(`lib/projects/review-number.ts` — GitHub `/pull/N` · GitLab `/-/merge_requests/N`)로 뽑는다. ⚠️ **이 링크는 열린 PR이라는 뜻도 그 언어를 실었다는 뜻도 아니다** — 마지막 Publish가 만든 PR일 뿐이라
+화면은 행이 "전달됨"(Adding·Removing · 미전달 없음 · 확인됨)일 때만 링크를 세우고 번호를 못 뽑으면 링크를 만들지 않는다. 조회 실패(`prCheckFailed`) 상태는 Sources에 없다 — 그 상태는 Home이 그때 조회한 결과다.
+야간 PR/MR 조회가 실패하면 행이 있는 프로젝트는 그 밤의 Publish 전체가 `pr-check-failed`로 보류된다(종료된 요청을 다시 싣지 않기 위한 fail-closed 비용).
+
+### 5.10.6 추가 입력의 경계
+
+`planLocaleAdd`가 `isPathSafeLocale` ∧ `isLocaleShaped` ∧ `looksLikeLocale`을 지나고(**추가 가능 코드 ⊆ 관측 가능 코드** — 관측·적재는 `looksLikeLocale`을 거치므로 `es-419`·`zh-Hant-TW`는 추가해도 머지 뒤 관측되지 않아 만료가 orphan시킨다),
+`localeCollisionKey`(`code.toLowerCase().replace(/[-_]/g, "")`)로 대소문자·구분자 충돌을 막는다. `chrome-locales`는 Chrome 문서의 지원 목록 54개(`lib/locales/chrome-codes.ts` — 출처 URL·확인일 2026-10-14,
+문서 55개에서 `es_419` 제외)로 좁힌다. 경로는 소스 `pathTemplate`에서 서버가 계산하고 `isPathSafeRepoPath`와 소스 간 경로 소유 판정을 지난다. **로케일 수 상한은 두지 않는다** —
+`/api/push`의 `MAX_LOCALES`(200)는 그대로라 그 위의 리포는 기존 페이로드 검증이 거부한다. 입력 코드는 객체 프로퍼티가 아니라 `Map`·배열로 다룬다(`__proto__` 표 테스트).
+
+**추가 미리보기는 실행 판정을 공유한다** (`previewSourceLocaleAdd` → `previewLocaleAdd`, 2026-10-17 사용자): 실행 `addLocale`과 **같은 `judgeAdd`**(같은 `readChangeState` + `planLocaleChange`/`planLocaleAdd` + 경로 소유)와 **같은 되살림 셀 술어**(`reviveCellsWhere`)를 지난다 —
+화면이 템플릿을 채우거나 되살릴 수를 따로 세면 미리보기가 실행과 어긋난다(POSTMORTEM 2026-09-16). 결과는 `{ ok: true, action: "create" | "revive", path, revive }`(`revive` = 실행의 `reissued`와 같은 셈 — 값 있는 활성 키, orphan 키 제외, `create`면 0)
+또는 실행과 **같은 거부 집합**(`unsupported-format`·`removal-pending`·`invalid-code`·`unsupported-locale`·`already-active`·`locale-collision`·`unsafe-path`·`path-conflict` + 접근 계열·`publish-unsettled`·`archived`)이다.
+읽기 전용이고 RepeatableRead 스냅샷이며 잠금이 없다 — 승인 지문이 없다(추가는 버리는 것이 없다). 그 사이 상태가 바뀌면 실행이 잠금 뒤 다시 판정한다.
+입력은 슬러그·언어 코드뿐이라 **파일 경로를 받지 않는다**.
+
+### 5.10.7 사건 · 스키마 · 배포
+
+- **사건**: `ProjectEvent` SURFACE subtype 넷 — `surface.localeAdded`·`surface.localeRemovalRequested`·`surface.localeChangeCancelled`·`surface.localeChangeResolved`(목록은 잎 `lib/events/payload.ts`의 `LOCALE_CHANGE_SUBTYPES`).
+  payload의 선택 필드 `localeChange {locale, operation, revived, discarded, outcome, reissued, pullRequest, via}`이고 옛 행은 이 필드가 없다. 변경과 **같은 tx**에서 확정된다(§5.7). `result`는 `null`(실행이 아니다)이라 결과 필터에 안 잡히고 `kind=sources`에 잡힌다.
+  ⚠️ **뒤의 셋(2026-10-17)은 additive이고 옛 행은 `null`이다** — 파서(`readPayload`)가 없는 칸을 `null`로 읽고 문장은 그 절을 뺀다. `reissued: number | null`은 `surface.localeAdded`이고 되살림일 때만 수(새로 만든 추가는 `null`)다.
+  `pullRequest: { number } | null`은 `surface.localeChangeResolved`만 싣는다 — 만료된 의도의 효과(ADD→create · REMOVE→delete)가 판정용 전달 목록에 있을 때 **마지막 전달 확인 실행의 `SyncRun.prUrl`**에서 `reviewNumberFrom`으로 뽑는다(번호는 양의 안전 정수만).
+  전달 목록에 없던 의도(모순 행·리포 직접 추가)·확인보다 뒤에 낸 요청·주소 없는 실행은 `null`이다 — 옛 요청의 PR을 새 요청에 붙이지 않으려고 저장 목록이 아니라 판정 목록을 쓴다. 번호 표기(`#N`·`!N`)는 화면이 호스트로 고른다.
+  `via: "publish" | "sync" | "nightly" | "ci" | null`은 만료(`surface.localeChangeResolved`)를 일으킨 실행이다 — 야간 방문·야간 Publish·야간 적재·CI 적재가 모두 AUTOMATION이라 컬럼만으로는 가를 수 없고 사건 행위자 낱말(`Nightly`·`CI`)이 이 값을 따라야 해서다.
+  `nightly`의 출처는 야간 방문(`lib/nightly/run.ts`)·행위자 없는 Publish(`lib/pull/load.ts` — 사람의 Publish는 `publish`)·AUTOMATION 적재(`lib/import/run.ts` — 야간 적재 하나)이고 `ci`는 CI 적재(`lib/push/apply.ts`)다.
+  호출 자리는 이렇게 넷이지만 기록은 공용 코어 `expireLocaleChanges` 한 곳에서 하고, 승인한 수동 Sync의 폐기(`discardLocaleChanges`)도 같은 subtype을 직접 기록한다(`via: "sync"`, `pullRequest: null` — PR에 실린 해소가 아니다).
+  ⚠️ **`triggerWhere`는 JSON 경로 비교의 NULL을 직접 건진다** (`lib/events/trigger-where.ts`): 행위자 필터 `ci`는 `nightly`의 여집합이어야 하는데 via 없는 옛 행에서 `payload->'localeChange'->'via'` 비교가 SQL NULL이라 `NOT (… OR NULL)`이 NULL이 되어 그 행이 어느 쪽에도 안 들었다.
+  그래서 `ci`는 `NOT nightly` 하나로 적지 않고 "언어 만료가 아님 ∨ via ≠ nightly ∨ via 없음(`Prisma.AnyNull`)"으로 직접 적는다 — **`AnyNull`을 값으로 물어야 해서 `lib/events/` 안에서는 이 모듈만 `@/generated/prisma/client`를 값 import한다**(타입 전용이 아니다). 여집합인지는 `query.integration.ts`가 실제 행(via nightly · ci · 없음)으로 잰다.
+  ⚠️ **파일 삭제를 번역 전달 성공으로 기록하지 않는다.** base를 못 읽으면 결과·사건은 실패/보류다("삭제 완료"·`no-changes` 금지).
+- **스키마**: `LocaleChange`·`DeliveryConfirmation.deliveredLocaleChanges`는 additive이고 백필이 없다(마이그레이션 `20261014060000_locale_change`; 배포 순서는 OPERATIONS "언어 추가·제거 배포 순서", 구버전 구간은 "언어 추가·제거 이전으로 되돌리기"). `lib/privacy/collected.ts`에 `LocaleChange: "not-personal"`.
+  새 환경변수·패키지·cron은 없다(SELF-HOSTING §3).
+- **잠금 순서**: 추가·제거·취소·만료·CI 적재 모두 `Project`→`TranslationSurface`이고 사건은 같은 tx다. 번역 저장이 같은 잠금 안에서 제거 예정 상태를 다시 읽으므로 렌더 뒤에 도착한 제거도 서버가 거부한다.
+  `lib/locales/`가 `scripts/gate-plan.ts`의 격리 PG 트리거에 들어 있다.
+
 ## 6. 인증 경계
 
 **세 GitHub 자격증명을 섞지 않는다** (2026-09-06에 둘에서 셋이 됐다 — 4단계가 "이 사람이 어느 설치를 볼 수 있는가"를 묻기 시작했다).
@@ -2662,7 +2880,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 | **1차 `middleware.ts`** | `shouldRedirectToLogin` — **렌더 요청(GET·HEAD)에** 세션 쿠키가 없을 때만 **`/signin`으로** 돌린다(8-1a 전에는 `/`였다). 쿠키 이름은 `authjs.session-token`(http) / `__Secure-authjs.session-token`(https) **둘 다 검사한다**: 로컬은 접두가 없고 preview·프로덕션은 있다. ⚠️ **Server Action POST는 통과시킨다** (2026-09-06) — 307을 내면 `fetch`가 POST를 로그인 화면으로 재전송해 action id를 못 찾고 **페이지 오류**가 된다. Action은 스스로 `readSession`으로 `unauthorized`를 내므로 여기서 막아 얻는 것이 없고, 세션이 만료되면 브라우저가 쿠키를 지우므로 "쿠키 없는 POST"는 매일 일어나는 경로다 | 쿠키가 위조·만료됐는지 모른다. **프로젝트 인가는 전혀 모른다** |
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(`lib/auth/session.ts` — 거부는 redirect) / `getProjectAccess`(`lib/auth/query.ts` — union 반환) → 둘 다 `planProjectAccess`(`lib/auth/access.ts`). 표면 스코프는 `requireSurfaceAccess`·`getSurfaceAccess`(`lib/surfaces/access.ts`)가 그 뒤에 선다 | ⚠️ **`archived`는 못 막는다 — 막으라고 있는 갈래가 아니다.** 페이지 래퍼도 그 갈래만 redirect하지 않고 `{ …, archived: true }`를 **값으로** 돌려준다(§5.6.4) — 되돌릴 수 있는 상태이고 OWNER가 갈 곳이 설정 안의 카드 하나라, 목록으로 튕기면 자기가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고 `app/__tests__/screens.test.ts`의 보관 describe가 그 갈래를 만나는 화면을 이름으로 센다 |
 
-- ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
+- ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`로 DB를 읽고, 만료된 행이면 `deleteSession`으로 **지우는 쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js` — 갱신 `updateSession`은 no-op이다, §6.1.1) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
 - ⚠️ **`/oauth/authorize`는 보호 경로에 넣지 않는다** (2026-09-29, mcp-oauth) — 무세션이 정상 진입이고 화면이 스스로 공급자 버튼을 그린다. 넣으면
   클라이언트가 연 authorize URL이 `/signin`으로 튕겨 **요청이 저장되기 전에** 사라진다(`/invite/[token]`·`/signin/link/[challenge]`와 같은 판단).
   비로그인에게 보이는 것은 앱 이름·clientId뿐이고, 동의 결과를 쓰는 Action이 세션을 다시 본다. `entry-points.test.ts`의 `PUBLIC`이 부정 단언한다.
@@ -2683,15 +2901,28 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 **Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **예외가 하나다**: `app/invite/actions.ts`는 프로젝트 인가를 지나지 않고 **토큰이 그것을 대신한다**(단일 사용). `app/__tests__/entry-points.test.ts`의 **`EXEMPT_ACTIONS`**(`"invite/actions.ts#acceptInvitation"`)에 이름으로 고정돼 있고 — ⚠️ **같은 파일의 `EXEMPT`는 다른 목록이다**(인가를 안 지나는 **페이지·라우트** 열이고 Action이 아니다 — 2026-09-14 이후 `api/push/failure/route.ts`·`signin/link/[challenge]/page.tsx`가 더해졌다) — 같은 테스트의 `GUARDS`가 `requireUser`도 인정하므로 **세션만 확인하는 진입점**(두 부류다: **사용자 소유 자원**을 다루는 것(`/api/github/callback`·`/account` 계정 연결·`disconnectGithub`·전체 세션 회수 시작)과 **인가할 프로젝트가 아직 없는 생성 경로**(`/projects/new` + `projects/actions.ts`의 목록·탐지·브랜치·샘플·수동확정·생성 여섯))도 자동 검사를 통과한다. ⚠️ **그 예외는 파일이 아니라 `파일#export`로 고정된다** — 같은 파일의 **셋째 목록** `USER_SCOPED_ACTIONS`가 그것이고(`account/actions.ts` · `projects/actions.ts` · `mcp/actions.ts` — 이름 목록의 정본은 그 Set이다), 파일 단위였다면 export가 하나 늘 때마다 검사 밖으로 빠졌다. **여기 이름을 더하려면 둘 중 어느 쪽인지 적는다**: 행이 사용자 소유인가(`Account`·세션·프로필·`ApiToken`·`OAuthConnection`), 인가할 프로젝트가 아직 없는가(생성 경로). ⚠️ **넷째 목록 `DELEGATED_CORES`는 인가가 Action 본문이 아니라 공유 코어에 있는 Action이다**(mcp-connector — Action과 MCP 도구가 같은 코어를 부른다, §6.45). 그 코어를 부르는 export를 가드를 지난 것으로 세는 대신 **코어 본문이 프로젝트 가드를 직접 부르는지**를 따로 센다. ⚠️ **편집 중 저장 Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. **나가는 OAuth 시작은 예외다** — `startGithubConnect`는 성공 시 GitHub으로 `redirect`하고 실패만 값으로 돌아온다(목적지가 우리 화면이 아니라 남의 사이트라 값으로 돌려줄 것이 없다). `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
 
-#### 6.1.1 세션 정책 — 마지막 활동 뒤 24시간 (2026-09-06)
+#### 6.1.1 세션 정책 — 로그인 뒤 7일 고정 (2026-10-15)
 
-`credentialAdapter`는 32바이트 난수 세션 원문을 HttpOnly 쿠키와 Auth.js 내부 반환에만 유지하고 DB에는 `sha256:v1:<digest>`를 저장한다. 조회 입력을 항상 다시 해시하므로 DB digest를 쿠키로 제출해도 인증되지 않는다. 갱신은 현재 미만료 행만 바꾸고 삭제된 세션을 생성하지 않는다. 공개 `publicSession` 허용 목록은 그대로다.
+`credentialAdapter`는 32바이트 난수 세션 원문을 HttpOnly 쿠키와 Auth.js 내부 반환에만 유지하고 DB에는 `sha256:v1:<digest>`를 저장한다. 조회 입력을 항상 다시 해시하므로 DB digest를 쿠키로 제출해도 인증되지 않는다. 갱신(`updateSession`)은 DB를 읽지도 쓰지도 않고 `null`을 돌려준다(아래). 공개 `publicSession` 허용 목록은 그대로다.
 
-`session: { strategy: "database", maxAge: 24h, updateAge: 1h, generateSessionToken }`. ⚠️ **넷째 키가 위 문단의 "32바이트 난수 세션 원문"의 발신처다** — `() => randomBytes(32).toString("base64url")`이고, 이것을 빼면 Auth.js 기본 생성기로 조용히 떨어진다(길이·엔트로피의 근거가 이 한 줄이라 코드 리뷰 말고는 신호가 없다). ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 `strategy: "database"`와 `updateAge` 리터럴을 고정한다 — ⚠️ **`maxAge`는 검사하지 않으므로** 7일로 바꿔도 green이다.
+`session: { strategy: "database", maxAge: 7d, updateAge: 7d, generateSessionToken }`. ⚠️ **넷째 키가 위 문단의 "32바이트 난수 세션 원문"의 발신처다** — `() => randomBytes(32).toString("base64url")`이고, 이것을 빼면 Auth.js 기본 생성기로 조용히 떨어진다(길이·엔트로피의 근거가 이 한 줄이라 코드 리뷰 말고는 신호가 없다).
+
+**세션은 로그인한 때부터 7일 뒤 끝나고, 활동으로 연장되지 않는다.** 쿠키와 DB `expires`가 같은 값이다.
+
+- ⚠️ **쿠키가 재발급되지 않는다 — 그래서 sliding은 이 앱에서 성립하지 않는다.** `@auth/core` `lib/actions/session.js`는 `expires − maxAge + updateAge <= now`면 `updateSession`을 부르고(반환값은 쓰지 않는다), 그와 별개로 **유효한 세션을 읽을 때마다** 응답 쿠키를 `now + maxAge`로 다시 심는다(갱신 시점이 아니어도). 그런데 `next-auth` `initAuth`의 인자 없는 `auth()`는 `getSession(...).then(parseSessionResponse)`만 하고 응답 헤더를 버린다 — 앱의 세션 읽기는 전부 그 호출(`lib/auth/read-session.ts`)이고 미들웨어는 `auth()`를 쓰지 않는다. 쿠키 만료를 정하는 것은 callback(로그인)이 심는 `expires: session.expires`뿐이다. 2026-10-15 실측(옛 설정 `maxAge` 24h·`updateAge` 1h): 갱신 시점의 페이지 요청과 Server Action이 DB `expires`를 요청 시각 + 24h로 옮겼지만 두 응답에 `authjs.session-token` Set-Cookie가 없었고 쿠키 Expires는 로그인 때 값 그대로였다(POSTMORTEM 2026-10-15). 그 헤더를 브라우저까지 전달하는 경로는 브라우저가 `GET /api/auth/session`을 직접 부르는 것 하나이고, 그때도 쿠키 Expires만 밀릴 뿐 DB `expires`가 수명을 끊는다 — 앱에는 그 엔드포인트를 부르는 클라이언트가 없다(`useSession`·`SessionProvider` 0건).
+- **2026-09-06 Codex 감사 #6의 수정은 DB에만 닿았다.** 그때 `updateAge`를 기본값(=`maxAge` 24h)에서 1시간으로 내려 "마지막 활동 뒤 24시간"이라 적었지만, 시간당 연장은 DB `expires`만 늘렸고 브라우저 쿠키는 로그인 + 24시간에 지워졌다 — 실제 수명은 그 뒤로도 로그인 뒤 24시간 고정이었고 방침·가이드의 문장이 틀려 있었다. 이번 변경은 그 고정 수명을 7일로 늘리고 문장을 실제에 맞춘다.
+- **연장 없음의 보증은 어댑터 no-op이 든다.** `updateAge = maxAge`면 위 공식의 갱신 시점이 `expires`와 같아 Auth.js가 `updateSession`을 부르지 않는다(만료 행은 그 전에 `getSessionAndUser`가 지운다). 그러나 공식에만 기대면 `expires == now` 경계의 호출이나 누군가 `updateAge`를 되돌리는 변경에서 DB만 조용히 늘어나는 상태가 돌아온다 — #6이 정확히 이 공식의 함정이었다. 그래서 `credentialAdapter.updateSession`이 아무것도 쓰지 않는다. `adapter.test.ts`가 "prisma `session`을 건드리지 않는다"를, `postgres.integration.ts`가 실제 Auth.js 경로로 읽은 뒤 `expires`가 그대로인 것을, `provider-config.test.ts`가 두 리터럴을 고정한다.
+- `expires`가 실제 만료 시각이므로 `expires > now`를 직접 보는 판정(`lib/session-revocation/store.ts`, `lib/account-connect/store.ts`, OAuth callback 경로의 `getSessionAndUser`)이 코드 변경 없이 같은 정책을 따른다. 술어는 `isSessionValid`(`lib/credentials/crypto.ts`) 하나다.
+
+기각한 대안:
+
+- **idle 7일 + absolute 30일** — 쿠키가 재발급되지 않아 idle이 브라우저에서 성립하지 않는다. 살리려면 아래 둘 중 하나가 필요하다.
+- **`maxAge` 30일 + 어댑터가 DB `expires`를 `now + 7d`로 자르고 1시간 스로틀** — callback이 쿠키 만료를 `createSession` 반환값으로 정하므로 어댑터가 DB와 다른 `expires`를 Auth.js에 돌려줘야 한다. `Session.createdAt` 열·마이그레이션·CAS도 따라온다.
+- **미들웨어가 렌더 요청마다 세션 쿠키를 다시 심기** — 인증 쿠키를 다루는 둘째 장치가 생기고, Auth.js 쿠키 속성(`__Secure-` 접두·sameSite·path)과 어긋나면 로그인이 깨진다.
 
 **`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image,uiLocale,timeZone,colorScheme}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
-**전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
+**전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. ⚠️ **같은 트랜잭션이 그 사용자의 `ApiToken`·`OAuthConnection`(refresh 이력은 cascade)·`OAuthCode`도 지운다** (2026-10-17 보안 감사) — 세션 하나로 MCP 개인 토큰(최대 365일)을 발급하거나 OAuth 동의를 승인할 수 있어서, 세션만 지우면 탈취한 세션으로 만든 장기 자격증명이 회수 뒤에도 `/api/mcp`에서 쓰기를 계속했다. 삭제는 소비 뒤에만 일어난다(`store.test.ts`). 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
 
 `lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/signin`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 실물 확인은 Google 왕복·취소 경로·키보드/포커스다.
 
@@ -3002,7 +3233,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   | **영어 고정 표면** | `import { en } from "@/messages/en"`로 **명시한다** — 이름이 `en`이라 "일부러 영어"가 코드에 보인다 |
 
 - **영어로 고정되는 표면**: MCP 도구 응답(`lib/mcp/**` — 에이전트가 읽는다) · 초대 메일(`lib/invitation-email/**` — 받는 사람의 언어를 모른다) ·
-  SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
+  SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · Markdown 404(`/not-found.md` — §8.1)·`/openapi.json` · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
   §6.37) · cron 응답·서버 로그 · CLI(`scripts/**`) · `app/global-error.tsx`(루트 레이아웃 밖이라 provider가 없다, `lang="en"`) · 방침 en 본(§6.035) ·
   리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
   저장되는 값(`ProjectEvent` payload — §5.7.4의 렌더 치환). 사전에서는 최상위 `mcp`·`seo`·`crash`와 중첩 `publicDocs.privacy`가 `Messages`에서 빠진다(ko·es는 그 절이 없다).
@@ -3689,7 +3920,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 #### 6.45.5 도구 목록과 쓰기 범위 — 정본 (`lib/mcp/catalog.ts`)
 
-**31개 — 읽기 16 · 쓰기 15** (2026-10-05 sources-add-remove가 `preview_source_removal`·`remove_source`를, 2026-10-10 mcp-docs가 `read_docs`를 더했다). 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
+**35개 — 읽기 17 · 쓰기 18** (2026-10-05 sources-add-remove가 `preview_source_removal`·`remove_source`(2026-10-16 `preview_source_detach`·`detach_source`로 개명 — 화면 낱말 Detach)를, 2026-10-10 mcp-docs가 `read_docs`를, 2026-10-14 locale-add가 `preview_locale_removal`·`add_locale`·`remove_locale`·`cancel_locale_removal`을 더했다). 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
 `lib/mcp/server.ts`·`lib/mcp/tools/access.ts`이고 `/mcp` 화면은 읽지 않는다. `lib/auth/lock.ts`는 import하지 않는다 — 쓰기 grant = 역할 permission이라는
 사실은 `lock-grant.test.ts`가 카탈로그로 고정한다. 잎인 이유: 구현 → 카탈로그 방향이 뒤집히면 순환이 생기고,
 `server-only`도 없어 순수 테스트가 바로 import한다 — `catalog.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
@@ -3702,16 +3933,17 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 |---|---|---|---|
 | `whoami` | 없음(계정) | 없음 | 이름·GitHub 연결 여부·토큰 권한/범위 — 에이전트가 자기 권한을 아는 유일한 수단. 범위는 내부 id가 아니라 **slug**다(지금 멤버인 비보관 프로젝트 중 범위 안의 것만 — 나간 프로젝트의 id를 말하지 않는다) |
 | `list_projects` | 없음(멤버십 ∩ 범위로 거른다) | 없음 | 목록 조회·표시 판정 재사용 |
-| `get_project` | OWNER / EDITOR | 없음 | Home 집계 — 표면·로케일·To send·**마지막 Publish의 PR**(`lastPublishPullRequest` = `Project.lastPrUrl`)·연결 건강. ⚠️ 열린 PR이 아니다 — 그 뒤 닫혔을 수 있고, 여기서 GitHub을 부르지 않는다. 지금 열려 있는지는 `preview_publish`가 답한다(#144) |
+| `get_project` | OWNER / EDITOR | 없음 | Home 집계 — 표면·로케일·To send·**마지막 Publish의 PR**(`lastPublishPullRequest` = `Project.lastPrUrl`)·연결 건강. ⚠️ 열린 PR이 아니다 — 그 뒤 닫혔을 수 있고, 여기서 GitHub을 부르지 않는다. 지금 열려 있는지는 `preview_publish`가 답한다(#144). 소스별 `languageChanges`·`languageChangesToSend`와 프로젝트 합계를 싣는다 — §5.10 |
 | `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
 | `list_branches` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / **기존: 없음** | 기존 프로젝트의 브랜치 목록은 PRODUCT §3의 읽기 예외다. sync 브랜치 제외 |
 | `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
 | `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·완성도(`missing`·`complete` 포함)·상태 필터·cursor, 페이지 100. **`scope`가 없으면 전 활성 소스다**(2026-09-30). 경로 소스만 보려면 `query.scope: "source"`. ⚠️ **입력 해석은 동결된 파서(`parseTranslationQuery`)다 — 화면 필터가 아니다** (2026-10-01 translation-tree-range): 화면은 그 위의 화면 층(`screenQuery` — Status 하나 · 트리 범위)을 쓰고, 이 도구는 바꾸지 않는다. 도구 설명도 받는 축을 직접 나열한다 |
 | `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
-| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
-| `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
+| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04). 파일 종류 `fileChanges`(`new`·`updated`·`removed`)와 `languages`(`withheld`·`empty`)를 더 싣고, 언어 파일만 있어도 요약이 "Nothing to send"가 아니다 |
+| `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라). 버려질 언어 변경은 `languageChanges: [{source, language, change}]`로 나열한다 |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
-| `preview_source_removal` | OWNER (표면) | 없음 | 제거 지문(미전달이 있을 때만) · 미전달 수(그 소스 전체 — orphaned 포함) · 열린 PR `open`·`none`·`unknown`. 판정 거부(`last-source`·`importing`)도 여기서 난다 — §5.9 |
+| `preview_source_detach` | OWNER (표면) | 없음 | 제거 지문(미전달이 있을 때만) · 미전달 수(그 소스 전체 — orphaned 포함) · 열린 PR `open`·`none`·`unknown`. 판정 거부(`last-source`·`importing`)도 여기서 난다 — §5.9 |
+| `preview_locale_removal` | OWNER (표면) | 없음 | **언어 제거와 추가 취소 둘 다**의 미리보기(`kind: request-removal` \| `cancel-add`) — 대상 파일 경로·값 있는 번역 수·그 언어의 미전달 수·전달 여부(`boolean \| null`, `null` = 확인 안 됨)·서버 지문(`approval`, 항상 발급). 읽기만 한다 — §5.10 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
@@ -3734,7 +3966,10 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `revert_to_last_sent` | 표면 `project:settings` | 키 하나의 미전달 셀 복원 | Revert 확인값 | destructive |
 | `update_project` | `project:settings` | 이름 · base branch | — | — |
 | `set_base_locale` | 표면 `project:settings` | 기준 로케일 선언 | — | — |
-| `remove_source` | 표면 `project:settings` | `archivedAt`·기본 소스 승계·`surface.removed` 사건 — 번역은 안 건드린다(편집 폐기는 재추가의 첫 적재) | 제거 지문(미전달이 있을 때) · `approval`은 필수(`null` 명시) | destructive |
+| `detach_source` | 표면 `project:settings` | `archivedAt`·기본 소스 승계·`surface.removed` 사건 — 번역은 안 건드린다(편집 폐기는 재추가의 첫 적재) | 제거 지문(미전달이 있을 때) · `approval`은 필수(`null` 명시) | destructive |
+| `add_locale` | 표면 `project:settings` | `Locale`(생성·되살림)·`LocaleChange` ADD 행·되살림 셀의 편집 토큰·`surface.localeAdded` 사건 — 리포는 건드리지 않는다(다음 Publish가 새 파일을 제안) | — | — |
+| `remove_locale` | 표면 `project:settings` | 활성 언어면 REMOVE 행 + 그 언어 미전달 편집을 마지막 전달 값으로 되돌려 폐기, `LocaleChange` ADD 행이면 **추가 취소**(행 삭제·orphan·토큰만 비움) — 번역 값·로케일 행은 지우지 않는다 | 서버 발급 지문(`preview_locale_removal`) · `approval`은 필수(`null` 명시) | destructive |
+| `cancel_locale_removal` | 표면 `project:settings` | REMOVE 행 삭제·편집 허용 — 이미 전달된 제거였으면 다음 Publish가 이전 삭제 diff를 지운다(`delivered: true`) | — | — |
 | `rotate_push_token` | `project:settings` + 리포 push | push 토큰 교체(원문 반환) | — | destructive |
 | `invite_members` | `member:manage` | 초대 발급 + 메일 발송 | — | — |
 | `revoke_invitation` · `change_member` | `member:manage` | 초대 무효 · 역할 변경/제거 | — | destructive |
@@ -3745,6 +3980,13 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
   잠금 tx 실측이 키당 0.5–0.7초라 100키가 60초에 못 들어서다. 한 tx 100키는 로컬 PG 190–218 ms였다(T7 — 도쿄 pooler는 재측정 대상).
   상한 초과(`too-many`)·중복 키(`duplicate-key` — 어느 값이 이겼는지를 판정하게 된다, `detail.keyId`가 그 키다)·적재 lease(`sync-running` — `retryable` + `detail { startedAt, reopensBy }`, §6.45.6)는 호출 전체를 거부한다.
   거부된 키는 결과 행에 `error` 코드와 **번역 화면 저장 바닥의 같은 문장**(`cannot-clear`는 로케일 목록까지)을 싣는다. 사건은 키마다 하나.
+- **언어 도구 넷은 `lib/locales/change.ts`를 부르고 Action을 부르지 않는다**(`registry.test.ts`가 `@/app` import 0을 고정한다). 입력은 코어의 zod 스키마(`slug`·`surfaceSlug`·`localeCode`, 제거는 `approval: string | null`)에
+  길이 상한만 더하고 **파일 경로를 받지 않는다**. 지문은 `preview_locale_removal`이 주고 `remove_locale`이 돌려받는다 — 빠지면 `invalid-input`, `null`이면 `approval-required`, 낡았으면 `stale-approval`이고 쓰기 0이다.
+  거부는 영어 코드 + 문장(`en.mcp.errors.languages`)이다 — 언어 전용 코드(`path-conflict`·`stale-approval`·`approval-required`·`invalid-code`·`not-found`)의 문장은 `tools/locales.ts`의 `refused()`에서만 붙는다(다른 도구의 같은 코드에 새지 않게).
+  다른 도구에서 나오는 `publish-unsettled`·`locale-plan-refused`·`locale-change-pending`은 공용 `SHARED_MESSAGE`다. `publish-unsettled`·`sync-running`은 `retryable: true`다. `locale-removal-pending`은 `set_translations`가 키 저장 전체 거부로 받는다(§5.10.3).
+  조회 투영은 `get_project`·`list_keys`가 같은 순수 함수(`lib/mcp/locale-view.ts`의 `languageChangesOf`)를 쓴다 — `{language, change: add|remove, requestedAt, delivered: boolean | null, editable, reason?: "removal-pending"}`이고
+  **`delivered: null`을 `false`로 접지 않는다**. `list_keys`의 `languageChanges`는 입력 `surfaceSlug` 소스 하나의 것이고 전 소스 상태는 `get_project`가 준다. 기존 필드(`locales` 등)는 이름·모양을 바꾸지 않고 필드만 더했다.
+  `remove_locale`의 destructive 표시는 확인창의 근거다 — 제거가 미전달 편집을 버리고, 추가 취소도 같은 도구라 같은 등급이다.
 - **`create_project`가 첫 적재까지다** — `runFirstIngest`를 도구로 따로 두지 않는다(§3.1). `requirePush: true`(POSTMORTEM 2026-09-27).
 - ⚠️ **push 토큰 원문이 도구 결과로 나간다**(`create_project`·`rotate_push_token`, 2026-09-28 사용자) — 결과는 에이전트 대화(= LLM
   공급자)에 실린다. 받아들인 근거: 프로젝트 한정 · `/api/push` 한 곳의 쓰기 · 재발급이 곧 폐기이고, 어차피 그 토큰이 가는 곳이 그
@@ -3845,6 +4087,7 @@ OAuth access로 부른 도구의 결과는 같은 grants·범위의 개인 토�
 - **무인증 authorize 남용은 코드가 아니라 Vercel WAF rate limit이다**(결정 기록) — `/oauth/authorize` IP 단위, log 모드로 시작해 실트래픽을 보고 429로 올린다.
   절차는 OPERATIONS. 작업 큐·자체 카운터를 만들지 않는다.
 - 새 환경변수는 없다 — 서명 키가 필요 없고, 요청은 DB 행이라 `APP_SIGNING_SECRET`도 쓰지 않는다(회전이 진행 중 동의를 깨지 않게).
+- **스코프를 선언하지 않는다** (2026-10-15, agent-readiness — Is Agentic 감사 항목 4를 건너뛰었다) — authorize가 `scope`를 읽지 않으므로 발견 문서의 `scopes_supported`나 OpenAPI 보안 스킴에 스코프를 광고하면 반영되지 않는 거짓 선언이다(`lib/oauth/metadata.ts` · §8.1 `/openapi.json`).
 
 #### 6.45.10 리포 호스트 어휘 (2026-10-12, gitlab-repositories — D26)
 
@@ -4341,6 +4584,12 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **JSON-LD에 평점·리뷰를 넣지 않는다** — 없는 데이터다.
   홈은 `SoftwareApplication`·`Organization`·`WebSite{name,url}` 세 엔티티다. 문서 JSON-LD의 제목·설명·`inLanguage`·breadcrumb 라벨은 **실제 본문 언어**를 따른다(영어 고정 SEO metadata와 다른 축). publisher 브랜드는 `Malmoi`다. 빈 부모 slug는 이미 있는 Docs 루트이므로 chapter로 다시 추가하지 않는다 — FAQ는 두 단계, 일반 하위 문서는 세 단계다.
 - **404 초기 HTML 제한(2026-10-08, 미해결)** — Next 16.3.3 built-server의 없는 docs slug는 404·noindex지만 초기 본문이 비고 title이 `Malmoi Docs · Malmoi`로 남았다. 컴포넌트 DOM이나 Flight 안의 문구만으로 SSR 완료를 판정하지 않는다. 프레임워크 변경 시 상태·noindex·title·script를 제외한 본문을 실제 HTTP로 다시 확인한다. middleware/CSP 확장·soft 200 우회는 채택하지 않았다(`seo-geo-audit-20261008/orch.md` D11, POSTMORTEM 2026-10-08).
+- **에이전트가 읽는 응답 셋 (2026-10-15, agent-readiness)** — Is Agentic 감사(55/100) 중 셋을 골랐다. 셋 다 **무인증 읽기 전용**이고 DB·쿠키·세션·요청 헤더를 읽지 않는다(`app/__tests__/agent-routes.test.ts`가 소스로 센다). 영어 고정이다(§6.355).
+  - **Markdown 404** — 어떤 라우트에도 매칭되지 않는 경로를 `Accept`에 `text/markdown`을 실어 요청하면 404 `text/markdown; charset=utf-8` · `Vary: Accept` · `no-store`다. 장치는 `next.config.ts`의 **fallback rewrite**(`has` accept) → `app/not-found.md/route.ts`이고, 본문은 `lib/seo/agent-errors.ts#markdownNotFound`다(hosted는 `SITE_ORIGIN` 절대 링크 Docs·`llms.txt`·`/openapi.json` — preview도 prod를 가리킨다, self-hosted·무효는 `llms.txt`를 빼고 상대 링크 둘). ⚠️ **fallback이어야 한다** — Next는 fallback rewrite를 파일시스템·동적 라우트를 다 본 뒤에만 적용하므로 존재하는 경로(`/`·`/docs`·`/llms.txt`·`/sitemap.xml`)는 Accept와 무관하게 그대로다(2026-10-15 built server 실측). middleware에서 Accept로 가르는 안은 버렸다 — 경로 존재를 몰라 라우트 표를 복제해야 한다. ⚠️ **최상위 동적 세그먼트를 새로 만들면 그 아래에서 이 장치가 조용히 꺼진다** — 그 세그먼트가 미존재 경로를 받아 `notFound()`로 끝낸다. 그래서 **라우트에 매칭된 뒤 `notFound()`로 끝나는 404**(`/docs/<없는 slug>` · `/invite/<bad>` · `/signin/link/<bad>`)는 HTML로 남고, 보호 경로는 지금처럼 로그인 307이다. ⚠️ **`has.value`는 `^…$`로 감싸인 정규식이고 q값을 해석하지 않는다** — `text/markdown;q=0`도 Markdown이다(받아들인 한계 — 라우터 정규식으로 q 파서를 못 만든다). ⚠️ **대소문자 구분은 Next 라우터(`next start`·self-hosted)의 동작이고 Vercel 라우터는 구분하지 않는다**(2026-10-15 preview 실측 — `Accept: Text/Markdown`이 Vercel에서는 404 Markdown·`x-matched-path: /not-found.md`, 로컬 `next start`에서는 HTML). 어느 쪽이든 `no-store`·`Vary: Accept`라 무해하다(Vercel도 Markdown 404에 `Vary: Accept`를 남기고, md→없음→md 순서 요청이 섞이지 않았다 — 전부 MISS). `app/__tests__/rewrites.test.ts`의 판정 표는 Next 쪽이다. ⚠️ **rewrite는 메서드를 가리지 않는다** — 목적지가 일곱 메서드를 다 낸다(GET만이면 미존재 경로 POST가 405였다 — 실측). 목적지가 자사 내부 경로라 POSTMORTEM 2026-09-28(외부 rewrite가 쿠키를 넘긴다)의 위험이 없고, 같은 테스트가 "모든 rewrite 목적지는 `/`로 시작한다"와 최상위(route group 바로 아래 포함) 동적 세그먼트 0을 상시로 센다. ⚠️ **캐시 전제**: HTML 404에는 `Vary: Accept`가 없고 `private, no-cache, no-store`라 같은 경로의 Markdown·HTML 404가 공유 캐시에서 섞이지 않는다 — HTML 404를 공개 캐시 가능하게 바꾸면 이 전제가 깨지므로 그때 `Vary: Accept`부터 붙인다.
+  - **위 "`/docs/*` 404의 첫 응답" 항목의 "middleware rewrite·수동 HTML 응답·Next 변경 — 셋 다 하지 않는다"(D11)는 `/docs/*` 404의 HTML 본문 SSR에 한정된 결정이다.** Accept 분기 fallback rewrite는 별개 결정이고, middleware·CSP·matcher를 넓히지 않으며 HTML 404와 `/docs/*`를 건드리지 않는다(D11의 근거 문서 `seo-geo-audit-20261008/orch.md`는 v1.3.2에서 지워졌다).
+  - **JSON API 404** — 어떤 route도 받지 않는 `/api` 경로(`/api` 자신 포함)는 `app/api/[[...path]]/route.ts`가 모든 메서드에서 404 `{ "error": "not-found", "message": …, "openapi": "/openapi.json" }`로 받는다(Next 기본은 HTML 404였다). 정적·더 구체적인 세그먼트가 항상 이기므로 등록된 API(`/api/push` 401·405, `/api/auth/*`)는 무변경이다. ⚠️ **`dynamicParams = false` route의 목록 밖 요청도 여기로 온다**(`/api/search-index/fr`) — 그 route가 `NoFallbackError`를 던지면 라우터가 다음 후보로 다시 라우팅한다. ⚠️ `app/api` 바로 아래에 동적 세그먼트·`route.ts`를 만들면 이 catch-all과 충돌한다. 기존 API 오류 본문(`{ "error": … }`)에 `message`를 더하지 않았다 — composite action이 읽는 외부 계약이다.
+  - **`/openapi.json`** — `POST /api/push`·`POST /api/push/failure` 둘만 싣는 OpenAPI 3.1 문서(`lib/openapi/document.ts`, `force-static`). **형태의 파생본이고 의미(동작·red 조건·안정성)의 정본은 `docs/ACTIONS.md`다** — 그래서 오류 갈래(409 사유 등)를 열거하지 않고 `{ error: string }` + 추가 필드로만 적는다. 스키마는 서버가 검증에 쓰는 Zod에서 `z.toJSONSchema(…, { io: "input" })`로 생성한다 — output 모드는 `PushPayload.refs`의 `.transform`에서 던지고, `.refine`은 조용히 빠져 operation `description`에 남긴다. 응답은 `lib/push/payload.ts`의 `PushResponseSchema`(타입 `PushResponse`는 그 `z.infer`)라 생산자 타입과 명세가 갈라질 수 없고, `io: "input"`이라 응답 객체가 `additionalProperties: false` 없이 열린다(실패 보고 `strictObject`만 닫힌다 — 서버가 실제로 거부한다). **서버 URL은 상대 `/`**라 hosted·preview·self-hosted가 같은 바이트로 각자 자기 origin을 가리킨다. 보안 스킴은 push 토큰 http bearer 하나이고 **스코프 배열이 비어 있다**(push 토큰은 스코프가 없다). `info.version`은 앱 버전(서버 축)이고 action 태그(클라이언트 축)와 별개다. 골든은 `lib/openapi/__tests__/__snapshots__/openapi.json`이다. `/oauth/*`(RFC 8414가 이미 발견 문서)·`/api/mcp`(JSON-RPC)·`/api/pull`(cron 전용)은 싣지 않는다.
+- **홈 raw HTML 콘텐츠 비율(감사 항목 2, 2.6% → 5%)은 맞추지 않았다** (2026-10-15) — 홈은 이미 H1과 5,877자 본문을 SSR한다. 581KB 중 RSC 페이로드 304KB · 인라인 SVG 227개 100KB · class 속성 144KB라 비율만 미달이고, 맞추려면 랜딩 목업 마크업을 덜어내야 해서 시각 디자인 보존과 충돌한다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 

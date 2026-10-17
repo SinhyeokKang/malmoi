@@ -74,6 +74,13 @@ export const es = {
     sendHint: (n: number, link: ReactNode): ReactNode => <>Para {n === 1 ? "conservarla" : "conservarlas"}, usa {link}: abre la pantalla de traducción.</>,
     nothingUnsent: "No hay nada que enviar — todas las ediciones ya se enviaron.",
     seeOpen: "Ver qué está abierto",
+    languageCount: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "cambio de idioma" : "cambios de idioma"}`,
+    languagesDropped: (n: number, count: ReactNode): ReactNode => <>Se descartará{n === 1 ? "" : "n"} {count}.</>,
+    languageNotAdded: (translations: number): string =>
+      translations === 0 ? "no se añadirá." : `no se añadirá. ${translations === 1 ? "Su traducción se conserva" : `Sus ${translations.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
+    languageNotRemoved: "no se quitará. Se queda en esta fuente.",
+    languageInSource: (code: string, source: string): string => `${code} (${source})`,
+    languagesMore: (n: number): string => `y ${n.toLocaleString("es")} más`,
     completed: (n: number, branch: string): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"} desde ${branch}`,
     syncedKeys: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"}`,
     unreadable: (n: number): string => `No pudimos leer ${n.toLocaleString("es")} ${n === 1 ? "fuente" : "fuentes"}`,
@@ -324,6 +331,7 @@ export const es = {
     failed: (releases: ReactNode): ReactNode => <>No pudimos cargar las novedades desde GitHub en este momento. Léelas en {releases}.</>,
     empty: (releases: ReactNode): ReactNode => <>Todavía no se ha publicado ninguna versión. Las nuevas versiones aparecen aquí y en {releases}.</>,
     truncated: (releases: ReactNode): ReactNode => <>Las versiones anteriores están en {releases}.</>,
+    showOlder: "Ver versiones anteriores",
   },
 
   home: {
@@ -558,6 +566,7 @@ export const es = {
       "pr-check-failed": "No se pudo comprobar en GitHub si hay una pull request de Malmoi abierta, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
       "publish-raced": "Publish terminó después de las comprobaciones de sincronización, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
       "too-large": "El cambio del repositorio es demasiado grande para una sincronización desde el servidor. No se sincronizó nada. Reduce el tamaño de los archivos o entrégalo con el flujo de trabajo del repositorio.",
+      "locale-change-pending": "Hay una eliminación de idioma sin enviar en Malmoi, así que no se sincronizó nada. La sincronización se reanuda cuando se publique o se cancele la eliminación.",
     },
     empty: {
       title: "Todavía no hay actividad",
@@ -591,6 +600,10 @@ export const es = {
       keys: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "clave" : "claves"}`,
       noPullRequest: "sin pull request",
       declarationOnly: "solo la declaración",
+      translationsBack: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "traducción recuperada" : "traducciones recuperadas"}`,
+      editsDiscarded: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar descartada" : "ediciones sin enviar descartadas"}`,
+      whilePublishing: "al publicar",
+      whileSyncing: "al sincronizar",
       nothingImported: "no se sincronizó nada",
       archivedEffect: "se detuvo la edición y terminaron las publicaciones nocturnas",
       restoredEffect: "se reanudaron la edición y las publicaciones nocturnas",
@@ -633,6 +646,7 @@ export const es = {
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: GitHub no respondió sobre las pull requests</>,
           "publish-raced": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: Publish terminó después de las comprobaciones de sincronización</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: el cambio es demasiado grande para una sincronización desde el servidor</>,
+          "locale-change-pending": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: hay una eliminación de idioma sin enviar</>,
         },
       },
       member: {
@@ -644,10 +658,31 @@ export const es = {
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} añadió la fuente {source}</>,
-        removed: (who: ReactNode, source: string): ReactNode => <>{who} quitó la fuente {source}</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} desvinculó la fuente {source}</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} cambió el idioma base de {source}</>
         ),
+      },
+      locale: {
+        added: (who: ReactNode, code: string, source: string): ReactNode => <>{who} añadió {code} a {source}</>,
+        addedAgain: (who: ReactNode, code: string, source: string): ReactNode => <>{who} volvió a añadir {code} a {source}</>,
+        removalRequested: (who: ReactNode, code: string, source: string): ReactNode => <>{who} pidió quitar {code} de {source}</>,
+        removalCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} canceló la eliminación de {code} en {source}</>,
+        addCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} dejó de añadir {code} a {source}</>,
+        removalClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} cerró la eliminación de {code} en {source}</> : <>{who} cerró la eliminación de {code} en {source}: {outcome}</>
+        ),
+        addClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} cerró la adición de {code} en {source}</> : <>{who} cerró la adición de {code} en {source}: {outcome}</>
+        ),
+        outcome: {
+          gone: "el archivo ya no está en el repositorio",
+          present: "el archivo está en el repositorio",
+          stillPresent: "el archivo sigue en el repositorio",
+          absent: "el archivo no está en el repositorio",
+          notMerged: (pr: string, fact: string): string => `${pr} se cerró sin fusionarse y ${fact}`,
+        },
+        unknown: (who: ReactNode, source: string): ReactNode => <>{who} cambió un idioma en {source}</>,
       },
       settings: {
         created: (who: ReactNode): ReactNode => <>{who} creó este proyecto</>,
@@ -730,6 +765,7 @@ export const es = {
       "base-unreadable": "No pudimos leer tu repositorio. Pide a tus desarrolladores que revisen el acceso de la app.",
       "not-installed": "La app no estaba conectada al repositorio. Pide a tus desarrolladores que la vuelvan a conectar.",
       "glob-matched-nothing": "Los archivos de traducción no estaban donde esperábamos. Consulta a tus desarrolladores.",
+      "locale-plan-refused": "No se puede publicar un cambio de idioma porque la ruta de su archivo no es válida o pertenece a otra fuente. Pide a tus desarrolladores que revisen la ruta de archivo de la fuente.",
       "github-error": `GitHub no respondió. ${NIGHTLY_RETRY}`,
       "db-unavailable": `No se pudo acceder a nuestro propio almacenamiento. ${NIGHTLY_RETRY}`,
       stale: "Esta ejecución se detuvo antes de terminar.",
@@ -744,7 +780,7 @@ export const es = {
       "wrong-format": "El repositorio ya no coincide con el formato guardado.",
       "repo-replaced": "El repositorio conectado cambió.",
       "not-installed": "La app no estaba conectada al repositorio.",
-      "surface-removed": "Esta fuente se quitó del proyecto. Quita su paso de tu workflow de GitHub.",
+      "surface-removed": "Esta fuente se desvinculó del proyecto. Quita su paso de tu workflow de GitHub.",
       fallback: "La ejecución se rechazó antes de empezar.",
     },
     onGitLab: {
@@ -777,7 +813,7 @@ export const es = {
         "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar. Un propietario del proyecto puede volver a conectarla en Configuración.",
       },
       refusals: {
-        "surface-removed": "Esta fuente se quitó del proyecto. Quita su job de tu .gitlab-ci.yml.",
+        "surface-removed": "Esta fuente se desvinculó del proyecto. Quita su job de tu .gitlab-ci.yml.",
         "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar.",
       },
     },
@@ -949,7 +985,7 @@ export const es = {
     sessions: {
       title: "Cerrar sesión en todas partes",
       confirmTitle: "¿Cerrar sesión en todas partes?",
-      confirmHint: "Lo confirmarás con la cuenta con la que inicias sesión y después se cerrará la sesión en todos los dispositivos, incluido este.",
+      confirmHint: "Lo confirmarás con la cuenta con la que inicias sesión y después se cerrará la sesión en todos los dispositivos, incluido este. Tu token personal y tus apps conectadas también dejarán de funcionar.",
       confirmAction: (provider: string): string => `Continuar a ${provider}`,
       confirmDetail: {
         github: "GitHub te pedirá que lo confirmes antes de que cambie nada.",
@@ -1369,8 +1405,15 @@ export const es = {
         selectKey: "Selecciona una clave para traducir",
         selectKeyBody: "Sus traducciones en todos los idiomas se abren aquí.",
         keyGone: (source: string): string => `Esta clave ya no está en ${source}`,
+        frozenReason: (locale: string): string => `Se está quitando ${locale}, así que este cambio no se puede guardar.`,
+        discardChange: "Descartar cambio",
       },
       footer: {
+        frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen}: no se puede guardar` : `${savable} sin guardar · ${frozen}: no se puede guardar`),
+        removalPending: {
+          title: (locales: string, n: number): string => `${n === 1 ? "Se está" : "Se están"} quitando ${locales}`,
+          body: "No se guardó nada de esta clave: vuelve a guardar.",
+        },
         unsaved: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "cambio sin guardar" : "cambios sin guardar"}`,
         saved: "Guardado",
         savedNotSent: "Guardado · sin enviar",
@@ -1403,6 +1446,7 @@ export const es = {
         confirm: "Revertir traducciones",
         unavailable: "La última versión enviada no está disponible para todos los idiomas modificados.",
         unsaved: "Primero guarda o descarta tus cambios.",
+        frozen: (list: string, n: number): string => `Primero descarta ${n === 1 ? "el cambio" : "los cambios"} de ${list}.`,
         busy: "Esto queda desactivado mientras se guarda, se publica o se sincroniza.",
         forbidden: "Solo los propietarios del proyecto pueden revertir a una versión enviada.",
         failed: { title: "No pudimos revertir esta clave", body: "No se hizo ningún cambio. Vuelve a intentarlo o revisa la última sincronización." },
@@ -1500,11 +1544,31 @@ export const es = {
               {changes === 1 ? "este cambio" : `estos ${changes.toLocaleString("es")}`}.
             </>
           ),
+          languageBody: (n: number, files: number): ReactNode => (
+            <>
+              No se abre una segunda merge request. !{n} contendrá{" "}
+              <span className="text-foreground">todo lo que está sin enviar</span>, no solo{" "}
+              {files === 1 ? "este cambio de idioma" : `estos ${files.toLocaleString("es")} cambios de idioma`}.
+            </>
+          ),
         },
         prNone: { title: (repo: string): string => `Se abre una nueva merge request en ${repo}` },
         prUnknown: { title: "No se pudo comprobar si hay una merge request abierta" },
         openPr: "Abrir merge request",
         replacePr: (n: number): string => `Reemplazar la merge request !${n}`,
+        language: {
+          intro: (repo: string): string => `Va a ${repo} como una sola merge request.`,
+          introOpen: (repo: string, n: number): string => `Va a ${repo} en la merge request !${n}.`,
+          held: (code: string, branch: string): string =>
+            `Este archivo ya está en ${branch}. Cuando se cierre la merge request abierta, ${code} se activará en la siguiente publicación o comprobación nocturna.`,
+          expiring: {
+            addNotReached: (code: string): string => `${code} no se añadió: su merge request se cerró sin fusionarse. Sus traducciones se conservan en Malmoi.`,
+            removeNotReached: (code: string): string => `${code} no se quitó: su merge request se cerró sin fusionarse. Se queda en esta fuente.`,
+          },
+          createdDescription: "Los cambios de idioma están en una merge request. Llegan al producto cuando alguien del equipo la fusione.",
+          updatedDescription: (n: number): string =>
+            `!${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
+        },
         progressDescription: "Escribiendo los archivos de traducción y abriendo una merge request. Normalmente tarda unos segundos.",
         progress: (branch: string): readonly string[] => ["Generando los archivos de traducción", `Haciendo commit en ${branch}`, "Abriendo la merge request"],
         createdDescription: (n: number): string =>
@@ -1603,6 +1667,13 @@ export const es = {
             {changes === 1 ? "este cambio" : `estos ${changes.toLocaleString("es")}`}.
           </>
         ),
+        languageBody: (n: number, files: number): ReactNode => (
+          <>
+            No se abre una segunda pull request. #{n} contendrá{" "}
+            <span className="text-foreground">todo lo que está sin enviar</span>, no solo{" "}
+            {files === 1 ? "este cambio de idioma" : `estos ${files.toLocaleString("es")} cambios de idioma`}.
+          </>
+        ),
       },
       prNone: {
         title: (repo: string): string => `Se abre una nueva pull request en ${repo}`,
@@ -1610,6 +1681,10 @@ export const es = {
           changes === 1
             ? "No hay nada abierto ahora mismo, así que este cambio sale por su cuenta."
             : `No hay nada abierto ahora mismo, así que estos ${changes.toLocaleString("es")} cambios salen por su cuenta.`,
+        languageBody: (files: number): string =>
+          files === 1
+            ? "No hay nada abierto ahora mismo, así que este cambio de idioma sale por su cuenta."
+            : `No hay nada abierto ahora mismo, así que estos ${files.toLocaleString("es")} cambios de idioma salen por su cuenta.`,
       },
       prUnknown: {
         title: "No se pudo comprobar si hay una pull request abierta",
@@ -1617,6 +1692,71 @@ export const es = {
       },
       openPr: "Abrir pull request",
       replacePr: (n: number): string => `Reemplazar la pull request #${n}`,
+      language: {
+        title: "Publicar cambios de idioma",
+        progressTitle: "Publicando cambios de idioma",
+        intro: (repo: string): string => `Va a ${repo} como una sola pull request.`,
+        introOpen: (repo: string, n: number): string => `Va a ${repo} en la pull request #${n}.`,
+        files: (added: number, removed: number): string => {
+          const word = (n: number) => `${n.toLocaleString("es")} ${n === 1 ? "archivo" : "archivos"}`;
+          return added > 0 && removed > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}, ${removed.toLocaleString("es")} ${removed === 1 ? "quitado" : "quitados"}`
+            : added > 0 ? `${word(added)} ${added === 1 ? "añadido" : "añadidos"}` : `${word(removed)} ${removed === 1 ? "quitado" : "quitados"}`;
+        },
+        countsWithFiles: (n: number, keys: number, files: string): string =>
+          `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} en ${keys.toLocaleString("es")} ${keys === 1 ? "clave" : "claves"}, ${files}.`,
+        leftOut: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "idioma queda" : "idiomas quedan"} fuera.`,
+        summary: (files: number): string => `0 cambios \u00b7 ${files.toLocaleString("es")} ${files === 1 ? "archivo" : "archivos"}`,
+        takenBackSummary: (n: number, files: number): string =>
+          `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} \u00b7 ${files.toLocaleString("es")} ${files === 1 ? "archivo retirado" : "archivos retirados"}`,
+        takenBackDescription: (pr: string, branch: string, what: "adding" | "removing" | "several"): string =>
+          `Ya no hay diferencias con ${branch}. Al cerrar ${pr} ${what === "several" ? "se retiran los archivos que cambiaba" : what === "adding" ? "se retira el archivo que añadía" : "se retira el archivo que quitaba"}.`,
+        label: {
+          newFile: "Archivo nuevo",
+          updated: "Actualizado",
+          removed: "Quitado",
+          notIncluded: "No incluido",
+          held: "Retenido",
+          takenBack: (pr: string | null): string => (pr === null ? "Retirado" : `Retirado de ${pr}`),
+        },
+        removed: "Las traducciones se conservan en Malmoi.",
+        notIncluded: (code: string): string => `${code} aún no tiene traducciones, así que no se crea ningún archivo. Saldrá cuando tenga una.`,
+        held: (code: string, branch: string): string =>
+          `Este archivo ya está en ${branch}. Cuando se cierre la pull request abierta, ${code} se activará en la siguiente publicación o comprobación nocturna.`,
+        takenBack: {
+          create: (code: string, pr: string | null): string =>
+            `Se canceló añadir ${code} después de que se ${pr === null ? "enviara" : `abriera ${pr}`}, así que se quita el archivo que añadía. Las traducciones se conservan en Malmoi.`,
+          delete: (code: string, pr: string | null): string =>
+            `La eliminación de ${code} se canceló después de que se ${pr === null ? "enviara" : `abriera ${pr}`}, así que el archivo se queda en el repositorio.`,
+        },
+        takenBackDone: {
+          description: (pr: string, branch: string): string => `${pr} se cerró porque se retiraron los cambios de idioma que contenía. Ya no hay diferencias con ${branch}.`,
+          noPr: (branch: string): string => `Se retiraron los cambios de idioma. Ya no hay diferencias con ${branch}.`,
+          create: (code: string, pr: string | null): string =>
+            `${code} se canceló después de ${pr === null ? "enviarse" : `abrirse ${pr}`}, así que el archivo que añadía ya no se envía. Las traducciones se conservan en Malmoi.`,
+        },
+        expiring: {
+          addReached: (code: string): string => `${code} ya está en el repositorio, así que su solicitud se cierra.`,
+          addNotReached: (code: string): string => `${code} no se añadió: su pull request se cerró sin fusionarse. Sus traducciones se conservan en Malmoi.`,
+          removeReached: (code: string): string => `${code} ya no está en el repositorio, así que su solicitud se cierra.`,
+          removeNotReached: (code: string): string => `${code} no se quitó: su pull request se cerró sin fusionarse. Se queda en esta fuente.`,
+        },
+        refused: {
+          description: "No se envió nada.",
+          title: "Estos cambios no se pueden publicar",
+          conflict: (surface: string, code: string, path: string, owner: string): string =>
+            `Malmoi no puede determinar los archivos de idioma de ${surface}. ${code} se escribiría en ${path}, que ahora pertenece a la fuente ${owner}.`,
+          taken: (surface: string, path: string): string => `Malmoi no puede determinar los archivos de idioma de ${surface}. ${path} pertenece a otra fuente.`,
+          duplicate: (surface: string, path: string): string => `Malmoi no puede determinar los archivos de idioma de ${surface}. Dos idiomas se escribirían en ${path}.`,
+          unsafe: (surface: string): string => `Malmoi no puede determinar los archivos de idioma de ${surface}. Su plantilla de ruta no da a cada idioma su propio archivo.`,
+          unknown: "Malmoi no puede determinar los archivos de idioma.",
+          open: (surface: string): string => `Abrir ${surface}`,
+        },
+        createdDescription: "Los cambios de idioma están en una pull request. Llegan al producto cuando alguien del equipo la fusione.",
+        updatedDescription: (n: number): string =>
+          `#${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
+        ready: "Hay cambios de idioma por publicar.",
+        inSource: (code: string, source: string): string => `${code} (${source})`,
+      },
 
       progressTitle: (n: number): string => `Publicando ${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"}`,
       progressDescription:
@@ -1783,18 +1923,18 @@ export const es = {
       reasons: {
         "last-source": "Un proyecto necesita al menos una fuente.",
         importing: "Esta fuente se está sincronizando. Vuelve a intentarlo cuando termine.",
-        "stale-approval": "No pudimos confirmar que lo que revisaste siga vigente, así que no se quitó nada. Vuelve a abrir la confirmación para revisarlo.",
+        "stale-approval": "No pudimos confirmar que lo que revisaste siga vigente, así que no se desvinculó nada. Vuelve a abrir la confirmación para revisarlo.",
       },
-      action: "Quitar fuente",
-      title: (slug: string): string => `¿Quitar ${slug} de este proyecto?`,
+      action: "Desvincular fuente",
+      title: (slug: string): string => `¿Desvincular ${slug} de este proyecto?`,
       body: "Deja de sincronizarse aquí. Los archivos del repositorio no cambian. Vuelve a añadirla cuando quieras para recuperar sus traducciones.",
       unsent: (n: number, count: ReactNode): ReactNode => <>Si la vuelves a añadir, {count} {n === 1 ? "se reemplazará" : "se reemplazarán"} con los valores del repositorio.</>,
       openPr: "Si la pull request abierta cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
       prUnknown: "No se pudo comprobar si hay una pull request abierta. Si alguna cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
       workflowLine: "Quita su paso (step) del flujo de trabajo de GitHub; si no, la próxima ejecución fallará y detendrá las fuentes que vienen después.",
-      previewFailed: "No se pudieron comprobar sus ediciones sin enviar. Inténtalo de nuevo antes de quitarla.",
-      unconfirmed: "No se pudo confirmar si se quitó. La lista muestra el estado actual.",
-      removed: (slug: string): string => `Se quitó ${slug}.`,
+      previewFailed: "No se pudieron comprobar sus ediciones sin enviar. Inténtalo de nuevo antes de desvincularla.",
+      unconfirmed: "No se pudo confirmar si se desvinculó. La lista muestra el estado actual.",
+      removed: (slug: string): string => `Se desvinculó ${slug}.`,
       workflowStep: (link: ReactNode): ReactNode => <>Quita su paso del flujo de trabajo en {link}.</>,
     },
     files: "Archivos",
@@ -1824,16 +1964,117 @@ export const es = {
     requested: "Solicitado",
     waiting: "Pendiente de aplicar",
     pendingHelp: "Si tu CI pasa el idioma base de esta fuente, actualiza su entrada en el flujo de trabajo al idioma solicitado.",
-    orphanReason: "Este idioma se quitó del repositorio.",
-    orphanStrip: (code: string): string => `${code} se quitó del repositorio.`,
-    orphanStripRest: (translations: number, active: number): string =>
-      `Las ${translations.toLocaleString("es")} traducciones se conservan y quedan en solo lectura. Vuelve cuando el idioma esté otra vez en el repositorio y se ejecute la próxima sincronización. No se cuenta entre los ${active.toLocaleString("es")} idiomas activos.`,
+    orphanReason: "Este idioma está inactivo.",
+    orphanStrip: (code: string): string => `${code} está inactivo.`,
+    orphanStripRest: (translations: number): string =>
+      `${translations === 1 ? "Su traducción se conserva" : `Sus ${translations.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
+    orphanStripOwner: "Añádelo de nuevo para recuperar sus traducciones.",
+    orphanStripUnsupported: "Restaura el archivo en el repositorio y sincroniza.",
+    orphanStripEditor: "Un propietario del proyecto puede añadirlo de nuevo.",
     statusHelp: "Se actualiza con las sincronizaciones desde tu repositorio.",
     baseHelp: "El idioma base decide qué claves existen en esta fuente.",
     languagesHelp: "Los idiomas vienen del repositorio. Añade o quita los archivos allí.",
+    languagesHelpOwner: "Añade o quita idiomas aquí. Publica para actualizar el repositorio.",
+    languagesHelpEditor: "Solo los propietarios del proyecto pueden añadir o quitar idiomas.",
     baseRow: "Origen de todas las claves de este archivo",
     needReview: (count: number): string => `${count.toLocaleString("es")} por revisar`,
-    missingRepo: "Quitado del repositorio",
+    missingRepo: "Inactivo",
+    adding: "Añadiendo",
+    removing: "Quitando",
+    localeChangePending: "Hay un cambio de idioma pendiente en esta fuente. Termina o cancela ese cambio de idioma primero.",
+    locale: {
+      addLanguage: "Añadir idioma",
+      removeLanguage: "Quitar idioma",
+      cancelRemoval: "Cancelar eliminación",
+      addLabel: (code: string): string => `Añadir ${code}`,
+      removeLabel: (code: string): string => `Quitar ${code}`,
+      cancelLabel: (code: string): string => `Cancelar la eliminación de ${code}`,
+      baseReason: "Elige otro idioma base antes de quitar este.",
+      noFileYet: "Al publicar se crea el archivo en cuanto tenga una traducción.",
+      readOnly: "Solo lectura hasta que la eliminación se publique o se cancele.",
+      readOnlyDelivered: "Solo lectura hasta que se fusione la pull request o se cancele la eliminación.",
+      notConfirmed: "Sin confirmar en la pull request",
+      notConfirmedHelp: "Publica de nuevo primero. La última publicación no terminó, así que Malmoi no sabe qué contiene la pull request.",
+      publishToUpdate: "Publica para actualizar la pull request.",
+      viewPullRequest: (pr: string): string => `Ver la pull request ${pr}`,
+      staysIn: (code: string, source: string): string => `${code} se queda en ${source}.`,
+      cancelUnsettled: (code: string): string => `No pudimos cancelar la eliminación de ${code}. La última publicación no terminó — publica de nuevo primero.`,
+      cancelFailed: (code: string): string => `No pudimos cancelar la eliminación de ${code}. No se cambió nada.`,
+      cancelUnconfirmed: (code: string): string => `No pudimos confirmar si se canceló la eliminación de ${code}. La lista muestra el estado actual.`,
+      addTitle: (source: string): string => `Añadir un idioma a ${source}`,
+      addAgainTitle: (code: string, source: string): string => `Añadir ${code} de nuevo a ${source}`,
+      addBody: "El archivo se crea en el repositorio cuando publicas.",
+      codeLabel: "Código de idioma",
+      codePlaceholder: "Elige o escribe un código",
+      codeHelp: "Elige uno o escribe un código: un idioma en minúsculas, con una región opcional (fr, pt-BR, zh_TW).",
+      chromeLabel: "Idioma",
+      chromePlaceholder: "Elige un idioma",
+      listLabel: "Idiomas",
+      previously: "Antes en esta fuente",
+      common: "Idiomas habituales",
+      added: "Añadido",
+      translationCount: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "traducción" : "traducciones"}`,
+      useCode: "Usar este código",
+      fileToCreate: "Archivo que se creará",
+      checkFailed: "No pudimos comprobar este idioma.",
+      savedTranslations: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "traducción guardada" : "traducciones guardadas"}`,
+      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} estuvo antes en esta fuente. Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
+      reviveAgain: (count: ReactNode): ReactNode => <>Al añadirlo de nuevo recuperas {count} y todo queda listo para publicar.</>,
+      errors: {
+        unreadable: "Malmoi no puede volver a leer este código desde el repositorio. Añade el archivo en el repositorio.",
+        unsupportedLocale: "Las extensiones de Chrome no admiten este código de idioma.",
+        alreadyActive: (code: string): string => `${code} ya está en esta fuente.`,
+        collision: (code: string, existing: string): string => `${code} apunta al mismo archivo que ${existing}, que esta fuente ya tiene.`,
+        removalPending: (code: string): string => `Se está quitando ${code}. Cancela la eliminación en su lugar.`,
+        unsafePath: (path: string): string => `Malmoi no puede crear un archivo en ${path}.`,
+        pathConflict: "Ese archivo pertenece a otra fuente.",
+      },
+      archived: "Este proyecto está archivado. Restáuralo para cambiar los idiomas.",
+      addFailed: "No pudimos añadir el idioma. No se cambió nada.",
+      addUnsettled: "No pudimos añadir el idioma. La última publicación no terminó — publica de nuevo primero.",
+      addUnconfirmed: (code: string): string => `No pudimos confirmar si se añadió ${code}. La lista muestra el estado actual.`,
+      addedNotice: (code: string): string => `Se añadió ${code}. Ábrelo para empezar a traducir.`,
+      addedAgain: (code: string, n: number): string => `Se añadió ${code} de nuevo. ${n === 1 ? "Volvió 1 traducción guardada, sin enviar" : `Volvieron ${n.toLocaleString("es")} traducciones guardadas, sin enviar`}.`,
+      removeTitle: (code: string, source: string): string => `¿Quitar ${code} de ${source}?`,
+      removeBody: "Al publicar se quita este archivo de idioma del repositorio. Las traducciones guardadas se conservan.",
+      cancelAddBody: "Este idioma quedará inactivo. Las traducciones guardadas se conservan.",
+      cancelAddDeliveredBody: "Publica de nuevo para quitar este archivo de la pull request abierta.",
+      factLanguage: "Idioma",
+      factFile: "Archivo",
+      factTranslations: "Traducciones",
+      factPullRequest: "Pull request",
+      keptInMalmoi: (n: number): string => `${n.toLocaleString("es")} en Malmoi`,
+      notCreatedYet: (path: string): string => `${path} — aún no creado`,
+      notSentYet: "Sin enviar",
+      prRemoves: (pr: string): string => `${pr} quita este archivo`,
+      prAdds: (pr: string): string => `${pr} añade este archivo`,
+      inOpenPr: "En la pull request abierta",
+      couldntConfirm: "Sin confirmar",
+      discardLine: (count: ReactNode): ReactNode => <>Se descartará lo siguiente: {count}. Cada edición vuelve al último valor enviado al repositorio.</>,
+      untrackLine: (n: number, count: ReactNode): ReactNode => <>{n === 1 ? "Dejará" : "Dejarán"} de seguirse: {count}. Añade el idioma de nuevo para retomar su seguimiento.</>,
+      appCodeLine: "Actualiza en la misma pull request el código que carga este idioma (imports, listas de idiomas admitidos).",
+      previewFailed: (code: string): string => `No pudimos cargar lo que cambiaría al quitar ${code}.`,
+      changed: "Esto cambió desde que lo abriste. Revísalo de nuevo y luego quítalo.",
+      baselineUnknown: (code: string): string => `Publica primero — algunas ediciones sin enviar de ${code} nunca se enviaron, así que no hay valor al que volver.`,
+      syncRunning: (code: string): string => `Hay una sincronización en curso, así que aún no se puede quitar ${code}. Inténtalo de nuevo cuando termine.`,
+      unsettledTitle: "No pudimos confirmar la última publicación",
+      checkLogs: (link: ReactNode): ReactNode => <>Revisa la última publicación en {link}.</>,
+      removeFailed: (code: string): string => `No pudimos quitar ${code}. No se cambió nada.`,
+      removeUnconfirmed: (code: string): string => `No pudimos confirmar si se quitó ${code}. La lista muestra el estado actual.`,
+      removeRequested: (code: string): string => `Quitando ${code}. Al publicar se quita su archivo del repositorio.`,
+      cancelAddDone: (code: string, n: number): string => `${code} está inactivo. ${n === 1 ? "Su traducción se conserva" : `Sus ${n.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
+      onGitLab: {
+        notConfirmed: "Sin confirmar en la merge request",
+        readOnlyDelivered: "Solo lectura hasta que se fusione la merge request o se cancele la eliminación.",
+        notConfirmedHelp: "Publica de nuevo primero. La última publicación no terminó, así que Malmoi no sabe qué contiene la merge request.",
+        publishToUpdate: "Publica para actualizar la merge request.",
+        viewPullRequest: (pr: string): string => `Ver la merge request ${pr}`,
+        cancelAddDeliveredBody: "Publica de nuevo para quitar este archivo de la merge request abierta.",
+        factPullRequest: "Merge request",
+        inOpenPr: "En la merge request abierta",
+        appCodeLine: "Actualiza en la misma merge request el código que carga este idioma (imports, listas de idiomas admitidos).",
+      },
+    },
     editorBase: "Solo los propietarios del proyecto pueden cambiar el idioma base de una fuente.",
     started: "iniciada",
     addedAgo: "añadida",
@@ -1869,9 +2110,6 @@ export const es = {
 
   locales: {
     base: "Base",
-    orphaned: {
-      badge: "Quitado del repositorio",
-    },
     empty: {
       description: "Aparecen después de que la primera sincronización lea tus archivos de traducción.",
     },
@@ -2087,6 +2325,10 @@ export const es = {
         save: "Guardar",
       saved: "Guardado",
         failed: "No pudimos guardarlo. Vuelve a intentarlo en un momento.",
+        localeChangePending: (source: string): string =>
+          `${source} tiene un cambio de idioma que aún no se ha publicado. Termina o cancela ese cambio de idioma y después cambia la rama.`,
+        localeChangesPending: (sources: number): string =>
+          `${sources.toLocaleString("es")} fuentes tienen cambios de idioma que aún no se han publicado. Termina o cancela esos cambios de idioma y después cambia la rama.`,
       },
 
     },

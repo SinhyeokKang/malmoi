@@ -16,7 +16,7 @@
 
 - **배포 모드**: `MALMOI_ORIGIN`이 있으면 self-hosted, 없으면 hosted, `VERCEL_ENV`와 함께 있으면 무효(fail-closed). 판정과 hosted 도메인 리터럴의 집은 `lib/deployment/mode.ts` 하나다(import 없는 잎 — middleware도 쓴다).
 - **origin**: self-hosted의 모든 외부 주소(Auth.js·OAuth AS issuer/resource·MCP Origin·초대 메일·생성 워크플로 `api-url`·og 메타데이터)는 설정 origin에서 나온다. 요청 헤더에서 추론하지 않는다(`requestOrigin`).
-- **기동 전 판정**: `pnpm preflight`(`scripts/preflight.ts` → `lib/deployment/preflight.ts`) — 필수 설정의 누락·형식을 사유 코드로만 찍는다.
+- **기동 전 판정**: `pnpm preflight`(`scripts/preflight.ts` → `lib/deployment/preflight.ts`) — 필수 설정의 누락·형식을 사유 코드로만 찍는다. 서명·인가 비밀 셋(`AUTH_SECRET`·`APP_SIGNING_SECRET`·`CRON_SECRET`)은 32자 하한(`too-short`)과 앞의 둘이 같은 값인지(`reused`)도 본다(2026-10-17) — 짧은 비밀을 쓰던 설치는 이 판부터 기동이 막히므로 Release 노트에 적는다.
 - **파일 저장**: hosted는 Vercel Blob, self-hosted는 `MALMOI_UPLOAD_DIR` 볼륨(`lib/upload/file-store.ts`).
 - **DB**: 일반 Postgres 17, 롤 둘 — migrate(DB 소유 비-superuser, CREATEROLE)와 런타임(`deploy/bootstrap.sql`이 만들고 매 업그레이드 다시 돈다).
 - **배포물**: `Dockerfile`(비standalone 한 벌 — web·migrate·키 운영 공용) · `deploy/`(compose · nginx · postgres init · scheduler · bootstrap).
@@ -61,6 +61,7 @@
 | env 이름 ↔ preflight 표 ↔ `.env.example` ↔ compose(해석 못 하는 인자도 red) | `pnpm test` (SH-15 ②) | 같은 파일 |
 | 로그인 공급자 — `auth.ts`의 provider마다 `LOGIN_PROVIDER_ENV`에 등재되고 그 이름이 preflight `optional`(쌍 규칙은 preflight가 든다) · 로그인 여섯(`AUTH_GITHUB_*`·`AUTH_GITLAB_*`·`AUTH_GOOGLE_*`)과 `GITHUB_APP_*` 다섯이 `deploy/compose.yaml`에서 `${X:-}` 꼴(2026-10-09, optional-login-providers · 2026-10-13, gitlab-repositories 감사 C5-3 — GitLab 전용 설치가 다섯을 비운다 · 2026-10-13, gitlab-oauth) | `pnpm test` (SH-15 ②-c) | 같은 파일 |
 | Dockerfile Node 메이저·pnpm·`.npmrc`·psql≥15 배포판·비밀 ENV·non-root·GHCR 리포 연결 라벨 | `pnpm test` (SH-15 ③) | 같은 파일 |
+| 서드파티 이미지(Dockerfile `syntax`·`FROM`, scheduler `FROM`, compose `postgres`·`proxy`)가 `tag@sha256:…`가 아님 — 올릴 때 태그와 멀티 아키텍처 index digest를 함께 바꾼다(2026-10-17) | `pnpm test` (SH-15 ③) | 같은 파일 |
 | compose 의존 순서·healthcheck 형태·업로드 볼륨 단일 마운트·nginx 불변식(Host·HSTS·rate limit·마스킹 로그·resolver) | `pnpm test` | 같은 파일 |
 | 스케줄러 식 ≠ `vercel.json` | `pnpm test` | `lib/deployment/__tests__/schedule.test.ts` |
 | 백업 명령이 실패 뒤 계속 실행하거나 성공을 출력함(세 언어, sh·bash) | `pnpm test` — 외부 명령을 실패시키는 셸 회귀 | `lib/guide/__tests__/backup-shell.test.ts` |
@@ -79,7 +80,7 @@
 - **스케줄러 컨테이너 Config.Env의 `CRON_SECRET`** — `docker inspect`·`exec env`에 보인다(docker 접근 = root). 프로세스 인자·crond 환경엔 없다.
 - **대상 리포 CI가 상류 action 태그(`SinhyeokKang/malmoi@malmoi-i18n-push-vN`)를 실행한다** — 설치본 push 토큰이 그 실행에 들어간다. 공급망 의존을 수용하고 가이드에 적었다.
 - **GitLab CI job도 상류 코드를 실행한다** — 생성 job이 이 리포를 불변 태그 `malmoi-i18n-push-gitlab-vN`으로 `.malmoi`에 clone해 `PUSH_TOKEN`과 함께 돈다(`.gitlab/malmoi-i18n-push/push.sh`). 완화는 생성 때 박힌 **40자 SHA와 `HEAD`를 대조한 뒤에만** 부르는 것이다 — 태그가 옮겨져도 박힌 SHA 밖의 코드는 돌지 않는다. 그래도 공급망 의존이고 태그를 옮기는 것은 릴리스다(OPERATIONS "GitLab CI 원본 릴리스").
-- **이미지 발행 job(`image.yml` `publish`)이 이 리포 CI의 유일한 쓰기 권한이다**(`packages: write` — `contents: write`는 두지 않고 Release 기입은 `/merge` 9-b가 사용자 토큰으로 한다). 노출을 줄이는 근거: 방아쇠가 Release 생성·dispatch(리포 write 권한자)뿐이라 PR·fork 코드가 돌지 않고, 서드파티 action 없이 SHA 고정 `actions/checkout` 하나이며, 태그 커밋의 설치·빌드 스크립트는 BuildKit 컨테이너 RUN 안에서 돌아 러너 env·docker 소켓·`.git` 자격증명에 닿지 않는다. **수용한 위험 둘** — `docker-container` 드라이버가 받는 `moby/buildkit` 이미지가 digest로 고정되지 않았는데 그 컨테이너가 쓰기 자격증명으로 push한다(고정은 `--driver-opt image=moby/buildkit:<ver>@sha256:…`), base 이미지(`node:24-bookworm-slim`)도 digest 고정이 아니다(2026-10-12, image-publish-workflow).
+- **이미지 발행 job(`image.yml` `publish`)이 이 리포 CI의 유일한 쓰기 권한이다**(`packages: write` — `contents: write`는 두지 않고 Release 기입은 `/merge` 9-b가 사용자 토큰으로 한다). 노출을 줄이는 근거: 방아쇠가 Release 생성·dispatch(리포 write 권한자)뿐이라 PR·fork 코드가 돌지 않고, 서드파티 action 없이 SHA 고정 `actions/checkout` 하나이며, 태그 커밋의 설치·빌드 스크립트는 BuildKit 컨테이너 RUN 안에서 돌아 러너 env·docker 소켓·`.git` 자격증명에 닿지 않는다. **수용한 위험 하나** — `docker-container` 드라이버가 받는 `moby/buildkit` 이미지가 digest로 고정되지 않았는데 그 컨테이너가 쓰기 자격증명으로 push한다(고정은 `--driver-opt image=moby/buildkit:<ver>@sha256:…`, 2026-10-12, image-publish-workflow). base 이미지는 2026-10-17부터 `tag@sha256:…`이다(아래 SH-15 ③).
 - 앱 안 rate limit은 없다 — nginx 예제가 `/api/images/`·`/oauth/authorize` IP당 600/60s를 든다(hosted WAF와 같은 값). 예제를 바꾸면 보호가 사라진다.
 
 ## 6. 상류 유지자 할 일
@@ -136,3 +137,11 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 ### GitLab 리포 (2026-10-12)
 
 §3 대조: 새 env 0(`GITLAB_TEST_*`는 개발자 스모크 입력이라 preflight·`.env.example`에 없다) · 새 패키지 0(SDK 없이 `fetch`) · 마이그레이션 `20261012120000_add_gitlab_connection` additive(새 테이블 + `Project.gitlabConnectionId` NULL 허용 컬럼 + `Project.repoHost TEXT NOT NULL DEFAULT 'github'` — 기존 행은 기본값이 SQL 안에서 채우므로 앱 백필이 없고, 건너뛴 업그레이드에서도 안전) · 새 cron 0 · 토큰이 경로에 실리는 URL 0(PAT는 Server Action 본문으로만 온다). 새 외부 전송처 gitlab.com은 방침·가이드 운영자 개인정보 재료에 등재돼 있다. GitLab 연결 자체는 앱 설치와 무관해 `GITHUB_APP_*`가 비어도 동작한다.
+
+### 언어 추가·제거 (2026-10-14, locale-add)
+
+§3 대조: 새 env 0 · 새 패키지 0 · 새 cron 0 · 토큰이 경로에 실리는 URL 0. 마이그레이션 `20261014060000_locale_change`는 additive다 — 새 enum
+`LocaleChangeOperation` + 새 테이블 `LocaleChange`(Locale 복합 FK Restrict) + `DeliveryConfirmation.deliveredLocaleChanges JSONB NULL`. 기존 행
+백필이 없어(NULL = 전달한 것 없음) 앱 코드 없이 SQL만 연달아 적용되는 건너뛴 업그레이드에서도 안전하다. 손 GRANT가 없고, bootstrap 뒤 적용된 이
+마이그레이션의 테이블·컬럼에 런타임 롤 CRUD가 서는지는 `self-hosted-bootstrap.integration.ts` ⑤가 잰다(default privileges). 새 외부 전송처·수집
+필드 없음(`LocaleChange`는 `not-personal`). 구버전으로 되돌릴 때의 영향은 OPERATIONS "언어 추가·제거 이전으로 되돌리기"다.

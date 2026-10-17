@@ -28,6 +28,7 @@ Si alguien guarda una traducción mientras se ejecuta la actualización nocturna
 La ejecución nocturna retiene la actualización — el proyecto no se actualiza y **Registros** muestra **Retenido** con el motivo — cuando:
 
 - Sigue abierto un pull request de Malmoi. Sus traducciones aún no están en el repositorio, así que una actualización las sobrescribiría. Fusiona o cierra el pull request; la siguiente ejecución nocturna recoge los cambios. La pestaña **Sincronizar** de Inicio muestra **Retenido** en su fila **Espera**, y la tarjeta Por enviar explica el motivo.
+- Una eliminación de idioma todavía no se ha publicado. Publícala o cancélala y la siguiente ejecución nocturna recoge los cambios. Consulta [Qué bloquea otras tareas](../setup/languages.md#blocks).
 - GitHub o GitLab no respondió si esa solicitud de cambios está abierta. Malmoi no adivina; Inicio muestra **Retenido** y la siguiente ejecución vuelve a comprobarlo.
 - El cambio es demasiado grande para una sincronización en el servidor. Las actualizaciones nocturnas usan el mismo presupuesto de archivos que la creación de un proyecto (consulta [Límites](../reference/limits.md#files)). Reduce el tamaño de los archivos o entrega el cambio con el workflow del repositorio.
 

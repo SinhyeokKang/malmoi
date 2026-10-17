@@ -4,7 +4,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadSources, loadSource } from "../query";
 const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "sha", lastCommitAt: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportToken: "secret", nestedByPath: { private: true } };
 const project = { repoOwner: "owner", repoName: "repo", baseBranch: "main", installationId: "private", surfaces: [surface] };
-const mocks = { project: { findFirst: vi.fn() }, translationSurface: { findFirst: vi.fn() }, locale: { findMany: vi.fn() }, translation: { findMany: vi.fn(), groupBy: vi.fn() }, stringKey: { count: vi.fn() }, $queryRaw: vi.fn() };
+const mocks = { project: { findFirst: vi.fn() }, translationSurface: { findFirst: vi.fn() }, locale: { findMany: vi.fn() }, translation: { findMany: vi.fn(), groupBy: vi.fn() }, stringKey: { count: vi.fn() }, $queryRaw: vi.fn(),
+  localeChange: { findMany: vi.fn() }, deliveryConfirmation: { findMany: vi.fn(), findUnique: vi.fn() } };
 const db = mocks as unknown as PrismaClient;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -15,6 +16,9 @@ beforeEach(() => {
   mocks.translation.findMany.mockResolvedValue([{ localeCode: "en", needsReview: false }]);
   mocks.stringKey.count.mockResolvedValue(3);
   mocks.$queryRaw.mockResolvedValue([{ surfaceId: "s", keys: 3, locales: 1 }]);
+  mocks.localeChange.findMany.mockResolvedValue([]);
+  mocks.deliveryConfirmation.findMany.mockResolvedValue([]);
+  mocks.deliveryConfirmation.findUnique.mockResolvedValue(null);
 });
 it.each([1, 5])("소스 %i개에서도 목록 호출 수가 같고 셀을 읽지 않는다", async size => {
   mocks.project.findFirst.mockResolvedValue({ ...project, surfaces: Array.from({ length: size }, (_, i) => ({ ...surface, id: `s${i}` })) });
@@ -47,4 +51,15 @@ it("타 프로젝트·보관 소스는 상세가 없고 조회 실패는 빈 목
   expect(mocks.translation.findMany).not.toHaveBeenCalled();
   mocks.project.findFirst.mockRejectedValue(new Error("database"));
   await expect(loadSources(db, en, "p", "OWNER")).rejects.toThrow("database");
+});
+/**
+ * 언어 행의 PR 링크(locale-add 2차 런 E0 — 시안 L "PR 표시는 링크만"). **저장된 마지막 Publish 주소**만 싣는다 — 화면에 들어올 때 호스트를 부르지
+ * 않으므로 조회 실패 상태가 없다. 번역 화면(`lastPrUrl`)처럼 역할과 무관하게 싣는다. 번호 추출은 화면 몫이다.
+ */
+it.each(["OWNER", "EDITOR"] as const)("상세는 저장된 PR 주소를 %s에게 그대로 싣고, 없으면 null이다", async role => {
+  mocks.project.findFirst.mockResolvedValue({ ...project, repoHost: "github", lastPrUrl: "https://github.com/owner/repo/pull/128" });
+  expect((await loadSource(db, en, "p", "s", role))?.pullRequestUrl).toBe("https://github.com/owner/repo/pull/128");
+  expect(mocks.project.findFirst.mock.calls[0]?.[0]).toMatchObject({ where: { id: "p", archivedAt: null }, select: { lastPrUrl: true } });
+  mocks.project.findFirst.mockResolvedValue({ ...project, repoHost: "github", lastPrUrl: null });
+  expect((await loadSource(db, en, "p", "s", role))?.pullRequestUrl).toBeNull();
 });

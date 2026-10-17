@@ -251,7 +251,7 @@ function fakeAuth(provider: LoginProvider, identity: string, revocation = false,
   const handlers = NextAuth(() => ({
     cookies: revocationAuthCookies() ?? connectAuthCookies() ?? linkAuthCookies(),
     trustHost: true, secret: "fixture-secret-fixture-secret-fixture-secret", basePath: "/api/auth",
-    adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 86400, updateAge: 3600, generateSessionToken: () => randomBytes(32).toString("base64url") },
+    adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 * 7, generateSessionToken: () => randomBytes(32).toString("base64url") },
     // 프로덕션 `auth.ts`와 같은 호출이다 — 꺼진 공급자는 Auth.js 목록에 없다.
     providers: withEnabled(LOGIN_PROVIDERS.map(fake), enabled),
     callbacks: {
@@ -292,7 +292,7 @@ function fakeAuth(provider: LoginProvider, identity: string, revocation = false,
     POST: (req: NextRequest) => withRevocation(req, () => withConnect(req, () => withLoginLink(req, callbackRequest => handlers.POST(callbackRequest)))),
   } : handlers;
 }
-it.each(LOGIN_PROVIDERS)("installed Auth.js %s callback stores digest, rejects digest-cookie, renews and signs out", async provider => {
+it.each(LOGIN_PROVIDERS)("installed Auth.js %s callback stores digest, rejects digest-cookie, keeps a fixed expiry and signs out", async provider => {
   const handlers = fakeAuth(provider, provider);
   const callback = await handlers.GET(new NextRequest(`http://localhost/api/auth/callback/${provider}?code=fixture`));
   expect(callback.headers.get("location")).toBe("http://localhost");
@@ -302,6 +302,8 @@ it.each(LOGIN_PROVIDERS)("installed Auth.js %s callback stores digest, rejects d
   expect(raw).toMatch(/^[\w-]{43}$/);
   const session = await prisma.session.findUniqueOrThrow({ where: { sessionToken: hashSessionToken(raw) } });
   expect(session.sessionToken).not.toBe(raw);
+  // 로그인이 심는 쿠키 만료가 곧 세션 수명이다(앱의 `auth()`는 이후 Set-Cookie를 버린다) — DB 만료와 같은 초여야 한다.
+  expect(Math.floor(Date.parse(/Expires=([^;]+)/i.exec(cookie)![1]!) / 1000)).toBe(Math.floor(session.expires.getTime() / 1000));
   const account = await prisma.account.findFirstOrThrow();
   // 토큰 컬럼 셋 전부 — 가짜 토큰 엔드포인트가 `expires_in`을 주므로 Auth.js가 넘기는 `account`에는 `expires_at`이 실린다(J4).
   expect(account).toMatchObject({ access_token: null, refresh_token: null, expires_at: null });
@@ -330,9 +332,11 @@ it.each(LOGIN_PROVIDERS)("installed Auth.js %s callback stores digest, rejects d
   expect((await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { name: true } })).name).toMatch(/^enc:v1:/);
   expect(await prisma.user.count()).toBe(1);
   expect(await prisma.account.count({ where: { userId: session.userId } })).toBe(1);
-  await prisma.session.update({ where: { sessionToken: session.sessionToken }, data: { expires: new Date(Date.now() + 10000) } });
-  await read(raw);
-  expect((await prisma.session.findUniqueOrThrow({ where: { sessionToken: session.sessionToken } })).expires.getTime()).toBeGreaterThan(Date.now() + 23 * 3600000);
+  // 설정(`updateAge = maxAge`)이 갱신을 부르지 않는 것만 본다 — 불려도 연장되지 않는다는 no-op 보증은 아래 "session renewal is a no-op" 테스트가 든다.
+  const fixedExpires = new Date(Date.now() + 10000);
+  await prisma.session.update({ where: { sessionToken: session.sessionToken }, data: { expires: fixedExpires } });
+  expect(await (await read(raw)).json()).toMatchObject({ user: { id: session.userId } });
+  expect((await prisma.session.findUniqueOrThrow({ where: { sessionToken: session.sessionToken } })).expires).toEqual(fixedExpires);
   const csrfResponse = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
   const csrf = await csrfResponse.json();
   const csrfCookie = csrfResponse.headers.getSetCookie().map(v => v.split(";")[0]).join("; ");
@@ -364,12 +368,16 @@ it("R2 refuses legacy rows, then finalizes verified data and rejects missing loo
   const newUser = await adapter.createUser!({ id: "ignored", email: "fresh@example.com", emailVerified: null });
   expect(await adapter.getUserByEmail!(" FRESH@example.com ")).toMatchObject({ id: newUser.id });
 });
-it("session renewal cannot revive deletion or erase a concurrently renewed row", async () => {
+it("session renewal is a no-op on the real row, and expiry cleanup cannot erase a concurrently renewed row", async () => {
   const adapter = credentialAdapter(prisma);
   const user = await adapter.createUser!({ id: "ignored", email: "session@example.com", emailVerified: null });
-  await adapter.createSession!({ sessionToken: "raw", userId: user.id, expires: new Date(Date.now() + 50000) });
+  const expires = new Date(Date.now() + 50000);
+  await adapter.createSession!({ sessionToken: "raw", userId: user.id, expires });
   const digest = hashSessionToken("raw");
-  await Promise.all([adapter.deleteSession!("raw"), adapter.updateSession!({ sessionToken: "raw", expires: new Date(Date.now() + 90000) })]);
+  // 세션은 로그인 뒤 고정 수명이다 — Auth.js가 갱신을 불러도 실제 행의 만료가 움직이지 않는다(ARCHITECTURE §6.1.1).
+  expect(await adapter.updateSession!({ sessionToken: "raw", expires: new Date(Date.now() + 90000) })).toBeNull();
+  expect((await prisma.session.findUniqueOrThrow({ where: { sessionToken: digest } })).expires).toEqual(expires);
+  await adapter.deleteSession!("raw");
   expect(await prisma.session.count()).toBe(0);
   await prisma.session.create({ data: { sessionToken: digest, userId: user.id, expires: new Date(0) } });
   const original = prisma.session.deleteMany.bind(prisma.session);

@@ -25,3 +25,7 @@ Code dictionaries with one file per language support `.ts`, `.tsx`, `.js`, and `
 YAML catalogs and code dictionaries keep comments, blank lines, and key order. JSON catalogs and Chrome extension messages keep their file representation — indentation, one-line containers, escapes, and field order.
 
 Values come from Malmoi; the existing file supplies the structure or representation.
+
+## Add and remove languages {#languages}
+
+Project owners can add and remove a language in Malmoi for JSON catalogs and Chrome extension messages, which keep one file per language. See [Add and remove languages](../setup/languages.md#languages). For the other formats, add or delete the language file in the repository.

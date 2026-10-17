@@ -47,7 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.pr.mockResolvedValue(null);
   mocks.run.mockResolvedValue(success);
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0, languages: [] });
 });
 afterEach(async () => {
   if (pending !== null) { const run = pending; pending = null; await act(async () => run.resolve(success)); }
@@ -111,7 +111,7 @@ it("남은 편집이 있으면 결과가 warning이고 남은 사실을 원인 �
 
 it("reconfirm의 [Try again]은 같은 Dialog를 확인 단계로 되돌리고 지문을 다시 받는다", async () => {
   mocks.run.mockResolvedValueOnce({ ok: false, error: "reconfirm" });
-  mocks.prepare.mockResolvedValueOnce({ approval: "digest-1", unsent: 0 }).mockResolvedValueOnce({ approval: "digest-2", unsent: 4 });
+  mocks.prepare.mockResolvedValueOnce({ approval: "digest-1", unsent: 0, languages: [] }).mockResolvedValueOnce({ approval: "digest-2", unsent: 4, languages: [] });
   await render(<SyncButton />);
   await click("Sync"); await click("Sync from repository");
   await vi.waitFor(() => expect(dialog()?.textContent).toContain("nothing was discarded"));
@@ -212,4 +212,102 @@ it("70초 출구 안내는 status로 알려지고, 그때 닫으면 아직 도�
     await click("Close");
     await vi.waitFor(() => expect(document.activeElement).toBe(fallback.current));
   } finally { fallback.current.remove(); }
+});
+
+/**
+ * **수동 Sync 확인의 언어 변경 구획** (locale-add 시안 P4) — 셀 편집은 "값이 바뀐다", 언어 변경은 "요청이 없어진다"라 한 수로 합치지 않는다.
+ * 블록은 손실이 큰 것부터(편집 → 언어 변경)이고, 언어마다 Sync 뒤 결과 한 줄을 말한다. `Send changes first` 권유는 편집이 있을 때만이다.
+ * 언어 목록은 지문과 같은 응답에서만 온다 — 화면 값으로 세우면 동료가 방금 낸 요청을 못 본 채 승인한다(`unsent`와 같은 규칙).
+ */
+type Language = { surfaceSlug: string; localeCode: string; operation: "ADD" | "REMOVE"; translations: number };
+const lang = (localeCode: string, operation: "ADD" | "REMOVE", translations = 0, surfaceSlug = "web"): Language => ({ surfaceSlug, localeCode, operation, translations });
+async function openWith(unsent: number, languages: Language[]) {
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent, languages });
+  await render(<SyncButton unsent={unsent} />);
+  await click("Sync");
+  // 지문 응답이 커밋될 때까지 기다린다 — 그 전엔 확정 버튼이 busy다.
+  await act(async () => {});
+  return dialog()!;
+}
+const languageBlock = () => document.querySelector<HTMLElement>("[data-sync-languages]");
+/** 첫 문장 — 수 조각이 medium이다(시안 P4 · #275). */
+const lead = () => languageBlock()!.querySelector("p")!;
+/** 언어 줄 — 코드 칸(44 · medium)과 결과 문장이 따로 선다(시안 P4 · #275). 접힘 줄은 코드 칸이 없다. */
+const rows = () => [...languageBlock()!.querySelectorAll("li")].map(li => {
+  const code = li.querySelector("[data-language-code]");
+  return code === null ? [li.textContent] : [code.textContent, li.querySelector("[data-language-result]")?.textContent];
+});
+
+it("편집과 언어 변경이 함께면 블록이 둘이고 편집 블록이 먼저다", async () => {
+  const node = await openWith(12, [lang("fr", "ADD", 9), lang("de", "REMOVE")]);
+  const block = languageBlock()!;
+  expect(lead().textContent).toBe("2 language changes will be dropped.");
+  expect(rows()).toEqual([["fr", "won't be added. Its 9 translations are kept in Malmoi."], ["de", "won't be removed. It stays in this source."]]);
+  // 같은 amber 형의 블록 둘이다 — 편집 경고 · 언어 변경.
+  expect(node.querySelectorAll('[data-alert="warning"]')).toHaveLength(2);
+  const editLine = [...node.querySelectorAll("p")].find(p => p.textContent?.includes("12 unsent edits"))!;
+  expect(editLine.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(node.textContent).toContain(en.repositorySync.sendFirst);
+  // 시안 P4 순서 — 편집 → 언어 → 권유. 권유는 두 블록을 다 읽은 뒤의 다음 행동이다(R-E3 Y2).
+  const hint = [...node.querySelectorAll("a")].find(a => a.textContent === en.repositorySync.sendFirst)!;
+  expect(block.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // 블록은 Dialog 설명에 묶인다 — 무엇이 없어지는지가 열릴 때 읽혀야 한다.
+  expect(node.getAttribute("aria-describedby")?.split(" ")).toContain(block.id);
+});
+
+/**
+ * **시안 P4의 형** (#275) — 첫 문장의 수는 medium, 언어 줄은 `flex gap-2` 안에 코드 칸(폭 44 · medium) + 결과 문장, 줄 사이 4 · 첫 문장과 2.
+ * jsdom은 레이아웃을 계산하지 않아 클래스로 잰다(실측은 DS 몫).
+ */
+it("첫 문장의 수가 medium이고 언어 줄은 44 코드 칸 + 결과 문장이다", async () => {
+  await openWith(0, [lang("fr", "ADD", 9), lang("de", "REMOVE")]);
+  const count = lead().querySelector(".font-medium");
+  expect(count?.textContent).toBe("2 language changes");
+  const list = languageBlock()!.querySelector("ul")!;
+  expect(list.className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-1", "mt-0.5"]));
+  const [first] = [...list.querySelectorAll("li")];
+  expect(first!.className.split(" ")).toEqual(expect.arrayContaining(["flex", "gap-2"]));
+  const code = first!.querySelector("[data-language-code]")!;
+  expect(code.className.split(" ")).toEqual(expect.arrayContaining(["min-w-11", "shrink-0", "font-medium"]));
+  expect(first!.querySelector("[data-language-result]")!.className.split(" ")).toEqual(expect.arrayContaining(["min-w-0", "flex-1"]));
+});
+
+it("언어 변경만 있으면 그 블록 하나이고 Send changes first 줄이 없다", async () => {
+  const node = await openWith(0, [lang("de", "REMOVE")]);
+  expect(lead().textContent).toBe("1 language change will be dropped.");
+  expect(rows()).toEqual([["de", "won't be removed. It stays in this source."]]);
+  expect(node.textContent).not.toContain(en.repositorySync.sendFirst);
+  expect(node.textContent).not.toContain("unsent edit");
+});
+
+it("값 없는 추가는 번역 수를 말하지 않는다", async () => {
+  await openWith(0, [lang("fr", "ADD", 0)]);
+  expect(rows()).toEqual([["fr", "won't be added."]]);
+});
+
+it("다섯 개를 넘으면 앞 넷과 and N more로 접는다", async () => {
+  await openWith(0, ["ja", "ko", "fr", "de", "es", "it", "pt"].map(code => lang(code, "REMOVE")));
+  expect(rows()).toEqual([
+    ["ja", "won't be removed. It stays in this source."],
+    ["ko", "won't be removed. It stays in this source."],
+    ["fr", "won't be removed. It stays in this source."],
+    ["de", "won't be removed. It stays in this source."],
+    ["and 3 more"],
+  ]);
+});
+
+it("다섯 개면 접지 않는다", async () => {
+  await openWith(0, ["ja", "ko", "fr", "de", "es"].map(code => lang(code, "REMOVE")));
+  expect(languageBlock()!.querySelectorAll("li")).toHaveLength(5);
+});
+
+it("소스가 둘 이상이면 코드 칸이 소스를 함께 든다 — 44를 넘으면 칸이 늘고 줄바꿈하지 않는다", async () => {
+  await openWith(0, [lang("de", "REMOVE", 0, "web"), lang("fr", "ADD", 2, "emails")]);
+  expect(rows()).toEqual([["de (web)", "won't be removed. It stays in this source."], ["fr (emails)", "won't be added. Its 2 translations are kept in Malmoi."]]);
+  expect(languageBlock()!.querySelector("[data-language-code]")!.className.split(" ")).toContain("whitespace-nowrap");
+});
+
+it("언어 변경이 없으면 블록이 없다", async () => {
+  await openWith(3, []);
+  expect(languageBlock()).toBeNull();
 });

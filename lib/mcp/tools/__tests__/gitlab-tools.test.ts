@@ -240,7 +240,7 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
   });
 
   it("preview_publish는 mergeRequest로 싣고 요약이 merge request를 말한다", async () => {
-    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 2, keys: 1 }, changedFiles: [], total: 2, keys: 1, withoutFile: 0, withoutKey: 0, openPr: { number: 2, url: "https://gitlab.com/grp/app/-/merge_requests/2" }, groups: [] } });
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 2, keys: 1 }, changedFiles: [], fileChanges: [], total: 2, keys: 1, withoutFile: 0, withoutKey: 0, openPr: { number: 2, url: "https://gitlab.com/grp/app/-/merge_requests/2" }, groups: [] } });
     const outcome = await call("preview_publish", subject("owner"), { slug: "glab" });
     expect(outcome).toMatchObject({ status: "ok", data: { mergeRequest: { status: "open", number: 2 } }, summary: en.mcp.summary.gitlab.publishPreview(2) });
     expect(outcome.status === "ok" && "pullRequest" in outcome.data).toBe(false);
@@ -248,7 +248,7 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
   });
 
   it("GitHub 프로젝트의 preview_publish는 pullRequest 그대로다", async () => {
-    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } });
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], fileChanges: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } });
     expect(await call("preview_publish", subject("owner"), { slug: "acme" })).toMatchObject({ status: "ok", data: { pullRequest: { status: "none" } }, summary: en.mcp.summary.publishPreview(1) });
   });
 
@@ -267,25 +267,25 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
     expect(JSON.stringify(outcome)).not.toMatch(NO_GITHUB);
   });
 
-  it("preview_source_removal은 mergeRequest로 싣는다 — GitHub 프로젝트는 pullRequest 그대로", async () => {
+  it("preview_source_detach은 mergeRequest로 싣는다 — GitHub 프로젝트는 pullRequest 그대로", async () => {
     h.core.mockResolvedValue({ ok: true, pendingCount: 0, approval: null, openPr: "none" });
-    const gitlab = await call("preview_source_removal", subject("owner"), { slug: "glab", surfaceSlug: "default" });
+    const gitlab = await call("preview_source_detach", subject("owner"), { slug: "glab", surfaceSlug: "default" });
     expect(gitlab).toMatchObject({ status: "ok", data: { mergeRequest: "none" } });
     expect(gitlab.status === "ok" && "pullRequest" in gitlab.data).toBe(false);
     expect(wire(gitlab)).not.toMatch(NO_GITHUB);
-    expect(await call("preview_source_removal", subject("owner"), { slug: "acme", surfaceSlug: "default" })).toMatchObject({ status: "ok", data: { pullRequest: "none" } });
+    expect(await call("preview_source_detach", subject("owner"), { slug: "acme", surfaceSlug: "default" })).toMatchObject({ status: "ok", data: { pullRequest: "none" } });
   });
 
   /** 소스를 지운 뒤 할 일은 GitLab에선 `.gitlab-ci.yml`의 그 소스 job을 지우는 것이다 — GitHub 워크플로 step이 아니다(감사 U1 · D26). */
-  it("remove_source 요약은 GitLab 프로젝트에서 .gitlab-ci.yml의 job을 말한다 — GitHub 프로젝트는 그대로", async () => {
+  it("detach_source 요약은 GitLab 프로젝트에서 .gitlab-ci.yml의 job을 말한다 — GitHub 프로젝트는 그대로", async () => {
     h.core.mockResolvedValue({ ok: true });
-    const gitlab = await call("remove_source", subject("owner"), { slug: "glab", surfaceSlug: "default", approval: null });
-    expect(gitlab).toEqual({ status: "ok", data: { removed: "default" }, summary: en.mcp.summary.gitlab.sourceRemoved("default") });
+    const gitlab = await call("detach_source", subject("owner"), { slug: "glab", surfaceSlug: "default", approval: null });
+    expect(gitlab).toEqual({ status: "ok", data: { detached: "default" }, summary: en.mcp.summary.gitlab.sourceRemoved("default") });
     expect(en.mcp.summary.gitlab.sourceRemoved("default")).toContain(".gitlab-ci.yml");
     expect(wire(gitlab)).not.toMatch(NO_GITHUB);
     expect(wire(gitlab)).not.toMatch(/workflow|\bstep\b/i);
-    expect(await call("remove_source", subject("owner"), { slug: "acme", surfaceSlug: "default", approval: null }))
-      .toEqual({ status: "ok", data: { removed: "default" }, summary: en.mcp.summary.sourceRemoved("default") });
+    expect(await call("detach_source", subject("owner"), { slug: "acme", surfaceSlug: "default", approval: null }))
+      .toEqual({ status: "ok", data: { detached: "default" }, summary: en.mcp.summary.sourceRemoved("default") });
   });
 
   it("rotate_push_token은 CI/CD 변수로 안내한다", async () => {

@@ -2939,3 +2939,39 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 테스트: `app/(edit)/__tests__/shell-layout.test.ts`가 `ContentPanel`의 `<main>`에 `relative`를 요구한다(배치 C fix2, `Refs #260`). **`h-svh`/`h-dvh` 셸을 새로 만들면 그 `overflow-hidden` 패널이 위치 지정(`relative` 이상)인지 같은 테스트에 더한다.**
   - grep: `rg -n 'h-svh|h-dvh' app components -g '!**/__tests__/**'` → 각 셸의 잘라내는 패널에 `relative|absolute|fixed`가 있는지 본다. 2026-10-13 실행: 편집 셸(`content-panel.tsx:36` — 이번 결함) · 공개 셸(`public-shell.tsx:55` `relative` ✅) · 로그인 레이아웃 동의 단계(`auth-layout.tsx:65` `relative` ✅). 다른 곳 없음.
   - 레이아웃 QA 측정에 세로를 더한다: 화면마다 `document.scrollingElement.scrollHeight === innerHeight`(셸이 `h-svh`인 앱 화면은 같아야 한다). 넘치면 `[...document.querySelectorAll('*')].filter(e => e.getBoundingClientRect().bottom > innerHeight && e.offsetParent === document.body)`로 탈출 요소를 찾는다. 픽스처는 본문이 뷰포트를 넘는 목록(프로젝트 다수 + Archived)으로.
+
+### 2026-10-14 — 전달 목록이 "어느 요청의 효과인가"를 몰라, 미머지 종료 뒤 다시 낸 언어 제거가 PR에 실리지 않고 지워졌다
+
+- **영역**: `lib/locales/expire.ts`(만료) · `lib/locales/work.ts`(`deliveredOf`·작업 수) · `lib/locales/change.ts`(취소 결과·미리보기) ← `DeliveryConfirmation.deliveredLocaleChanges`(locale-add, ARCHITECTURE §5.10)
+- **증상**: 언어 `ja` 제거를 Publish → PR을 머지 없이 닫음 → 만료 → 같은 `ja` 제거를 다시 요청하면 미리보기는 `delivered: true`, 작업 수 0, Publish는 `no-changes`였고 다음 야간 방문이 그 새 요청을 "해결됨"으로 지웠다(#266). 고친 뒤 두 갈래가 더 나왔다 — 전달 후 취소로 행 없이 남은 목록이 PR 종료 뒤 재요청과 일치(F1 발견), 그리고 그 수정이 옛 PR이 열린 채 "취소 → 재요청 → 재취소"에서 `delivered: false`를 돌려준 회귀(R-F1 Y1).
+- **근본 원인**: 전달 여부를 "현재 효과 목록 = 저장된 전달 목록"이라는 **값 비교**로 판정했다. 값에는 출처(어느 요청이 언제 보냈나)가 없어서, 같은 언어·같은 효과의 **새 요청**과 **이미 끝난 옛 전달**이 구별되지 않는다. 만료는 행만 지우고 목록은 남겼고(R-B2가 "수렴 Publish 1회"로 수용한 판정), 목록을 비우는 다른 경로(성공 확인·no-changes)는 Publish가 돌아야만 왔다 — PR이 사람 손으로 닫히면 그 사이가 비었다.
+- **그물**: 잡은 것 — `/roundtrip` 실호스트 왕복(RT)에서 "미머지 종료 → 방문 → 재요청"을 순서대로 밟은 것. 그 뒤 F1 자체 `/code-review`가 행 없는 목록 갈래를, R-F1이 재취소 회귀를 프로브로 잡았다. 놓친 것 — 단위·격리 PG 테스트와 리뷰 여섯 번. 시나리오가 전부 "한 번 요청 → 한 번 전달"이라 같은 언어를 **두 번째로** 요청하는 순서가 없었다. fake 호스트는 PR 종료를 "열린 PR 없음"으로만 표현해 닫힘·재생성 순서를 만들지 않는다.
+- **재발 방지**:
+  - 규칙(design §1 · ARCHITECTURE §5.10): 만료는 그 행의 효과를 전달 목록에서도 뺀다 · 확인 실행의 `startedAt`보다 뒤에 낸 요청은 전달로 세지 않는다(새 요청이 현재 효과를 낼 때만) · 취소 결과는 **저장된** 목록으로 답한다.
+  - 테스트: `expire.integration.ts`·`locale-publish.integration.ts`·`change.integration.ts`에 "미머지 종료 → 재요청", "전달 후 취소 → 종료 → 재요청", "열린 PR에서 재취소" 세 순서. **값 비교로 상태를 판정하는 목록을 새로 만들면 "같은 값의 두 번째 요청" 시나리오를 먼저 쓴다.**
+  - grep: `rg -n "deliveredLocaleChanges" lib app -g '!**/__tests__/**'` — 목록을 **쓰는** 자리는 `lib/pull/load.ts`(성공 확인)·`lib/locales/expire.ts`(만료 정리)·`lib/surfaces/remove.ts`(소스 제거 NULL) 셋이어야 한다. 넷째 writer가 생기면 그 경로가 PR 종료 뒤 남는 목록을 어떻게 정리하는지 본다. 2026-10-14 실행: 셋뿐(수동 Sync는 의도적으로 유지 — 결정 R3).
+
+### 2026-10-14 — Publish 미리보기가 실행의 조기 종료·만료를 모른 채 약속해, 실행 결과와 어긋나고 결과 문구가 거짓이 됐다
+
+- **영역**: `lib/pull/run.ts`(`runPull` 1층 스킵 · 스냅샷 전 만료) · `lib/pull/load.ts`·`lib/publish/read.ts`·`lib/publish/preview.ts`(미리보기) · `lib/mcp/tools/publish.ts`(문장)
+- **증상**: ① 전달 후 취소로 파일 diff가 0인데 열린 PR에서 이전 변경을 거둘 Publish가 필요할 때, MCP `preview_publish`가 "Nothing to send."(#265). ② 제거 PR을 머지 없이 닫은 뒤 방문 전에 Publish하면 미리보기는 "삭제 1개를 보낸다", 실행은 `no-edits` + "Nothing changed — the repository already has these values"(사실과 반대, #267). ③ ②의 첫 수정이 만료 판정의 `presence`를 버려 **머지된** PR을 "머지 없이 닫힘"이라 말하고 이미 base에 있는 파일을 새 파일로 약속(R-F2 🔴 둘).
+- **근본 원인**: 미리보기와 실행이 **다른 판정을 다른 순서로** 돌았다. 실행은 1층 스킵(편집 0·작업 0) → 스냅샷 전 만료 → 렌더 순인데, 1층 스킵이 만료보다 먼저라 결정 R4("모든 Publish가 스냅샷 전 만료")가 그 갈래에서 서지 않았다. 미리보기는 base 트리와 렌더를 비교할 뿐 실행의 스킵·만료를 몰랐다. 결과 문구는 `no-edits` 하나에 "리포에 이미 있다"는 원인을 고정해 둬서, 다른 원인으로 같은 코드에 닿아도 그 문장이 나갔다. 만료 판정 결과를 옮기는 타입(`ExpiredLocaleRequest`)에 `presence`가 없어 "반영됨/반영 없이 닫힘"이 갈리지 않았다.
+- **그물**: 잡은 것 — RT·RT2가 MCP로 미리보기와 실행을 **같은 상태에서 연달아** 부르고 둘을 견준 것. ③은 R-F2가 "머지 직후 방문 전"(`[skip-malmoi-i18n]` 때문에 CI가 안 도는 흔한 구간)을 프로브로 밟아 잡았다. 놓친 것 — 단위 테스트는 미리보기와 실행을 따로 단언했고, 둘이 **같은 답을 내는지**를 한 시나리오에서 재는 테스트가 없었다.
+- **재발 방지**:
+  - 규칙: 미리보기는 실행이 내릴 판정(조기 종료·만료·보류)을 **읽기 전용으로 같은 함수로** 계산한다. 언어 효과가 전달된 소스는 1층 스킵 전에 만료한다(ARCHITECTURE "API 0회" 예외 포인터). 결과 코드 하나에 원인 문장 하나를 고정하지 않는다 — 원인이 둘이면 코드(또는 동반 필드)를 나눈다.
+  - 테스트: `locale-publish.integration.ts`가 머지됨·머지 없이 닫힘 × 추가·제거 네 조합에서 **미리보기 결과와 실행 결과를 한 시나리오에서 같이** 단언한다. 새 Publish 갈래를 더하면 같은 꼴의 "미리보기 == 실행" 행을 먼저 쓴다.
+  - grep: `rg -n 'reason: "no-edits"' lib/pull -g '!**/__tests__/**'` — `no-edits`를 돌려주는 자리마다 그 앞에서 스냅샷 전 만료가 돌았는지(또는 그 소스에 전달된 언어 효과가 없는지) 본다. 2026-10-14 실행: `lib/pull/run.ts` 세 자리(447 — `expiryApplies`가 아닐 때만 · 490·512 — 만료 뒤). 그리고 `rg -n "already has these values|Nothing to send" lib messages -g '!**/__tests__/**'` — 이 문장들이 붙은 코드에 닿는 원인이 하나뿐인지 확인한다.
+
+### 2026-10-15 — 세션이 "마지막 활동 뒤 24시간"이라고 약 6주 동안 적었지만 실제로는 로그인 뒤 24시간 고정이었다
+
+- **영역**: `auth.ts`(`session.maxAge`·`updateAge`) · `lib/auth/read-session.ts`(앱의 유일한 `auth()` 호출) · `lib/credentials/adapter.ts`(`updateSession`) · 방침(`messages/en.tsx`·`messages/ko-privacy.tsx`) · 가이드(`guide/*/self-hosting/troubleshooting.md`) · ARCHITECTURE §6.1.1
+- **증상**: 2026-09-06(Codex 감사 #6 수정)부터 방침·셀프 호스팅 가이드·ARCHITECTURE §6.1.1이 세션 수명을 "마지막 활동 뒤 24시간"이라고 적었다. 실제로는 **로그인 뒤 24시간에 끊겼다** — DB `Session.expires`는 활동마다 늘었지만 브라우저 쿠키 `authjs.session-token`은 로그인 때 심은 만료에서 움직이지 않아, 24시간째에 브라우저가 쿠키를 지웠다. 2026-10-15 T0 실측(로컬 dev, 옛 설정 `maxAge` 24h·`updateAge` 1h, 자기 세션 하나): 로그인 직후 쿠키 Expires `2026-10-16T01:55:09.967Z`·DB `01:55:09.852Z` → 세션을 갱신 시점으로 당긴 뒤 `GET /projects`와 Server Action(`POST /preferences` 테마)이 각각 DB를 요청 시각 + 24h(`01:55:27.421Z`·`01:56:06.561Z`)로 옮겼지만 **두 응답 모두 `authjs.session-token` Set-Cookie가 없었고** 쿠키 Expires는 `01:55:09.967Z` 그대로였다. 같은 캡처가 `malmoi-color-scheme` Set-Cookie는 봤으므로 캡처의 사각이 아니다.
+- **근본 원인**: Auth.js의 sliding은 **DB 쓰기와 쿠키 재발급의 두 반쪽**이고, 쿠키 반쪽은 응답 헤더에 실린다. `@auth/core` `lib/actions/session.js`는 갱신 시점이면 `updateSession`을 부르고 응답에 쿠키를 `now + maxAge`로 다시 심지만, `next-auth@5` `initAuth`의 **인자 없는 `auth()`**(RSC 분기)는 `getSession(...).then(parseSessionResponse)`만 하고 응답 헤더를 버린다. 앱은 세션을 그 호출 하나(`lib/auth/read-session.ts:43`)로만 읽고 미들웨어는 `auth()`를 쓰지 않는다 — 그래서 쿠키 반쪽이 브라우저에 닿을 길이 처음부터 없었다. #6 수정은 `updateAge`를 고쳐 **공식**을 맞췄고, 공식이 맞으면 sliding이 된다고 보았다. 쿠키 만료를 정하는 것은 로그인 callback의 `expires: session.expires` 하나뿐이었다.
+- **그물**:
+  - 놓친 것: `adapter.test.ts`(갱신이 미만료 행만 바꾸는지 — DB 반쪽만) · `provider-config.test.ts`("세션이 슬라이딩한다" — `updateAge` 리터럴만) · 격리 PG 스위트 `postgres.integration.ts`(실제 Auth.js 핸들러로 읽은 뒤 DB `expires`가 늘었는지만 단언 — 그 핸들러는 Route Handler라 Set-Cookie를 **돌려주는** 경로여서 RSC `auth()`의 차이를 원리적으로 못 본다) · 2026-09-19 "방침 본문은 코드와 대조한다" 규칙(대조 대상을 코드 설정으로 잡았고 **쿠키를 본 사람이 없었다**) · `/runtime-test`(24시간을 기다리는 시나리오가 없다).
+  - 잡은 것: session-absolute-timeout `/feature-review`의 CPO 검토가 설치본 `next-auth`·`@auth/core` 코드를 읽어 "쿠키가 재발급되지 않는다"를 지적 → T0에서 CDP로 Set-Cookie 이름과 쿠키 Expires를 DB 값과 나란히 실측해 확정.
+  - 수정: `7bf00b05` — 세션을 로그인 뒤 7일 고정으로 바꾸고(`maxAge`·`updateAge` 둘 다 7일) `credentialAdapter.updateSession`을 no-op으로 만들어 **연장 자체를 없앴다** — 쿠키와 DB가 같은 값이 된다. `2ec04ceb`·`adb986f4`·`8341f4d9`가 방침·가이드·ARCHITECTURE 문장을 실제에 맞췄다.
+- **재발 방지**:
+  - grep: `rg -n '\bauth\(\)' app lib` — 인자 없는 `auth()`는 Auth.js가 응답에 싣는 Set-Cookie(세션 재발급 등)를 버린다. **세션 쿠키를 다시 심어야 하는 기능(sliding 수명, 세션 회전)을 들이려면 이 호출부가 그 헤더를 전달하는지부터 본다.** 2026-10-15 실행: 코드 호출은 `lib/auth/read-session.ts:43` 하나(나머지는 주석·테스트). `app/__tests__/entry-points.test.ts`가 "read-session.ts 밖에서 `auth()`를 직접 부르지 않는다"를 이미 고정하므로 새 호출부는 거기서 막힌다.
+  - 테스트: `adapter.test.ts`가 `updateSession`이 prisma `session`에 접근하지 않음을, `postgres.integration.ts`가 실제 핸들러로 읽은 뒤 `expires`가 그대로임을, `provider-config.test.ts`가 `maxAge`·`updateAge` 두 리터럴(7일)을 고정한다.
+  - **규칙: 쿠키 수명을 문장으로 쓰려면 쿠키를 잰다.** 방침·가이드의 쿠키 행은 DB 값이나 설정 리터럴이 아니라 실제 응답의 Set-Cookie와 브라우저의 쿠키 Expires로 확인한다 — 이번 T0의 CDP `Network.responseReceivedExtraInfo`(이름만)·`Network.getCookies`가 그 절차다.

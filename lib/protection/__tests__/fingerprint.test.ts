@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { discardFingerprint, removalFingerprint, sameFingerprint, type DiscardFingerprintInput, type RemovalFingerprintInput } from "../fingerprint";
+import { discardFingerprint, removalFingerprint, sameFingerprint, type DiscardFingerprintInput, type LocaleChangeState, type RemovalFingerprintInput } from "../fingerprint";
 
 /**
  * 폐기 승인 지문 (ARCHITECTURE §5.5.2). 서버가 발급하고 잠금 뒤 재계산해 대조한다 — **상태가 바뀌면 지문이 바뀐다**가
@@ -19,6 +19,14 @@ const BASE: DiscardFingerprintInput = {
     { id: "t1", token: "a" },
     { id: "t2", token: "b" },
   ],
+  localeChanges: [],
+};
+
+/** 언어 변경 상태 하나 — 소스의 의도 행(요청 시각까지)과 전달 목록. 수동 Sync·소스 제거가 이것을 폐기하므로 승인에 묶는다(locale-add §4). */
+const LOCALE: LocaleChangeState = {
+  surfaceId: "s1",
+  rows: [{ localeCode: "ko", operation: "REMOVE", requestedAt: "2026-10-14T00:00:00.000Z" }],
+  delivered: [],
 };
 
 describe("discardFingerprint", () => {
@@ -90,6 +98,37 @@ describe("discardFingerprint", () => {
   });
 });
 
+describe("discardFingerprint — 언어 변경 (locale-add design §4)", () => {
+  const withLocale = { ...BASE, localeChanges: [LOCALE] };
+
+  it("행이 생김(추가·제거 요청) → 다른 지문", () => {
+    expect(discardFingerprint(withLocale)).not.toBe(discardFingerprint(BASE));
+  });
+
+  it.each<[string, LocaleChangeState[]]>([
+    ["행 종류가 바뀜", [{ ...LOCALE, rows: [{ ...LOCALE.rows[0]!, operation: "ADD" }] }]],
+    ["취소 뒤 같은 요청을 다시 냄(요청 시각)", [{ ...LOCALE, rows: [{ ...LOCALE.rows[0]!, requestedAt: "2026-10-14T00:00:01.000Z" }] }]],
+    ["전달됨", [{ ...LOCALE, delivered: [{ localeCode: "ko", effect: "delete" }] }]],
+    ["확인이 무효화됨(null)", [{ ...LOCALE, delivered: null }]],
+    ["다른 소스의 같은 요청", [{ ...LOCALE, surfaceId: "s2" }]],
+  ])("%s → 다른 지문", (_name, localeChanges) => {
+    expect(discardFingerprint({ ...BASE, localeChanges })).not.toBe(discardFingerprint(withLocale));
+  });
+
+  it("행이 사라짐(취소) → 다른 지문", () => {
+    expect(discardFingerprint(BASE)).not.toBe(discardFingerprint(withLocale));
+  });
+
+  it("소스·행 순서에 흔들리지 않는다", () => {
+    const two: LocaleChangeState[] = [
+      { surfaceId: "s1", rows: [{ localeCode: "ko", operation: "REMOVE", requestedAt: "t" }, { localeCode: "fr", operation: "ADD", requestedAt: "t" }], delivered: [{ localeCode: "ko", effect: "delete" }, { localeCode: "fr", effect: "create" }] },
+      { surfaceId: "s2", rows: [{ localeCode: "de", operation: "ADD", requestedAt: "t" }], delivered: [] },
+    ];
+    const shuffled = [...two].reverse().map(state => ({ ...state, rows: [...state.rows].reverse(), delivered: state.delivered === null ? null : [...state.delivered].reverse() }));
+    expect(discardFingerprint({ ...BASE, localeChanges: shuffled })).toBe(discardFingerprint({ ...BASE, localeChanges: two }));
+  });
+});
+
 describe("sameFingerprint", () => {
   const current = discardFingerprint(BASE);
 
@@ -112,7 +151,7 @@ describe("sameFingerprint", () => {
 });
 
 describe("removalFingerprint", () => {
-  const INPUT: RemovalFingerprintInput = { userId: "owner", projectId: "p1", surfaceId: "s1", pending: [{ id: "t1", token: "a" }, { id: "t2", token: "b" }] };
+  const INPUT: RemovalFingerprintInput = { userId: "owner", projectId: "p1", surfaceId: "s1", pending: [{ id: "t1", token: "a" }, { id: "t2", token: "b" }], localeChanges: [] };
 
   it("결정적이고 sha256 hex 하나다", () => {
     expect(removalFingerprint(INPUT)).toBe(removalFingerprint(structuredClone(INPUT)));
@@ -130,12 +169,14 @@ describe("removalFingerprint", () => {
     ["토큰 하나 바뀜", { pending: [{ id: "t1", token: "a" }, { id: "t2", token: "c" }] }],
     ["편집 하나 늘어남", { pending: [...INPUT.pending, { id: "t3", token: "d" }] }],
     ["편집 0건", { pending: [] }],
+    // 제거가 그 소스의 언어 변경 의도를 지운다 — 승인 뒤 추가·취소·전달이 있으면 옛 승인이 통하지 않는다(locale-add §4).
+    ["언어 변경 행이 생김", { localeChanges: [LOCALE] }],
   ] as const)("%s → 다른 지문", (_, change) => {
     expect(removalFingerprint({ ...INPUT, ...change })).not.toBe(removalFingerprint(INPUT));
   });
 
   it("같은 사용자·프로젝트·토큰이어도 수동 Sync 지문과 겹치지 않는다 — 용도 접두가 갈라 놓는다", () => {
-    const sync = discardFingerprint({ userId: "owner", projectId: "p1", repository: BASE.repository, surfaces: [], pending: INPUT.pending });
+    const sync = discardFingerprint({ userId: "owner", projectId: "p1", repository: BASE.repository, surfaces: [], pending: INPUT.pending, localeChanges: [] });
     expect(removalFingerprint(INPUT)).not.toBe(sync);
   });
 });

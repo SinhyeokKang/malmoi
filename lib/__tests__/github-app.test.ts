@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { GitClient } from "@/lib/pull/client";
 
 const hoisted = vi.hoisted(() => ({
   request: vi.fn(),
@@ -128,6 +129,24 @@ describe("createGitClient.findOpenPr", () => {
     await expect(client.findOpenPr("malmoi-i18n/sync-acme")).resolves.toBeNull();
     expect(hoisted.request).toHaveBeenLastCalledWith("GET /repos/{owner}/{repo}/pulls", expect.objectContaining({ head: "o:malmoi-i18n/sync-acme", state: "open" }));
   });
+
+  // 본문까지 돌려준다 — 열린 PR을 갱신할 때 정리 안내가 빠졌는지 견준다(locale-add R-B2 Y3). 빈 본문은 GitHub이 `null`로 준다.
+  it("열린 PR의 본문을 돌려준다 — `null` 본문은 빈 문자열이다", async () => {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockResolvedValueOnce({ data: [{ html_url: "u", number: 3, title: "t", base: { ref: "main" }, body: null }] });
+    await expect(client.findOpenPr("b")).resolves.toEqual({ url: "u", number: 3, title: "t", base: "main", body: "" });
+    hoisted.request.mockResolvedValueOnce({ data: [{ html_url: "u", number: 3, title: "t", base: { ref: "main" }, body: "old" }] });
+    await expect(client.findOpenPr("b")).resolves.toMatchObject({ body: "old" });
+  });
+});
+
+describe("createGitClient.updatePr", () => {
+  it("PR 본문을 PATCH한다", async () => {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockResolvedValueOnce({ data: {} });
+    await client.updatePr(3, "new body");
+    expect(hoisted.request).toHaveBeenLastCalledWith("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", expect.objectContaining({ pull_number: 3, body: "new body" }));
+  });
 });
 
 /**
@@ -192,10 +211,10 @@ it("getTree throws on a truncated tree — a partial tree turns base files into 
  * 리포의 나머지 파일이 남고, 커밋 parent는 base head 하나이며, 메시지에 루프 마커가 든다. sync 브랜치가 없으면 만들고 있으면 강제로 옮긴다.
  */
 describe("createGitClient.publishSnapshot", () => {
-  const input = { branch: "malmoi-i18n/sync-acme", baseSha: "basehead", changes: [{ path: "i18n/ko.json", content: "{}\n", inBase: true }], summary: "1 file" };
+  const input = { branch: "malmoi-i18n/sync-acme", baseSha: "basehead", changes: [{ kind: "upsert" as const, path: "i18n/ko.json", content: "{}\n", inBase: true }], summary: "1 file" };
   const routes = () => hoisted.request.mock.calls.map(([route]) => route as string);
 
-  async function publish(syncExists: boolean) {
+  async function publish(syncExists: boolean, changes: Parameters<GitClient["publishSnapshot"]>[0]["changes"] = input.changes) {
     const client = await createGitClient("o", "r", "7", "9");
     hoisted.request.mockReset();
     hoisted.request.mockImplementation(async (route: string) => {
@@ -207,7 +226,7 @@ describe("createGitClient.publishSnapshot", () => {
       }
       return { data: {} };
     });
-    return client.publishSnapshot(input);
+    return client.publishSnapshot({ ...input, changes });
   }
 
   it("sync 브랜치가 없으면 트리 → 커밋 → ref 조회 → ref 생성이고, 커밋 SHA를 돌려준다", async () => {
@@ -226,6 +245,13 @@ describe("createGitClient.publishSnapshot", () => {
     expect(commit.tree).toBe("tree-sha");
     expect(commit.message).toContain("[skip-malmoi-i18n]");
     expect(hoisted.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/refs", expect.objectContaining({ ref: "refs/heads/malmoi-i18n/sync-acme", sha: "commit-sha" }));
+  });
+
+  it("delete만 있는 스냅샷: base_tree 위의 `sha: null` 항목 하나 — 그 경로만 빠지고 나머지 파일은 base_tree가 남긴다", async () => {
+    await expect(publish(false, [{ kind: "delete", path: "_locales/ko/messages.json" }])).resolves.toBe("commit-sha");
+    expect(hoisted.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/trees", expect.objectContaining({
+      base_tree: "basehead", tree: [{ path: "_locales/ko/messages.json", mode: "100644", type: "blob", sha: null }],
+    }));
   });
 
   it("sync 브랜치가 있으면 강제로 옮긴다 — 누적 히스토리가 아니라 스냅샷이다", async () => {

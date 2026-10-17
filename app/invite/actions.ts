@@ -70,17 +70,20 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
     if (project === null) return { ok: false, error: "not-found" };
     /**
      * ⚠️ **보관 = 멈춤** (audit #79, B2 #26) — 보관된 프로젝트에는 멤버가 새로 들지 않는다. 초대는 **소비하지 않는다**:
-     * 복원 뒤 만료 전이면 같은 링크가 산다. 보관 상태는 아래 수락 잠금 뒤 재조회하지 않는다 — 조회 후 보관되면 멤버가 들 수 있고
-     * 그 멤버도 보관 중에는 접근이 막힌다(`planProjectAccess`의 `archived` 갈래).
+     * 복원 뒤 만료 전이면 같은 링크가 산다. 여기는 잠금 전의 값싼 거절이고, 판정은 아래 수락 잠금 뒤에 한 번 더 한다.
      */
     if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
-    const accepted = await prisma.$transaction(async (tx): Promise<"ok" | "lost" | "already-member" | "limit-reached"> => {
+    const accepted = await prisma.$transaction(async (tx): Promise<"ok" | "lost" | "already-member" | "limit-reached" | "archived"> => {
       // 같은 프로젝트의 수락을 User 잠금·멤버 INSERT보다 먼저 직렬화한다. OWNER만 User를 잠그면
       // EDITOR의 unique 삽입 → User FK 대기와 OWNER의 User 잠금 → unique 대기가 순환한다.
       // NO KEY UPDATE는 기존 멤버 INSERT의 Project FK(KEY SHARE)를 막지 않는다.
       // 초대 토큰이 인가하므로, 기존 멤버를 요구하는 lockProjectAccess를 쓰지 않는다.
       await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${invitation.projectId} FOR NO KEY UPDATE`;
+      // ⚠️ **잠금 뒤 보관을 다시 본다** (2026-10-17 보안 감사 — POSTMORTEM 2026-09-23과 같은 형). 보관 Action의 `FOR UPDATE`가 이 잠금과
+      // 충돌하므로, 기다린 끝에 읽는 이 값이 보관 커밋을 본다. 위의 판정만으로는 대기 중 보관된 프로젝트에 멤버 행이 생겼다.
+      const locked = await tx.project.findUnique({ where: { id: invitation.projectId }, select: { archivedAt: true } });
+      if (locked === null || locked.archivedAt !== null) return "archived";
       // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitations`이 그 조합을 막지만 **막혀 있다는 것이 코드가
       // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
       // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
@@ -141,6 +144,7 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
       return "already-member" as const;
     });
 
+    if (accepted === "archived") return { ok: false, error: "archived" };
     if (accepted === "already-member") return { ok: false, error: "already-member" };
     if (accepted === "limit-reached") return { ok: false, error: "limit-reached" };
     if (accepted === "lost") {

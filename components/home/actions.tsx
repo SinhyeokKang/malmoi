@@ -131,7 +131,7 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
  *
  * ⚠️ **`[Publish]`는 EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다.
  */
-export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, paused, pausedReason }: {
+export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, languageWork = 0, paused, pausedReason }: {
   slug: string;
   /** 기본 표면 — `[Sync]` Dialog의 `Publish first`가 가리킨다 (audit-ux #4b). */
   surfaceSlug?: string;
@@ -139,6 +139,8 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
   branch: string;
   role: "OWNER" | "EDITOR";
   unsent: number;
+  /** 언어 변경 작업 수(`countLocaleWork`) — 셀 편집이 0이어도 [Publish]가 켜진다(locale-add 시안 P1 ①④). */
+  languageWork?: number;
   /**
    * 미연결·보관 — 둘 다 보낼 곳이 없다. **버튼 둘이 비활성이고 부재가 아니다** (DESIGN §6.64) —
    * 부재는 역할 갈래의 규칙이다.
@@ -176,7 +178,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton count={unsent} disabled={paused || syncPending} publish={publish} pausedReason={paused ? pausedReason : undefined} />
+      <PublishButton count={unsent} languageWork={languageWork} disabled={paused || syncPending} publish={publish} pausedReason={paused ? pausedReason : undefined} />
     </div>
   );
 }
@@ -191,7 +193,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
   있는 상태**이지 방금 일어난 사건이 아니다. assertive live 영역을 상시 상태에 쓰면 그 화면에
   들어올 때마다 스크린리더가 읽던 것을 끊는다. 의도된 이탈이고 `docs/DESIGN.md`에 있다.
 */
-export function HomeNotices({ slug, name, state, role, branch, repo, unsent, failedSurface, reason, lastSyncAt, now, problem = null }: {
+export function HomeNotices({ slug, name, state, role, branch, repo, unsent, languageWork = 0, failedSurface, reason, lastSyncAt, now, problem = null }: {
   slug: string;
   name: string;
   state: HomeState;
@@ -203,6 +205,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   repo: { owner: string; name: string; branch: string; syncBranch: string; /** 리포 호스트 — PR/MR 문장을 고른다(`forHost`). 없으면 GitHub이다. */ host?: string };
   /** 미발송 수 — 모달의 조회 전 갈래(`1a` 스켈레톤·`1k`)가 그것을 말한다. */
   unsent: number;
+  /** 언어 변경 작업 수 — 셀 편집 0이면 모달의 조회 전 제목이 언어 변경을 말한다(시안 P1 ①). */
+  languageWork?: number;
   failedSurface: string | null;
   reason: ImportFailureCode | null;
   lastSyncAt: Date | null;
@@ -317,7 +321,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
       )}
       {state === "archived" && restoreError !== null && <Alert variant="danger">{restoreError}</Alert>}
 
-      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} role={role} />
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} languageWork={languageWork} repo={repo} role={role} />
     </div>
   );
 }

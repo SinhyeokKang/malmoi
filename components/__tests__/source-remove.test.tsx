@@ -24,10 +24,10 @@ const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
 const two: SourcesData = { installed: true, repoHost: "github", repository, sources: [emails, web] };
 const one: SourcesData = { installed: true, repoHost: "github", repository, sources: [web] };
 const detail = (over: Partial<SourceDetail> = {}): SourceDetail => ({
-  ...web, installed: true, repoHost: "github", importActive: false,
+  ...web, installed: true, repoHost: "github", pullRequestUrl: null, importActive: false, localeDelivery: "confirmed",
   languages: [
-    { code: "en", isBase: true, orphaned: false, total: 248, translated: 248, needsReview: 0, untranslated: 0, percent: 100 },
-    { code: "ko", isBase: false, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84 },
+    { code: "en", isBase: true, orphaned: false, total: 248, translated: 248, needsReview: 0, untranslated: 0, percent: 100, change: null, unsent: false },
+    { code: "ko", isBase: false, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84, change: null, unsent: false },
   ],
   ...over,
 });
@@ -47,7 +47,7 @@ beforeEach(() => {
   mocks.preview.mockResolvedValue(ready());
 });
 
-it("OWNER는 바닥 왼쪽에 [Remove source]를 받고 옛 안내 문구는 없다 — Open 꺼짐 사유는 sr-only로만 남는다", async () => {
+it("OWNER는 바닥 왼쪽에 [Detach source]를 받고 옛 안내 문구는 없다 — Open 꺼짐 사유는 sr-only로만 남는다", async () => {
   mocks.load.mockResolvedValue({ ok: true, detail: detail({ lastCommitSha: null }) });
   await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
   await openDetail();
@@ -358,7 +358,7 @@ it("확인 창의 마운트는 호스트의 바쁨을 건드리지 않는다", a
   await act(async () => { finish({ ok: true, count: 1, failed: 0 }); });
 });
 
-it("기준 언어 초안이 있어도 [Remove source]는 제거 확인 창 하나만 연다", async () => {
+it("기준 언어 초안이 있어도 [Detach source]는 제거 확인 창 하나만 연다", async () => {
   await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
   await openDetail();
   await act(async () => { await user().click(document.querySelector('[role="combobox"]')!); });
@@ -368,7 +368,7 @@ it("기준 언어 초안이 있어도 [Remove source]는 제거 확인 창 하�
   expect(document.body.textContent).not.toContain(en.sources.discardTitle);
 });
 
-it("확인 창을 취소하면 포커스가 [Remove source]로 돌아간다", async () => {
+it("확인 창을 취소하면 포커스가 [Detach source]로 돌아간다", async () => {
   await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
   await openDetail();
   await openConfirm();

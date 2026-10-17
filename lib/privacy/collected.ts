@@ -73,6 +73,8 @@ export const MODEL_CLASSES = {
    */
   DeliveryConfirmation: "not-personal",
   TranslationBaseline: "not-personal",
+  /** 언어 변경 의도(locale-add) — 소스·언어·종류·요청 시각뿐이다. 누가 요청했는지는 `ProjectEvent`가 든다. */
+  LocaleChange: "not-personal",
   /** 사람의 자격증명과 그 사람이 위임한 권한·범위·사용 시각이다(mcp-connector). */
   ApiToken: "personal",
   /** 그 사람의 GitLab PAT(봉투)와 GitLab 계정 식별자·만료·스코프다(gitlab-repositories). */

@@ -138,7 +138,7 @@ describe("removeSurface", () => {
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.removed" } });
     expect(event).toMatchObject({ kind: "SURFACE", actorUserId: "owner", surfaceIds: ["s-web"] });
     expect(event.payload).toMatchObject({ surfaceSlug: "web" });
-    expect((await logLines()).map(line => line.sentence)).toContain("Owner removed the web source");
+    expect((await logLines()).map(line => line.sentence)).toContain("Owner detached the web source");
   });
 
   it("기본이 아닌 소스는 기본을 옮기지 않는다", async () => {

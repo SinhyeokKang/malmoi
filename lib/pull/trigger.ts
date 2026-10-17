@@ -3,7 +3,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/repo-host";
 import type { PublishExecution } from "@/lib/sync/execution";
-import { invalidatePublishDelivery, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
+import type { Credential } from "@/lib/auth/subject";
+import { expireLocalesForPublish, invalidatePublishDelivery, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
 import { runPull, type PullResult } from "./run";
 import { syncBranchFor } from "./sync-branch";
 
@@ -28,16 +29,24 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
  *   실행권과 로컬 수명은 필수다 — 실행권 없는 직접 쓰기는 허용하지 않는다.
  * @param expectedFingerprint MCP `publish`만 넘긴다 — `runPull`이 그대로 대조한다(mcp-connector design §3.1). cron·웹은 생략한다.
  */
-export async function triggerPull(prisma: PrismaClient, slug: string, runId: string, expectedFingerprint: string | undefined, execution: PublishExecution): Promise<PullResult> {
+/**
+ * @param actor 사람(웹·MCP)이 연 실행의 주체. 있으면 스냅샷 전 언어 변경 만료를 그 주체의 `lockProjectAccess` 뒤에 돈다(locale-add design §1 — W3).
+ *   cron은 넘기지 않는다 — 그때는 AUTOMATION 주체로 만료한다(모든 Publish가 스냅샷 전에 만료한다, R-B2 R1).
+ */
+export async function triggerPull(
+  prisma: PrismaClient, slug: string, runId: string, expectedFingerprint: string | undefined, execution: PublishExecution,
+  actor?: { userId: string; credential: Credential | undefined },
+): Promise<PullResult> {
   if (!runId) throw new Error("Publish execution authority is required");
   execution.check();
   const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
     // `runPull`이 연결 판정(`repoTargetOf`)을 지난 대상만 넘긴다.
     createClient: (target) => createGitClient(target, execution),
-    saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld) =>
-      saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution }),
-    invalidateDelivery: (projectId) => invalidatePublishDelivery(prisma, projectId, { runId, execution }),
+    saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld, locales) =>
+      saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution, locales }),
+    invalidateDelivery: (projectId, surfaceIds) => invalidatePublishDelivery(prisma, projectId, { runId, execution }, surfaceIds),
+    expireLocales: (input) => expireLocalesForPublish(prisma, actor, input),
     withheldRevertable: (projectId, withheld) => withheldRevertable(prisma, projectId, withheld),
     syncBranch: syncBranchFor(slug),
   }, expectedFingerprint);
@@ -45,7 +54,8 @@ export async function triggerPull(prisma: PrismaClient, slug: string, runId: str
   // ⚠️ **경고가 있으면 쓰기 전에 멈추고 `lastPulledAt`을 안 쓴다** (sync-edit-protection T10, 2026-09-18). 2026-09-04 audit #35는
   // 반대를 골랐다 — `missingOriginal` 같은 **지속 상태** 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다는 근거였다.
   // 그 대가를 이제 감수한다: 경고를 실어 보내면 버린 값의 편집 토큰까지 전달 확인으로 비워져 보내지 않은 편집이 사라진다.
-  // 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. 로그에는 계속 남긴다 —
+  // 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다 — 예외는 전달된 언어 변경이 PR/MR에 실린 동안의 사람 Publish다
+  // (스냅샷 전 만료가 1층보다 앞이다, #267 · `expiryCheckApplies`). cron은 작업 0이면 Publish를 부르지 않는다(`lib/nightly/plan.ts`). 로그에는 계속 남긴다 —
   // cron 응답 JSON을 놓쳐도 Vercel 로그에서 찾을 수 있어야 한다.
   if (result.status === "skipped" && result.reason === "writer-warnings") {
     // 코드로 남긴다 — `lib/pull`은 사전을 읽지 않는다(ui-locales B1′). 키·파서 원문이 있으면 그대로 붙여 grep으로 찾게 한다.

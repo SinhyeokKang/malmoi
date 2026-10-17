@@ -1,22 +1,19 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
-import { Meter } from "@/components/ui/meter";
 import { ListRow } from "@/components/ui/list-row";
 import { Fact } from "@/components/ui/facts";
 
-import { ChevronRight, CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
+import { CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
 import { Fragment, useEffect, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { LargeModal } from "@/components/ui/large-modal";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LocaleFlag } from "@/components/translations/locale-badge";
 
 import { relativeTime } from "@/lib/relative-time";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -32,12 +29,16 @@ import type { SourceDetail } from "@/lib/sources/query";
 import { formatMinute } from "@/lib/date-format";
 import { BaseLanguageForm } from "./base-language-form";
 import { RemoveSourceDialog } from "./remove-source-dialog";
+import { LanguagesCard } from "./languages-card";
+import { listedLanguageCount, repositoryLanguageCount } from "./language-row";
 import { planSurfaceRemoval, removalReason } from "@/lib/surfaces/plan-removal";
 import { IconTile } from "@/components/ui/icon-tile";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
-export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, onLost, returnFocusRef, fallbackFocusRef }: {
+export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, focusLanguage = null, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, onLost, returnFocusRef, fallbackFocusRef }: {
   slug: string; sourceSlug: string | null; role: Role; state: DetailState; now: Date; busy: boolean;
+  /** 딥링크가 가리킨 언어 — 상세가 서면 그 행에 포커스한다. */
+  focusLanguage?: string | null;
   /** 프로젝트의 활성 소스 전부 — 마지막 소스 판정(`planSurfaceRemoval`)의 입력이다. */
   sources: readonly { id: string; slug: string }[];
   /** 제거가 성공했다 — 호스트가 재검증 커밋 뒤 모달을 닫고 결과 배너를 세운다. */
@@ -81,14 +82,14 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     여기서는 "언제 더했나"(`createdAt`)를 따로 말한다 — 없으면 시각을 생략하고 추정하지 않는다.
   */
   /*
-    [Remove source]의 사전 차단 — 서버와 같은 판정·같은 문장이다(`planSurfaceRemoval`·`removalReason`). 보관은 이 화면에 오지 않는다(`archived` 거부).
+    [Detach source]의 사전 차단 — 서버와 같은 판정·같은 문장이다(`planSurfaceRemoval`·`removalReason`). 보관은 이 화면에 오지 않는다(`archived` 거부).
     ⚠️ **바쁨이 이긴다** — 지나가는 상태가 먼저고, 끝나면 마지막 소스 사유로 바뀐다(시안 R2). 문장은 옛 Open 꺼짐 자리의 것을 옮겼다.
   */
   const removal = detail === null ? null : planSurfaceRemoval({ targetId: detail.id, active: sources, defaultSurfaceId: null, projectArchived: false, importing: detail.importActive });
   const removeBlocked = busy ? (importing ? m.settings.sources.importing : m.locales.field.saving)
     : removal !== null && !removal.ok ? removalReason(m, removal.error) : null;
   const statusAt = detail === null || importStatus === null ? null : importStatus.state === "not-imported" ? detail.createdAt : importStatus.at;
-  return <LargeModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
+  return <LargeModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, listedLanguageCount(detail))}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
     className={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]")}
     // [Open translations]는 바닥 행동 줄의 primary다(2026-09-30 사용자 — 머리 우측에서 옮겼다). [Close]가 보조다. 목록 행의 같은 버튼은 걷혔고 이 모달이 유일한 입구다.
@@ -142,7 +143,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             {/* 보조 문장은 본문 색이다 — 톤은 칸과 낱말이 든다(§6.2 "Alert는 글자를 본문 색으로"와 같은 규칙, 옛 판은 호출부가 호박·빨강 글자를 골랐다). */}
             <span className="text-muted-foreground text-xs leading-body">
               {isImportFailureCode(detail.lastImportError) ? importFailureMessage(m, detail.lastImportError)
-                : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
+                : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, repositoryLanguageCount(detail))
                 : m.sources.notImportedHelp}
               {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
               {importStatus?.state === "failed-after" && canEdit && <> {m.settings.sources.rerun}</>}
@@ -161,7 +162,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       </Card>
       <Card title={m.locales.field.label} description={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
         <div className="px-4 py-row-y">
-        {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
+        {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned && row.change === null).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
               {/* 시안 `1e` ④ — EDITOR는 점선 칩과 자물쇠이고 컨트롤이 없다. */}
               <span className="border-border text-muted-foreground flex h-9 w-40 shrink-0 items-center gap-2 rounded-md border border-dashed px-2.5 text-sm"><Lock className="size-3.5" aria-hidden />{detail.baseLocale ?? m.sources.notConfigured}</span>
@@ -174,46 +175,9 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>}
         </div>
       </Card>
-      <Card title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} description={m.sources.languagesHelp}>
-        {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-row-y text-xs">{m.locales.empty.description}</p>
-          : <ul>{detail.languages.map((row, index) => {
-          // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
-          const done = Math.min(row.total, row.translated);
-          const review = Math.min(Math.max(0, row.total - done), row.needsReview);
-          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-row-y @max-form:flex-wrap", index > 0 && "border-border border-t")}>
-            <span className="flex w-[150px] shrink-0 items-center gap-2 @max-[850px]:w-[120px]">
-              <span className={cn("flex", row.orphaned && "opacity-50")}><LocaleFlag code={row.code} /></span>
-              <span className={cn("text-base", row.orphaned && "text-muted-foreground")}>{row.code}</span>
-              {row.isBase && <Badge variant="soft-neutral">{m.locales.base}</Badge>}
-            </span>
-            <span className="flex w-[300px] shrink-0 flex-col gap-1.5 @max-[850px]:w-auto @max-[850px]:flex-1">
-              <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
-                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{m.sources.translatedOfTotal(row.translated, row.total)}</span>
-              </span>
-              <Meter done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
-            </span>
-            {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
-                색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
-            <span className="min-w-0 flex-1 text-xs @max-form:order-last @max-form:basis-full @max-form:empty:hidden">
-              {row.orphaned ? <StatusBadge state="removedFromRepository" />
-                : row.needsReview > 0 ? <Badge variant="soft-amber">{m.sources.needReview(row.needsReview)}</Badge>
-                : row.isBase ? <span className="text-muted-foreground">{m.sources.baseRow}</span> : null}
-            </span>
-            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="shrink-0" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ChevronRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
-              : busy ? <Button size="sm" className="shrink-0" disabled>{m.sources.openLanguage}</Button>
-              : <><span id={`language-open-reason-${row.code}`} className="sr-only">{row.orphaned ? m.sources.orphanReason : disabledReason}</span><Button size="sm" className="shrink-0" aria-disabled aria-describedby={`language-open-reason-${row.code}`} onClick={event => event.preventDefault()}>{m.sources.openLanguage}</Button></>}
-          </li>;
-        })}</ul>}
-        {/* ⚠️ **사라짐 안내는 행이 아니라 카드 바닥의 스트립이다** (시안 `1c`) — 행에 넣으면 비고 열이
-            두 배로 길어져 같은 표에서 행 높이가 갈린다. 파일이 사라졌다고 단정하지 않는다.
-            ⚠️ **`BannerLine`이 아니라 `Alert inset danger`다**(5-Y10) — `BannerLine`은 한 줄로 자르는데 이 안내는 세 문장이다(복구 길까지).
-            지난 상태라 `live="off"`다 — 모달을 여는 순간 assertive로 끼어들지 않는다. */}
-        {detail.languages.filter(row => row.orphaned).map(row => <div key={`missing-${row.code}`} className="border-divider border-t">
-          <Alert inset size="sm" variant="danger" live="off">
-            <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
-          </Alert>
-        </div>)}
-      </Card>
+      {/* Languages 카드 — 언어 추가·제거·취소와 행 상태(locale-add 시안 L). 행 [Open]도 여기 있고 같은 미저장 확인 문을 지난다. */}
+      <LanguagesCard slug={slug} detail={detail} role={role} busy={busy} canOpen={canOpen} openReason={disabledReason} onReload={onReload} focusLanguage={focusLanguage}
+        onNavigate={(href, event) => { if (draft !== null) { event.preventDefault(); leave(href); } }} />
     </div>}
     {canEdit && detail && <RemoveSourceDialog open={removing} onOpenChange={setRemoving} slug={slug} surfaceSlug={detail.slug} onPending={onBusy} onRemoved={() => onRemoved(detail.slug)} onLost={onLost} />}
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>

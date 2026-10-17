@@ -7,5 +7,5 @@ import type { PullDeps } from "../run";
  * ⚠️ 이 단언은 **`pnpm typecheck`에서** red가 된다(런타임 vitest는 타입을 안 본다).
  */
 it("PullDeps.invalidateDelivery는 선택 인자가 아니다", () => {
-  expectTypeOf<PullDeps["invalidateDelivery"]>().toEqualTypeOf<(projectId: string) => Promise<void>>();
+  expectTypeOf<PullDeps["invalidateDelivery"]>().toEqualTypeOf<(projectId: string, surfaceIds: readonly string[]) => Promise<void>>();
 });

@@ -6,14 +6,14 @@ El agente solo puede hacer lo que tú puedes hacer en un proyecto, y solo lo que
 
 Un token o una aplicación conectada nunca añade un permiso: si eres traductor (rol Editor) en un proyecto, **Configuración del proyecto** y **Miembros** no hacen nada ahí.
 
-Un token sin acciones permitidas aún puede leer traducciones, actividad y miembros en los proyectos que cubre su alcance. Los propietarios del proyecto también pueden previsualizar una sincronización o una reversión y leer el archivo de workflow sin ninguna. Solo listar tus repositorios de GitHub o GitLab y sus ramas para un proyecto nuevo, y leer archivos del repositorio, necesitan una acción permitida.
+Un token sin acciones permitidas aún puede leer traducciones, actividad y miembros en los proyectos que cubre su alcance. Los propietarios del proyecto también pueden previsualizar una sincronización, una reversión o la eliminación de un idioma y leer el archivo de workflow sin ninguna. Solo listar tus repositorios de GitHub o GitLab y sus ramas para un proyecto nuevo, y leer archivos del repositorio, necesitan una acción permitida.
 
 ### Acciones permitidas y roles {#allowed-actions}
 
 | Acción permitida | Qué puede hacer el agente | Quién puede usarla |
 | --- | --- | --- |
 | **Traducir y publicar** | Guardar traducciones y publicarlas como un pull request (una merge request en GitLab). | Propietarios y Editores |
-| **Configuración del proyecto** | Añadir fuentes y rotar el token de push (ambas requieren también acceso de escritura al repositorio), quitar una fuente, detectar formatos en el repositorio conectado, sincronizar desde el repositorio, revertir al último valor publicado, cambiar el nombre, la rama base o el idioma base, archivar o restaurar. | Propietarios |
+| **Configuración del proyecto** | Añadir fuentes y rotar el token de push (ambas requieren también acceso de escritura al repositorio), desvincular una fuente, añadir o quitar un idioma, detectar formatos en el repositorio conectado, sincronizar desde el repositorio, revertir al último valor publicado, cambiar el nombre, la rama base o el idioma base, archivar o restaurar. | Propietarios |
 | **Miembros** | Invitar a personas, cancelar invitaciones, cambiar roles, quitar miembros. | Propietarios |
 | **Crear proyectos** | Listar tus repositorios y ramas de GitHub o GitLab, detectar formatos y crear proyectos (crear también requiere acceso de escritura al repositorio). | Cualquier persona con sesión iniciada, hasta el [límite de proyectos](../reference/limits.md#limits) |
 
@@ -28,11 +28,12 @@ Los cambios en tu rol o tu pertenencia se aplican desde la siguiente solicitud d
 | Averiguar quién y qué | `whoami`, `list_projects`, `get_project`, `list_members`, `list_events` |
 | Leer la guía | `read_docs` |
 | Configurar un proyecto | `list_repositories`, `list_branches`, `detect_formats`, `create_project`, `add_sources`, `get_workflow`, `rotate_push_token` |
-| Quitar una fuente | `preview_source_removal`, `remove_source` |
+| Desvincular una fuente | `preview_source_detach`, `detach_source` |
+| Añadir y quitar idiomas | `add_locale`, `preview_locale_removal`, `remove_locale`, `cancel_locale_removal` |
 | Traducir | `list_keys`, `get_key`, `set_translations` |
 | Publicar | `preview_publish`, `publish` |
 | Deshacer y resincronizar | `preview_revert`, `revert_to_last_sent`, `preview_sync`, `sync_repository` |
 | Gestionar el proyecto | `update_project`, `set_base_locale`, `archive_project`, `unarchive_project` |
 | Gestionar miembros | `invite_members`, `revoke_invitation`, `change_member` |
 
-Las herramientas que pueden descartar trabajo, quitar algo o cortar el acceso, como `sync_repository`, `revert_to_last_sent`, `rotate_push_token`, `remove_source`, `archive_project`, `revoke_invitation` y `change_member`, están marcadas como destructivas, así que la mayoría de los agentes te preguntan antes de ejecutarlas. Publicar, sincronizar y revertir empiezan cada uno con una vista previa, y quitar una fuente también cuando tiene ediciones sin enviar; si algo cambió después de la vista previa, no ocurre nada y se le pide al agente que vuelva a previsualizar. `set_translations` guarda hasta 100 claves por llamada; una clave que no se puede guardar se informa y el resto se guarda. Mientras se ejecuta la **Sincronizar** de un propietario del proyecto o la actualización nocturna, `set_translations` y `revert_to_last_sent` no cambian nada e indican al agente cuándo puede intentarlo de nuevo.
+Las herramientas que pueden descartar trabajo, quitar algo o cortar el acceso, como `sync_repository`, `revert_to_last_sent`, `rotate_push_token`, `detach_source`, `remove_locale`, `archive_project`, `revoke_invitation` y `change_member`, están marcadas como destructivas, así que la mayoría de los agentes te preguntan antes de ejecutarlas. Publicar, sincronizar y revertir empiezan cada uno con una vista previa, desvincular una fuente también cuando tiene ediciones sin enviar, y `remove_locale` usa la aprobación que da `preview_locale_removal`; si algo cambió después de la vista previa, no ocurre nada y se le pide al agente que vuelva a previsualizar. `set_translations` guarda hasta 100 claves por llamada; una clave que no se puede guardar se informa y el resto se guarda. Mientras se ejecuta la **Sincronizar** de un propietario del proyecto o la actualización nocturna, `set_translations` y `revert_to_last_sent` no cambian nada e indican al agente cuándo puede intentarlo de nuevo.

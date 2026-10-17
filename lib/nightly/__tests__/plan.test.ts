@@ -25,6 +25,8 @@ const surface = (over: Partial<NightlyInput["surfaces"][number]> = {}): NightlyI
 
 const input = (over: Partial<NightlyInput> = {}): NightlyInput => ({
   pending: 0,
+  localeWork: 0,
+  localeChanges: false,
   surfaces: [surface()],
   elapsedMs: 0,
   ...over,
@@ -193,6 +195,52 @@ describe("planNightly — 마감 뒤에는 PR 조회를 요구하지 않는다",
 
   it("head를 못 읽은 방문은 마감 뒤에도 base-unreadable 사건이다 — 이미 쓴 대기의 결과를 버리지 않는다", () => {
     expect(planNightly(input({ head: { ok: false }, elapsedMs: NIGHTLY_IMPORT_START_MS * 2 }))).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false });
+  });
+});
+
+/**
+ * **언어 변경** (locale-add design §4 판정표 · tasks §4 셋째). 언어 작업(현재 효과 ≠ 전달 효과)은 셀 편집 수와 따로 세고, 있으면 Publish다.
+ * `LocaleChange` 행이 있는 프로젝트는 같은 head여도 `upToDate`로 끝내지 않는다 — 머지 없이 닫힌 PR의 요청이 남아 다음 Publish가 다시
+ * 싣는다. PR 조회 → 만료(`expire`)를 먼저 돌고, 조회 실패는 `pr-check-failed` 보류다(fail-closed). 행이 없는 프로젝트는 기존 순서 그대로다.
+ */
+describe("planNightly — 언어 변경", () => {
+  const same = { surfaces: [surface({ lastCommitSha: HEAD })], head: { ok: true, sha: HEAD } } as const;
+
+  it("언어 작업 > 0 → publish, head를 묻지 않는다", () => {
+    expect(planNightly(input({ localeWork: 1 }))).toEqual({ action: "publish" });
+    expect(planNightly(input({ localeWork: 1, localeChanges: true, surfaces: [] }))).toEqual({ action: "publish" });
+  });
+
+  it("행 있음 + 같은 head → upToDate 전에 열린 PR을 묻는다", () => {
+    expect(planNightly(input({ ...same, localeChanges: true }))).toEqual({ action: "need", input: "open-pr" });
+  });
+
+  it("행 있음 + 같은 head + PR 없음 → expire", () => {
+    expect(planNightly(input({ ...same, localeChanges: true, openPr: { url: null } }))).toEqual({ action: "expire" });
+  });
+
+  it("행 있음 + 같은 head + PR 조회 실패 → deferred pr-check-failed (만료하지 않는다)", () => {
+    expect(planNightly(input({ ...same, localeChanges: true, openPr: { url: undefined } }))).toEqual({ action: "skip", outcome: "deferred", reason: "pr-check-failed" });
+  });
+
+  it("행 있음 + 같은 head + 열린 PR → upToDate — 만료 조건이 안 서고 받을 커밋도 없다", () => {
+    expect(planNightly(input({ ...same, localeChanges: true, openPr: { url: "https://github.com/o/r/pull/1" } }))).toEqual({ action: "skip", outcome: "upToDate" });
+  });
+
+  it("행 있음 + 같은 head + 마감 뒤 → PR을 묻지 않고 none unprocessed", () => {
+    expect(planNightly(input({ ...same, localeChanges: true, elapsedMs: NIGHTLY_IMPORT_START_MS + 1 }))).toEqual({ action: "none", counter: "unprocessed" });
+    expect(planNightly(input({ ...same, localeChanges: true, openPr: { url: null }, elapsedMs: NIGHTLY_IMPORT_START_MS + 1 }))).toEqual({ action: "none", counter: "unprocessed" });
+  });
+
+  it("행 없음 + 같은 head → 기존대로 upToDate (PR을 묻지 않는다)", () => {
+    expect(planNightly(input({ ...same }))).toEqual({ action: "skip", outcome: "upToDate" });
+  });
+
+  it("행 있음 + head 다름 → 기존 적재 순서 그대로 (PR → import)", () => {
+    const moved = { head: { ok: true, sha: HEAD }, localeChanges: true } as const;
+    expect(planNightly(input(moved))).toEqual({ action: "need", input: "open-pr" });
+    expect(planNightly(input({ ...moved, openPr: { url: null } }))).toEqual({ action: "import" });
+    expect(planNightly(input({ ...moved, openPr: { url: undefined } }))).toEqual({ action: "skip", outcome: "deferred", reason: "pr-check-failed" });
   });
 });
 

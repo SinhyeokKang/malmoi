@@ -204,6 +204,14 @@ const NOT_A_COUNT: Record<string, string> = {
   "projects.count": "PROJECT_LIMIT = 3",
   // 수는 `count`(= `repositorySync.unsentCount`, 구분자를 쓴다)가 그린다 — `n`은 es 동사 수 일치에만 쓴다.
   "sources.removal.unsent": "count is repositorySync.unsentCount",
+  // 추가 취소의 미전달 줄(RT4 #278) — 수는 `count`(= `repositorySync.unsentCount`)가 그리고, `n`은 en 동사·대명사와 es 동사 수 일치에만 쓴다.
+  "sources.locale.untrackLine": "count is repositorySync.unsentCount",
+  // 수는 `count`(= `repositorySync.languageCount`, 구분자를 쓴다)가 그린다 — `n`은 es 동사 수 일치에만 쓴다(#275).
+  "repositorySync.languagesDropped": "count is repositorySync.languageCount",
+  // 수를 그리지 않는다 — `n`은 en 동사 수 일치(is/are)에만 쓰고, 언어 목록은 `locales`가 그린다.
+  "translations.workspace.footer.removalPending.title": "n is verb agreement only",
+  // 수를 그리지 않는다 — `n`은 명사 수 일치(change/changes)에만 쓰고, 언어 목록은 `list`가 그린다(#284).
+  "translations.workspace.revert.frozen": "n is noun agreement only",
   // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
   "members.seats": "MEMBER_LIMIT = 10",
   "members.seatsFull": "MEMBER_LIMIT = 10",
@@ -234,6 +242,9 @@ const NOT_A_COUNT: Record<string, string> = {
   "home.meta.pr": "PR 번호 — 같은 이유다",
   "translations.publish.prOpen.title": "PR 번호",
   "translations.publish.replacePr": "PR 번호",
+  // 언어 변경 Publish(locale-add 시안 P1) — 수는 PR/MR 번호 하나다.
+  "translations.publish.language.introOpen": "PR 번호",
+  "translations.publish.language.updatedDescription": "PR 번호",
   "translations.publish.tellReviewer": "PR 번호",
   "translations.publish.closedPr.line": "PR 번호",
   "translations.publish.closedPr.view": "PR 번호",

@@ -43,6 +43,13 @@ export type DetectedFormat = {
    */
   nestedByPath?: Record<string, boolean>;
 
+  /**
+   * **원본이 없는 새 파일의 표현 출처** (locale-add design §4) — 같은 소스의 기준 언어 파일 내용이다. 재생성 writer가 원본이 없을 때만
+   * 들여쓰기·줄바꿈·BOM·이스케이프·한 줄 컨테이너·필드 순서를 여기서 읽는다. **값·키 구조는 읽지 않는다** — 구조는 `nested`·`nestedByPath`가 정한다.
+   * 수술적 writer는 보지 않는다(치환할 원본이 아니다). 다음 Publish는 새 파일 자신을 원본으로 읽으므로 같은 표현이어야 diff가 0이다.
+   */
+  representationSource?: string;
+
 };
 
 /** 경로 → 내용. 읽을 수 없으면 undefined. */

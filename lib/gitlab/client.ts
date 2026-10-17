@@ -218,6 +218,10 @@ export async function createGitLabClient(target: GitLabTarget, credential: GitLa
       await transport.send("PUT", mr(iid), { body: { target_branch: base } });
     },
 
+    async updatePr(iid, body) {
+      await transport.send("PUT", mr(iid), { body: { description: body } });
+    },
+
     /** 이유 노트 → 닫기. 노트가 먼저다 — 닫기가 성공하고 노트가 실패하면 이유 없이 닫힌 MR이 남는다(GitHub `closePr`과 같은 순서). */
     async closePr(iid, comment) {
       await transport.send("POST", mr(iid, "/notes"), { body: { body: comment } });
@@ -260,7 +264,7 @@ export async function openGitLabReader(target: GitLabTarget, credential: GitLabC
         const entries = await readTree(transport, id, head.sha);
         if (entries === null) return { status: "truncated" };
         // 크기는 트리에 없다 — `sizes`가 예산 대상 경로만 묻는다.
-        const files: GitTreeBlob[] = entries.filter((entry) => entry.type === "blob").map(({ path, sha }) => ({ path, sha }));
+        const files: GitTreeBlob[] = entries.filter((entry) => entry.type === "blob").map(({ path, sha, mode }) => ({ path, sha, mode }));
         return { status: "ok", headSha: head.sha, headCommittedAt: head.committedAt, files };
       } catch (error) {
         // 장애를 거부로 접지 않는다 — 화면이 "잠시 뒤 다시"를 말할 수 있는 유일한 갈래다.

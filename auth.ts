@@ -115,13 +115,13 @@ const authConfig = NextAuth(async () => {
      */
     providers: withEnabled([github, gitlab, google], enabled),
     /**
-     * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를
-     * 안 줘서 Auth.js 기본값(24h)이 `maxAge`와 같았고, 그러면 `session.js:81-87`의 갱신 시점이 `expires`와
-     * 일치해 **세션이 한 번도 연장되지 않았다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를
-     * 지워 blur 저장이 미들웨어에 걸렸다 (Codex 감사 2026-09-06 #6). `updateAge` 1시간이면 활동 중인 세션은
-     * 한 시간에 한 번만 DB 쓰기로 연장된다.
+     * **로그인 뒤 7일 고정, 연장 없음** (2026-10-15). 쿠키가 재발급되지 않으므로 sliding은 브라우저에서
+     * 성립하지 않는다 — 인자 없는 `auth()`가 Auth.js의 `Set-Cookie`를 버려서(`lib/auth/read-session.ts`),
+     * 쿠키는 로그인 때 심은 `expires`에서 움직이지 않는다. 2026-09-06의 `updateAge` 1시간(Codex 감사 #6)은
+     * DB `expires`만 늘렸다. `updateAge = maxAge`면 Auth.js가 갱신을 부르지 않고, 그래도 불리는 경계에서
+     * 연장을 막는 것은 `credentialAdapter.updateSession` no-op이다 (ARCHITECTURE §6.1.1).
      */
-    session: { strategy: "database", generateSessionToken: () => randomBytes(32).toString("base64url"), maxAge: 60 * 60 * 24, updateAge: 60 * 60 },
+    session: { strategy: "database", generateSessionToken: () => randomBytes(32).toString("base64url"), maxAge: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 * 7 },
     /**
      * 거부는 우리 로그인 화면에서 보인다 — 기본 `/api/auth/error`는 디자인 밖의 무스타일 페이지다.
      *

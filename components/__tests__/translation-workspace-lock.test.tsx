@@ -49,7 +49,7 @@ beforeEach(() => {
   mocks.publishing.value = false;
   window.sessionStorage.clear();
   mocks.pr.mockResolvedValue(null);
-  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1 });
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1, languages: [] });
 });
 
 it("Sync가 도는 동안 Publish와 Revert가 꺼지고 사유를 든다 — 짝 단언: 전에는 켜져 있다", async () => {

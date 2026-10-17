@@ -166,3 +166,24 @@ it("④ PUBLIC에 USAGE가 되살아난 DB(`pg_restore --no-acl` 뒤)도 bootstr
   expect(await publicUsage()).toBe(0);
   expect((await migrate.query<{ ok: boolean }>("SELECT has_schema_privilege($1, 'public', 'USAGE') AS ok", [RUNTIME])).rows).toEqual([{ ok: true }]);
 });
+
+/**
+ * **locale-add 마이그레이션(`*_locale_change`)의 업그레이드 경로** — bootstrap이 이미 돈 설치에 그 마이그레이션만 새로 적용된다.
+ * 런타임 권한은 손 GRANT 없이 `ALTER DEFAULT PRIVILEGES FOR ROLE <migrate>`가 따라 줘야 한다(SELF-HOSTING §3 ①).
+ */
+it("⑤ bootstrap 뒤 적용된 locale_change 마이그레이션의 테이블·컬럼도 런타임 롤이 CRUD한다 — 손 GRANT 없음", async () => {
+  const name = readdirSync("prisma/migrations").find(entry => entry.endsWith("_locale_change"));
+  expect(name).toBeDefined();
+  const sql = readFileSync(join("prisma/migrations", name!, "migration.sql"), "utf8");
+  expect(sql).not.toMatch(/\bGRANT\b/i);
+  // beforeAll이 bootstrap 전에 적용했다 — 되돌리고 bootstrap 뒤의 업그레이드처럼 다시 적용한다.
+  await migrate.query(`DROP TABLE "LocaleChange"; DROP TYPE "LocaleChangeOperation"; ALTER TABLE "DeliveryConfirmation" DROP COLUMN "deliveredLocaleChanges"`);
+  await migrate.query(sql);
+  const privileges = await migrate.query<{ privilege: string; ok: boolean }>(
+    `SELECT p AS privilege, has_table_privilege($1, '"LocaleChange"', p) AS ok FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) p`, [RUNTIME],
+  );
+  expect(privileges.rows.every(row => row.ok)).toBe(true);
+  expect((await migrate.query<{ ok: boolean }>(`SELECT has_column_privilege($1, '"DeliveryConfirmation"', 'deliveredLocaleChanges', 'UPDATE') AS ok`, [RUNTIME])).rows).toEqual([{ ok: true }]);
+  expect((await runtime.query(`SELECT count(*)::int AS n FROM "LocaleChange"`)).rows).toEqual([{ n: 0 }]);
+  expect(await code(runtime.query(`DROP TABLE "LocaleChange"`))).toBe("42501");
+});

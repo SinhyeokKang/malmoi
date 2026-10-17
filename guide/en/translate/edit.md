@@ -62,6 +62,8 @@ While a sync from the repository is running (a project owner's **Sync** or the n
 
 Some projects do not allow an empty translation. If Malmoi refuses an empty field, enter a value or press Escape in that field to undo the edit, then save any other changes. Nothing is saved while the invalid empty edit remains.
 
+When a project owner is removing a language, its fields can't be saved. Malmoi says so under the field and offers **Discard change**; a key with an edit in that language isn't saved in any language until you discard the edit. The language's existing translations stay in Malmoi. See [Cells for a removing language](../setup/languages.md#frozen).
+
 ![Translations with a French value typed for a key, marked Not saved, and the Save button at the bottom of the panel](/guide/translation-edit.webp "Type the translation, then choose Save.")
 
 ## Leave unsaved changes {#unsaved-changes}

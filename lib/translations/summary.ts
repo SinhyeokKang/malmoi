@@ -8,6 +8,31 @@ export type KeyCellInput = { localeCode: string; value: string | null; needsRevi
 
 export type KeySummary = { keyId: string; totalLocales: number; missingCount: number; hasReview: boolean; hasPending: boolean };
 
+/**
+ * 언어의 역할 (locale-add design §5·§6 · spec 22). **작업**(진행률·결측·검색·Inbox의 분모)은 활성 + 추가 제안(ADD)이다. 제거 예정(REMOVE)은
+ * 작업에서 빠지되 번역 상세·Sources에 **읽기 전용** 상태 행으로 남는다. orphan은 의도 행이 남아 있어도 비활성이다 — 존재는 리포가 정한다.
+ * 취소로 행이 사라지면 그대로 작업으로 돌아온다(따로 복구할 것이 없다). SQL 사본은 `lib/keys/work-locale.ts`다.
+ */
+export function localeRole(locale: { orphaned: boolean; change: { operation: "ADD" | "REMOVE" } | null }): "work" | "read-only" | "inactive" {
+  if (locale.orphaned) return "inactive";
+  return locale.change?.operation === "REMOVE" ? "read-only" : "work";
+}
+
+/**
+ * 번역 상세의 `locales`(제거 예정을 `readOnly`로 싣는다)에서 **작업 언어**만 — 서버 목록 분모와 같은 규칙이다(R-C1 🟡1). 저장 뒤 낙관적 행 갱신의
+ * `activeLocales`와 패널 filled/total이 이것을 쓴다. 안 그러면 재검증 전까지 행의 수가 서버 값과 갈린다.
+ * ⚠️ `readOnly`가 선택인 것은 화면 타입(`DetailView`)이 아직 그 필드를 선언하지 않아서다 — 값은 서버 상세가 늘 싣는다. 없으면 편집 가능으로 읽는다.
+ */
+export function workLocaleCodes(locales: readonly { code: string; readOnly?: boolean }[]): string[] {
+  return locales.filter(locale => locale.readOnly !== true).map(locale => locale.code);
+}
+
+/** 상세 패널의 채움 수 — 작업 언어만 센다. 빈 문자열은 결측이고 공백만 있는 값은 채워진 값이다(`summarizeKey`와 같다). */
+export function detailFill(locales: readonly { readOnly?: boolean; value: string | null }[]): { filled: number; total: number } {
+  const work = locales.filter(locale => locale.readOnly !== true);
+  return { filled: work.filter(locale => locale.value !== null && locale.value !== "").length, total: work.length };
+}
+
 /** 분모는 그 소스의 **활성** 로케일이다 — orphan 로케일 셀은 어느 쪽에도 들지 않는다. */
 export function summarizeKey(input: { activeLocales: readonly string[]; cells: readonly KeyCellInput[] }): Omit<KeySummary, "keyId"> {
   const byLocale = new Map(input.cells.map(cell => [cell.localeCode, cell]));

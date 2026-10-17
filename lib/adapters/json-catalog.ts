@@ -266,7 +266,8 @@ function writeWithErrors(
   // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
   // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라
   // **경로로 조회한다**: 호출부가 여러 파일을 실으면 다른 로케일의 스타일을 읽게 된다.
-  const style = observeJsonStyle(original);
+  // 원본이 없는 새 언어 파일만 기준 언어 파일에서 표현을 빌린다(locale-add design §4). 구조(`originalStructure`)는 빌리지 않는다.
+  const style = observeJsonStyle(original ?? format.representationSource);
 
   if (!nested && structure.paths.size === 0) {
     // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다. 충돌이 성립하지 않는다.

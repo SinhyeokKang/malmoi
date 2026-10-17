@@ -20,6 +20,8 @@ vi.mock("next/navigation", () => ({ redirect: state.redirect }));
 // 경로 소스 → 인가된 표면 id. redirect 목적지를 **그 경로에서** 다시 열 수 있게 slug로 고른다.
 vi.mock("@/lib/surfaces/access", () => ({ requireSurfaceAccess: async ({ surfaceSlug }: { surfaceSlug: string }) => ({ projectId: "p", surfaceId: surfaceSlug === "app" ? "s2" : "s", role: "EDITOR", archived: false, userId: "u" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
+// 언어 변경 작업 수(Publish 버튼) — 착지 판정과 무관하다.
+vi.mock("@/lib/locales/work", () => ({ countLocaleWork: async () => 0 }));
 vi.mock("@/lib/keys/query", () => ({
   loadProject: async () => ({ id: "p", name: "Demo", surfaces: [{ id: "s", slug: "default", archivedAt: null, lastCommitSha: "sha", pathTemplate: "i18n/{locale}.json" }], slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en", lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [] }),
   loadActors: async () => new Map(),

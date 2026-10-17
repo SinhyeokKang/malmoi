@@ -1,4 +1,6 @@
 import type { PullWarning } from "@/lib/pull/run";
+import type { PublishedFile } from "@/lib/pull/payload";
+import type { ExpiredLocaleRequest, LocaleNotes, WithdrawnLocale } from "@/lib/pull/locales";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import type { PublishDiff } from "./diff";
 /** `keys`는 **미발송 전체**의 키 수다 — 표에 실린 행이 아니라 바닥 요약이 드는 값이다. */
@@ -12,11 +14,28 @@ import type { PublishDiff } from "./diff";
  */
 export type PublishPreview = PublishDiff & {
   openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number;
+  /** `withoutFile` 중 언어 변경 계획이 뺀 언어(보류된 ADD 등)의 셀 — 화면이 "파일이 아직 없다" 줄에서 빼고 언어 행이 설명한다(R-E3 Y1). 실행의 `withheld.language`와 같은 판정이다. */
+  withoutFileLanguage?: number;
   /**
    * **이 Publish가 바꾸는 파일** (#128) — 실행과 같은 렌더·blob 비교(`renderProject`)의 결과라 결과 화면의 "N files changed"와 같다. `groups`는 편집이
    * 사는 파일이라 이보다 적을 수 있다 — 토큰 없이 바뀌는 파일(orphan 줄 제거, 앞서 닫힌 PR에 실렸던 값)이 여기에만 있다.
    */
   changedFiles: string[];
+  /** `changedFiles`와 같은 순서의 파일 종류(`new`·`updated`·`removed`) — 실행 결과의 `files`와 같은 판정이다. 데이터만이다(locale-add O5 — 표시는 시안 배치). */
+  fileChanges: PublishedFile[];
+  /** 언어 보류 안내(경로가 이미 있는 ADD · 값 0개 ADD) — 실행 결과의 `locales`와 같은 값이다. 없으면 필드가 없다. */
+  locales?: LocaleNotes;
+  /**
+   * **거둘 언어 효과** (#265) — 전달됐는데 이번 스냅샷이 싣지 않는 효과(`withdrawnLocalesOf`). 전달된 의도를 취소하면 파일 diff가 0이어도 Publish가 열린 PR에서
+   * 옛 삭제·새 파일을 거둔다 — 이 목록이 그 "보낼 것"이다. 데이터만이다(표시는 시안 배치). 없으면 필드가 없다.
+   */
+  withdrawnLocales?: WithdrawnLocale[];
+  /**
+   * **이 Publish가 정리하는 언어 요청** (#267) — 그 PR/MR이 더 이상 열려 있지 않아 실행이 스냅샷 전에 만료한다(`expiringLocalesOf`). `presence`는 만료 뒤
+   * 존재이고, 리포가 요청대로인지(머지)·아닌지(리포에 닿지 못한 채 닫힘)를 가른다(`reachedRepository`). 표·`fileChanges`·수는 만료 뒤 상태의 계획이다 —
+   * 삭제·새 파일을 약속하지 않고, 비활성이 되는 언어의 편집은 세지 않는다. 다른 보낼 것이 있으면 실행이 만료 뒤 다시 확인을 요구한다. 데이터만이다(표시는 시안 배치).
+   */
+  expiringLocales?: ExpiredLocaleRequest[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
   /**
@@ -50,16 +69,26 @@ export class PreviewWriterWarnings extends Error {
   override readonly name = "PreviewWriterWarnings";
   constructor(readonly warnings: PullWarning[]) { super("Preview cannot safely deliver values"); }
 }
+/**
+ * `locale-plan-refused`의 고칠 자리 (시안 P1 ⑥) — 어느 소스의 어느 언어가 왜 막혔나. `ownerSlug`는 경로 충돌일 때 그 경로를 쥔 다른 소스다.
+ * 소스 설정에서 계산한 값이라 화면에 실어도 된다(`path`와 같은 근거).
+ */
+export type LocalePlanRefusalDetail = { refusal: "path-conflict" | "duplicate-path" | "unsafe-path"; surfaceSlug: string | null; localeCode: string | null; ownerSlug: string | null };
+
 export type PublishPreviewResult =
   | { status: "blocked"; warnings: PullWarning[] }
   | { status: "ok"; preview: PublishPreview }
-  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind"; path: string; branch: string }
+  /**
+   * `locale-plan-refused` — 언어 추가·제거의 파일 경로를 쓸 수 없거나 다른 소스의 것이다(locale-add R-B2 Y2). **코드만이다** — 화면·MCP 문구는 C1이 잇는다.
+   * 그 전까지 화면은 이 사유를 다른 거부 문구로 떨어뜨린다. 안전하지 않은 경로면 `path`가 비어 있다.
+   */
+  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string; plan?: LocalePlanRefusalDetail }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }
   | { status: "failed" };
 export type PublishModalState =
   | { kind: "preview-loading" }
   | { kind: "preview-ready"; preview: PublishPreview }
   | { kind: "preview-error" }
-  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind"; path: string; branch: string }
+  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string; plan?: LocalePlanRefusalDetail }
   | { kind: "running" }
   | { kind: "result"; outcome: import("@/lib/pull/message").PullOutcome };

@@ -13,8 +13,27 @@ import type { PullState } from "@/lib/pull/run";
  * ⚠️ **조회 순서가 지문을 바꾸면 안 된다** — 표면·키·로케일·셀·토큰을 전부 정렬해 직렬화한다. 매번 다른 순서면 매번 reconfirm이다.
  * ⚠️ `server-only`를 붙이지 않는다 — 순수 함수다.
  */
-export function publishFingerprint(state: PullState, baseHead: string): string {
+export function publishFingerprint(
+  state: PullState,
+  baseHead: string,
+  /**
+   * 언어 변경의 base 입력(locale-add design §2) — 행 경로의 base blob SHA와 이번 계획의 삭제 경로(`localeFingerprintInput`). 대상 파일이 바뀌거나 삭제가
+   * 달라지면 승인을 다시 받는다. 행이 없으면 비어 있고, 그때 지문 바이트는 옛것 그대로다.
+   */
+  locale?: { targets: readonly (readonly [string, string | null])[]; deletes: readonly string[] },
+): string {
   const { project } = state;
+  // 언어 변경 행·전달 목록은 소스에 붙어 온다(`localeChanges`). 아무 소스에도 없고 base 입력도 비면 꼬리를 붙이지 않는다 — 언어 변경이 없는 프로젝트의 지문이 바뀌지 않는다.
+  const localeTail = state.surfaces.some(s => s.localeChanges !== undefined) || (locale !== undefined && (locale.targets.length > 0 || locale.deletes.length > 0))
+    ? [[
+      [...state.surfaces].sort(byId).map(s => [s.id, s.localeChanges === undefined ? null : [
+        [...s.localeChanges.rows].sort((a, b) => compare(a.localeCode, b.localeCode)).map(r => [r.localeCode, r.operation, r.requestedAt.toISOString()]),
+        s.localeChanges.delivered === null ? null : s.localeChanges.delivered.map(e => [e.localeCode, e.effect]),
+      ]]),
+      locale?.targets.map(([path, sha]) => [path, sha]) ?? [],
+      [...(locale?.deletes ?? [])].sort(compare),
+    ]]
+    : [];
   const canonical = JSON.stringify([
     project.id,
     // 호스트·GitLab 연결 참조까지 — 저장하지 않는 지문이라 바이트가 바뀌어도 된다(gitlab-repositories). 다른 OWNER의 재연결 뒤 옛 미리보기가 통하지 않는다.
@@ -33,6 +52,7 @@ export function publishFingerprint(state: PullState, baseHead: string): string {
     ]),
     [...state.pendingEdits].sort(byId).map(p => [p.id, p.token]),
     [...(state.deliveryContexts ?? [])].sort((a, b) => compare(a.surfaceId, b.surfaceId)).map(c => [c.surfaceId, c.fingerprint]),
+    ...localeTail,
   ]);
   return createHash("sha256").update(canonical).digest("hex");
 }

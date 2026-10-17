@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
+import { en } from "@/messages/en";
 
 import type { TokenGrant } from "../grant";
 import { hashApiToken } from "../token";
@@ -437,7 +438,7 @@ describe("적재 lease 중 set_translations", () => {
  * **소스 제거** (sources-add-remove B-T8). 웹 `removeSource`와 같은 코어(`removeSurface` — 판정·승계·사건은 `source-remove.integration.ts`)를
  * 지나는지와, 토큰 주체의 잠금 뒤 재읽기가 실리는지를 본다.
  */
-describe("preview_source_removal → remove_source", () => {
+describe("preview_source_detach → detach_source", () => {
   beforeEach(async () => {
     await prisma.translationSurface.create({ data: { id: "s2", projectId: "p", slug: "web", adapterName: "json-catalog", pathTemplate: "web/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
     await prisma.translation.update({ where: { id: "k1-ko" }, data: { value: "Edited", pendingEditToken: "t1" } });
@@ -446,12 +447,12 @@ describe("preview_source_removal → remove_source", () => {
 
   it("미리보기의 지문으로 제거된다 — 지문 없이는 stale-approval이고 아무것도 안 바뀐다", async () => {
     const owner = await token("owner");
-    const preview = await call("preview_source_removal", owner, source);
+    const preview = await call("preview_source_detach", owner, source);
     expect(preview).toMatchObject({ status: "ok", data: { unsentEdits: 1, pullRequest: "none" } });
     const approval = preview.status === "ok" ? (preview.data as { approval: string }).approval : null;
-    expect(await call("remove_source", owner, { ...source, approval: null })).toMatchObject({ status: "refused", code: "stale-approval" });
+    expect(await call("detach_source", owner, { ...source, approval: null })).toMatchObject({ status: "refused", code: "stale-approval" });
     expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).archivedAt).toBeNull();
-    expect(code(await call("remove_source", owner, { ...source, approval }))).toBe("ok");
+    expect(code(await call("detach_source", owner, { ...source, approval }))).toBe("ok");
     expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).archivedAt).not.toBeNull();
     expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "surface.removed" } })).toBe(1);
     expect(await koValue()).toBe("Edited");
@@ -460,12 +461,121 @@ describe("preview_source_removal → remove_source", () => {
   it("잠금 대기 중 토큰이 폐기되면 unauthorized이고 제거·사건이 없다", async () => {
     await prisma.translation.update({ where: { id: "k1-ko" }, data: { pendingEditToken: null } });
     const owner = await token("owner");
-    expect(code(await race({ table: "Project", id: "p" }, "revoked", "owner", () => call("remove_source", owner, { ...source, approval: null })))).toBe("unauthorized");
+    expect(code(await race({ table: "Project", id: "p" }, "revoked", "owner", () => call("detach_source", owner, { ...source, approval: null })))).toBe("unauthorized");
     expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).archivedAt).toBeNull();
     expect(await events()).toBe(0);
   });
 
   it("EDITOR는 forbidden — 코어 판정 전 입구에서 끝난다", async () => {
-    expect(code(await call("remove_source", await token("editor"), { ...source, approval: null }))).toBe("forbidden");
+    expect(code(await call("detach_source", await token("editor"), { ...source, approval: null }))).toBe("forbidden");
+  });
+});
+
+/**
+ * **언어 추가·제거·취소** (locale-add tasks §7). 도구 넷은 웹 Action과 같은 코어(`lib/locales/change.ts`)의 형제 껍데기다 — 판정·잠금·사건의 정본 시나리오는
+ * `lib/locales/__tests__/change.integration.ts`이고, 여기서는 토큰 주체가 그 코어를 지나 **조회 도구(`get_project`·`list_keys`·`preview_sync`)가 같은 상태를
+ * 말하는지**를 뷰 출력으로 잰다. 거부 단언마다 같은 픽스처의 성공 대조를 둔다.
+ */
+describe("언어 변경 도구 × 조회 도구", () => {
+  const target = (localeCode: string) => ({ slug: "p", surfaceSlug: "default", localeCode });
+  const data = (outcome: ToolOutcome) => (outcome.status === "ok" ? outcome.data : {}) as Record<string, unknown>;
+  const sourceOf = async (subject: ApiTokenSubject) =>
+    (data(await call("get_project", subject, { slug: "p" })).sources as { slug: string; languageChanges: unknown[]; languageChangesToSend: number }[])[0]!;
+  const rows = () => prisma.localeChange.findMany({ where: { projectId: "p" }, select: { localeCode: true, operation: true }, orderBy: { localeCode: "asc" } });
+
+  it("add_locale → get_project가 추가 중인 언어를 싣고, 값이 생기면 보낼 언어 변경이 1이 된다", async () => {
+    const owner = await token("owner");
+    const added = await call("add_locale", owner, target("fr"));
+    expect(added).toMatchObject({ status: "ok", data: { language: "fr", path: "i18n/fr.json", revived: false } });
+    expect(await rows()).toEqual([{ localeCode: "fr", operation: "ADD" }]);
+    expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "surface.localeAdded" } })).toBe(1);
+    const before = await sourceOf(owner);
+    expect(before.languageChanges).toEqual([{ language: "fr", change: "add", requestedAt: expect.any(String), delivered: false, editable: true }]);
+    // 값 0개 ADD는 파일을 내지 않는다 — 보낼 것이 없다.
+    expect(before.languageChangesToSend).toBe(0);
+    expect(code(await call("set_translations", owner, { slug: "p", surfaceSlug: "default", entries: [{ keyId: "k1", changes: [{ localeCode: "fr", value: "Bonjour" }] }] }))).toBe("ok");
+    expect((await sourceOf(owner)).languageChangesToSend).toBe(1);
+    expect(data(await call("get_project", owner, { slug: "p" })).languageChangesToSend).toBe(1);
+  });
+
+  it.each(["__proto__", "../x", "constructor"])("add_locale %s는 영어 거부이고 행·사건이 없다", async localeCode => {
+    const outcome = await call("add_locale", await token("owner"), target(localeCode));
+    expect(outcome).toMatchObject({ status: "refused", code: "invalid-code" });
+    expect(toToolResult(outcome).content[0]?.text).toMatch(/^[\x20-\x7E—’]+$/);
+    expect(await prisma.locale.count({ where: { projectId: "p" } })).toBe(2);
+    expect(await rows()).toEqual([]);
+    expect(await events()).toBe(0);
+  });
+
+  it("EDITOR는 forbidden · project:settings grant 없는 OWNER 토큰은 token-scope — 둘 다 아무것도 안 바뀐다(대조: 같은 OWNER의 전체 grant는 된다)", async () => {
+    const editor = await token("editor");
+    expect(code(await call("add_locale", editor, target("fr")))).toBe("forbidden");
+    expect(code(await call("preview_locale_removal", editor, target("ko")))).toBe("forbidden");
+    const narrow = await token("owner", { grants: ["translation:write"] });
+    for (const [name, input] of [["add_locale", target("fr")], ["remove_locale", { ...target("ko"), approval: null }], ["cancel_locale_removal", target("ko")]] as const) {
+      expect(code(await call(name, narrow, input)), name).toBe("token-scope");
+    }
+    expect(await rows()).toEqual([]);
+    expect(await events()).toBe(0);
+    await prisma.apiToken.deleteMany({ where: { userId: "owner" } });
+    expect(code(await call("add_locale", await token("owner"), target("fr")))).toBe("ok");
+  });
+
+  it("remove_locale는 서버가 준 지문을 요구한다 — 없으면 approval-required, 미리보기 지문이면 제거 예정이 되고 조회·저장이 그것을 말한다", async () => {
+    const owner = await token("owner");
+    expect(await call("remove_locale", owner, { ...target("ko"), approval: null })).toMatchObject({ status: "refused", code: "approval-required" });
+    expect(await call("remove_locale", owner, { ...target("ko"), approval: "x".repeat(64) })).toMatchObject({ status: "refused", code: "stale-approval" });
+    expect(await rows()).toEqual([]);
+
+    const preview = await call("preview_locale_removal", owner, target("ko"));
+    expect(preview).toMatchObject({ status: "ok", data: { change: "remove", path: "i18n/ko.json", translations: 1, unsentEdits: 0, delivered: false } });
+    expect(await events()).toBe(0);
+    expect(await call("remove_locale", owner, { ...target("ko"), approval: data(preview).approval })).toMatchObject({ status: "ok", data: { language: "ko", change: "remove", discardedEdits: 0 } });
+    expect(await rows()).toEqual([{ localeCode: "ko", operation: "REMOVE" }]);
+
+    // 조회 — 세 도구가 같은 상태를 말한다.
+    const removing = { language: "ko", change: "remove", requestedAt: expect.any(String), delivered: false, editable: false, reason: "removal-pending" };
+    expect(await sourceOf(owner)).toMatchObject({ languageChanges: [removing], languageChangesToSend: 1 });
+    expect(data(await call("list_keys", owner, { slug: "p", surfaceSlug: "default" }))).toMatchObject({ languageChanges: [removing], languageChangesToSend: 1 });
+    const sync = await call("preview_sync", owner, { slug: "p" });
+    expect(data(sync)).toMatchObject({ languageChanges: [{ source: "default", language: "ko", change: "remove" }] });
+    expect(sync.status === "ok" && sync.summary).toBe(en.mcp.summary.syncPreview(0, 1));
+
+    // 저장 — 웹과 같은 거부, 영어 문장.
+    const saved = await call("set_translations", owner, { slug: "p", surfaceSlug: "default", entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "새" }] }] });
+    expect(data(saved).results).toEqual([{ keyId: "k1", status: "rejected", error: "locale-removal-pending", localeCodes: ["ko"], message: en.mcp.errors.languages["locale-removal-pending"]("ko") }]);
+    expect(await koValue()).toBe("안녕");
+
+    // 기준 브랜치 — 언어 변경이 남은 동안 바꾸지 않는다.
+    expect(toToolResult(await call("update_project", owner, { slug: "p", baseBranch: "next" })).structuredContent)
+      .toMatchObject({ status: "locale-change-pending", message: en.mcp.errors.languages["locale-change-pending"] });
+
+    // 취소 — 보내지 않은 제거라 delivered: false, 행이 사라진다.
+    expect(await call("cancel_locale_removal", owner, target("ko"))).toMatchObject({ status: "ok", data: { language: "ko", delivered: false } });
+    expect(await rows()).toEqual([]);
+    expect((await sourceOf(owner)).languageChanges).toEqual([]);
+    expect(await call("cancel_locale_removal", owner, target("ko"))).toMatchObject({ status: "refused", code: "no-removal" });
+  });
+
+  it("미리보기 뒤 새 편집이 생기면 옛 지문은 stale-approval이고 아무것도 버리지 않는다", async () => {
+    const owner = await token("owner");
+    const approval = data(await call("preview_locale_removal", owner, target("ko"))).approval;
+    await prisma.translation.update({ where: { id: "k1-ko" }, data: { value: "Edited", pendingEditToken: "t1" } });
+    expect(await call("remove_locale", owner, { ...target("ko"), approval })).toMatchObject({ status: "refused", code: "stale-approval" });
+    expect(await rows()).toEqual([]);
+    expect(await koValue()).toBe("Edited");
+  });
+
+  it("기준 언어는 제거할 수 없다 — base-locale 영어 거부", async () => {
+    const outcome = await call("preview_locale_removal", await token("owner"), target("en"));
+    expect(outcome).toMatchObject({ status: "refused", code: "base-locale" });
+    expect(toToolResult(outcome).content[0]?.text).toBe(en.mcp.errors.languages["base-locale"]);
+  });
+
+  it("잠금 대기 중 토큰이 폐기되면 unauthorized이고 언어 행·사건이 없다", async () => {
+    const owner = await token("owner");
+    expect(code(await race({ table: "Project", id: "p" }, "revoked", "owner", () => call("add_locale", owner, target("fr"))))).toBe("unauthorized");
+    expect(await rows()).toEqual([]);
+    expect(await events()).toBe(0);
   });
 });

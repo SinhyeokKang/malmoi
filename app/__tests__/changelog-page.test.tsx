@@ -42,6 +42,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** 10개 단위 드러내기를 넘는 목록 — index 0이 최신(`v1.0.24`). */
+const MANY = Array.from({ length: 25 }, (_, index) => ({ tag: `v1.0.${24 - index}`, publishedAt: `2026-09-${String(28 - Math.floor(index / 2)).padStart(2, "0")}T00:00:00Z`, body: `- Change ${index}.` }));
+
 const TWO = [
   { tag: "v1.0.1", publishedAt: "2026-09-27T16:34:14Z", body: "## Fixes\n\n- One fix." },
   { tag: "v1.0.0", publishedAt: "2026-09-27T12:32:05Z", body: "## Highlights\n\nFirst." },
@@ -104,7 +107,7 @@ describe("`/changelog` — 공개 셸", () => {
 
 /**
  * 시안 1a·1c·1d: **항목마다 같은 틀**(위 선 + 위아래 40)이고 첫 항목도 예외가 아니다 — 소개 아래 40 뒤에 선이 한 번 선다.
- * 실패·빈 목록·100건 문장도 **첫 항목 자리의 같은 틀**에 선다. 값이 아니라 "같은 틀인가"를 센다.
+ * 실패·빈 목록·옛 판(`truncated`) 문장도 **첫 항목 자리의 같은 틀**에 선다. 값이 아니라 "같은 틀인가"를 센다.
  */
 describe("`/changelog` — 항목 틀", () => {
   it("첫 항목도 나머지와 같은 틀이다", async () => {
@@ -113,12 +116,16 @@ describe("`/changelog` — 항목 틀", () => {
     expect(classes).toHaveLength(2);
     expect(new Set(classes).size).toBe(1);
     // 같은 문자열이어도 `first:`·`[&:first-child]:` 변형이면 첫 항목만 선·위 여백을 잃는다 — 특례 자체를 센다.
-    // 부모(`[&>section:first-child]:`)에서 거는 길도 있어 목록 틀의 클래스도 본다.
+    // 부모(`[&>section:first-child]:`)에서 거는 길도 있어 목록 틀의 클래스도 본다. 항목은 드러내기 래퍼(`RevealItem`) 안이라
+    // 래퍼와 목록 그릇(`mt-8`) 둘 다 본다.
     expect(classes[0]).not.toMatch(/first/);
-    expect(main(container).querySelector("section")?.parentElement?.className).not.toMatch(/first/);
+    const wrapper = main(container).querySelector("section")?.parentElement;
+    expect(wrapper?.hasAttribute("data-reveal-index")).toBe(true);
+    expect(wrapper?.className).not.toMatch(/first/);
+    expect(wrapper?.parentElement?.className).toBe("mt-8");
   });
 
-  it("실패·빈 목록·100건 문장은 항목과 같은 틀에 선다", async () => {
+  it("실패·빈 목록·옛 판 문장은 항목과 같은 틀에 선다", async () => {
     const entry = main(await page({ ok: true, releases: TWO, truncated: true }));
     const block = entry.querySelector("section")!.className;
     const olderBlock = [...entry.querySelectorAll("p")].at(-1)?.parentElement;
@@ -133,7 +140,7 @@ describe("`/changelog` — 항목 틀", () => {
     }
   });
 
-  it("빈 목록에 100건이 겹치면 문장 둘이 각자 같은 틀에 선다", async () => {
+  it("빈 목록에 `truncated`가 겹치면 문장 둘이 각자 같은 틀에 선다", async () => {
     const block = main(await page({ ok: true, releases: TWO, truncated: false })).querySelector("section")!.className;
     const container = await page({ ok: true, releases: [], truncated: true });
     const sentences = [...main(container).querySelectorAll("h1 ~ div p")];
@@ -183,23 +190,51 @@ describe("`/changelog` — 목록", () => {
     expect(releasesLinks(main(container))).toHaveLength(2);
   });
 
-  it("한 요청 상한에 닿았으면 목록 끝에 Older releases 문장이 선다", async () => {
+  /** `truncated` — 읽지 못한 옛 판이 있을 수 있다(페이지 상한 3 도달 · 둘째 페이지부터 실패). 10개 이하라 처음부터 다 보인다. */
+  it("`truncated`면 다 드러난 목록 끝에 Older releases 문장이 선다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: true });
     const paragraphs = [...main(container).querySelectorAll("p")];
     expect(paragraphs.at(-1)?.textContent).toBe("Older releases are on GitHub Releases.");
     expectExternal(releasesLinks(main(container)));
   });
 
-  it("원 배열이 상한인데 거른 뒤 0건이어도 Older releases 문장이 선다", async () => {
+  it("거른 뒤 0건이어도 `truncated`면 Older releases 문장이 선다", async () => {
     const container = await page({ ok: true, releases: [], truncated: true });
     const paragraphs = [...main(container).querySelectorAll("p")];
     expect(main(container).textContent).toContain("No releases have been published yet.");
     expect(paragraphs.at(-1)?.textContent).toBe("Older releases are on GitHub Releases.");
   });
 
-  it("상한 아래면 Older releases 문장이 없다", async () => {
+  it("`truncated`가 아니면 Older releases 문장이 없다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
     expect(main(container).textContent).not.toContain("Older releases");
+  });
+
+  /**
+   * 10개 단위 드러내기 (changelog-pagination spec §4-1). 서버가 전 항목을 렌더하고 11번째부터는 `hidden`이다 — 페이지가 `ReleaseList`를
+   * 빠뜨리면 `RevealItem`이 숨기지 않아(context 기본값) 여기서 red다. 드러내기 동작 자체는 `release-list.test.tsx`가 잰다.
+   */
+  it("10개를 넘으면 전 항목이 DOM에 있고 11번째부터 `hidden`이며 끝에 버튼이 선다", async () => {
+    const container = await page({ ok: true, releases: MANY, truncated: false });
+    const wrappers = [...main(container).querySelectorAll<HTMLElement>("[data-reveal-index]")];
+    expect(wrappers.map((wrapper) => wrapper.querySelector("section > h1")?.id)).toEqual(MANY.map((release) => release.tag));
+    expect(wrappers.map((wrapper) => wrapper.hidden)).toEqual(MANY.map((_, index) => index >= 10));
+    const buttons = [...main(container).querySelectorAll("button")];
+    expect(buttons.map((button) => button.textContent)).toEqual([en.changelog.showOlder]);
+    expect(wrappers.at(-1)?.nextElementSibling).toBe(buttons[0]?.parentElement);
+  });
+
+  /** 숨은 판이 남은 동안 "옛 판은 GitHub에 있다"가 버튼과 엇갈리는 말을 하지 않는다 — 끝 문장은 다 드러난 뒤에만 선다. */
+  it("숨은 항목이 남은 동안 Older releases 문장이 그려지지 않는다", async () => {
+    const container = await page({ ok: true, releases: MANY, truncated: true });
+    expect(main(container).textContent).not.toContain("Older releases");
+    expect(main(container).querySelector("button")?.textContent).toBe(en.changelog.showOlder);
+  });
+
+  it("10개 이하면 버튼이 없다", async () => {
+    const container = await page({ ok: true, releases: MANY.slice(0, 10), truncated: false });
+    expect(main(container).querySelectorAll("[data-reveal-index][hidden]")).toHaveLength(0);
+    expect(main(container).querySelector("button")).toBeNull();
   });
 });
 

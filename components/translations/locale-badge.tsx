@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { flagFor } from "@/lib/keys/flag";
+import { stateLabel } from "@/lib/status/canon";
 import { cn } from "@/lib/utils";
 
 /**
@@ -84,8 +85,8 @@ export function LocaleBadge({ code, orphaned }: { code: string; orphaned: boolea
     <Badge variant={orphaned ? "soft-red" : "soft-neutral"} className="gap-1">
       <LocaleFlag code={code} />
       <span>{code}</span>
-      {/* 색만으로는 말하지 않는다 — 배지가 붉은 이유를 스크린리더에도 준다 (DESIGN §7). */}
-      {orphaned && <span className="sr-only">{m.locales.orphaned.badge}</span>}
+      {/* 색만으로는 말하지 않는다 — 배지가 붉은 이유를 스크린리더에도 준다 (DESIGN §7). 낱말은 Sources 배지와 같은 상태 정본이다. */}
+      {orphaned && <span className="sr-only">{stateLabel(m, "removedFromRepository")}</span>}
     </Badge>
   );
 }

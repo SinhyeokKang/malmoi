@@ -15,7 +15,7 @@ import { optionalEnv } from "@/lib/env";
 
 import { PROJECT_WIDE, parseLogFilter, type LogFilter } from "../filter";
 import { ACTOR_AUTOMATION, ACTOR_REMOVED, loadEvent, loadEventActors, loadEvents } from "../query";
-import { triggerOf } from "../view";
+import { localeVia, triggerOf } from "../view";
 
 /**
  * **활동 스트림이 실제 Postgres에서 같은 행을 내는가** (logs-rework T3c·T3d).
@@ -432,6 +432,8 @@ it("project-wide라는 실제 소스와 프로젝트 전역 사건이 구별된�
 describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
   const importPayload = (over: object) => ({ kind: "IMPORT", surfaceSlugs: ["a"], keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, ...over });
   const automation = { actorKind: "AUTOMATION" as const, actorUserId: null };
+  const localePayload = (via: string | undefined) => ({ kind: "SURFACE", surfaceSlug: "a", adapter: null, baseLocale: null,
+    localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: null, outcome: "orphan", reissued: null, pullRequest: null, ...(via === undefined ? {} : { via }) } });
 
   // 프로젝트·소스·사용자는 `beforeEach`의 `seed()`가 이미 심었다.
   async function seedRows() {
@@ -448,6 +450,10 @@ describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
       skipOpenPr: await event({ ...automation, kind: "IMPORT", subtype: "nightly.skip", result: "deferred", payload: importPayload({ source: "nightly", deferReason: "open-pr" }) }),
       manual: await event({ kind: "IMPORT", subtype: "import.run", result: "imported", payload: importPayload({ source: "manual" }) }),
       manualPublish: await event({ kind: "PUBLISH", subtype: "publish.run", payload: { kind: "PUBLISH", surfaceSlugs: ["a"], refusal: null } }),
+      // 언어 만료(locale-add 시안 P3) — subtype이 같고 기록한 실행(`via`)만 갈린다. 옛 행은 via가 없다.
+      localeNightly: await event({ ...automation, kind: "SURFACE", subtype: "surface.localeChangeResolved", payload: localePayload("nightly") }),
+      localeCi: await event({ ...automation, kind: "SURFACE", subtype: "surface.localeChangeResolved", payload: localePayload("ci") }),
+      localeOld: await event({ ...automation, kind: "SURFACE", subtype: "surface.localeChangeResolved", payload: localePayload(undefined) }),
     };
     return rows;
   }
@@ -456,20 +462,20 @@ describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
 
   it("?actor=ci · nightly · 옛 automation이 각각 기대 행만 낸다", async () => {
     const r = await seedRows();
-    expect(await refs({ actor: "ci" })).toEqual([r.ci, r.ciOld, r.ciPending, r.ciCheck].sort());
-    expect(await refs({ actor: "nightly" })).toEqual([r.publish, r.nightlyImport, r.nightlyLarge, r.skipUpToDate, r.skipOpenPr].sort());
+    expect(await refs({ actor: "ci" })).toEqual([r.ci, r.ciOld, r.ciPending, r.ciCheck, r.localeCi, r.localeOld].sort());
+    expect(await refs({ actor: "nightly" })).toEqual([r.publish, r.nightlyImport, r.nightlyLarge, r.skipUpToDate, r.skipOpenPr, r.localeNightly].sort());
     expect(await refs({ actor: ACTOR_AUTOMATION })).toEqual(
-      [r.publish, r.ci, r.ciOld, r.ciPending, r.ciCheck, r.nightlyImport, r.nightlyLarge, r.skipUpToDate, r.skipOpenPr].sort());
+      [r.publish, r.ci, r.ciOld, r.ciPending, r.ciCheck, r.nightlyImport, r.nightlyLarge, r.skipUpToDate, r.skipOpenPr, r.localeNightly, r.localeCi, r.localeOld].sort());
   });
 
   it("모든 행에서 triggerOf(행)와 필터 소속이 일치한다 — URL로 파싱한 값 그대로", async () => {
     await seedRows();
     const all = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
-    expect(all.length).toBe(11);
+    expect(all.length).toBe(14);
     const ci = new Set(await refs(parseLogFilter({ actor: "ci" })));
     const nightly = new Set(await refs(parseLogFilter({ actor: "nightly" })));
     for (const row of all) {
-      const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
+      const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype, via: localeVia(row.payload) });
       expect({ ref: row.ref, ci: ci.has(row.ref), nightly: nightly.has(row.ref) }, row.subtype)
         .toEqual({ ref: row.ref, ci: trigger === "ci", nightly: trigger === "nightly" });
     }

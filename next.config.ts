@@ -55,6 +55,29 @@ const nextConfig: NextConfig = {
       { source: "/(.*)", headers: securityHeaders() },
     ];
   },
+
+  /**
+   * **매칭 없는 경로 + `Accept`에 `text/markdown` → Markdown 404** (ARCHITECTURE §8.1) — 에이전트는 HTML 오류 화면을 못 읽는다.
+   * 목적지 `app/not-found.md/route.ts`가 늘 404를 낸다.
+   *
+   * ⚠️ **`fallback`이어야 한다** — Next는 fallback rewrite를 파일시스템·정적·동적 라우트를 다 본 뒤에만 적용한다. 그래서 존재하는 경로의
+   * 응답은 Accept와 무관하게 그대로다(2026-10-15 built server 실측). middleware에서 Accept로 가르면 경로 존재를 몰라 라우트 표를 복제해야 한다.
+   * ⚠️ **최상위 동적 세그먼트를 새로 만들면 그 아래에서 이 장치가 조용히 꺼진다** — 그 세그먼트가 미존재 경로를 받아 `notFound()`(HTML)로
+   * 끝내기 때문이다. 지금 가장 가까운 동적 세그먼트(`docs/[[...slug]]`·`invite/[token]`·`(edit)/projects/[slug]`)가 같은 이유로 HTML 404다.
+   * ⚠️ **`has.value`는 `^…$`로 감싸인 정규식이고 q값을 해석하지 않는다** — `text/markdown;q=0`도 Markdown이다. 받아들인 한계다(ARCHITECTURE §8.1).
+   * ⚠️ **대소문자는 라우터마다 다르다** — Next 라우터(`next start`·self-hosted)는 구분해 `Text/Markdown`이 HTML이고, Vercel 라우터는 구분하지 않아
+   * Markdown이다(2026-10-15 preview 실측). 어느 쪽이든 `no-store`·`Vary: Accept`라 무해하다. 판정 표(Next 쪽)는 `app/__tests__/rewrites.test.ts`가 고정한다.
+   * ⚠️ **목적지는 자사 내부 경로만이다** (POSTMORTEM 2026-09-28) — 외부 rewrite는 프록시라 브라우저가 실은 쿠키·Authorization을 제3자 호스트로
+   * 넘긴다. 그 항목의 재발 방지 grep이 이제 이 rewrite를 잡지만 목적지가 `/not-found.md`라 그 위험이 없다. 같은 테스트가 모든 목적지가
+   * `/`로 시작하는지 상시로 센다.
+   */
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [{ source: "/:path*", has: [{ type: "header", key: "accept", value: ".*text/markdown.*" }], destination: "/not-found.md" }],
+    };
+  },
 };
 
 export default nextConfig;

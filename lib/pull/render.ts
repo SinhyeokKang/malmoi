@@ -126,6 +126,11 @@ export function renderLocaleFiles(
   keys: readonly RenderKey[],
   baseLocale: string,
   current: ReadonlyMap<string, string>,
+  /**
+   * 새로 만드는 언어(ADD의 create)와 그 표현 출처 — 같은 소스의 기준 언어 파일 내용이다(locale-add design §4). 원본이 없는 재생성 파일에만 쓴다.
+   * 그 밖의 원본 없는 파일은 지금까지처럼 기본 표현이다 — 출처를 넓히면 기존 리포의 바이트가 바뀐다.
+   */
+  represent?: { locales: ReadonlySet<string>; source: string | undefined },
 ): LocalFile[] {
   const adapter = adapterFor(format);
   // **`writeWithErrors`가 있으면 그쪽을 쓴다.** `write`만 부르면 json-catalog가 접두 충돌로 버린
@@ -155,8 +160,10 @@ export function renderLocaleFiles(
         // 내는데 파일 부재만 예외였다 (2026-09-04 audit #7).
         return { path: p.path, locale, content: null, errors: [missingOriginal(p.path, locale)] };
       }
+      const borrowed = original === undefined && represent?.source !== undefined && represent.locales.has(locale) ? represent.source : undefined;
       const writeFormat =
-        original === undefined ? format : { ...format, currentFiles: [{ path: p.path, content: original }] };
+        original !== undefined ? { ...format, currentFiles: [{ path: p.path, content: original }] }
+        : borrowed !== undefined ? { ...format, representationSource: borrowed } : format;
       const isBase = locale === baseLocale;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).

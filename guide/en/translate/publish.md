@@ -13,13 +13,15 @@ Malmoi puts the files into one change request (a *pull request* on GitHub, or a 
 1. Choose **Publish** at the top of **Home** or **Translations**.
 2. Review the pieces of text (keys) and languages in the preview, then use the action described below.
 
-![The Publish preview listing one changed value, the language, and a button that opens a new pull request](/guide/publish-preview.webp "Review each change before you publish.")
+![The Publish preview listing 14 changes grouped by file, each with its key, language, old and new value, and who edited it, plus a button that opens a new pull request](/guide/publish-preview.webp "Review each change before you publish.")
 
 ## Publish the changes {#publish}
 
 Choose **Open pull request** or Replace pull request #N. If your changes already match the files and no pull request is open, the button is **Publish**. When a pull request is open and the files match, the action is Close pull request #N.
 
 On a GitLab project, the same buttons name a merge request, numbered like `!128`: **Open merge request**, Replace merge request !N, and Close merge request !N.
+
+A project owner can also add or remove a language, which goes out in the same publish as a new or deleted language file. When only language files change, the preview is titled **Publish language changes**. See [Publish the change](../setup/languages.md#publish).
 
 If Publish is turned off, there may be no unsent edits, or publishing may be temporarily unavailable. Wait for an ongoing sync to finish; ask a project owner if it stays unavailable.
 

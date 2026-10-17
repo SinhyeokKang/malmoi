@@ -28,11 +28,13 @@ if [ "$have_node" != "$want_node" ]; then
   echo "WARNING: Node $have_node is running, but Malmoi expects Node $want_node. Copy the job from Malmoi again."
 fi
 
+# ⚠️ 설치 두 줄은 `PUSH_TOKEN`·`CI_JOB_TOKEN`을 지운 환경에서 돈다 — 의존성의 설치 스크립트가 job 환경을 그대로 읽는다(2026-10-17 보안 감사).
+# GitHub composite action이 토큰을 마지막 스텝에만 넣는 것과 노출 범위를 맞춘다. 토큰은 아래 `run.ts`만 받는다.
 # pnpm 버전의 출처는 말모이의 `packageManager` 하나다(action v3의 "버전 읽기"와 같다). corepack이 아니라 npm으로 까는 것은 corepack의
 # 서명 키 갱신에 run이 묶이지 않게 하려는 것이다.
 pnpm_version="$(node -p 'require(process.argv[1]).packageManager.split("@")[1]' "$root/package.json")"
-npm install --global --silent --no-fund --no-audit "pnpm@$pnpm_version"
+env -u PUSH_TOKEN -u CI_JOB_TOKEN npm install --global --silent --no-fund --no-audit "pnpm@$pnpm_version"
 
 cd "$root"
-pnpm install --frozen-lockfile
+env -u PUSH_TOKEN -u CI_JOB_TOKEN pnpm install --frozen-lockfile
 exec pnpm exec tsx .gitlab/malmoi-i18n-push/run.ts

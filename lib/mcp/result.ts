@@ -72,6 +72,17 @@ const MESSAGE = {
  */
 const GITLAB_MESSAGE = en.mcp.errors.gitlab satisfies Record<GitLabAccessError, string>;
 
+/**
+ * 뜻이 하나뿐인 언어 변경 쪽 거부 — 어느 도구가 내도 같은 문장이다(locale-add). 앞의 둘은 화면 사전의 문장이다.
+ * ⚠️ 언어 도구만의 거부(`path-conflict`·`stale-approval`·`invalid-code` …)는 여기 두지 않는다 — 같은 코드를 소스 경로·소스 제거가 다른 뜻으로 쓴다.
+ * 그 문장은 언어 도구(`tools/locales.ts`)가 `message`로 싣는다.
+ */
+const SHARED_MESSAGE: Readonly<Record<string, string>> = {
+  "publish-unsettled": en.repositorySync.errors["publish-unsettled"],
+  "locale-plan-refused": en.logs.reasons["locale-plan-refused"],
+  "locale-change-pending": en.mcp.errors.languages["locale-change-pending"],
+};
+
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
 
 /**
@@ -81,6 +92,7 @@ const text = (value: string): ToolResult["content"] => [{ type: "text", text: va
 function rejectionMessage(code: string, credential: Credential["kind"] | undefined): string | null {
   if (code === "token-scope") return scopeMessage(credential);
   if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
+  if (Object.hasOwn(SHARED_MESSAGE, code)) return SHARED_MESSAGE[code] ?? null;
   if (isGitLabConnectError(code) && Object.hasOwn(GITLAB_MESSAGE, code)) return GITLAB_MESSAGE[code as GitLabAccessError];
   if (isAccessError(code)) return accessErrorMessage(en, code);
   if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(en, code);

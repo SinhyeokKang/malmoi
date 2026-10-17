@@ -27,8 +27,12 @@ import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/loca
  * cron이 편집 0건인 프로젝트에 GitHub 왕복을 만들었다. 미발송 술어로 판정하면 "사람이 만졌고 마지막
  * 판정 뒤 바뀐 행"이 0이면 끝이고, 첫 pull도 그 행이 없으면 빈 PR을 만들지 않는다.
  */
-export function shouldSkipPull(unpublished: number): boolean {
-  return unpublished === 0;
+/**
+ * @param localeWork 언어 변경 작업 수(locale-add design §4 — 현재 효과 목록 ≠ 전달 목록인 소스·언어). 셀 편집 수와 섞지 않고 따로 받는다 —
+ *   셀 편집이 0이어도 보낼 삭제·새 파일이 있으면 지나간다.
+ */
+export function shouldSkipPull(unpublished: number, localeWork = 0): boolean {
+  return unpublished === 0 && localeWork === 0;
 }
 
 // ── 포맷 재조립 ─────────────────────────────────────────────────────────────
@@ -236,25 +240,38 @@ export function buildWriteEntries(
 export type RenderError = AdapterError & { locale?: string };
 export type LocalFile = { path: string; content: string | null; locale?: string; errors?: RenderError[] };
 export type TreeBlob = { path: string; sha: string };
-export type PullChange = { path: string; content: string };
+/** 파일 하나의 변경. **delete는 명시적 의도에서만 나온다** — 렌더 출력에서 빠졌다는 이유로 만들지 않는다(locale-add design §2). */
+export type PullChange = { kind: "upsert"; path: string; content: string } | { kind: "delete"; path: string };
 
 /**
  * base 트리와 비교해 실제로 바뀐 파일만 고른다. **전부 같으면 빈 배열이고, 그때 GitHub API를
  * 더 부르지 않는다** — 야간 cron의 기본 경로다 (ARCHITECTURE §2).
  *
- * **삭제를 내지 않는다.** base에만 있는 경로는 건드리지 않고, writer가 `null`을 준 경로도
- * 기존 파일을 그대로 남긴다 — 파일을 지우는 pull은 없다.
+ * **명시적 삭제 의도(`deletes`)만 삭제한다.** base에만 있는 경로는 건드리지 않고, writer가 `null`을 준 경로도
+ * 기존 파일을 그대로 남긴다 — `null`은 "낼 항목 0개"이지 삭제가 아니다. 의도라도 base에 없는 경로는 낼 것이 없다(GitLab은 없는 파일의 delete를 400으로 거부한다).
+ * 같은 경로를 렌더하면서 지우려 하면 계획 오류다 — GitHub 트리에는 중복 검사가 없어 여기가 유일한 문이다.
  */
 export function planPullChanges(
   local: readonly LocalFile[],
   baseTree: readonly TreeBlob[],
+  deletes: readonly string[] = [],
 ): PullChange[] {
   const baseShas = new Map(baseTree.map((b) => [b.path, b.sha]));
   const changes: PullChange[] = [];
+  const rendered = new Set<string>();
   for (const file of local) {
+    // `null`이어도 그 경로는 렌더가 맡는다 — 같은 경로의 삭제 의도는 계획 오류다.
+    rendered.add(file.path);
     if (file.content === null) continue;
     if (baseShas.get(file.path) === blobSha(file.content)) continue;
-    changes.push({ path: file.path, content: file.content });
+    changes.push({ kind: "upsert", path: file.path, content: file.content });
+  }
+  const deleting = new Set<string>();
+  for (const path of deletes) {
+    if (rendered.has(path)) fail(`unreachable: upsert and delete on the same path ${JSON.stringify(path)}`);
+    if (deleting.has(path)) fail(`unreachable: duplicate delete path ${JSON.stringify(path)}`);
+    deleting.add(path);
+    if (baseShas.has(path)) changes.push({ kind: "delete", path });
   }
   // 트리 페이로드 순서가 결정적이어야 blob SHA 비교가 매번 같은 답을 낸다.
   return changes.sort((a, b) => compareKeys(a.path, b.path));

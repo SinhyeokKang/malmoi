@@ -1,9 +1,10 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
 import { ChevronRight, FileJson2 } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
+import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -13,6 +14,7 @@ import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { formatNumber } from "@/lib/number-format";
 import { keyEditCommand, type KeyDraftState } from "@/lib/translations/draft";
 import { MISSING_LANGUAGES } from "@/lib/translations/query";
+import { detailFill } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
@@ -25,11 +27,13 @@ import { FilterMenu } from "./filter-menu";
  * 점선은 **지금 입력이 비어 있다**를 뜻한다(저장 여부와 독립).
  * ⚠️ **Enter는 줄바꿈**, Ctrl/Cmd+Enter가 키 저장, Escape는 그 입력만 되돌린다. blur·Tab은 저장하지 않는다.
  * ⚠️ **수는 저장된 값만 센다** — 입력 중에는 `N of M languages`가 움직이지 않는다.
+ * ⚠️ **제거 예정 언어(`readOnly`)는 분모에서 빠지고 칸이 얼는다** (locale-add 시안 T1) — 미저장 입력은 남고 그 아래 이유와 `Discard change`가 선다.
  */
 export type DetailView = {
   key: { id: string; key: string; namespace: string; sourceText: string; description: string | null; surfaceSlug: string };
   refs: { path: string; line: number; href: string | null }[];
-  locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
+  /** `readOnly` — 제거 예정 언어(`loadTranslationDetail`). 값은 보이되 편집·저장에서 빠진다(셀 얼리기 — draft의 `readOnly`가 같은 목록을 든다). */
+  locales: { code: string; isBase: boolean; readOnly: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
 };
 
 /**
@@ -107,8 +111,7 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
   const m = useMessages();
   const uiLocale = useUiLocale();
   const w = m.translations.workspace.detail;
-  const filled = detail.locales.filter(l => l.value !== null && l.value !== "").length;
-  const total = detail.locales.length;
+  const { filled, total } = detailFill(detail.locales);
   const base = detail.locales.find(l => l.isBase)?.code;
   // 언어 필터는 **보이는 행만** 거른다 — Save·Revert 대상은 여전히 전 언어의 draft·pending이다.
   const visible = detail.locales.filter(l => {
@@ -156,6 +159,7 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
               saved={draft.saved[locale.code] ?? ""}
               sending={draft.inFlight !== undefined && Object.hasOwn(draft.inFlight.sent, locale.code) && draft.inFlight.sent[locale.code] === draft.draft[locale.code]}
               readOnly={readOnly}
+              frozen={draft.readOnly.includes(locale.code)}
               isBase={locale.code === base}
               sourceCode={base}
               invalidBy={invalid?.locales.includes(locale.code) ? invalid.describedBy : undefined}
@@ -226,7 +230,7 @@ function lastSegment(path: string): string {
   return path.split("/").at(-1) ?? path;
 }
 
-function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, sending, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
+function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, sending, readOnly, frozen, isBase, invalidBy, onEdit, onReset, onSave }: {
   keyName: string;
   sourceText: string;
   /** 겹친 원문의 언어 — 셀이 아니라 base의 방향을 든다. */
@@ -238,6 +242,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
   /** 이 셀의 지금 입력이 전송 중인 요청에 실려 있다 — 보낸 뒤 더 친 입력은 아니다(`draft`와 `inFlight.sent`가 같을 때만). */
   sending: boolean;
   readOnly: boolean;
+  /** 제거 예정 언어로 얼린 칸 — 편집만 막는다. Escape·`Discard change`(둘 다 `onReset`)는 그 입력을 버릴 수 있다. */
+  frozen: boolean;
   isBase: boolean;
   invalidBy?: string;
   onEdit: (value: string) => void;
@@ -247,19 +253,22 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
   const m = useMessages();
   const w = m.translations.workspace.detail;
   const helpId = useId();
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
   const dirty = draft !== saved;
   const missing = locale.value === null || locale.value === "";
   const empty = draft === "";
   const field = (
     <Textarea
+      ref={fieldRef}
       data-locale={locale.code}
       /* ⚠️ 값이 자기 언어의 방향으로 선다 (malmoi#91) — 페이지의 `ltr`·`lang="en"`을 상속하면 RTL 값의 중립 문자가 반대 끝으로 튄다. */
       {...localeTextAttrs(locale.code)}
       rows={2}
       value={draft}
-      readOnly={readOnly}
+      readOnly={readOnly || frozen}
       aria-label={m.translations.cellLabel(keyName, locale.code)}
-      aria-invalid={invalidBy === undefined ? undefined : true}
+      // ⚠️ 얼림은 입력 오류가 아니다 (#274) — 저장 거부 뒤에도 얼린 칸은 빨간 테두리를 들지 않는다. 거부 사실은 푸터 Alert와 이유 줄이 말한다.
+      aria-invalid={invalidBy === undefined || frozen ? undefined : true}
       aria-describedby={[empty ? helpId : undefined, invalidBy].filter(Boolean).join(" ") || undefined}
       placeholder=""
       onChange={event => onEdit(event.target.value)}
@@ -275,6 +284,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         "w-full rounded-md text-sm leading-translation",
         // 빈 칸은 입력이 점선 상자 안쪽 전체다 — 어디를 눌러도 커서가 서고, 원문이 그 첫 줄 자리에 겹친다.
         empty ? "col-start-1 row-start-1 min-h-[42px] border-0 bg-transparent p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
+        // 얼린 칸은 잠긴 값이다(시안 T1 ①·②′) — muted 면 + 일반 테두리. 프리미티브는 `disabled:`만 칠해 호출부가 든다.
+        frozen && !empty && "bg-muted border-border",
       )}
     />
   );
@@ -283,6 +294,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       <div className="flex items-center gap-2">
         <LocaleBadge code={locale.code} orphaned={false} />
         {isBase && <span className="text-muted-foreground text-xs">{w.source}</span>}
+        {/* 제거 중 언어 — 언어 배지 바로 옆(시안 T1). 미저장이 없는 얼린 칸에는 이것이 유일한 설명이다. */}
+        {frozen && <StatusBadge state="removing" className="shrink-0" />}
         <span className="ml-auto flex items-center gap-2">
           {/* ⚠️ 전송 중인 셀은 "Not saved"가 아니다 (audit-ux #20) — 버튼 스피너만으로는 어느 셀이 가는 중인지 모른다. */}
           {dirty && sending
@@ -301,10 +314,21 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         `placeholder` 속성이 아니라 겹친 span인 이유: 접근 이름과 따로 `aria-describedby`로 읽혀야 하고, 포인터를 가로채지 않아야 한다.
         absolute가 아니라 grid 한 칸에 쌓는다 — 원문이 여러 줄이면 상자가 그 높이를 따라야 다음 행을 덮지 않는다.
       */}
-      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 has-[textarea:focus-visible]:ring-2")}>
+      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 has-[textarea:focus-visible]:ring-2", empty && frozen && "bg-muted")}>
         {field}
         {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-translation">{sourceText}</span>}
       </div>
+      {/*
+        얼린 칸의 미저장 입력은 이유와 버리는 길이 한 줄로 선다 (시안 T1) — `Revert to last sent`는 이 칸에 거부되므로(`locale-removal-pending`)
+        버리는 길은 이것 하나다. 깨끗한 얼린 칸은 버릴 것이 없어 이 줄이 없다.
+      */}
+      {frozen && dirty && (
+        <div className="flex items-start gap-3">
+          <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-normal">{w.frozenReason(locale.code)}</span>
+          {/* 누른 버튼이 이 클릭으로 사라진다 — 포커스가 body로 빠지지 않게 그 칸으로 옮긴다. */}
+          <Button size="sm" className="shrink-0" disabled={readOnly} onClick={() => { onReset(); fieldRef.current?.focus(); }}>{w.discardChange}</Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 import { countPendingBySurface } from "@/lib/protection/where";
 import { planWriteLock } from "@/lib/sync/plan";
 import type { Actor } from "./view";
+import { notRemoving, workLocaleWhere } from "./work-locale";
 
 /**
  * 키 리스트 데이터 조회. **`projectId`로 좁힌다** — 인덱스가 전부 `projectId` 선두 복합이고,
@@ -446,7 +447,7 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, 
  * 전부 가져온다. 여기 필요한 것은 개수뿐이라 `groupBy`가 맞고, 그래서 `value`가 애초에 안 딸려온다.
  */
 export type ProjectListAggregates = {
-  /** ① 살아 있는 로케일. */
+  /** ① 작업 언어 — 살아 있고 제거 예정이 아닌 로케일(`workLocaleWhere`). 셀 접기도 이 집합을 따르므로 제거 예정의 값은 진행률에서 빠진다. */
   locales: LiveLocale[];
   /** ② 살아 있는 키 수 — 전 로케일 공통 분모다. */
   keyTotals: Map<string, number>;
@@ -478,7 +479,7 @@ export async function loadProjectListAggregates(
 
   const [locales, keyRows, cellRows, newRows, unsentRows] = await Promise.all([
     prisma.locale.findMany({
-      where: { projectId: { in: ids }, orphaned: false, surface: { archivedAt: null } },
+      where: { projectId: { in: ids }, ...workLocaleWhere, surface: { archivedAt: null } },
       select: { projectId: true, surfaceId: true, surface: { select: { slug: true } }, code: true, isBase: true },
     }),
     // `@@index([projectId, orphaned])`를 그대로 탄다.
@@ -616,7 +617,7 @@ export type ReviewAttentionRow = { projectId: string; surfaceId: string; localeC
  * ⚠️ **`Locale`을 join해 orphaned 로케일을 뺀다 — `foldCells`와 같은 술어여야 한다.** 그 파일은
  * 리포에서 사라졌고 번역 화면에서 그 행의 입력이 `disabled`다(ARCHITECTURE §5.5.16): 항목으로
  * 세우면 번역자를 **편집할 수 없는 행**으로 데려가고, 카드의 수는 그것을 빼므로 **pill과 카드가
- * 같은 화면에서 어긋난다** (code-review 2026-09-15 🔴1).
+ * 같은 화면에서 어긋난다** (code-review 2026-09-15 🔴1). 제거 예정 언어도 같은 이유로 뺀다 — 편집이 잠겨 있다(locale-add spec 22).
  */
 export async function loadReviewAttention(prisma: PrismaClient, projectIds: readonly string[]): Promise<ReviewAttentionRow[]> {
   if (projectIds.length === 0) return [];
@@ -635,6 +636,7 @@ export async function loadReviewAttention(prisma: PrismaClient, projectIds: read
       AND s."archivedAt" IS NULL
       AND k."orphaned" = false
       AND l."orphaned" = false
+      AND ${notRemoving("l")}
       AND t."value" <> ''
     ORDER BY t."projectId", t."surfaceId", t."localeCode", (t."updatedBy" IS NOT NULL) DESC, t."updatedAt" DESC, t."keyId" ASC`;
   // 검토 대기가 0인 로케일은 항목이 아니다 — 파티션이 그 로케일 전체라 여기서 거른다.
@@ -644,13 +646,13 @@ export async function loadReviewAttention(prisma: PrismaClient, projectIds: read
 }
 
 
-/** 같은 활성·비고아 술어로 두 축을 따로 센다. Translation을 조인하면 키 수가 로케일 수만큼 불어난다. */
+/** 같은 활성·비고아 술어로 두 축을 따로 센다. Translation을 조인하면 키 수가 로케일 수만큼 불어난다. 언어 수는 작업 언어다(제거 예정 제외). */
 export async function loadSurfaceCounts(prisma: PrismaClient, projectId: string): Promise<{ surfaceId: string; keys: number; locales: number }[]> {
   return prisma.$queryRaw`
     SELECT s.id AS "surfaceId", COALESCE(k.n, 0)::int AS keys, COALESCE(l.n, 0)::int AS locales
     FROM "TranslationSurface" s
     LEFT JOIN (SELECT "surfaceId", count(*) AS n FROM "StringKey" WHERE "projectId" = ${projectId} AND NOT orphaned GROUP BY "surfaceId") k ON k."surfaceId" = s.id
-    LEFT JOIN (SELECT "surfaceId", count(*) AS n FROM "Locale" WHERE "projectId" = ${projectId} AND NOT orphaned GROUP BY "surfaceId") l ON l."surfaceId" = s.id
+    LEFT JOIN (SELECT l."surfaceId", count(*) AS n FROM "Locale" l WHERE l."projectId" = ${projectId} AND NOT l.orphaned AND ${notRemoving("l")} GROUP BY l."surfaceId") l ON l."surfaceId" = s.id
     WHERE s."projectId" = ${projectId} AND s."archivedAt" IS NULL
     ORDER BY s.slug ASC`;
 }

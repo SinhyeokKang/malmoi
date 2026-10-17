@@ -1,6 +1,7 @@
 import { actorLabel, type Actor } from "@/lib/keys/view";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { failing } from "@/lib/projects/list";
+import { localeRole } from "@/lib/translations/summary";
 
 import type { HomeState } from "./state";
 import { compare } from "./attention-view";
@@ -101,12 +102,13 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
  * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
  * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
  *
- * ⚠️ **orphaned 로케일은 뺀다** — 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다.
+ * ⚠️ **orphaned 로케일은 뺀다** — 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다. 제거 예정도 같다(편집이 잠겼다 — `localeRole`).
+ * 추가 제안은 일이다(locale-add spec 22).
  * ⚠️ **분모가 0이면 항목이 아니다** — 키가 없는 표면에서 "한 번도 안 채워졌다"는 참이지만 채울
  * 것이 없다.
  */
 export function neverFilledLocales(
-  surfaces: readonly { id: string; slug: string; locales: readonly { code: string; name: string; orphaned: boolean; createdAt: Date }[] }[],
+  surfaces: readonly { id: string; slug: string; locales: readonly { code: string; name: string; orphaned: boolean; createdAt: Date; change: { operation: "ADD" | "REMOVE" } | null }[] }[],
   aggregates: { keyTotals: ReadonlyMap<string, number>; cells: readonly { surfaceId: string; localeCode: string; count: number }[] },
 ): AttentionInput["neverFilled"] {
   const filled = new Map<string, Set<string>>();
@@ -119,7 +121,7 @@ export function neverFilledLocales(
   return surfaces.flatMap(surface => {
     const total = aggregates.keyTotals.get(surface.id) ?? 0;
     if (total === 0) return [];
-    return surface.locales.filter(locale => !locale.orphaned && !filled.get(surface.id)?.has(locale.code))
+    return surface.locales.filter(locale => localeRole(locale) === "work" && !filled.get(surface.id)?.has(locale.code))
       .map(locale => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
   });
 }

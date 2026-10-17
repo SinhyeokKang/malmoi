@@ -8,6 +8,7 @@ import { loadConnectionHealth } from "@/lib/repo-host";
 import { repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { countUnpublishedBySurface, loadActors, loadProject } from "@/lib/keys/query";
+import { countLocaleWork } from "@/lib/locales/work";
 import { loadTranslationDetail, loadTranslationList, loadTranslationTree, withActorLabels } from "@/lib/keys/translation-list";
 import { buildPermalink } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -79,7 +80,7 @@ export default async function TranslationsPage({
   const searchOnly = treeFollowsSearch(screen) && statusOf(screen) !== "all"
     ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: { ...withStatus(unselected, "all"), scope: "project" }, pageSize: "all" })
     : null;
-  const [project, tree, full, unsentBySurface, early, counted] = await Promise.all([
+  const [project, tree, full, unsentBySurface, early, counted, languageWork] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadTranslationTree(prisma, projectId),
     // ⚠️ **화면 목록은 전량이다** (translation-filter-scope) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
@@ -87,6 +88,8 @@ export default async function TranslationsPage({
     countUnpublishedBySurface(prisma, projectId),
     onRoute ? readDetail({ id: surfaceId }, selected) : null,
     searchOnly,
+    // 언어 변경 작업 수 — 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). Home과 같은 술어다.
+    countLocaleWork(prisma, projectId),
   ]);
   if (!project) redirect(routes.projects());
   const readiness = planProjectReadiness(project);
@@ -128,7 +131,7 @@ export default async function TranslationsPage({
           // permalink는 서버가 만든다 — 그 판정이 사는 모듈(`lib/keys/view.ts`)은 어댑터를 물어 클라이언트가 읽으면 안 된다.
           return {
             key: labeled.key,
-            locales: labeled.locales.map(({ code, isBase, value, needsReview, pending, actorLabel }) => ({ code, isBase, value, needsReview, pending, actorLabel })),
+            locales: labeled.locales.map(({ code, isBase, readOnly, value, needsReview, pending, actorLabel }) => ({ code, isBase, readOnly, value, needsReview, pending, actorLabel })),
             refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoHost: project.repoHost, repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
           };
         })();
@@ -166,6 +169,7 @@ export default async function TranslationsPage({
         repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug), host: project.repoHost },
         lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date(), uiLocale),
         lastPrUrl: project.lastPrUrl,
+        languageWork,
       }}
       sync={{ name: project.name, branch: project.baseBranch }}
       baseLocale={project.baseLocale}

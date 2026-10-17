@@ -1,4 +1,5 @@
 import { fail } from "@/lib/failure";
+import { isPathSafeRepoPath } from "@/lib/locale-code";
 import type { PullChange } from "./plan";
 
 /**
@@ -46,13 +47,58 @@ export function withSkipMarker(title: string): string {
   return appended.length > PR_TITLE_MAX ? PR_TITLE : appended;
 }
 
+/** 이 Publish가 바꾼 파일 하나와 그 종류 — 결과·미리보기·PR 본문이 같은 값을 쓴다(locale-add design §4 · O5). 화면 문구는 시안 배치다. */
+export type PublishedFile = { path: string; kind: "new" | "updated" | "removed" };
+
+/**
+ * 새 PR/MR의 본문 — 두 호스트가 같은 `createPr` 인자로 받는다. 영문이다(대상 리포에 남는 문자열).
+ * 삭제 파일이 있으면 그 줄에 `(removed)`를 달고 **앱 코드의 언어 참조 정리** 안내를 붙인다(design §4 끝) — 파일만 지우고 머지하면 앱이
+ * 없는 카탈로그를 불러 깨질 수 있다. 삭제가 없으면 옛 본문과 바이트가 같다.
+ * ⚠️ 열린 PR을 갱신할 때는 본문을 다시 쓰지 않는다(경계에 본문 갱신이 없다) — 그 PR의 파일 목록이 낡는 것은 기존 동작과 같다.
+ */
+export function pullRequestBody(files: readonly PublishedFile[]): string {
+  const summary = `${files.length} file${files.length === 1 ? "" : "s"}`;
+  const lines = files.map(file => `- \`${file.path}\`${file.kind === "removed" ? " (removed)" : ""}`).join("\n");
+  const removed = files.filter(file => file.kind === "removed").length;
+  const cleanup = removed === 0 ? ""
+    : `\n\nThis snapshot removes ${removed} language file${removed === 1 ? "" : "s"}. Before merging, remove references to ${removed === 1 ? "that language" : "those languages"} in the app code (language lists, imports, routing) so the app does not load a missing catalog.`;
+  return `Updated ${summary} from the translation DB.\n\n${lines}${cleanup}\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.`;
+}
+
+/**
+ * 본문이 **말하는** 삭제 파일 — 생성기가 쓴 ``- `경로` (removed)`` 줄만 읽는다(코드순). 열린 PR 본문을 다시 쓸지의 판정 입력이다(`bodyNeedsRefresh`).
+ * 사람 문장은 보지 않는다 — 그 줄 모양이 아니면 삭제를 말한 것으로 치지 않는다.
+ */
+export function removedFilesStated(body: string): string[] {
+  const out = new Set<string>();
+  for (const line of body.split(/\r?\n/)) {
+    const match = /^- `(.+)` \(removed\)$/.exec(line);
+    if (match?.[1] !== undefined) out.add(match[1]);
+  }
+  return [...out].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * **열린 PR/MR 본문을 다시 쓸 것인가** (locale-add B2 fix2). 정리 안내를 더하거나 빼야 할 때 — 본문이 말하는 삭제 파일 집합이 이 스냅샷의 삭제 집합과
+ * 다를 때 — 만이다. 그 밖의 차이(파일 목록이 낡음·리뷰어가 고친 문장)는 그대로 둔다: 매 Publish가 사람의 편집을 덮으면 안 된다. 기존 동작(본문을 갱신하지
+ * 않던 것)과 같은 쪽이고, 안내가 필요한 순간에만 다시 쓴다.
+ */
+export function bodyNeedsRefresh(body: string, files: readonly PublishedFile[]): boolean {
+  const stated = removedFilesStated(body);
+  const removed = [...new Set(files.filter(file => file.kind === "removed").map(file => file.path))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return stated.length !== removed.length || stated.some((path, i) => path !== removed[i]);
+}
+
 export type TreeEntry = {
   path: string;
   /** 일반 파일. 실행 권한·심링크를 낼 일이 없다. */
   mode: "100644";
   type: "blob";
-  content: string;
-};
+} & (
+  | { content: string }
+  /** 삭제 — `base_tree` 위에서 그 경로만 빠진다. 링크·서브모듈 경로는 `renderProject`의 파일 종류 가드가 먼저 막는다. */
+  | { sha: null }
+);
 
 export type TreePayload = {
   /**
@@ -68,14 +114,19 @@ export function buildTreePayload(
   /** base **커밋** SHA다 — GitHub이 `base_tree`에 커밋 SHA를 받으면 그 트리로 역참조한다. */
   baseSha: string,
 ): TreePayload {
-  // 낼 것이 없는데 트리를 만들면 base와 내용이 같은 빈 커밋이 나간다.
+  // 낼 것이 없는데 트리를 만들면 base와 내용이 같은 빈 커밋이 나간다. 삭제만 있는 변경은 낼 것이 있다.
   if (changes.length === 0) fail("no changes (nothing to build a tree from)");
   // 빈 문자열은 필드 누락과 구별되지 않는다 — GitHub이 조용히 base 없는 트리로 처리한다.
   if (baseSha === "") fail("base_tree is empty");
 
+  // 삭제 경로는 쓰기 직전의 마지막 문을 여기서 한 번 더 지난다 — GitLab `buildCommitActions`와 같은 방어다.
+  for (const c of changes) if (c.kind === "delete" && !isPathSafeRepoPath(c.path)) fail(`unsafe repository path for a tree delete: ${JSON.stringify(c.path)}`);
+
   return {
     base_tree: baseSha,
-    tree: changes.map((c) => ({ path: c.path, mode: "100644", type: "blob", content: c.content })),
+    tree: changes.map((c): TreeEntry => (c.kind === "upsert"
+      ? { path: c.path, mode: "100644", type: "blob", content: c.content }
+      : { path: c.path, mode: "100644", type: "blob", sha: null })),
   };
 }
 

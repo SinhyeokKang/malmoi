@@ -30,6 +30,10 @@ describe("planGate", () => {
     "lib/pull/targets.ts",
     "lib/nightly/run.ts",
     "lib/home/runs.ts",
+    // 언어 변경 코어(locale-add) — 잠금·사건·만료 시나리오가 격리 PG에 있다.
+    "lib/locales/change.ts",
+    "lib/locales/expire.ts",
+    "lib/locales/work.ts",
     "app/(edit)/actions.ts",
     "app/api/push/route.ts",
     "app/api/pull/route.ts",

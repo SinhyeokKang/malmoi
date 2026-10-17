@@ -4,10 +4,12 @@ import { z } from "zod";
 import { en } from "@/messages/en";
 import { previewRevert, RevertInput } from "@/lib/keys/revert-translation";
 import { loadTranslationDetail, loadTranslationList } from "@/lib/keys/translation-list";
+import { readLocaleStates } from "@/lib/locales/work";
 import { isProjectReady } from "@/lib/projects/ready";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { parseTranslationQuery } from "@/lib/translations/query";
 
+import { languageChangesOf } from "../locale-view";
 import { checkProjectTool } from "./access";
 import { coreSubject, defineTool, ok } from "./define";
 
@@ -40,11 +42,15 @@ export const listKeys = defineTool({
     // 선택 키·상세 언어는 목록과 무관하다 — 목록 조건만 남긴다.
     const { key: _key, keySurface: _keySurface, language: _language, ...conditions } = parseTranslationQuery(input.query ?? {});
     const page = await loadTranslationList(prisma, { projectId: access.projectId, routeSurfaceId: access.surfaceId, query: { ...conditions, cursor: input.cursor } });
+    // 이 소스의 언어 변경(locale-add) — 제거 예정 언어는 키 값이 보여도 저장이 거부된다. 그 이유를 목록과 같은 응답에 싣는다.
+    const [language] = await readLocaleStates(prisma, access.projectId, access.surfaceId);
     return ok({
       keys: page.rows,
       matchedKeyCount: page.matchedKeyCount,
       incompleteKeyCount: page.incompleteKeyCount,
       nextCursor: page.nextCursor,
+      languageChanges: languageChangesOf(language ?? { rows: [], delivered: [] }),
+      languageChangesToSend: language?.work.length ?? 0,
     }, en.mcp.summary.keys(page.rows.length, page.matchedKeyCount));
   },
 });

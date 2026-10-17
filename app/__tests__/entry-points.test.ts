@@ -105,6 +105,14 @@ const EXEMPT = new Set([
    */
   "llms.txt/route.ts",
   "llms-full.txt/route.ts",
+  /**
+   * 에이전트가 읽는 공개 응답 셋 (agent-readiness). **인가가 없다** — 늘 404인 Markdown 본문(fallback rewrite 목적지)·어떤 route도 받지
+   * 않는 `/api` 경로의 JSON 404·이미 공개된 외부 계약(`docs/ACTIONS.md`)의 OpenAPI 파생본이다. DB·쿠키·요청 헤더를 읽지 않는 것은
+   * `agent-routes.test.ts`가 소스 스캔으로 센다.
+   */
+  "not-found.md/route.ts",
+  "api/[[...path]]/route.ts",
+  "openapi.json/route.ts",
 ]);
 
 /** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */
@@ -182,6 +190,12 @@ const DELEGATED_CORES = new Map([
   ["declareBaseLocale", "lib/sources/base-locale.ts"],
   ["removeSurface", "lib/surfaces/remove.ts"],
   ["previewSurfaceRemoval", "lib/surfaces/remove.ts"],
+  // 언어 추가·제거·취소(locale-add) — Action·MCP 도구가 같은 코어를 부른다. 코어가 `getSurfaceAccess`(project:settings) → 잠금 안 재판정을 든다.
+  ["addLocale", "lib/locales/change.ts"],
+  ["previewLocaleAdd", "lib/locales/change.ts"],
+  ["previewLocaleRemoval", "lib/locales/change.ts"],
+  ["removeLocale", "lib/locales/change.ts"],
+  ["cancelLocaleRemoval", "lib/locales/change.ts"],
   ["runArchive", "lib/projects/archive.ts"],
   ["runUnarchive", "lib/projects/archive.ts"],
   ["revokePendingInvitation", "lib/auth/members.ts"],

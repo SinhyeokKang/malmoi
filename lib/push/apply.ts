@@ -1,7 +1,6 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { compareKeys } from "@/lib/adapters/shared";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
@@ -11,6 +10,13 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
 import { planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
+import { liveLocalesOf, localePresence } from "@/lib/locales/presence";
+import { expireLocaleChanges, type LocaleExpiryInput } from "@/lib/locales/expire";
+import type { PullRequestCheck } from "@/lib/locales/expiry";
+import { readLocaleStates } from "@/lib/locales/work";
+import type { LocaleChangeSubtype } from "@/lib/events/payload";
+import { recordEvents, type EventActorInput } from "@/lib/events/record";
+import { keptAddLocales, planLocaleImportGate } from "./locale-gate";
 
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
@@ -108,7 +114,26 @@ export type ApplyOptions = {
   approvedTokens?: readonly string[];
   /** 불완전 적재라 키 orphan 판정을 끈다 — `PlanOptions.suppressOrphan` (audit #7). 생략이면 평소대로 판정한다. */
   suppressOrphan?: boolean;
+  /**
+   * 이 소스의 **언어 변경 의도**(`LocaleChange`)를 이 적재가 어떻게 다루나 (locale-add design §1 "만료와 strict 적재" · 전이 표).
+   * - `keep`(생략 시) — 남은 ADD 언어를 orphan 대상에서 뺀다. 의도를 지우지 않는다.
+   * - `expire` — 자동 적재(CI·야간). 같은 잠금 안에서 만료를 먼저 돌고(`expireLocaleChanges`), 남은 ADD를 뺀다. 관측은 `observed`이고, 없으면 이 페이로드의
+   *   로케일이다(CI — 그것이 유일한 관측이다). 야간은 base 트리에서 Publish 쪽과 같은 함수로 본 관측을 넘긴다(`observeLocaleFiles`, R-B2 Y4).
+   * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. **승인한 의도 행(`approved` — 종류·요청 시각까지 일치)만** 지우고, 존재는 이 적재가 리포대로
+   *   정한다. 승인 뒤 들어온 행은 남고 그 ADD는 orphan 대상에서 뺀다(R-B3 R1). 전달 목록은 남긴다.
+   *
+   * ⚠️ **생략의 기본이 `keep`이다** — 빠졌을 때 의도를 보존하는 쪽이 안전하다(`approvedTokens`와 같은 근거). 기본을 strict로 두면 첫 적재·새 호출부
+   * 하나가 방금 추가한 빈 언어를 orphan시킨다.
+   */
+  localeChanges?: LocaleChangeHandling;
 };
+
+export type LocaleChangeHandling =
+  | { kind: "keep" }
+  | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput; via: LocaleExpiryInput["via"]; observed?: LocaleExpiryInput["observed"] }
+  | { kind: "discard"; actor: EventActorInput; approved: readonly LocaleIntent[] };
+
+type LocaleIntent = { localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string };
 
 type PushScope = { projectId: string; surfaceId: string };
 
@@ -125,7 +150,7 @@ class PendingEditsDuringApply extends Error {
   constructor(readonly pendingCount: number) { super("pending edits appeared during apply"); }
 }
 
-export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number; reason?: "publish-raced" } | { status: "unauthorized" };
+export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number; reason?: "publish-raced" | "locale-change-pending" } | { status: "unauthorized" };
 
 /**
  * 적재가 **확정되는 같은 트랜잭션에서** 부를 훅 (logs-rework design §3.2). 성공 사건을 밖에서 쓰면
@@ -145,7 +170,11 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
  * 깬다. 그 토큰이 폐기 승인 Sync가 남긴 유령이던 경로는 D1이 막았다(delivery-invariants · 감사 #1·#61).
  * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
  */
-export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
+/**
+ * @param pullRequest 사전 판정(`/api/push`의 열린 PR 게이트)이 본 PR 상태 — 라우트는 게이트를 지난 `none-open`을 넘긴다. 언어 변경 만료의 입력이고,
+ *   판정 뒤 Publish가 PR을 열었으면 아래 revision 장벽이 `publish-raced`로 막는다. 생략은 `failed`(만료하지 않음)다.
+ */
+export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens" | "localeChanges"> & { pushTokenHash: string; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string; pullRequest?: PullRequestCheck; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
   try {
     return await prisma.$transaction(async tx => {
       // Project → Surface 잠금 순서를 지킨다(`applyPushInTransaction`이 같은 순서로 다시 잡는다 — 같은 트랜잭션이라 재진입이다).
@@ -162,8 +191,13 @@ export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope,
       const pending = await countPending(tx, scope.projectId);
       const decision = planProtectedImport({ mode: "auto", pending });
       if (decision.action !== "apply") return { status: "deferred", pendingCount: pending } as const;
-      const { pushTokenHash: _verified, expectedLastPublishedAt: _observed, expectedDeliveryRevision: _revision, onApplied, ...applyOptions } = options;
-      const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [] });
+      // ⚠️ **잠금 뒤 다시 본다** — 사전 판정(라우트) 뒤 커밋된 제거 요청이 이 적재에 덮이지 않는다(언어 변경 tx도 Project→Surface 순서다).
+      const locale = planLocaleImportGate(await readLocaleStates(tx, scope.projectId));
+      if (locale.action === "defer") return { status: "deferred", pendingCount: 0, reason: locale.reason } as const;
+      const { pushTokenHash: _verified, expectedLastPublishedAt: _observed, expectedDeliveryRevision: _revision, pullRequest, onApplied, ...applyOptions } = options;
+      const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [],
+        // ⚠️ 생략은 `failed`다 — 조회하지 않았으면 만료하지 않는다(fail-closed). 남은 ADD를 지키는 것은 그대로다.
+        localeChanges: { kind: "expire", pullRequest: pullRequest ?? "failed", actor: { kind: "AUTOMATION" }, via: "ci" } });
       const after = await countPending(tx, scope.projectId);
       if (after > 0) throw new PendingEditsDuringApply(after);
       // ⚠️ **재집계 뒤다** — 앞에 두면 보류로 되돌아가는 트랜잭션에도 사건이 쓰였다가 함께 사라진다(무해하지만
@@ -189,18 +223,70 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
   if (checkFormat(payload.format, surface) !== "ok") throw new ApplyGuardError("wrong-format");
   // Repository Sync는 force-push 뒤에도 현재 base를 받는다. CI는 기존 순서 가드를 유지한다.
   if (options.refsMode === "replace" && checkCommitOrder(new Date(payload.commitAt), surface.lastCommitAt) !== "ok") throw new ApplyGuardError("stale-commit");
-  return applyWith(tx, scope, payload, { ...options, previousBaseLocale: options.previousBaseLocale === null ? null : surface.baseLocale }, async statements => {
-    const results: unknown[] = [];
-    for (const statement of statements) results.push(await statement);
-    return results;
-  });
+  const handling = options.localeChanges ?? { kind: "keep" };
+  // 만료가 먼저다 — 관측(이 페이로드의 로케일)으로 만료된 ADD는 아래 strict 판정이 다루고, 남은 ADD만 orphan 대상에서 뺀다.
+  if (handling.kind === "expire") {
+    await expireLocaleChanges(tx, { projectId: scope.projectId, surfaceId: scope.surfaceId, surfaceSlug: surface.slug,
+      pullRequest: handling.pullRequest, observed: handling.observed ?? { status: "observed", locales: payload.locales }, actor: handling.actor, via: handling.via });
+  }
+  const rows = await tx.localeChange.findMany({ where: { projectId: scope.projectId, surfaceId: scope.surfaceId }, select: { localeCode: true, operation: true, requestedAt: true } });
+  const intents = rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt.toISOString() }));
+  // 승인 집합과 종류·요청 시각까지 같은 행만 지운다 — 취소 뒤 다시 낸 요청도 시각이 달라 승인 밖이다.
+  const discarded = handling.kind === "discard"
+    ? intents.filter(intent => handling.approved.some(row => row.localeCode === intent.localeCode && row.operation === intent.operation && row.requestedAt === intent.requestedAt))
+    : [];
+  const kept = intents.filter(intent => !discarded.includes(intent));
+  const outcome = await applyWith(tx, scope, payload, { ...options, previousBaseLocale: options.previousBaseLocale === null ? null : surface.baseLocale },
+    keptAddLocales(kept), async statements => {
+      const results: unknown[] = [];
+      for (const statement of statements) results.push(await statement);
+      return results;
+    });
+  if (handling.kind === "discard") await discardLocaleChanges(tx, scope, surface.slug, payload.locales, discarded, handling.actor);
+  return outcome;
 }
 
+/**
+ * **승인된 수동 Sync가 의도를 지운다** (locale-add design §1 전이 표 마지막 행) — 행 삭제 · 사건. 존재는 방금 strict 적재가 리포대로 정했고,
+ * 사건의 `outcome`은 그 판정(`localePresence`)과 같은 값이다. 값·키·로케일 행은 지우지 않는다.
+ * ⚠️ **전달 목록은 남긴다** (2026-10-14 지휘자 결정 keep-delivered) — 제거가 열린 PR에 실린 채 목록까지 비우면 작업이 0이라 아무도 sync 브랜치를 다시
+ * 만들지 않고, 그 PR을 머지하면 방금 버린 제거가 리포에 들어간다. 남은 차이가 언어 작업이 되어 다음 Publish가 `no-changes`로 PR을 정리하고 목록을
+ * 비운다(전달 뒤 취소와 같은 길). 소스 제거는 되살림 누수 때문에 목록을 비운다(`lib/surfaces/remove.ts`).
+ * ⚠️ 이 적재와 같은 tx다 — 사건이 실패하면 적재도 롤백된다(상태 변경 사건).
+ */
+async function discardLocaleChanges(
+  tx: Prisma.TransactionClient,
+  scope: PushScope,
+  surfaceSlug: string,
+  observed: readonly string[],
+  intents: readonly LocaleIntent[],
+  actor: EventActorInput,
+): Promise<void> {
+  const { projectId, surfaceId } = scope;
+  if (intents.length === 0) return;
+  // 행마다 종류·요청 시각까지 걸어 지운다 — 표면 tx가 읽은 뒤의 상태가 아니라 승인한 행이 지울 대상이다.
+  await tx.localeChange.deleteMany({ where: { projectId, surfaceId, OR: intents.map(intent => ({ localeCode: intent.localeCode, operation: intent.operation, requestedAt: new Date(intent.requestedAt) })) } });
+  const live = liveLocalesOf(observed);
+  await recordEvents(tx, [...intents].sort((a, b) => (a.localeCode < b.localeCode ? -1 : a.localeCode > b.localeCode ? 1 : 0)).map(intent => {
+    const presence = localePresence(live, intent.localeCode);
+    return {
+      projectId,
+      subtype: "surface.localeChangeResolved" satisfies LocaleChangeSubtype,
+      actor,
+      surfaceIds: [surfaceId],
+      payload: { kind: "SURFACE" as const, surfaceSlug, adapter: null, baseLocale: null,
+        localeChange: { locale: intent.localeCode, operation: intent.operation, revived: null, discarded: null, outcome: presence === "unchanged" ? null : presence, reissued: null, pullRequest: null, via: "sync" } },
+    };
+  }));
+}
+
+/** @param keepLocales orphan 대상에서 뺄 언어 — 아직 만료되지 않은 ADD(`keptAddLocales`). 존재 판정 자체는 그대로 관측만 본다. */
 async function applyWith(
   prisma: Prisma.TransactionClient,
   scope: PushScope,
   payload: PushPayloadType,
   options: ApplyOptions,
+  keepLocales: readonly string[],
   execute: (statements: Prisma.PrismaPromise<unknown>[]) => Promise<unknown[]>,
 ): Promise<PushOutcome> {
   const { projectId, surfaceId } = scope;
@@ -226,10 +312,9 @@ async function applyWith(
 
   // 2) Locale upsert — Translation의 FK 대상이라 먼저 있어야 한다.
   //    isBase는 payload의 baseLocale 하나만 true다.
-  // 정렬은 결정성용이다 — 이 배열이 SQL 인자로 가고 순서가 흔들리면 문장이 매번 달라진다.
-  // 중복도 접는다 — 같은 문장이 같은 행을 두 번 치면 `cannot affect row a second time`으로
-  // 트랜잭션 전체가 거부된다. keys·translations와 같은 규칙 (2026-09-04 audit #13).
-  const liveLocales = [...new Set(payload.locales)].sort(compareKeys);
+  // ⚠️ 존재 판정(관측 = 활성, 나머지 orphan, 빈 관측은 그대로)은 `localePresence`와 같은 규칙이다 — 언어 변경 만료가 그 함수로
+  // 같은 판정을 한다(locale-add). 아래 두 문장을 바꾸면 그 함수와 `presence.test.ts`도 함께 바꾼다.
+  const liveLocales = liveLocalesOf(payload.locales);
   const localeRows = liveLocales.map((code) => ({
     projectId,
     code,
@@ -265,7 +350,9 @@ async function applyWith(
       WHERE "projectId" = ${projectId}
         AND "surfaceId" = ${surfaceId}
         AND "orphaned" = false
-        AND "code" <> ALL(${liveLocales}::text[])`]),
+        AND "code" <> ALL(${liveLocales}::text[])
+        -- 추가 요청 중인 언어는 리포에 아직 파일이 없다 — orphan하지 않는다(locale-add). 빈 배열이면 이 조건은 언제나 참이다.
+        AND "code" <> ALL(${[...keepLocales]}::text[])`]),
 
     // StringKey insert — id를 JS에서 만든다. cuid() 기본값은 Prisma 클라이언트가 적용하는
     // 것이라 raw SQL에는 오지 않는다.

@@ -475,6 +475,14 @@ it("no-changes에 보류가 있으면 Not sent 틀이고 nothing-to-send 약속�
   expect(text).toContain(p.withheldDescription.noChanges);
   expect(text).toContain(`${p.withheld.file(1)} ${p.withheld.editor}`);
 });
+it("언어 요청을 리포에 없는 채로 버린 no-edits는 \"Your edits were already in the repository\"가 아니다 (#267 fix1 Y1)", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "orphan" }] });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(en.translations.publish.noChangesDescription);
+  expect(text).not.toContain(en.translations.publish.notSentDescription);
+  expect(text).toContain(en.translations.publish.withheldDescription.withheld);
+});
 it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
@@ -696,7 +704,7 @@ it("실패 시각은 고른 시간대(Asia/Seoul)로 서고 UTC+9 라벨을 단�
 it("Publish 모달은 ButtonLink로 내부 이동과 새 탭 외부 링크를 구분한다", () => {
   const source = readFileSync(join(process.cwd(), "components/publish-button.tsx"), "utf8");
   const links = source.match(/<ButtonLink\b[^>]*>/g) ?? [];
-  expect(links).toHaveLength(4);
+  expect(links).toHaveLength(5);
   const external = links.filter((link) => /\bexternal\b/.test(link));
   expect(external).toHaveLength(2);
   for (const link of external) {
@@ -704,7 +712,8 @@ it("Publish 모달은 ButtonLink로 내부 이동과 새 탭 외부 링크를 �
     expect(link).toContain('rel="noreferrer"');
   }
   const internal = links.filter((link) => !/\bexternal\b/.test(link));
-  expect(internal).toHaveLength(2);
-  for (const link of internal) expect(link).toContain("href={routes.settings(slug)}");
+  // 설정 둘(base 파일 거부 · 실행 설정 오류) + 소스 하나(언어 계획 거부 — 고칠 자리가 소스 상세다, 시안 P1 ⑥).
+  expect(internal).toHaveLength(3);
+  for (const link of internal) expect(link).toMatch(/href=\{routes\.(settings\(slug\)|sources\(slug, )/);
   expect(source).not.toMatch(/<a\b[^>]*buttonClass/);
 });

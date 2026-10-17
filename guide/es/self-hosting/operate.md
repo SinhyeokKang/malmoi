@@ -109,7 +109,7 @@ Deja activo al menos uno de GitHub, GitLab y Google. Desactivar uno oculta su bo
 2. Vacía los dos valores del proveedor en `deploy/.env` (por ejemplo `AUTH_GITLAB_ID=` y `AUTH_GITLAB_SECRET=`).
 3. Ejecuta `docker compose up -d --force-recreate web` y comprueba que la pantalla de inicio de sesión muestra solo los proveedores activos.
 
-Las sesiones ya abiertas siguen iniciadas, y esas personas aún pueden conectar un proveedor restante desde **Cuenta**. Quien solo tenía el proveedor que desactivaste ve “Tu método de inicio de sesión no está disponible aquí. Pídele ayuda a quien administre Malmoi.” al iniciar sesión. Para dejarle entrar, rellena otra vez el par, recrea web, pídele que conecte otro proveedor y vuelve a desactivarlo.
+Las sesiones ya abiertas siguen iniciadas hasta 7 días desde que cada persona inició sesión, y esas personas aún pueden conectar un proveedor restante desde **Cuenta**. Quien solo tenía el proveedor que desactivaste ve “Tu método de inicio de sesión no está disponible aquí. Pídele ayuda a quien administre Malmoi.” al iniciar sesión. Para dejarle entrar, rellena otra vez el par, recrea web, pídele que conecte otro proveedor y vuelve a desactivarlo.
 
 ## Qué pasa después {#next}
 

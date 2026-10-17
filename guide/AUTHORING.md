@@ -50,6 +50,7 @@
 | `setup/README.md` | Set up a project | 개발자 |
 | `setup/members.md` | Invite translators | 개발자 |
 | `setup/sources.md` | Add sources | 개발자 |
+| `setup/languages.md` | Add and remove languages | 개발자 |
 | `setup/archive.md` | Archive a project | 개발자 |
 | `translate/README.md` | Translate | 편집자 |
 | `translate/join.md` | Join a project | 편집자 |
@@ -185,6 +186,7 @@
 | `github/create.md` | GitHub 연결·설치·리포 선택(생성 ①), 생성 ②–④·첫 적재. 설치 화면 라벨은 외부 라벨 표 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
 | `gitlab/create.md` | GitLab 토큰 발급·연결·교체·리포 선택(생성 ①), 생성 ②–④(④의 CI 갈래)·첫 적재 | `components/onboarding/`(`new-project.tsx`의 호스트 탭), `components/account/`, `components/gitlab/token-form.tsx`(`GITLAB_TOKEN_URL` — 프리필 링크), `lib/onboarding/`, `app/(edit)/projects/actions.ts`, `messages/en.tsx`의 `newProject`·`account.gitlab` |
 | `setup/sources.md` | 소스 추가, 상태·기준 언어 선언, OWNER 제한 | `app/(edit)/projects/[slug]/sources/page.tsx`, 같은 디렉터리 `actions.ts`, `components/sources/`, `lib/sources/`, `lib/surfaces/`, `docs/PRODUCT.md` §7.1 |
+| `setup/languages.md` | Languages 카드(상태 배지·행 동작·꺼진 이유), 추가(프리셋·자유 입력·파일 경로 미리보기·되살림)·제거(미전달 편집 폐기 경고·읽기 전용 칸)·취소(전달 전후), 막히는 것(기준 언어·기준 브랜치·`locale-change-pending`·수동 Sync), Publish 모달의 파일 머리(`New file`·`Updated`·`Removed`·`Not included`·`Held`·`Taken back`)와 머지 뒤 결과. 지원은 `json-catalog`·`chrome-locales`·OWNER만 | `components/sources/`(`languages-card.tsx`·`language-row.ts`·`add-locale-dialog.tsx`·`remove-locale-dialog.tsx`), `lib/locales/`(`change.ts`·`add-plan.ts`·`expiry.ts`·`publish-plan.ts`), `components/publish-button.tsx`, `components/home/sync-button.tsx`, `lib/push/locale-gate.ts`, `lib/pull/payload.ts`, `messages/{en,ko,es}.tsx`의 `sources.locale`·`translations.publish.language`·`repositorySync`·`logs`(`events.locale`·`deferReasons`), `docs/ARCHITECTURE.md` §5.10 |
 | `github/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
 | `gitlab/ci.md` | 생성 job, `.gitlab-ci.yml`, CI/CD 변수 `PUSH_TOKEN`, 보호 브랜치, `MALMOI_I18N_WRAPPER`, 미릴리스 CI 파일 | `lib/onboarding/gitlab-ci.ts`, `lib/onboarding/ci-file.ts`, `lib/cli/gitlab-ci-input.ts`, `components/settings/ci-card.tsx`, `messages/en.tsx`의 `settings.workflow`(`gitlabVariable`·`gitlabUnavailable`) |
 | `github/allowed-actions.md` | 실행 action 넷과 제한된 GitHub Actions 설정 | `lib/guide/__tests__/helpers/allowed-actions.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md`; 외부 화면의 현재 라벨은 별도 확인 |

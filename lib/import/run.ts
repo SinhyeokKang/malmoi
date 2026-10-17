@@ -10,7 +10,10 @@ import type { Credential } from "@/lib/auth/subject";
 import { logFailure } from "@/lib/github-connect/log";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importOutcomeFields } from "@/lib/projects/import-status";
-import { applyPushInTransaction } from "@/lib/push/apply";
+import { applyPushInTransaction, type LocaleChangeHandling } from "@/lib/push/apply";
+import { planLocaleImportGate } from "@/lib/push/locale-gate";
+import type { PullRequestCheck } from "@/lib/locales/expiry";
+import { readLocaleStates } from "@/lib/locales/work";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
@@ -23,6 +26,7 @@ import { readDiscardApproval } from "./approval";
 import { classifySnapshotFailure, classifySurfaceFailure, summarizeRun, type ImportEventSummary } from "./automation";
 import { planImportApply, type ImportSettings } from "./apply-plan";
 import { hasActiveImport, hasLiveInternalImport, planRepositoryImport } from "./plan";
+import { observeSurfaceLocales } from "./observe";
 import { snapshotError } from "./read";
 import { prepareSurfaceImport, type PreparedSurfaceImport } from "./surface";
 import type { RepositoryImportError, RepositoryImportOutcome, SurfaceImportResult } from "./result";
@@ -36,10 +40,19 @@ type ImportRunInput = { projectId: string; userId: string; repository: Repositor
  * 실행 주체 (nightly-sync). `AUTOMATION`은 야간 cron이다 — 사용자·지문·자격증명이 없고, 폐기 승인 경로가 없으므로 **편집을 한 줄도 덮지 않는다**
  * (`approvedTokens: []` + 표면별 사후 재집계). 리포 신원은 `repositoryId`에 고정된 installation 토큰 범위와 `repo-replaced` 판정이 대신한다.
  */
-type RunActor = { kind: "USER"; userId: string; approval: string | null; credential: Credential | undefined } | { kind: "AUTOMATION"; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string };
+/**
+ * `pullRequest` — 야간 판정이 본 열린 PR 상태(적재 갈래는 게이트를 지난 `none-open`뿐이다). 표면별 적재가 같은 잠금 안에서 언어 변경 만료를 겸할 때의
+ * 입력이다(locale-add design §1). 판정 뒤 Publish가 끼면 `acquire`의 revision 장벽이 `publish-raced`로 막고, 실행 중 Publish는 lease가 막는다.
+ */
+type RunActor = { kind: "USER"; userId: string; approval: string | null; credential: Credential | undefined } | { kind: "AUTOMATION"; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string; pullRequest: PullRequestCheck };
 type CoreInput = { projectId: string; repository: Repository; actor: RunActor };
-/** @param approvedTokens 잠금 뒤 지문 대조를 지난 편집 토큰 — upsert는 토큰 없거나 이 목록인 셀만 덮는다. 자동화는 언제나 빈 배열이다. */
-type Lease = { project: Project; surfaces: TranslationSurface[]; token: string; startedAt: Date; actor: RunActor; approvedTokens: readonly string[] };
+/**
+ * @param approvedTokens 잠금 뒤 지문 대조를 지난 편집 토큰 — upsert는 토큰 없거나 이 목록인 셀만 덮는다. 자동화는 언제나 빈 배열이다.
+ * @param approvedLocaleChanges 같은 대조를 지난 언어 변경 의도 행 — 완전한 적재는 **이 행만** 지운다(`approvedTokens`와 같은 결, R-B3 R1). 승인 뒤
+ *   들어온 요청은 요청 시각이 달라 일치하지 않고 살아남는다. 자동화는 빈 배열이다(지우지 않고 만료만 한다).
+ */
+type Lease = { project: Project; surfaces: TranslationSurface[]; token: string; startedAt: Date; actor: RunActor; approvedTokens: readonly string[]; approvedLocaleChanges: readonly ApprovedLocaleChange[] };
+type ApprovedLocaleChange = { surfaceId: string; localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string };
 const transactionOptions = { maxWait: 10_000, timeout: 30_000 };
 
 /** 주체별 사건 어휘. 수동 Sync와 첫 적재 UI 경로가 USER, 야간이 AUTOMATION이다 — 호출자가 따로 고르면 짝이 어긋난 조합이 생긴다. */
@@ -54,6 +67,14 @@ class PendingEditsDuringImport extends Error {
   constructor() { super("pending edits appeared during automation import"); }
 }
 
+/**
+ * 표면 트랜잭션 안 언어 게이트 재판정이 보류를 냈다 — 파일을 읽는 동안 전달 안 된 제거가 커밋됐다(R-B3 Y2). CI 경로(`applyProtectedPush`가 잠금 안에서
+ * 다시 본다)와 같은 계약이다 — 이 표면을 롤백하고 뒤 표면을 시작하지 않는다.
+ */
+class LocaleChangeDuringImport extends Error {
+  constructor() { super("an undelivered locale removal appeared during automation import"); }
+}
+
 function settings(project: Repository, surface: TranslationSurface): ImportSettings {
   return { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,
     repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch,
@@ -64,7 +85,10 @@ function result(surface: TranslationSurface, status: SurfaceImportResult["status
   return { surfaceSlug: surface.slug, status, reason, count: 0, failed: status === "failed" ? 1 : 0, unmanaged: 0, errors: [] };
 }
 
-type Acquired = { ok: true; lease: Lease } | Extract<RepositoryImportOutcome, { ok: false }> | { ok: false; error: "pending-edits" } | { ok: false; error: "publish-raced" };
+/** 자동화만 내는 보류 셋 — 사건은 `acquire`가 같은 잠금 안에서 쓰고, 실행 행(`recordRun`)은 만들지 않는다. */
+// ⚠️ 갈래마다 따로 둔다 — `error`가 리터럴 하나여야 호출부의 `===` 비교가 union을 좁힌다.
+type AutomationHold = { ok: false; error: "pending-edits" } | { ok: false; error: "publish-raced" } | { ok: false; error: "locale-change-pending" };
+type Acquired = { ok: true; lease: Lease } | Extract<RepositoryImportOutcome, { ok: false }> | AutomationHold;
 
 async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired> {
   return prisma.$transaction(async tx => {
@@ -110,6 +134,7 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
     const active = surfaces.filter(surface => surface.archivedAt === null).sort((a, b) => a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0);
     const vocabulary = eventVocabulary(actor);
     let approvedTokens: readonly string[] = [];
+    let approvedLocaleChanges: readonly ApprovedLocaleChange[] = [];
     if (actor.kind === "AUTOMATION") {
       if ((project.lastPublishedAt?.getTime() ?? null) !== (actor.expectedLastPublishedAt?.getTime() ?? null)
         || await readDeliveryRevision(tx, project.id) !== actor.expectedDeliveryRevision) {
@@ -126,6 +151,14 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
           payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug), pendingEdits: pending, deferReason: "pending-edits" }) });
         return { ok: false, error: "pending-edits" };
       }
+      // 전달 안 된 언어 제거가 있으면 통째로 보류한다(CI `/api/push`와 같은 판정 — locale-add design §1 "보류"). 셀을 고르지 않는다.
+      const locale = planLocaleImportGate(await readLocaleStates(tx, project.id));
+      if (locale.action === "defer") {
+        await recordEvent(tx, { projectId: project.id, subtype: vocabulary.subtype, actor: vocabulary.actor, surfaceIds: active.map(surface => surface.id),
+          occurredAt: startedAt, finishedAt: startedAt, result: "deferred",
+          payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug), deferReason: locale.reason }) });
+        return { ok: false, error: locale.reason };
+      }
     } else {
       /**
        * **폐기 승인은 잠금 뒤에 재계산한다** (ARCHITECTURE §5.5.2 · POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
@@ -133,9 +166,13 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
        */
       const approval = await readDiscardApproval(tx, { projectId: project.id, userId: actor.userId });
       const confirmation = planDiscardConfirmation({ role: member?.role ?? "EDITOR", fingerprintMatches: sameFingerprint(actor.approval, approval.fingerprint) });
-      const decision = planProtectedImport({ mode: "manual", pending: approval.pending.length, approved: confirmation.action === "proceed" });
+      // ⚠️ 편집이 0이어도 언어 변경 의도가 있으면 승인을 요구한다 — 완전한 적재가 그 행을 지운다(locale-add design §1 전이 표). 전달 목록만 있는
+      // 소스는 버릴 것이 없다(목록은 남는다) — 지문에는 묶여 있다.
+      const discards = approval.pending.length + approval.localeChanges.filter(state => state.rows.length > 0).length;
+      const decision = planProtectedImport({ mode: "manual", pending: discards, approved: confirmation.action === "proceed" });
       if (decision.action !== "apply") return { ok: false, error: "reconfirm" };
       approvedTokens = approval.pending.map(edit => edit.token);
+      approvedLocaleChanges = approval.localeChanges.flatMap(state => state.rows.map(row => ({ surfaceId: state.surfaceId, ...row })));
     }
     const token = randomUUID();
     await tx.project.update({ where: { id: project.id }, data: { repositoryImportToken: token, repositoryImportStartedAt: startedAt } });
@@ -164,7 +201,7 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
       runToken: runTokenFor({ kind: "import", token }),
       payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug) }),
     });
-    return { ok: true, lease: { project, token, startedAt, actor, approvedTokens, surfaces: active } };
+    return { ok: true, lease: { project, token, startedAt, actor, approvedTokens, approvedLocaleChanges, surfaces: active } };
   }, transactionOptions);
 }
 
@@ -222,17 +259,37 @@ async function current(tx: Prisma.TransactionClient, lease: Lease, captured: Tra
   return { ok: true, surface } as const;
 }
 
+/**
+ * 표면 적재가 언어 변경 의도를 다루는 법 (locale-add design §1). 자동화는 같은 잠금에서 만료를 겸하고, 지문 승인한 수동 Sync는 **빠진 파일이 없는
+ * 적재에서만** 의도를 지운다 — 부분 적재는 리포 관측이 불완전해 의도를 남기고 빈 ADD를 지키는 기본(`keep`)으로 간다.
+ */
+function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { files?: readonly { path: string; mode?: string }[] }, complete: boolean): LocaleChangeHandling {
+  const { actor } = lease;
+  // 만료의 관측은 적재가 읽은 그 트리에서 Publish 쪽 만료와 같은 함수로 본다(R-B2 Y4) — `payload.locales`는 링크도 로케일로 센다.
+  // 이 경로의 AUTOMATION은 야간 적재 하나다(CI는 `applyProtectedPush`) — 만료 사건이 "CI"로 서지 않게 실행을 싣는다(시안 P3).
+  if (actor.kind === "AUTOMATION") return { kind: "expire", pullRequest: actor.pullRequest, actor: { kind: "AUTOMATION" }, via: "nightly",
+    observed: snapshot.files === undefined ? { status: "unreadable" } : observeSurfaceLocales(snapshot.files, surface) };
+  const surfaceId = surface.id;
+  if (!complete) return { kind: "keep" };
+  const approved = lease.approvedLocaleChanges.filter(row => row.surfaceId === surfaceId).map(({ surfaceId: _surface, ...row }) => row);
+  return { kind: "discard", actor: { kind: "USER", userId: actor.userId }, approved };
+}
+
 /** 커밋된 표면 트랜잭션이 실제로 바꾼 값 수의 합 — 롤백된 표면은 더하지 않는다(트랜잭션이 끝난 뒤에 더한다). */
 type Tally = { changedValues: number };
 
-async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string }, tally: Tally): Promise<SurfaceImportResult> {
+async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string; files?: readonly { path: string; mode?: string }[] }, tally: Tally): Promise<SurfaceImportResult> {
   const finished = await prisma.$transaction(async tx => {
     const check = await current(tx, lease, surface);
     if (!check.ok) return { surface: result(surface, "superseded", check.reason), changedValues: 0 };
     const scope = { projectId: lease.project.id, surfaceId: surface.id };
+    // ⚠️ 쓰기 전에 본다 — `acquire`의 판정은 실행권 시점이다. 그 뒤 커밋된 제거 요청 위로 리포의 옛 파일을 적재하지 않는다(적재 전체 보류).
+    if (lease.actor.kind === "AUTOMATION" && prepared.kind !== "failed"
+      && planLocaleImportGate(await readLocaleStates(tx, scope.projectId)).action === "defer") throw new LocaleChangeDuringImport();
     let changedValues = 0;
     if (prepared.kind === "payload") {
       const applied = await applyPushInTransaction(tx, scope, prepared.payload, {
+        localeChanges: localeHandling(lease, surface, snapshot, prepared.result.errors.length === 0),
         token: lease.token, startedAt: lease.startedAt, refsMode: "preserve", previousBaseLocale: surface.baseLocale,
         importOutcome: prepared.result.failed > 0 ? "partial-import" : null,
         // 승인 뒤에 저장된 셀은 토큰이 달라 여기서 안 덮인다 — 결과의 `remainingEdits`가 그 수를 말한다.
@@ -279,7 +336,7 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
   const outcome = await runImport(prisma, { projectId: input.projectId, repository: input.repository,
     actor: { kind: "USER", userId: input.userId, approval: input.approval, credential: input.credential } }, openReader, () => {});
   // USER는 승인 경로가 있어 `pending-edits`로 보류되지 않는다 — 그 갈래는 `reconfirm`이다.
-  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced")) return { ok: false, error: "reconfirm" };
+  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced" || outcome.error === "locale-change-pending")) return { ok: false, error: "reconfirm" };
   return outcome;
 }
 
@@ -291,23 +348,28 @@ export type AutomationImportResult =
   | ({ recorded: true } & ImportEventSummary)
   | { recorded: false; error: RepositoryImportError };
 
-export async function runAutomationImport(prisma: PrismaClient, input: { projectId: string; repository: Repository; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string }, openReader: () => Promise<RepoReader>): Promise<AutomationImportResult> {
+/**
+ * @param pullRequest 야간 판정이 본 열린 PR 상태. ⚠️ **생략은 `failed`다** — 조회하지 않았으면 만료하지 않는다(fail-closed, 수락 기준 15).
+ *   기본을 `none-open`으로 두면 새 호출부 하나가 아직 열린 PR의 의도를 지운다.
+ */
+export async function runAutomationImport(prisma: PrismaClient, input: { projectId: string; repository: Repository; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string; pullRequest?: PullRequestCheck }, openReader: () => Promise<RepoReader>): Promise<AutomationImportResult> {
   const closed: { summary: ImportEventSummary | null } = { summary: null };
-  const outcome = await runImport(prisma, { ...input, actor: { kind: "AUTOMATION", expectedLastPublishedAt: input.expectedLastPublishedAt, expectedDeliveryRevision: input.expectedDeliveryRevision } }, openReader, summary => { closed.summary = summary; });
+  const outcome = await runImport(prisma, { projectId: input.projectId, repository: input.repository,
+    actor: { kind: "AUTOMATION", expectedLastPublishedAt: input.expectedLastPublishedAt, expectedDeliveryRevision: input.expectedDeliveryRevision, pullRequest: input.pullRequest ?? "failed" } }, openReader, summary => { closed.summary = summary; });
   // 보류는 `acquire`가 같은 잠금 안에서 사건을 쓰고 돌아온다 — 실행 행(`recordRun`)을 만들지 않은 갈래다.
-  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced")) return { recorded: true, result: "deferred", deferReason: outcome.error };
+  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced" || outcome.error === "locale-change-pending")) return { recorded: true, result: "deferred", deferReason: outcome.error };
   if (closed.summary !== null) return { recorded: true, ...closed.summary };
   // `close`를 안 지난 반환은 실행권을 못 얻은 거부뿐이다(성공·실패 반환은 전부 `close`를 지난다).
   return { recorded: false, error: outcome.ok ? "unavailable" : outcome.error };
 }
 
-async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () => Promise<RepoReader>, observe: (summary: ImportEventSummary) => void): Promise<RepositoryImportOutcome | { ok: false; error: "pending-edits" } | { ok: false; error: "publish-raced" }> {
+async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () => Promise<RepoReader>, observe: (summary: ImportEventSummary) => void): Promise<RepositoryImportOutcome | AutomationHold> {
   const acquired = await acquire(prisma, input);
   if (!acquired.ok) return acquired;
   const { lease } = acquired;
   const vocabulary = eventVocabulary(lease.actor);
-  /** 자동화의 사후 재집계가 표면을 롤백하고 루프를 멈췄다. */
-  let halted = false;
+  /** 자동화의 표면 tx 재판정(미전달 편집 재집계·언어 게이트)이 표면을 롤백하고 루프를 멈췄다 — 그 보류 사유다. */
+  let halted: false | "pending-edits" | "locale-change-pending" = false;
   /** 자동화의 스냅샷이 서버 한도(`truncated`)에 걸렸다 — 사건은 `deferred`·`too-large`다. */
   let held = false;
   const automation = lease.actor.kind === "AUTOMATION";
@@ -386,7 +448,8 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
         surfaces.push(await finishSurface(prisma, lease, surface, prepared, snapshot, tally));
       } catch (error) {
         // 자동화의 사후 재집계 — 이 표면은 이미 롤백됐다. 실패로 기록하지 않고(편집이 들어왔을 뿐이다) 뒤 표면을 시작하지 않는다.
-        if (error instanceof PendingEditsDuringImport) { halted = true; break; }
+        if (error instanceof PendingEditsDuringImport) { halted = "pending-edits"; break; }
+        if (error instanceof LocaleChangeDuringImport) { halted = "locale-change-pending"; break; }
         logFailure("repository-import-surface", error);
         // 야간의 트랜잭션 예외(timeout·DB 오류)는 일시 실패다 — 사건만 실패로 남기고 표면 실패 상태를 쓰지 않는다.
         if (automation) { surfaces.push(result(surface, "failed", "import-failed")); continue; }

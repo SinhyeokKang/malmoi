@@ -104,15 +104,11 @@ export function orderedEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
 }
 
 /**
- * 로케일 코드로 보이는 파일/디렉터리 이름인가. `zh-CN` 같은 지역 서브태그를 포함한다.
- *
- * ⚠️ **camelCase 형태(`koKR`·`enUS`·`zhCN`)도 받는다** (2026-09-02 추가). naive-ui가 로케일 파일을
- * `src/locales/common/koKR.ts`로 두는데, 구분자가 없어서 전에는 로케일로 인식되지 않아 리포 전체가
- * 탐지에서 빠졌다. 정확히 `소문자2 + 대문자2`만 받으므로 일반 식별자와 섞일 여지가 좁다.
+ * 로케일 코드로 보이는 파일/디렉터리 이름인가 — 정의는 잎 `lib/locale-code.ts`에 있다. 언어 추가 입력(클라이언트 잎 `lib/locales/add-plan.ts`)이
+ * 같은 판정으로 "관측할 수 있는 코드"만 받아야 해서 옮겼다(locale-add R-B2 R2). 어댑터 그래프를 클라이언트로 끌지 않으려고 여기서는 다시 내보내기만 한다.
  */
-export function looksLikeLocale(name: string): boolean {
-  return /^[a-z]{2,3}(?:[-_][A-Za-z]{2,4})?$/.test(name) || /^[a-z]{2}[A-Z]{2}$/.test(name);
-}
+import { looksLikeLocale } from "@/lib/locale-code";
+export { looksLikeLocale };
 
 /**
  * **우연히 일치할 여지가 좁은** 로케일 코드인가 — 2글자, 지역 서브태그가 붙은 것, camelCase.

@@ -34,6 +34,10 @@ Malmoi never merges the two. While there are unsent edits or a Malmoi pull reque
 
 They are kept. If the key comes back in a later commit, its translations come back with it. See [Keep removed keys](sync/push.md#removed-keys).
 
+## Can I add or remove a language in Malmoi? {#languages}
+
+Project owners can, for JSON catalogs and Chrome extension messages: Publish creates or deletes the language file in a pull request (a merge request on GitLab), and a removed language's translations stay in Malmoi. For other formats, change the files in the repository. See [Add and remove languages](setup/languages.md#languages).
+
 ## Do I have to add the workflow? {#workflow}
 
 No. Without it, the nightly run picks up repository changes once a day. With it, changes arrive on every commit. See [Nightly sync or the workflow](sync/nightly.md#workflow).
