@@ -299,6 +299,9 @@ function WorkspaceBody(props: WorkspaceProps) {
     setRevertedLocales(new Set());
     setSavedLocales(new Set());
     setRevertReason(null);
+    // 제거 거부 문장은 그 제거가 취소되면 더는 참이 아니다 — 서버 상세가 그 언어를 얼리지 않으면 걷는다(시안 T1 ③).
+    const frozen = new Set(readOnlyOf(detail));
+    setStatus(prev => (prev?.kind === "removal-pending" && !prev.locales.some(code => frozen.has(code)) ? null : prev));
   }, [detail]);
 
   // ── 세션 복구 사본 — 이 탭 sessionStorage의 한 키 draft, 사용자별 (spec §3.5) ───────────────────

@@ -4,9 +4,9 @@ import { ChevronRight, FileJson2 } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
+import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
