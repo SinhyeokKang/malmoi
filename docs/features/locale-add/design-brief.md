@@ -2,7 +2,13 @@
 
 > 신규 UI의 첫 구현 동안만 시안이 기준이고, dev 반영 뒤에는 코드 + docs/DESIGN.md가 정본이다. 동작은 spec.md, 상태 전이는 design.md가 정한다. 이 문서는 그릴 화면을 정의한다.
 
-작성: 2026-10-13 · 개정: 2026-10-14(2차 검수 반영) · 2026-10-14(백엔드 구현 반영 — 서버가 돌려주는 상태·거부 코드·문구 자리를 실제 계약에 맞췄다). 옛 추가 전용 시안과 1차 개정의 상태별 라벨 8종을 대체한다. Codex는 사용자 제공 로컬 핸드오프를 사용한다.
+작성: 2026-10-13 · 개정: 2026-10-14(2차 검수 반영) · 2026-10-14(백엔드 구현 반영 — 서버가 돌려주는 상태·거부 코드·문구 자리를 실제 계약에 맞췄다) · 2026-10-17(시안 확보 · 검토 결정 반영). 옛 추가 전용 시안과 1차 개정의 상태별 라벨 8종을 대체한다. Codex는 사용자 제공 로컬 핸드오프를 사용한다.
+
+## 시안 (2026-10-17 확보)
+
+- **Claude Design 프로젝트** `b99d54cd-3034-44f1-8446-0a864da9d767` — 허브 `Locale Add Remove.dc.html` + 섹션 다섯 `Locale Add Remove - {L,A,D,P,T}.dc.html`(L1–L7 · A1–A5 · D1–D5 · P1–P4 · T1). 이 브리프의 프레임 1~25를 모두 덮고 L7(취소 결과)·P4(수동 Sync 확인)를 더했다. 첫 구현이 dev에 들어갈 때까지 **이 캔버스가 정본**이고, 이 브리프와 갈리면 캔버스를 따른다.
+- 로컬 사본: 메인 체크아웃 `.scratch/orch-locale-add/design/`(gitignore). 검토 경위와 결정은 [design-feedback.md](design-feedback.md)(1~4차).
+- 검토에서 브리프를 바꾼 결정(2026-10-17 사용자): ① 추가 Dialog의 경로·되살릴 수는 **새 읽기 전용 서버 미리보기**가 준다 ② Sources 행의 PR 표시는 **저장된 PR 주소의 링크만** — 조회 실패(`prCheckFailed`)는 Sources에 그리지 않는다 ③ Logs의 되살린 수·닫힌 PR 번호는 **사건 payload에 필드를 더해** 쓴다 ④ EDITOR·비지원 포맷은 **비활성 + 이유**(숨기지 않음) ⑤ 추가 입력은 **프리셋 목록 + 자유 입력 한 칸**이고 언어 이름은 화면 언어로 ⑥ 구분자 근거가 없는 소스의 프리셋은 하이픈.
 
 ## 화면의 목적
 
@@ -35,8 +41,8 @@
 | 전달 축 | 표시 |
 |---|---|
 | 그 언어의 변경이 아직 PR에 없음 | 기존 `Unsent` 배지 |
-| 전달됨, PR 열림 | 기존 `View pull request` 링크(GitLab판 어휘) |
-| PR 조회 실패 | 기존 `prCheckFailed` 배지·문구 |
+| 전달됨, PR 열림 | 기존 `View pull request` 링크(GitLab판 어휘) — 마지막으로 저장된 PR 주소에서 만든다 |
+| PR 조회 실패 | Sources에는 그리지 않는다(2026-10-17 결정 ② — Sources는 진입 때 조회하지 않는다. Home이 말한다) |
 | 전달 확인 안 됨(직전 Publish 결과 미확정·실패로 확인이 무효화됨, `localeDelivery: "unconfirmed"`) | 전달 여부를 단정하지 않는 muted 한 줄. 이 상태에선 취소 두 종류가 거부된다(아래) |
 
 | 행 상태 | OWNER 동작 | 번역 편집 | Open |
@@ -61,7 +67,8 @@
 
 ## 추가 Dialog
 
-- 제목 `Add a language to {source}`. json-catalog는 Language code Input, chrome-locales는 지원 목록 Select(54개 — Chrome 문서 목록에서 `es_419` 제외).
+- 제목 `Add a language to {source}`. json-catalog는 **프리셋 목록 + 자유 입력 한 칸**(Popover + Command — 이 소스의 Inactive 코드 그룹, 자주 쓰는 언어 그룹, 목록 밖 코드는 `Use this code`), chrome-locales는 지원 목록 Select(54개 — Chrome 문서 목록에서 `es_419` 제외). 언어 이름은 화면 언어로 `languageName`(`lib/onboarding/language-name.ts`)이 만들고, 밑줄 코드는 표시용으로만 `_`→`-`로 넘긴다(그대로 넘기면 `RangeError`로 코드가 나온다). 프리셋 구분자는 소스의 지역 있는 기존 코드를 따르고, 근거가 없으면 하이픈이다.
+- 경로·필드 판정·되살릴 번역 수는 입력 중 **읽기 전용 서버 미리보기**가 준다(제출 때 add 판정과 같은 결과). 미리보기 받는 중·실패 상태를 둔다(시안 A1 ②③).
 - **받는 코드는 Malmoi가 리포에서 다시 읽을 수 있는 모양뿐이다**: 소문자 언어 2~3자 + 선택 지역 2~4자(`fr`, `pt-BR`, `zh_TW`). `es-419`·`zh-Hant-TW`·대문자 언어(`KO`)는 거부한다. 이유 안내: “Malmoi can't read this code back from the repository. Add the file in the repository instead.” 계열.
 - 유효 입력에는 File to create와 서버 규칙으로 계산한 경로. orphan 코드면 복구할 번역 수 안내.
 - 오류(서버 코드 → 표시 자리): `invalid-code`·`unsupported-locale`(필드), `already-active`(필드 — 이미 있음), `locale-collision`(필드 — `pt-BR`/`pt_br`처럼 같은 파일을 가리키는 철자), `unsafe-path`·`path-conflict`(필드 — 계산된 경로가 안전하지 않거나 다른 소스 경로와 겹침). `archived`·`publish-unsettled`·일반 실패는 Alert.

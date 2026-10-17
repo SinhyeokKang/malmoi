@@ -191,11 +191,18 @@ GitLab은 `{action: "delete", file_path}`를 쓴다. blob SHA 비교(`planPullCh
 | MCP 조회 | 상태와 전달 여부를 싣고 편집 불가 이유 노출 |
 | 로그 | 요청·취소·전달·만료(반영/미반영) 구분. 실제 관측 없이 “삭제 완료”를 남기지 않음 |
 
-PR/MR 상태 표시는 서버가 마지막으로 관측한 결과만 쓴다. Sources 진입 시 호스트를 호출하지 않는다. 조회 실패는 기존 `prCheckFailed` 배지를 재사용한다.
+PR/MR 상태 표시는 서버가 마지막으로 관측한 결과만 쓴다. Sources 진입 시 호스트를 호출하지 않는다. **Sources 행의 전달됨 표시는 저장된 PR 주소(`Project.lastPrUrl`)로 만든 링크 하나이고, 조회 실패 상태는 Sources에 없다**(2026-10-17 사용자 — 그 상태는 Home이 그때 조회한 결과라 Sources에는 출처가 없다).
 
 ## 6. UI·MCP·사건
 
-소스 상세 Languages 카드의 Add language와 행별 동작. 활성·ADD 행은 `Remove language` 하나(Dialog가 상태별 효과를 설명), REMOVE 행은 `Cancel removal`. 상세 프레임은 design-brief.md가 정본이다. OWNER만 변경하고 EDITOR는 상태·이유를 볼 수 있다. 비지원 소스는 추가·제거 모두 이유와 함께 비활성화한다.
+소스 상세 Languages 카드의 Add language와 행별 동작. 활성·ADD 행은 `Remove language` 하나(Dialog가 상태별 효과를 설명), REMOVE 행은 `Cancel removal`. 상세 프레임은 시안(design-brief.md "시안")이 정본이다. OWNER만 변경하고 EDITOR는 상태·이유를 볼 수 있다. 비지원 소스는 추가·제거 모두 이유와 함께 비활성화한다(버튼을 숨기지 않는다 — 2026-10-17 사용자).
+
+**2026-10-17 시안 검토로 더한 서버 계약** (사용자 결정 — design-feedback.md §1):
+
+- **추가 미리보기(읽기 전용)** — `previewSourceLocaleAdd({ slug, surfaceSlug, localeCode })` Server Action과 그 코어(`lib/locales/change.ts`). 제출 때 `addSourceLocale`이 돌리는 판정(`planLocaleAdd` + 경로 소유)을 쓰기 없이 돌려 `{ ok, action: "create"|"revive", path, revive: number }` 또는 같은 거부 코드를 돌려준다. `revive`는 되살리면 다시 Unsent가 될 값 있는 칸 수다(실행의 `reissued`와 같은 셈). 미리보기 경로 = 실행 경로(POSTMORTEM 2026-09-16). `revalidatePath` 없음. 화면이 템플릿을 채우지 않는다.
+- **Sources 상세 PR 링크** — `loadSourceDetail`이 `pullRequestUrl: string | null`(저장된 `Project.lastPrUrl`)을 싣는다. 호스트 호출 없음. 번호는 기존 `reviewNumberFrom`으로 뽑고, 못 뽑으면 링크를 만들지 않는다.
+- **사건 payload 필드(additive)** — `surface.localeAdded`에 `reissued: number`(되살림만), `surface.localeChangeResolved`에 그 의도를 실었던 PR/MR 번호(`pullRequest: { number } | null` — 마지막 전달 확인 실행의 주소에서 뽑는다). 옛 payload는 필드 없이 읽히고 문장은 그 부분을 뺀다. 만료 행의 주체는 판정을 돌린 실행(Nightly · CI · Publish한 사람)이다.
+- **프리셋 목록**(json-catalog) — 고정 목록 약 20개는 순수 상수 하나(클라이언트 잎). 구분자는 그 소스의 지역 있는 기존 코드를 따르고, 근거가 없으면 하이픈. 이름은 `languageName(code, uiLocale)`이고 밑줄 코드는 표시용으로만 `_`→`-`로 넘긴다(Chrome 목록도 같다). 값·제출은 원래 코드다.
 
 **열린 번역 화면의 미저장 입력:** draft는 선택한 키 하나의 로케일별 값이고 저장은 키 단위다(`lib/translations/draft.ts`). 서버 갱신이 REMOVE를 알리면 그 언어의 dirty 셀을 버리지 않고 `readOnly`로 얼리고 save payload에서 뺀다. 버리기는 기존 셀 `reset`을 보이는 버튼으로 노출한다. 제거가 취소되면 얼린 값이 그대로 편집 가능해진다(별도 복구 동작 없음). 이동은 기존 이탈 확인이 dirty 로케일로 처리한다. 상세 데이터(`lib/translations/summary.ts`)에 REMOVE 언어를 읽기 전용으로 싣는다. 렌더와 저장 사이에 제거가 도착해 서버가 키 저장을 거부하면 입력을 유지하고 전용 footer 문구를 띄운다(키 단위라 다른 언어도 저장되지 않았음을 말한다).
 

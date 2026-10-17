@@ -1,19 +1,20 @@
 # Add and remove languages — 지휘 계획 (`/orchestrate`)
 
-작성: 2026-10-14 · 지휘: Claude Code(Opus 5.5) · 원본: [tasks.md](tasks.md)(체크 항목) · [design.md](design.md) · [spec.md](spec.md) · [design-brief.md](design-brief.md) — 여기에 복제하지 않는다.
-시작 dev: `b5f8c9d8`(origin/dev `1f851139` + §0 문서 커밋, 미푸시) · Orca run: `run_2836e5d910eb`
+작성: 2026-10-14 · 개정: 2026-10-17(2차 런 인테이크 — 시안 확보) · 지휘: Claude Code(Opus 5.5) · 원본: [tasks.md](tasks.md)(체크 항목) · [design.md](design.md) · [spec.md](spec.md) · [design-brief.md](design-brief.md) · [design-feedback.md](design-feedback.md) — 여기에 복제하지 않는다.
+1차 런: 시작 dev `b5f8c9d8` · Orca run `run_2836e5d910eb`(종료). **2차 런: 시작 dev = 이 문서를 담은 커밋(`ef3168fa` + 2026-10-17 문서 커밋) · Orca run은 착수 때 새로 만든다.**
 
-## 착수 범위 — ⚠️ 디자인 시안 미확보
+## 착수 범위 — 2차 런 (2026-10-17, 시안 확보)
 
-**design-brief 프레임 1~25의 핸드오프가 없다. 이 런은 시안 없이 할 수 있는 부분까지만 진행한다.**
+**시안이 왔다** — Claude Design 프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`의 허브 `Locale Add Remove.dc.html` + 섹션 다섯(L1–L7 · A1–A5 · D1–D5 · P1–P4 · T1). 4차까지 검토했고 결정은 아래 D4~D10. 로컬 사본은 메인 체크아웃 `.scratch/orch-locale-add/design/`에 L·A·P만 있다(D·T·허브는 **지휘자가 첫 UI 브리프 전에 `DesignSync get_file`로 같은 자리에 저장**한다 — 인라인 응답이라 인테이크에서 저장하지 못했다). 5차 요청(P1 배너 0건 갈래, design-feedback §2.8)은 디자이너 반영 대기 — E3 브리프 전에 P를 다시 받는다.
 
-- **진행**: tasks 배치 1·2 전부(§1~§5), 배치 3 중 화면을 그리지 않는 항목(§6 Server Action · 셀 얼리기 reducer · `summary.ts` · 집계), §7 MCP 전부, §8 중 ARCHITECTURE·ACTIONS·OPERATIONS·DIRECTORY·CLAUDE·README.
-- **시안 대기(이 런에서 착수하지 않음)**: §6 핸드오프 확보 · Sources Add Dialog·행 동작·확인 Dialog·상태 배지 · 번역 화면 셀 얼리기 DOM·수동 · Publish 미리보기·결과의 화면 표시 · 화면 문구(en·ko·es) · `/design-sync` · DESIGN 갱신 · `/guide`·`/guide-shots` · 화면을 거치는 §9 `/runtime-test`.
-- 시안이 오면 이 문서에 wave를 덧붙여 이어서 진행한다. **이 기능은 그 전까지 `/merge`하지 않는다**(tasks "배치와 머지 규칙").
+- **진행**: 1차 런의 ⏸ 시안 대기 행 전부 + 시안 검토로 생긴 서버 보강 셋(E0) — tasks §6 미체크 전부 · §8 둘째(DESIGN)·넷째(`/guide`·`/guide-shots`) · §9 첫째·둘째.
+- **런 밖**: §2 넷째의 prod 몫·§9 다섯째(`/merge` — 사용자가 부른다) · `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고(action 릴리스 축).
 
-## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-14)
+## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-17)
 
-**한 줄 상태**: 시안 없이 할 수 있는 일은 모두 끝났다. 배치 A1·A2·B1·B2·B3·C1·C2·D와 RT에서 나온 수정 F1·F2가 전부 dev에 들어가 push됐고(마지막 `1bcadabd`, CI success), 실호스트 왕복(RT·RT2·RT3)이 GitHub·GitLab × json-catalog·chrome-locales에서 통과했다. 이번 런의 이슈 #265·#266·#267은 모두 고쳐서 닫았다. **남은 것은 시안이 와야 하는 화면 일체와 `/merge`뿐이다**(이 기능은 화면까지 끝나기 전 머지 금지).
+**한 줄 상태(2차 런)**: 인테이크 완료 — 아래 "2차 런 배치"의 wave ⑥(E0)부터 띄운다. 첫 지휘 동작: ① `.scratch/orch-locale-add/design/`에 D·T·허브 저장 ② 새 Orca run ③ E0 브리프.
+
+**1차 런 상태(2026-10-14 기록)**: 시안 없이 할 수 있는 일은 모두 끝났다. 배치 A1·A2·B1·B2·B3·C1·C2·D와 RT에서 나온 수정 F1·F2가 전부 dev에 들어가 push됐고(마지막 `1bcadabd`, CI success), 실호스트 왕복(RT·RT2·RT3)이 GitHub·GitLab × json-catalog·chrome-locales에서 통과했다. 이번 런의 이슈 #265·#266·#267은 모두 고쳐서 닫았다. **남은 것은 시안이 와야 하는 화면 일체와 `/merge`뿐이다**(이 기능은 화면까지 끝나기 전 머지 금지).
 
 | 항목 | 상태 |
 |---|---|
@@ -28,7 +29,7 @@
 
 1. ~~RT 결함 수정·재실측~~ **완료** — — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). F1(+fix1·fix2, R-F1 리뷰)이 고쳐 dev에 통합·push(`9bca1c98`, CI success) → **RT2에서 두 호스트 4/4 통과, #266·#265 닫힘**. RT2가 새 결함 [#267](https://github.com/SinhyeokKang/malmoi/issues/267)(🟡 미머지 종료 뒤 만료 방문 전 Publish: 미리보기는 삭제를 약속, 실행은 1층 스킵으로 `no-edits` + 거짓 문구 — 1층 스킵이 스냅샷 전 만료보다 먼저라 R4가 안 선다)을 냈다 → F2(+fix1·fix2, R-F2·R-F2b 리뷰) 통합·push → RT3 두 호스트 통과 → #267 닫음. tasks §9 셋째·넷째 체크됨. **미측정으로 남은 것**: Chrome 확장 실제 로드(비-messages 파일 잔존), 실제 네트워크 단절, `/mcp` 화면 토큰 발급, 재요청 뒤 CI 적재 보류, 웹 Publish 모달 흐름(시안 배치에서).
 2. **ko·es 초안 검수(`/translate`)** — 이 런이 넣은 사전 문구는 en 확정, ko·es는 초안: `logs.deferReasons["locale-change-pending"]` · `logs.sentence.import.held["locale-change-pending"]`(B3) · `logs.reasons["locale-plan-refused"]`(B2). ko 후보 문장은 R-B3 W6("아직 보내지 않은 언어 제거가 있어"). GitLab 변형 자리(`logs.gitlab.*`)는 호스트 낱말이 없어 덮지 않았다.
-3. **시안 도착 뒤(⏸ 행 전부)** — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
+3. ~~**시안 도착 뒤(⏸ 행 전부)**~~ → **2차 런 배치로 옮김**(2026-10-17, 아래 "2차 런 배치"). 옛 메모 — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
 4. ~~POSTMORTEM~~ **완료**(`8393f7ca`, 항목 둘) — RT가 잡은 #266·#265·#267(전달 목록이 "어느 요청의 효과인가"를 모르는 부류, 1층 스킵이 만료보다 먼저인 순서)을 `/postmortem`으로 남긴다.
 5. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
 
@@ -70,8 +71,20 @@
 | R7 | 만료는 그 행의 효과를 전달 목록에서도 뺀다(#266) · 확인보다 뒤에 낸 요청은 전달로 세지 않는다(F1 발견) · 미리보기는 `withdrawnLocales`로 "파일 diff 0이어도 이전 변경을 거둘 Publish 필요"를 싣는다(#265) | RT #266·#265 · F1 · `2b2650cc` 외 |
 | R6 | 사전 문구는 typecheck가 강제하는 슬롯만(Logs 사유) 이 런에서 넣고 ko·es는 `/translate` 초안 · 컴포넌트는 테스트 픽스처와 비시각 집계 한 줄만 예외 | B3·B2·C1 질문 · 지휘자 판단 |
 | O8 | 스키마 SQL은 워커가 DB 없이 `prisma migrate diff`로 만들고(더미 `DIRECT_URL`), dev DB 적용·`has_schema_privilege` 확인은 지휘자. prod `db:deploy`는 `/merge` 1단계(런 밖) | 스킬 §1 |
+| D4 | 추가 Dialog의 경로·되살릴 수는 **읽기 전용 서버 미리보기**(`previewSourceLocaleAdd`)가 준다 | 사용자 2026-10-17. design §6 |
+| D5 | Sources 행 PR 표시는 **저장된 `lastPrUrl`의 링크만**, 조회 실패(`prCheckFailed`)는 Sources에 없음 | 사용자 2026-10-17. design §5 |
+| D6 | Logs의 되살린 수·닫힌 PR 번호는 **사건 payload 필드 추가**(additive) | 사용자 2026-10-17. design §6 |
+| D7 | EDITOR·비지원 포맷은 **비활성 + 이유**(숨기지 않음) — 시안 L4 다시 그림 | 사용자 2026-10-17 |
+| D8 | 추가 입력 = **프리셋 목록 + 자유 입력**(사용자 요청 기능). 이름은 화면 언어 `languageName`, 밑줄 코드는 표시용 `_`→`-` | 사용자 2026-10-17. 밑줄 `RangeError`는 실측 |
+| D9 | 구분자 근거 없는 소스의 프리셋은 **하이픈** | 사용자 2026-10-17 |
+| D10 | PR 배너 0건 갈래(번역 0 · 파일 변경만)는 언어 파일 변경 수로 센다 — 디자이너에 “코드에 없음” 요청 | 지휘자 추천 2026-10-17(사용자에게 전달) — 디자이너 응답과 무관하게 E3가 `these 0 changes` 문장을 내지 않게 한다 |
+| O9 | 2차 런 워커 = Claude Code Opus 5.5·Sonnet 5.5(effort ≤ high), 교차 허가 없음 | 스킬 §0-3. 지휘자 판단 |
+| O10 | 상태 낱말 공용 층(`STATE` adding·removing, Inactive 낱말, `orphanStrip`·`orphanReason` 원인 중립 문장)은 **E0가 먼저** 바꾼다 — E1(Sources)·E2(번역 화면 `workspace.tsx`가 `orphanStrip`을 쓴다)이 같이 소비하므로 한 소유자에 두어 E1∥E2를 연다 | 파일 겹침. 지휘자 판단 |
+| O11 | E1·E2·E3는 `messages/{en,ko,es}.tsx`를 **각자 자기 절에서만** 고친다(E1 `sources.*` · E2 `translations.*` · E3 `publish`·`sync`·`logs`·`settings` 절). cherry-pick 텍스트 충돌은 지휘자가 양쪽 키 합집합으로만 푼다(1차 런 `harness.ts` 선례) — 내용 판단이 필요한 충돌은 소유 워커로 돌린다 | 스킬 §0-4 핫스팟. 지휘자 판단 |
+| O12 | ko·es는 각 배치가 초안을 넣고(세 사전 같은 커밋), 일괄 검수는 TR(`/translate` 모드②)이 DS 수정 라운드 뒤에 한다 — 1차 런 초안(`logs.deferReasons`·`logs.sentence.import.held`·`logs.reasons["locale-plan-refused"]`)도 TR 범위. ko 최종은 사용자가 `/merge` 전에 본다 | CLAUDE.md 번역 규칙. 지휘자 판단 |
+| O13 | DS·RT·GS(ego 쓰는 셋)는 한 워커씩 직렬 — ego 태스크 스페이스가 세션을 공유한다 | 메모리(2026-10-11 사용자). 지휘자 판단 |
 
-## 배치
+## 1차 런 배치 (2026-10-14 — 완료)
 
 | 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
 |---|---|---|---|---|---|---|
@@ -95,6 +108,50 @@
 **wave**: ① A1 · A2 → 통합 → **P1 push** ② B1 → 통합 → DB(dev) ③ B2 · B3 → 통합 → **P2 push** ④ C1 · C2 → 통합 ⑤ D · RT → 통합 → **P3 push**.
 
 **주인 없는 항목 대조**(tasks 체크 ↔ 배치): §0 → 완료(`b5f8c9d8`) · §1 → A1 · §2 첫째·둘째·셋째·다섯째 → B1, 넷째 → DB + 런 밖 · §3 → B1 · §4 → B3 · §5 첫째·둘째 → A2, 셋째~열째 → B2 · §6 Action·reducer·summary·집계 → C1, 나머지 7행 → ⏸ 시안 대기 · §7 → C2 · §8 첫째·셋째 → D, 둘째 → D(DESIGN만 ⏸), 넷째 → ⏸ · §9 첫째 → P, 둘째 → ⏸, 셋째·넷째 → RT, 다섯째 → 런 밖. **0건.**
+
+## 2차 런 배치 (2026-10-17 — 시안 배치)
+
+### 시안 위치 — 브리프·`/design-sync`가 이 표를 쓴다
+
+| 무엇 | 경로 |
+|---|---|
+| Claude Design 프로젝트 | `b99d54cd-3034-44f1-8446-0a864da9d767` (`https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Locale+Add+Remove.dc.html`) |
+| 허브(목차 · 코드에 요청할 것 · 브리프와 다르게 둔 것) | `Locale Add Remove.dc.html` |
+| L · Languages 카드 (L1–L7) | `Locale Add Remove - L.dc.html` |
+| A · 추가 Dialog (A1–A5) | `Locale Add Remove - A.dc.html` |
+| D · 제거 확인 Dialog (D1–D5) | `Locale Add Remove - D.dc.html` |
+| P · Publish · 막힌 동작 · Logs · Sync (P1–P4) | `Locale Add Remove - P.dc.html` |
+| T · 번역 화면 (T1) | `Locale Add Remove - T.dc.html` |
+| 로컬 사본(gitignore — 이 머신만) | `/Users/sinhyeok/code/malmoi/.scratch/orch-locale-add/design/<위 파일 이름>` — 지금 L·A·P. D·T·허브는 지휘자가 첫 UI 브리프 전에 저장. 캔버스가 이미지 `assets/flags/*.svg`를 참조하지만 대조에 필요한 값은 HTML 인라인 스타일에 다 있다 |
+
+- **취득**: Claude Code는 `DesignSync get_file`(projectId 위, path = 파일 이름 그대로). ⚠️ **`get_file`은 256 KiB에서 자른다** — 섹션 파일은 모두 그 아래(L ≈ 166 KB)지만, 받은 뒤 응답의 `truncated: false`를 확인한다. 디자인 권한이 없는 세션은 `/design-login`이 필요하다 — 워커가 막히면 로컬 사본을 쓴다.
+- **판본**: 2026-10-17 4차 검토본(design-feedback.md §2.7까지 반영). §2.8(P1 배너 0건 갈래)은 반영 대기 — E3·DS 직전에 P를 다시 받아 사본을 덮는다.
+- 캔버스 안의 “코드에 없음” 주황 표기는 구현이 새로 만들 자리, 보라 “1차 피드백”·“2차 피드백” 표기는 검토 반영 자리다. 둘 다 정본 문장이다.
+
+### 배치
+
+| 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
+|---|---|---|---|---|---|---|
+| **E0** 서버 보강·상태 낱말 | §6 새 넷: 추가 미리보기 · `pullRequestUrl` · 사건 payload · `STATE` | `lib/locales/change.ts`(읽기 전용 미리보기 코어) · `app/(edit)/projects/[slug]/sources/actions.ts`(`previewSourceLocaleAdd`) · `lib/sources/query.ts` · `lib/locales/expire.ts` · `lib/events/{payload,record}.ts`(필드·파서만 — 문장은 E3) · `lib/status/canon.ts`(+`status-badge` 테스트) · `messages/*`의 `sources.missingRepo`·`orphanStrip`·`orphanReason`·`STATE` 라벨만(세 사전) · 그 소비자의 시그니처 맞춤 한 줄(`source-detail-modal.tsx`·`workspace.tsx`) · 격리 PG 시나리오 | — | Opus 5.5 · medium — 기존 판정 재사용, 새 판단 적음 | 워크트리 | ⏳ |
+| **E1** Sources 화면 | §6 Sources Dialog·행·배지 · P2의 기준 언어 안내 · 문구(sources 절) | `components/sources/*`(신규 `add-locale-dialog.tsx`·`remove-locale-dialog.tsx` 등 — 이름은 워커가 정하고 인계에 적는다, `base-language-form.tsx` 포함) · 프리셋 상수 신규 `lib/locales/presets.ts`(클라이언트 잎 — `client-graph` 등록) · `messages/*`의 `sources` 절 · DOM 테스트 | **E0 통합** | Opus 5.5 · high — 상태 조합·접근성·포커스 규칙이 많다 | 워크트리 | ⏳ |
+| **E2** 번역 화면 | §6 셀 얼리기 DOM · 문구(translations 절) | `components/translations/workspace/{locale-panel,workspace}.tsx` · `use-leave-guard.ts` · `lib/translations/draft.ts`(필요한 맞춤만 — reducer는 1차 런 완료) · `messages/*`의 `translations` 절 · DOM 테스트 | **E0 통합** (E1·E3와 병렬) | Opus 5.5 · medium — reducer가 이미 있다 | 워크트리 | ⏳ |
+| **E3** Publish·Sync·Logs·Settings | §6 Publish 표시 · 수동 Sync 구획 · Logs 문장 · P2의 기준 브랜치 안내 · 문구(해당 절) | `components/publish-button.tsx` · `components/home/sync-button.tsx` · `components/logs/{event-row,glyph}.tsx` · `lib/events/view.ts`(문장) · `components/settings/repository-form.tsx` · `messages/*`의 `publish`·`sync`·`logs`·`settings` 절 · DOM 테스트 | **E0 통합** (E1·E2와 병렬) | Opus 5.5 · high — Publish 모달 상태 갈래가 넓다 | 워크트리 | ⏳ |
+| **R-E0~R-E3** 리뷰 | 각 배치 diff 독립 리뷰 | 리포트 전용 | 그 배치 `worker_done` | Opus 5.5 · medium | 리뷰 전용 워크트리 | — |
+| **DS** `/design-sync` | §6 `/design-sync` | 리포트 전용 — 불일치는 그 화면 소유 배치(E1·E2·E3)가 고친다 | E1·E2·E3 통합 · **push 전** | Opus 5.5 · medium | main 체크아웃, ego 단독(O13) | ⏳ |
+| **TR** `/translate` 모드② | §6 문구의 ko·es 검수 + 1차 런 초안(O12) | `messages/{ko,es}.tsx`만 | DS 수정 라운드 통합 | Sonnet 5.5 · high | 워크트리 | ⏳ |
+| **D2** 정본 문서 | §8 둘째(DESIGN — Sources·번역 읽기 전용·Publish 상태/문구·Inactive 낱말) · DIRECTORY 새 모듈 · CLAUDE.md 데이터 경로 표(`previewSourceLocaleAdd`) + `pnpm sync:agents` · ARCHITECTURE §5.10(추가 미리보기·payload 필드·PR 링크 출처) | `docs/{DESIGN,DIRECTORY,ARCHITECTURE}.md` · `CLAUDE.md`(+미러) — 문서별 커밋 | DS 수정 라운드 통합 (TR과 병렬) | Sonnet 5.5 · high — 사실은 R-D2(Opus)가 대조 | 워크트리 | ⏳ |
+| **P4** push | §9 첫째 | 지휘자 | TR·D2 통합 | — | main 체크아웃 | ⏳ |
+| **RT4** `/runtime-test` | §9 둘째 · §6 셀 얼리기 수동(두 세션 외부 제거) | 리포트 + BugShot 이슈 — 수정은 소유 배치 | P4 | Opus 5.5 · medium | main 체크아웃, ego 단독(O13) | ⏳ |
+| **G** `/guide` | §8 넷째 앞 절반 — en·ko·es “리포에서만 언어 추가·제거” 문구 · MCP 도구·권한 표(1차 런 R-C2 ⚪) | `guide/{en,ko,es}/` · `guide/AUTHORING.md`(필요 시) | RT4 수정 통합 | Sonnet 5.5 · high | 워크트리 | ⏳ |
+| **GS** `/guide-shots` | §8 넷째 뒤 절반 — `pnpm guide:check` stale 컷 | `public/guide/` · `guide/SHOOTING.md` | G 통합 | Sonnet 5.5 · medium | main 체크아웃, ego 단독(O13) | ⏳ |
+| **P5** push | §9 첫째(마무리) | 지휘자 | GS 통합 | — | main 체크아웃 | ⏳ |
+| **⏸ 런 밖** | §2 넷째 prod 몫 · §9 다섯째 `/merge` · CLI 경고(action 축) | 사용자 | — | — | — | 런 밖 |
+
+**겹침 판정**: E0 → E1·E2·E3 직렬(상태 낱말·payload·Action을 셋이 소비 — O10). E1↔E2↔E3: 컴포넌트 파일 겹침 없음, `messages/*`는 절을 나눠 병렬(O11) · `lib/events/`는 E0 payload / E3 view로 나눔 · `source-detail-modal.tsx`·`workspace.tsx`는 E0의 시그니처 한 줄 뒤 E1·E2 단독. DS·TR·D2·RT4·G·GS는 앞 단계 통합 뒤라 코드 겹침 없음 — TR(`ko`·`es`)과 D2(docs)는 병렬, DS·RT4·GS는 ego 때문에 서로 직렬.
+
+**wave**: ⑥ E0 → 통합 ⑦ E1 · E2 · E3 → 통합 → DS → 수정 라운드 통합 ⑧ TR · D2 → 통합 → **P4 push** ⑨ RT4 → 수정 통합 ⑩ G → GS → 통합 → **P5 push**.
+
+**주인 없는 항목 대조**(tasks 미체크 ↔ 배치): §2 넷째 → 런 밖 · §6 추가 미리보기·`pullRequestUrl`·payload·`STATE` → E0 · Sources Dialog·행 → E1 · 기준 언어/브랜치 안내 → E1(기준 언어)·E3(브랜치) · 셀 얼리기 DOM → E2 · 셀 얼리기 수동 → RT4 · Publish 표시·Sync 구획·Logs 문장 → E3 · 문구 → E1·E2·E3 + TR · `/design-sync` → DS · §8 둘째 → D2 · 넷째 → G·GS · §9 첫째 → P4·P5 · 둘째 → RT4 · 다섯째 → 런 밖. **0건.**
 
 ## 진행 로그
 

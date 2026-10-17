@@ -87,5 +87,6 @@ OWNER가 소스 상세에서 언어를 추가하면 번역자가 바로 편집�
 | 2026-10-14 | 삭제만 있는 Publish·열린 PR 재Publish·전달된 삭제 취소를 설계/검증에 포함 |
 | 2026-10-14 | GitLab 리포 연동은 v1.4.0(`456e0e1f`)에 구현됨을 확인. GitHub·GitLab 동시 지원 범위 유지 |
 | 2026-10-14 | 2차 검수: 제거는 범위 유지. 상태 모델을 `LocaleChange(ADD/REMOVE)` + 소스별 전달된 파일 집합 변경으로 단순화(RESTORE·origin·deliveryRunId·전용 reconcile 폐기). 제거·전달 전 추가 취소는 그 언어 미전달 편집을 지문 승인으로 폐기. 미저장 입력은 셀 얼리기. 상태 표시는 동작 배지(Adding/Removing/Inactive) + 기존 Unsent. Inactive는 danger 톤 유지, Open 비활성 유지. PR/MR 상태는 서버 마지막 관측만 표시. 앱 코드 정리 경고를 Dialog·PR 본문에. 3배치 분할, 기능 미완 동안 `/merge` 금지. 로케일 수 상한 없음 |
+| 2026-10-17 | 시안 확보(Claude Design `Locale Add Remove` 허브 + 섹션 다섯). 검토 결정: 추가 Dialog는 프리셋 목록 + 자유 입력(이름은 화면 언어, 구분자 근거 없으면 하이픈) · 경로·되살릴 수는 읽기 전용 서버 미리보기 · Sources의 PR 표시는 저장된 주소의 링크만(조회 실패 미표시) · Logs의 되살린 수·닫힌 PR 번호는 사건 payload 필드 추가 · EDITOR·비지원 포맷은 비활성 + 이유 |
 
 필드 이름·사유 코드·단계별 계약은 design.md의 구현안이며, 구현 전 테스트로 실제 기존 코어와 대조한다.
