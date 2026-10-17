@@ -416,3 +416,15 @@ describe("DS fix3", () => {
     expect(link.compareDocumentPosition(action("de")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+/** #277 · D14 — 모달 설명 줄의 언어 수도 카드 머리와 같은 출처(목록 행 수)다. Sources 목록 행은 서버 `locales`(작업 언어 수) 그대로다. */
+it("#277 설명 줄 언어 수 == 카드 머리 수(Inactive·Removing 포함), 목록 행 수는 그대로", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: detail([row("ko", { change: removal }), row("es", { orphaned: true })], { locales: 1 }) });
+  await open();
+  const modal = card().closest<HTMLElement>('[role="dialog"]')!;
+  expect(modal.textContent).toContain(en.surfaces.sourceCounts(248, 3));
+  expect(card().querySelector("header [aria-hidden]")?.textContent).toBe("3");
+  // 목록 행(모달 밖)은 서버 `locales`(픽스처 2)다.
+  const listRow = [...document.querySelectorAll("[data-source-row]")].find(node => node.textContent?.startsWith("web"))!;
+  expect(listRow.textContent).toContain(en.surfaces.sourceCounts(248, 2));
+});
