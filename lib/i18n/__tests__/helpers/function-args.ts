@@ -358,6 +358,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "sources.unmanaged": [2],
   "sources.orphanStrip": ["X"],
   "sources.orphanStripRest": [2],
+  "sources.orphanStripOwner": [2],
   "sources.needReview": [2],
   "sources.locale.addLabel": ["X"],
   "sources.locale.removeLabel": ["X"],

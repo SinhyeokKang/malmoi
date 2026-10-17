@@ -206,6 +206,7 @@ const NOT_A_COUNT: Record<string, string> = {
   "sources.removal.unsent": "count is repositorySync.unsentCount",
   // 추가 취소의 미전달 줄(RT4 #278) — 수는 `count`(= `repositorySync.unsentCount`)가 그리고, `n`은 en 동사·대명사와 es 동사 수 일치에만 쓴다.
   "sources.locale.untrackLine": "count is repositorySync.unsentCount",
+  "sources.orphanStripOwner": "n은 분기 판정(0·1·그 외)에만 쓰고 문장에 찍지 않는다",
   // 수는 `count`(= `repositorySync.languageCount`, 구분자를 쓴다)가 그린다 — `n`은 es 동사 수 일치에만 쓴다(#275).
   "repositorySync.languagesDropped": "count is repositorySync.languageCount",
   // 수를 그리지 않는다 — `n`은 en 동사 수 일치(is/are)에만 쓰고, 언어 목록은 `locales`가 그린다.

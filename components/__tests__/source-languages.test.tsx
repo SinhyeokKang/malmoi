@@ -124,6 +124,32 @@ describe("카드 머리와 설명 — OWNER·EDITOR·비지원 포맷 세 갈래
   });
 });
 
+describe("Inactive 띠 끝 문장 — 보존 번역 수 0·1·2(#287)", () => {
+  const strip = () => card().querySelector<HTMLElement>("[class*=leading-translation]")!.textContent!;
+  const cases = [
+    { n: 0, rest: "It has no translations.", owner: "Add it again to use it here." },
+    { n: 1, rest: "Its 1 translation is kept in Malmoi.", owner: "Add it again to bring it back." },
+    { n: 2, rest: "Its 2 translations are kept in Malmoi.", owner: "Add it again to bring them back." },
+  ];
+  for (const c of cases) {
+    it(`OWNER · 번역 ${c.n}개`, async () => {
+      mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: c.n })]) });
+      await open();
+      expect(strip()).toBe(`es is inactive. ${c.rest} ${c.owner}`);
+    });
+    it(`비지원 OWNER · 번역 ${c.n}개`, async () => {
+      mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: c.n })], { connection: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", format: "YAML" } }) });
+      await open();
+      expect(strip()).toBe(`es is inactive. ${c.rest} ${en.sources.orphanStripUnsupported}`);
+    });
+    it(`EDITOR · 번역 ${c.n}개`, async () => {
+      mocks.load.mockResolvedValue({ ok: true, detail: editorDetail([row("es", { orphaned: true, translated: c.n })]) });
+      await open("EDITOR");
+      expect(strip()).toBe(`es is inactive. ${c.rest} ${en.sources.orphanStripEditor}`);
+    });
+  }
+});
+
 describe("행 상태 — 배지 셋 × 전달 축(L2·L3)", () => {
   it("Adding 값 0개: 중립 배지 + 파일 없음 안내, Remove language", async () => {
     mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { change: add, translated: 0, untranslated: 248, percent: 0 })]) });
@@ -189,7 +215,7 @@ describe("행 상태 — 배지 셋 × 전달 축(L2·L3)", () => {
     expect(action("es").getAttribute("aria-disabled")).toBeNull();
     const openButton = [...es.querySelectorAll("button")].find(node => node.textContent === en.sources.openLanguage)!;
     expect(openButton.getAttribute("aria-disabled")).toBe("true");
-    expect(card().textContent).toContain(`es ${en.sources.orphanStrip("es").slice(3)} ${en.sources.orphanStripRest(164)} ${en.sources.orphanStripOwner}`);
+    expect(card().textContent).toContain(`es ${en.sources.orphanStrip("es").slice(3)} ${en.sources.orphanStripRest(164)} ${en.sources.orphanStripOwner(164)}`);
     // 전달된 추가를 취소함 = Inactive + Unsent + Publish 안내.
     expect(rowOf("fr").textContent).toContain(en.translations.workspace.list.notSent);
     expect(rowOf("fr").textContent).toContain(en.sources.locale.publishToUpdate);

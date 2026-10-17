@@ -189,7 +189,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
       {/* ⚠️ **사라짐 안내는 행이 아니라 카드 바닥의 띠다**(시안 `1c`) — 복구 길은 역할·포맷이 고른다(L3·L4). 지난 상태라 `live="off"`다. */}
       {orphaned.map(row => <div key={`missing-${row.code}`} className="border-divider border-t">
         <Alert inset size="sm" variant="danger" live="off">
-          <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated + row.needsReview)} {!canManage ? m.sources.orphanStripEditor : supported ? m.sources.orphanStripOwner : m.sources.orphanStripUnsupported}</span></span>
+          <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated + row.needsReview)} {!canManage ? m.sources.orphanStripEditor : supported ? m.sources.orphanStripOwner(row.translated + row.needsReview) : m.sources.orphanStripUnsupported}</span></span>
         </Alert>
       </div>)}
     </Card>

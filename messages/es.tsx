@@ -1966,9 +1966,10 @@ export const es = {
     pendingHelp: "Si tu CI pasa el idioma base de esta fuente, actualiza su entrada en el flujo de trabajo al idioma solicitado.",
     orphanReason: "Este idioma está inactivo.",
     orphanStrip: (code: string): string => `${code} está inactivo.`,
-    orphanStripRest: (translations: number): string =>
+    orphanStripRest: (translations: number): string => translations === 0 ? "No tiene traducciones." :
       `${translations === 1 ? "Su traducción se conserva" : `Sus ${translations.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
-    orphanStripOwner: "Añádelo de nuevo para recuperar sus traducciones.",
+    orphanStripOwner: (translations: number): string => translations === 0 ? "Añádelo de nuevo para volver a usarlo."
+      : translations === 1 ? "Añádelo de nuevo para recuperar su traducción." : "Añádelo de nuevo para recuperar sus traducciones.",
     orphanStripUnsupported: "Restaura el archivo en el repositorio y sincroniza.",
     orphanStripEditor: "Un propietario del proyecto puede añadirlo de nuevo.",
     statusHelp: "Se actualiza con las sincronizaciones desde tu repositorio.",

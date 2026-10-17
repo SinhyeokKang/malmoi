@@ -3641,9 +3641,11 @@ export const en = {
     orphanReason: "This language is inactive.",
     orphanStrip: (code: string): string => `${code} is inactive.`,
     /** 띠 둘째 문장 — 보존 수만 말한다. 복구 길은 뒤 문장 셋 중 하나가 든다(역할·포맷이 고른다, 시안 L3·L4). */
-    orphanStripRest: (translations: number): string =>
-      `Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
-    orphanStripOwner: "Add it again to bring them back.",
+    orphanStripRest: (translations: number): string => translations === 0 ? "It has no translations."
+      : `Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+    /** 되살릴 번역이 없으면(0) 약속하지 않는다 — 수는 `orphanStripRest`와 같은 값이다(#287). */
+    orphanStripOwner: (translations: number): string => translations === 0 ? "Add it again to use it here."
+      : translations === 1 ? "Add it again to bring it back." : "Add it again to bring them back.",
     orphanStripUnsupported: "Restore the file in the repository, then sync.",
     orphanStripEditor: "A project owner can add it again.",
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
