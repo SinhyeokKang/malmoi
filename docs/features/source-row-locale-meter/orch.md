@@ -39,7 +39,7 @@
 | B2 | T9 | B 워커 후속 Task | `docs/DESIGN.md` · `docs/DIRECTORY.md` · (있으면) `docs/ARCHITECTURE.md` | DS 끝 | `pnpm gate` · `grep -rn "percent는 완료만" docs/` 0 | 대기 |
 | P1 | project-row-redesign 스펙 대조 — locale-add(§5.10 · 작업 언어 술어 · 언어 요청 정리 · `locale-change-pending`) + 이 런의 결정(D1–D10)이 그 spec·design·tasks·design-brief에 주는 영향 (2026-10-17 사용자) | Claude Opus high · 워크트리 `srlm-p` | `docs/features/project-row-redesign/*`만 | — (코드 겹침 없음) | 바뀐 단언마다 근거 file:line · 사용자 결정 지점은 `ask` | 완료 `7e40ad93` → dev `dfd495ef` — Q1은 D11(#290) |
 | P2 | 같은 문서 블로커 해제(사전 조건 충족 표시) + 이 런이 옮긴 줄 번호·타입·fixture 사실 | P 워커 후속 Task | 같음 | A·B·F2 통합 뒤 | 사전 조건 확인문 `rg -n "RowLocaleProgress" components/locale-meter.tsx` 0건이 참 | 대기 |
-| G | T10 | 지휘자 `pnpm guide:check` → stale이면 Claude Opus 워커(main 체크아웃, `/guide`·`/guide-shots`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | DS 끝(ego 세션 공유 — 겹치지 않게) | `pnpm guide:check` 출력 인용 | 대기 |
+| G | T10 + **stale 19컷 전부**(2026-10-18 `pnpm guide:check` — 이 런 몫 sources·languages-card·source-details·publish-result·publish-language-changes 외에 locale-add·이전 변경분 포함, `/merge` 전 재촬영 원칙) | Claude Opus 워커(main 체크아웃, `/guide-shots` + 필요하면 `/guide`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | QA 끝 뒤(ego 세션 공유 — 겹치지 않게) | `pnpm guide:check` stale 0 | 대기 |
 | F1 | #288 (locale-add 후속 — 다른 세션이 2026-10-17 이 런으로 넘김) | Claude Opus high · 워크트리 `srlm-f` | `messages/{en,ko,es}.tsx`의 `cancelAddDone`만 · 사전/DOM 테스트 | — (A와 겹침 없음, B보다 먼저 통합) | `pnpm gate --base dev` | 진행 |
 | F2 | #289 (같은 경로) | F 워커 후속 Task | `components/publish-button.tsx` · `lib/publish/plan.ts` · `messages/*` Publish 절 · DESIGN §6.646 | D9 · B 통합 뒤(사전 겹침) | `pnpm gate --base dev` | B 대기 |
 | QA | 인계 (b) 목록 | Claude Opus · main 체크아웃 · 단일 워커 | — | 전부 push 뒤 | (b) 목록 전부 확인 | 대기 |
