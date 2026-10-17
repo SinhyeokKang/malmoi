@@ -16,6 +16,8 @@ Una fila puede mostrar:
 - Un enlace a la pull request (una merge request en GitLab) — el cambio salió en la última publicación. El enlace apunta a la pull request de esa publicación, que puede que ya no esté abierta.
 - **Sin confirmar en la pull request** — la última publicación no pudo terminar, así que Malmoi no sabe qué contiene la pull request. Publica de nuevo antes de cancelar o cambiar este idioma.
 
+![La tarjeta Idiomas de una fuente, con un botón Añadir idioma sobre las filas del idioma base, idiomas normales, uno que se está añadiendo, uno que se está quitando y uno inactivo](/guide/languages-card.webp "Cada fila muestra el estado del idioma y una acción.")
+
 En la fila del idioma base, **Quitar idioma** está desactivado; elige antes otro [idioma base](sources.md#base-language). Para los traductores, y para los formatos que no admiten añadir ni quitar idiomas, los botones también están desactivados, y la descripción de la tarjeta explica por qué.
 
 ## Añade un idioma {#add}
@@ -23,6 +25,8 @@ En la fila del idioma base, **Quitar idioma** está desactivado; elige antes otr
 1. En la tarjeta **Idiomas**, elige **Añadir idioma**.
 2. En un catálogo JSON, elige un idioma de **Idiomas habituales** o escribe un código en **Código de idioma**: un idioma en minúsculas con una región opcional, como `fr`, `pt-BR` o `zh_TW`. Los idiomas que ya estuvieron en esta fuente aparecen primero, en **Antes en esta fuente**. En los mensajes de extensión de Chrome, elige en **Idioma**; Chrome admite una lista fija de códigos.
 3. Comprueba **Archivo que se creará**, la ruta que tendrá el archivo. Elige **Añadir idioma** otra vez para confirmar.
+
+![El diálogo para añadir un idioma sobre los detalles de la fuente, con es elegido como código de idioma e i18n/emails/es.json en Archivo que se creará](/guide/language-add.webp "Elige un idioma y comprueba el archivo que creará Malmoi.")
 
 Malmoi rechaza un idioma que ya está en la fuente, uno cuya ruta de archivo coincide con la de otro idioma (por ejemplo `pt-BR` y `pt_br`), uno que escribiría en un archivo de otra fuente y uno que se está quitando; en ese caso, cancela la eliminación.
 
@@ -36,6 +40,8 @@ Si añades un idioma que ya estuvo en esta fuente, Malmoi recupera sus traduccio
 2. Lee la confirmación. Muestra el idioma, su archivo, cuántas traducciones conserva Malmoi y si una pull request ya incluye el cambio.
 3. Si el idioma tiene ediciones sin enviar, la confirmación dice cuántas se descartarán; cada una vuelve al último valor enviado al repositorio. Si alguna edición nunca se envió, no hay valor al que volver y Malmoi te pide que publiques primero.
 4. Elige **Quitar idioma** otra vez. La fila se queda en la lista como **Quitando** y los traductores ya no pueden guardar ediciones en ese idioma.
+
+![La confirmación para quitar ja de emails, con el idioma, su archivo, las traducciones que se conservan y el estado de la pull request, y un aviso de que se descartará 1 edición sin enviar](/guide/language-remove.webp "Lee lo que descarta la eliminación y luego elige Quitar idioma.")
 
 Quitar un idioma borra su archivo en la siguiente publicación. No toca el código de tu app. Para que la app no cargue un archivo que falta, la confirmación y la descripción de la pull request te recuerdan que quites las referencias al idioma (listas de idiomas admitidos, rutas y el código que carga el archivo) antes de fusionar.
 
@@ -71,6 +77,8 @@ Elige **Publicar**, como con cualquier cambio. Si solo cambian archivos de idiom
 - **No incluido** — el idioma todavía no tiene traducciones, así que no hay archivo que crear.
 - **Retenido** — el archivo ya está en la rama base. Cuando se cierre la pull request abierta, el idioma pasa a estar activo en la siguiente publicación o comprobación nocturna.
 - Retirado — cancelaste un cambio después de que entrara en una pull request, así que Publicar lo retira de ella.
+
+![La vista previa Publicar cambios de idioma con un archivo, i18n/emails/ja.json, marcado como Quitado, y un botón Abrir pull request](/guide/publish-language-changes.webp "Cada archivo indica qué hace Publicar con él.")
 
 Si hay una pull request de Malmoi abierta, Publicar reemplaza lo que contiene por todo lo que está sin enviar, incluidos los cambios de idioma, en lugar de abrir una segunda.
 

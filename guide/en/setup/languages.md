@@ -16,6 +16,8 @@ A row can show:
 - A link to the pull request (a merge request on GitLab) — the change went out in Malmoi's last publish. The link points to that publish's pull request, which may no longer be open.
 - **Not confirmed in the pull request** — the last publish couldn't finish, so Malmoi can't tell what the pull request contains. Publish again before you cancel or change this language.
 
+![The Languages card of a source, with an Add language button above rows for the base language, regular languages, one being added, one being removed, and an inactive one](/guide/languages-card.webp "Each row shows the language's status and one action.")
+
 On the base language's row, **Remove language** is turned off; choose another [base language](sources.md#base-language) first. For translators, and for formats that don't support adding and removing, the buttons are turned off too, and the card's description says why.
 
 ## Add a language {#add}
@@ -23,6 +25,8 @@ On the base language's row, **Remove language** is turned off; choose another [b
 1. In the **Languages** card, choose **Add language**.
 2. For a JSON catalog, choose a language from **Common languages** or type a code in **Language code**: a lowercase language with an optional region, such as `fr`, `pt-BR`, or `zh_TW`. Languages that were in this source before are listed first, under **Previously in this source**. For Chrome extension messages, choose from **Language**; Chrome supports a fixed list of codes.
 3. Check **File to create**, the path the file will have. Choose **Add language** again to confirm.
+
+![The Add a language dialog over the source details, with es chosen as the language code and i18n/emails/es.json under File to create](/guide/language-add.webp "Choose a language and check the file Malmoi will create.")
 
 Malmoi refuses a language that is already in the source, one whose file path matches an existing language's (for example `pt-BR` and `pt_br`), one that would write to a file another source owns, and one that is being removed — cancel that removal instead.
 
@@ -36,6 +40,8 @@ If you add a language that was in this source before, Malmoi brings back its sav
 2. Read the confirmation. It shows the language, its file, how many translations Malmoi keeps, and whether a pull request already includes the change.
 3. If the language has unsent edits, the confirmation says how many will be discarded; each goes back to the value last sent to the repository. If some edits were never sent, there's no value to go back to, and Malmoi asks you to publish first.
 4. Choose **Remove language** again. The row stays in the list with **Removing**, and translators can no longer save edits in that language.
+
+![The Remove ja from emails? confirmation listing the language, its file, the translations kept, and the pull request status, with a warning that 1 unsent edit will be discarded](/guide/language-remove.webp "Read what the removal discards, then choose Remove language.")
 
 Removing a language deletes its file in the next Publish. It doesn't touch your app's code. The confirmation, and the pull request description, remind you to remove references to the language (supported-language lists, routing, and the code that loads the file) before you merge, so the app doesn't load a missing file.
 
@@ -71,6 +77,8 @@ Choose **Publish**, as for any change. If only language files changed, the previ
 - **Not included** — the language has no translations yet, so there's no file to create.
 - **Held** — the file is already on the base branch. After the open pull request closes, the language becomes active at the next publish or nightly check.
 - Taken back — you canceled a change after it went into a pull request, so Publish removes it from there.
+
+![The Publish language changes preview with one file, i18n/emails/ja.json, headed Removed, and an Open pull request button](/guide/publish-language-changes.webp "Each file is headed by what Publish does to it.")
 
 If a Malmoi pull request is open, Publish replaces what it holds with everything unsent, including the language changes, instead of opening a second one.
 
