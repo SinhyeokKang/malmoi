@@ -83,16 +83,16 @@
 - [x] `loadSourceDetail`에 `pullRequestUrl`(저장된 `Project.lastPrUrl`). 검증: 호스트 호출 0, 프로젝트로 좁힘, 없으면 `null`.
 - [x] 사건 payload — `surface.localeAdded.reissued`(되살림) · `surface.localeChangeResolved`의 PR/MR 번호. 검증: 옛 payload 읽기 유지(필드 없음 → `null`), 만료 세 경로(야간·Publish·CI)가 같은 필드를 쓴다.
 - [x] `STATE`에 `adding`(soft-neutral)·`removing`(soft-amber), `removedFromRepository` 낱말 → `Inactive`. 검증: `canon`·cross-screen 테스트 green, 세 사전 같은 커밋.
-- [ ] Sources Add Dialog(json 프리셋 + 자유 입력 · Chrome Select · 미리보기 받는 중/실패 · 재추가)·행 동작·확인 Dialog·취소 결과 notice·상태 배지(시안 L1–L7·A1–A5·D1–D5). 검증(DOM): 시안의 상태별 배지·톤·버튼, base/EDITOR/비지원/미확정 비활성 이유(`aria-disabled` + 설명), 정확한 파일 경로·미전달 수·앱 코드 정리 경고, Inactive danger 톤·Open 비활성·재추가 안내, 프리셋의 이름(화면 언어 · 밑줄 코드 이름 표시)·구분자 규칙·`Use this code`·IME, 정렬과 `role="status"` 알림·포커스 규칙. 클릭 전 enabled 대기(POSTMORTEM 2829).
-- [ ] 언어 변경 때문에 막힌 기준 언어 선언(소스 상세 Base language 카드)·기준 브랜치 변경(Settings Repository 카드) 안내(시안 P2). 검증(DOM): `locale-change-pending`이 일반 실패 문구로 접히지 않는다.
+- [x] Sources Add Dialog(json 프리셋 + 자유 입력 · Chrome Select · 미리보기 받는 중/실패 · 재추가)·행 동작·확인 Dialog·취소 결과 notice·상태 배지(시안 L1–L7·A1–A5·D1–D5). 검증(DOM): 시안의 상태별 배지·톤·버튼, base/EDITOR/비지원/미확정 비활성 이유(`aria-disabled` + 설명), 정확한 파일 경로·미전달 수·앱 코드 정리 경고, Inactive danger 톤·Open 비활성·재추가 안내, 프리셋의 이름(화면 언어 · 밑줄 코드 이름 표시)·구분자 규칙·`Use this code`·IME, 정렬과 `role="status"` 알림·포커스 규칙. 클릭 전 enabled 대기(POSTMORTEM 2829).
+- [x] 언어 변경 때문에 막힌 기준 언어 선언(소스 상세 Base language 카드)·기준 브랜치 변경(Settings Repository 카드) 안내(시안 P2). 검증(DOM): `locale-change-pending`이 일반 실패 문구로 접히지 않는다.
 - [x] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.
 - [x] 번역 화면 셀 얼리기 — DOM(jsdom): 서버 갱신 주입 시 입력 보존, 저장 중 제거 거부 시 입력 유지·전용 footer 문구, 세션 만료 중 저장의 입력 보존, 이탈 확인에 얼린 입력 포함. 검증: transition 정리(POSTMORTEM 2187)·클릭 가능 대기를 포함한 DOM 테스트 green.
 - [ ] 번역 화면 셀 얼리기 — 수동: 두 세션·두 언어에서 외부 제거. 검증: `/runtime-test` 리포트에 결과.
 - [x] `summary.ts`가 REMOVE 언어를 읽기 전용으로 싣는다. 검증: 상세 데이터 테스트에 REMOVE 언어 포함, orphan 제외.
 - [x] 완료율·Home·Keys 검색·Inbox·Sources 수를 상태 술어에 맞춘다. 검증: ADD 포함, REMOVE 작업 제외/상태 행 유지, 취소 시 복구.
-- [ ] Publish 미리보기·결과의 `New file`/`Updated`/`Removed`와 빈 ADD·보류·PR 갱신 필요(시안 P1 — 제목 규칙 · `Not included`·`Held` · `Taken back from #N` · `locale-plan-refused` 판 · PR 배너 0건 갈래). 검증: 파일 삭제 수를 번역 전달 수로 표시하지 않음, PR 반영 전 완료 문구 없음, 번역 0 · 파일 변경 ≥ 1에서 `0 changes` 문장이 나오지 않음.
-- [ ] 수동 Sync 확인의 언어 변경 구획(시안 P4). 검증(DOM): 셀 편집과 언어 변경을 다른 블록으로 센다, 언어별 결과 한 줄, 다섯 개 초과 접기.
-- [ ] Logs 언어 사건 문장 넷 + 만료 두 결과 + 사람 주체(`while publishing`)(시안 P3). 검증: 종류 폴백 문장(“changed Sources & languages”)이 언어 사건에 남지 않음, 옛 payload는 필드 없는 문장.
+- [x] Publish 미리보기·결과의 `New file`/`Updated`/`Removed`와 빈 ADD·보류·PR 갱신 필요(시안 P1 — 제목 규칙 · `Not included`·`Held` · `Taken back from #N` · `locale-plan-refused` 판 · PR 배너 0건 갈래). 검증: 파일 삭제 수를 번역 전달 수로 표시하지 않음, PR 반영 전 완료 문구 없음, 번역 0 · 파일 변경 ≥ 1에서 `0 changes` 문장이 나오지 않음.
+- [x] 수동 Sync 확인의 언어 변경 구획(시안 P4). 검증(DOM): 셀 편집과 언어 변경을 다른 블록으로 센다, 언어별 결과 한 줄, 다섯 개 초과 접기.
+- [x] Logs 언어 사건 문장 넷 + 만료 두 결과 + 사람 주체(`while publishing`)(시안 P3). 검증: 종류 폴백 문장(“changed Sources & languages”)이 언어 사건에 남지 않음, 옛 payload는 필드 없는 문장.
 - [ ] en·ko·es 문구를 호스트별(`onGitLab`) 어휘로 반영, `orphanStrip` 원인 중립화, 카드 설명 OWNER/EDITOR/비지원 분기. 검증: dictionary-consistency·banned-terms·no-korean-ui green.
 - [ ] `/design-sync`로 신규 UI 대조. 검증: 로컬 핸드오프와 computed style·접근성 트리, 키보드·IME·포커스 복귀·좁은 폭·라이트/다크 확인.
 
