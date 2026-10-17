@@ -575,6 +575,8 @@ describe("클라이언트 그래프", () => {
       // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
       "lib/events/payload.ts",
       "lib/events/view.ts",
+      // 언어 만료 행의 글리프·문장이 "리포가 요청대로인가"를 Publish 결과와 같은 판정으로 읽는다(locale-add 시안 P3) — import 0인 잎이다.
+      "lib/locales/reached.ts",
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",
