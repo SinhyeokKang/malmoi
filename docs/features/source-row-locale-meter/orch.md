@@ -20,6 +20,7 @@
 | D8 | 행 막대는 **작업 언어**(`localeRole === "work"` — orphaned와 제거 예정 REMOVE를 뺀다, ADD는 포함)만 그린다. 기존 `progress`도 지금처럼 작업 언어만 더한다 | 지휘자 판단 — 같은 행의 `N languages`(`loadSurfaceCounts`)가 작업 언어를 세고, `work-locale.ts`가 "진행률·Sources 수는 작업 언어 술어로 센다"를 정본으로 둔다. spec(2026-10-15)은 locale-add의 REMOVE 의도 이전 서술이었다. 상세 모달은 Removing 행을 상태와 함께 계속 보여 준다 (A 질문 msg_6d0651a8bada) |
 | D9 | #289: 보류할 것이 없는 요청 정리 실행은 **요청을 닫았다 틀**(제목 후보 `Language request closed` · 본문 `Nothing was written to the repository.` + 기존 만료 줄)로 낸다. 보류가 실제로 있으면 Held back 틀 그대로. DESIGN §6.646 개정 | 2026-10-17 사용자(추천안 승인) |
 | D10 | QA-P(prod)는 `bugshot-i18n-test`(PR #15 포함)를 자유롭게 쓰고, GitLab 픽스처 `malmoi-gitlab-test`로도 시험한다. 상주 픽스처는 보관·삭제하지 않는다 | 2026-10-17 사용자 |
+| D11 | project-row-redesign Q1(언어 요청만 미전달인 프로젝트의 행·Home·Inbox 표시)은 **별개 feature**로 뺀다 — #290. P2가 그 스펙에 비목표 + design §1 예외로 적는다 | 2026-10-17 사용자 |
 | D7 | T9(정본 갱신)는 B 워커의 후속 Task, 기능 디렉터리 삭제는 지휘자가 마지막 리포트 직전에 | 지휘자 판단 — 정본 문서는 구현을 아는 워커가 쓰고, orch.md는 런이 끝날 때까지 필요하다 |
 
 ## 배치
@@ -32,7 +33,7 @@
 | RB | B 리뷰 | Claude Opus high · 리포트 전용 | — | B | 🔴 0 | 대기 |
 | DS | T8 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 실측 일치 · 지적 0 | 대기 |
 | B2 | T9 | B 워커 후속 Task | `docs/DESIGN.md` · `docs/DIRECTORY.md` · (있으면) `docs/ARCHITECTURE.md` | DS 끝 | `pnpm gate` · `grep -rn "percent는 완료만" docs/` 0 | 대기 |
-| P1 | project-row-redesign 스펙 대조 — locale-add(§5.10 · 작업 언어 술어 · 언어 요청 정리 · `locale-change-pending`) + 이 런의 결정(D1–D10)이 그 spec·design·tasks·design-brief에 주는 영향 (2026-10-17 사용자) | Claude Opus high · 워크트리 `srlm-p` | `docs/features/project-row-redesign/*`만 | — (코드 겹침 없음) | 바뀐 단언마다 근거 file:line · 사용자 결정 지점은 `ask` | 완료 `7e40ad93`(dev 로컬) — Q1 사용자 대기 |
+| P1 | project-row-redesign 스펙 대조 — locale-add(§5.10 · 작업 언어 술어 · 언어 요청 정리 · `locale-change-pending`) + 이 런의 결정(D1–D10)이 그 spec·design·tasks·design-brief에 주는 영향 (2026-10-17 사용자) | Claude Opus high · 워크트리 `srlm-p` | `docs/features/project-row-redesign/*`만 | — (코드 겹침 없음) | 바뀐 단언마다 근거 file:line · 사용자 결정 지점은 `ask` | 완료 `7e40ad93` → dev `dfd495ef` — Q1은 D11(#290) |
 | P2 | 같은 문서 블로커 해제(사전 조건 충족 표시) + 이 런이 옮긴 줄 번호·타입·fixture 사실 | P 워커 후속 Task | 같음 | A·B·F2 통합 뒤 | 사전 조건 확인문 `rg -n "RowLocaleProgress" components/locale-meter.tsx` 0건이 참 | 대기 |
 | G | T10 | 지휘자 `pnpm guide:check` → stale이면 Claude Opus 워커(main 체크아웃, `/guide`·`/guide-shots`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | DS 끝(ego 세션 공유 — 겹치지 않게) | `pnpm guide:check` 출력 인용 | 대기 |
 | F1 | #288 (locale-add 후속 — 다른 세션이 2026-10-17 이 런으로 넘김) | Claude Opus high · 워크트리 `srlm-f` | `messages/{en,ko,es}.tsx`의 `cancelAddDone`만 · 사전/DOM 테스트 | — (A와 겹침 없음, B보다 먼저 통합) | `pnpm gate --base dev` | 진행 |
