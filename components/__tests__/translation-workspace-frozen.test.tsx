@@ -92,6 +92,8 @@ it("얼린 칸만 미저장이면 Save가 꺼지고, Discard change가 그 입�
 
   await user.click(await clickable(w.detail.discardChange));
   expect(area(container, "zh").value).toBe("");
+  // 누른 버튼이 사라진다 — 포커스가 body로 빠지지 않고 그 칸에 선다.
+  expect(document.activeElement).toBe(area(container, "zh"));
   expect(area(container, "zh").readOnly).toBe(true);
   expect(button(w.detail.discardChange)).toBeUndefined();
   expect(container.textContent).not.toContain(w.detail.frozenReason("zh"));
