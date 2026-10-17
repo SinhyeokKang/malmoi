@@ -21,6 +21,7 @@
 | D9 | #289: 보류할 것이 없는 요청 정리 실행은 **요청을 닫았다 틀**(제목 후보 `Language request closed` · 본문 `Nothing was written to the repository.` + 기존 만료 줄)로 낸다. 보류가 실제로 있으면 Held back 틀 그대로. DESIGN §6.646 개정 | 2026-10-17 사용자(추천안 승인) |
 | D10 | QA-P(prod)는 `bugshot-i18n-test`(PR #15 포함)를 자유롭게 쓰고, GitLab 픽스처 `malmoi-gitlab-test`로도 시험한다. 상주 픽스처는 보관·삭제하지 않는다 | 2026-10-17 사용자 |
 | D11 | project-row-redesign Q1(언어 요청만 미전달인 프로젝트의 행·Home·Inbox 표시)은 **별개 feature**로 뺀다 — #290. P2가 그 스펙에 비목표 + design §1 예외로 적는다 | 2026-10-17 사용자 |
+| D12 | 상세 Languages 카드 오른쪽 수치의 분자는 `meterValue`의 clamp를 지난 `done + review`다(design §2의 문자 그대로인 `translated + needsReview`와 정상 상태에서 같고, 경합 중 분모를 넘지 않는다) | 지휘자 판단 — RB 🟢1, 퍼센트·막대와 같은 clamp를 지나야 한 행의 세 숫자가 같은 사실을 말한다 |
 | D7 | T9(정본 갱신)는 B 워커의 후속 Task, 기능 디렉터리 삭제는 지휘자가 마지막 리포트 직전에 | 지휘자 판단 — 정본 문서는 구현을 아는 워커가 쓰고, orch.md는 런이 끝날 때까지 필요하다 |
 
 ## 배치
