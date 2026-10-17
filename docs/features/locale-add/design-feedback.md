@@ -70,7 +70,7 @@
 
 - **P1 전 프레임의 PR 배너는 기존 문장을 쓴다.** 이 배너는 이번 기능의 새 UI가 아니라 기존 Publish 미리보기의 열린 PR 삼상태다. 그런데 캔버스는 다른 문장을 그렸다(`No pull request is open for … / Publishing opens one with these changes.` · `Pull request #128 is open for … / Publishing replaces it with these changes.`). 사전에 있는 `prNone`(`A new pull request opens on {repo}` + 본문) · `prOpen`(`#128 is open — this replaces what it holds` + 본문)으로 바꾼다. 캔버스가 dev 반영 전까지 정본이라, 그대로 두면 구현이 새 문장을 사전에 더하게 된다.
 
-## 2.8 5차 (2026-10-17) — PR 배너 0건 갈래
+## 2.8 5차 (2026-10-17) — PR 배너 0건 갈래 · ✅ 반영됨(검토 종료)
 
 2.7은 반영됐다(사전의 `prNone`·`prOpen`). 그 결과 번역 변경 0건 · 파일 변경만 있는 Publish(P1 ①)에서 사전 출력이 `these 0 changes go out on their own.`(prOpen은 `not just these 0`)이 된다. **0건 갈래를 “코드에 없음”으로 요청한다**(이쪽 추천) — 그 갈래는 언어 파일 변경 수로 센다(`this language change` / `these 2 language changes`), 번역 변경이 함께 있으면 지금 문장 그대로, GitLab판 같은 갈래. 근거: P1 ①의 제목(`Publish language changes`)·바닥 수(`0 changes · 1 file`)가 이미 파일 변경을 따로 센다.
 

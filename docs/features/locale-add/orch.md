@@ -5,14 +5,14 @@
 
 ## 착수 범위 — 2차 런 (2026-10-17, 시안 확보)
 
-**시안이 왔다** — Claude Design 프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`의 허브 `Locale Add Remove.dc.html` + 섹션 다섯(L1–L7 · A1–A5 · D1–D5 · P1–P4 · T1). 4차까지 검토했고 결정은 아래 D4~D10. 로컬 사본은 메인 체크아웃 `.scratch/orch-locale-add/design/`에 L·A·P만 있다(D·T·허브는 **지휘자가 첫 UI 브리프 전에 `DesignSync get_file`로 같은 자리에 저장**한다 — 인라인 응답이라 인테이크에서 저장하지 못했다). 5차 요청(P1 배너 0건 갈래, design-feedback §2.8)은 디자이너 반영 대기 — E3 브리프 전에 P를 다시 받는다.
+**시안이 왔다** — Claude Design 프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`의 허브 `Locale Add Remove.dc.html` + 섹션 다섯(L1–L7 · A1–A5 · D1–D5 · P1–P4 · T1). 4차까지 검토했고 결정은 아래 D4~D10. 로컬 사본은 메인 체크아웃 `.scratch/orch-locale-add/design/`에 L·A·P만 있다 — D·T·허브는 `get_file` 응답이 파일로 떨어지지 않고 인라인으로 와서 사본을 못 남겼다. **워커·DS는 `DesignSync get_file`로 직접 받는다**(아래 "시안 위치"). 5차(P1 배너 0건 갈래, design-feedback §2.8)까지 반영됐다 — 시안 검토 종료.
 
 - **진행**: 1차 런의 ⏸ 시안 대기 행 전부 + 시안 검토로 생긴 서버 보강 셋(E0) — tasks §6 미체크 전부 · §8 둘째(DESIGN)·넷째(`/guide`·`/guide-shots`) · §9 첫째·둘째.
 - **런 밖**: §2 넷째의 prod 몫·§9 다섯째(`/merge` — 사용자가 부른다) · `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고(action 릴리스 축).
 
 ## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-17)
 
-**한 줄 상태(2차 런)**: 인테이크 완료 — 아래 "2차 런 배치"의 wave ⑥(E0)부터 띄운다. 첫 지휘 동작: ① `.scratch/orch-locale-add/design/`에 D·T·허브 저장 ② 새 Orca run ③ E0 브리프.
+**한 줄 상태(2차 런)**: 인테이크 완료 — 아래 "2차 런 배치"의 wave ⑥(E0)부터 띄운다. 첫 지휘 동작: ① 새 Orca run ② E0 브리프(시안이 필요 없는 배치) ③ E0 통합 뒤 E1·E2·E3 브리프에 "시안 위치" 표를 넣는다.
 
 **1차 런 상태(2026-10-14 기록)**: 시안 없이 할 수 있는 일은 모두 끝났다. 배치 A1·A2·B1·B2·B3·C1·C2·D와 RT에서 나온 수정 F1·F2가 전부 dev에 들어가 push됐고(마지막 `1bcadabd`, CI success), 실호스트 왕복(RT·RT2·RT3)이 GitHub·GitLab × json-catalog·chrome-locales에서 통과했다. 이번 런의 이슈 #265·#266·#267은 모두 고쳐서 닫았다. **남은 것은 시안이 와야 하는 화면 일체와 `/merge`뿐이다**(이 기능은 화면까지 끝나기 전 머지 금지).
 
@@ -122,10 +122,10 @@
 | D · 제거 확인 Dialog (D1–D5) | `Locale Add Remove - D.dc.html` |
 | P · Publish · 막힌 동작 · Logs · Sync (P1–P4) | `Locale Add Remove - P.dc.html` |
 | T · 번역 화면 (T1) | `Locale Add Remove - T.dc.html` |
-| 로컬 사본(gitignore — 이 머신만) | `/Users/sinhyeok/code/malmoi/.scratch/orch-locale-add/design/<위 파일 이름>` — 지금 L·A·P. D·T·허브는 지휘자가 첫 UI 브리프 전에 저장. 캔버스가 이미지 `assets/flags/*.svg`를 참조하지만 대조에 필요한 값은 HTML 인라인 스타일에 다 있다 |
+| 로컬 사본(gitignore — 이 머신만) | `/Users/sinhyeok/code/malmoi/.scratch/orch-locale-add/design/<위 파일 이름>` — L·A·P만(D·T·허브는 `get_file`이 인라인으로 돌려줘 파일로 못 남겼다 — 직접 받는다). 캔버스가 이미지 `assets/flags/*.svg`를 참조하지만 대조에 필요한 값은 HTML 인라인 스타일에 다 있다 |
 
 - **취득**: Claude Code는 `DesignSync get_file`(projectId 위, path = 파일 이름 그대로). ⚠️ **`get_file`은 256 KiB에서 자른다** — 섹션 파일은 모두 그 아래(L ≈ 166 KB)지만, 받은 뒤 응답의 `truncated: false`를 확인한다. 디자인 권한이 없는 세션은 `/design-login`이 필요하다 — 워커가 막히면 로컬 사본을 쓴다.
-- **판본**: 2026-10-17 4차 검토본(design-feedback.md §2.7까지 반영). §2.8(P1 배너 0건 갈래)은 반영 대기 — E3·DS 직전에 P를 다시 받아 사본을 덮는다.
+- **판본**: 2026-10-17 5차 검토본(design-feedback.md §2.8까지 반영 — 검토 종료). 로컬 P 사본은 5차본이다. 캔버스가 그 뒤 바뀌면 DS가 새로 받은 판을 기준으로 삼고 리포트에 차이를 적는다.
 - 캔버스 안의 “코드에 없음” 주황 표기는 구현이 새로 만들 자리, 보라 “1차 피드백”·“2차 피드백” 표기는 검토 반영 자리다. 둘 다 정본 문장이다.
 
 ### 배치
