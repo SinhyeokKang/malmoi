@@ -77,10 +77,11 @@ export const ko = {
     sendHint: (n: number, link: ReactNode): ReactNode => <>변경 사항을 보존하려면 {link}하세요. 번역 화면으로 이동합니다.</>,
     nothingUnsent: "모든 변경 사항을 이미 보냈습니다.",
     seeOpen: "열린 요청 보기",
-    languagesDropped: (n: number): string => `언어 변경 ${n.toLocaleString("ko-KR")}건이 취소됩니다.`,
-    languageNotAdded: (code: string, translations: number): string =>
-      translations === 0 ? `${code}은(는) 추가되지 않습니다.` : `${code}은(는) 추가되지 않습니다. 번역 ${translations.toLocaleString("ko-KR")}개는 Malmoi에 남습니다.`,
-    languageNotRemoved: (code: string): string => `${code}은(는) 제거되지 않고 이 소스에 남습니다.`,
+    languageCount: (n: number): string => `언어 변경 ${n.toLocaleString("ko-KR")}건`,
+    languagesDropped: (n: number, count: ReactNode): ReactNode => <>{count}이 취소됩니다.</>,
+    languageNotAdded: (translations: number): string =>
+      translations === 0 ? "추가되지 않습니다." : `추가되지 않습니다. 번역 ${translations.toLocaleString("ko-KR")}개는 Malmoi에 남습니다.`,
+    languageNotRemoved: "제거되지 않고 이 소스에 남습니다.",
     languageInSource: (code: string, source: string): string => `${code}(${source})`,
     languagesMore: (n: number): string => `외 ${n.toLocaleString("ko-KR")}건`,
     completed: (n: number, branch: string): string => `${branch} 브랜치에서 키 ${n.toLocaleString("ko-KR")}개를 동기화함`,

@@ -386,13 +386,21 @@ function LanguageBlock({ id, languages }: { id: string; languages: readonly Lang
   const s = m.repositorySync;
   const sources = new Set(languages.map(change => change.surfaceSlug)).size;
   const shown = languages.length > LANGUAGE_LIMIT ? languages.slice(0, LANGUAGE_LIMIT - 1) : languages;
+  /*
+    시안 P4의 형 (#275) — 첫 문장의 수만 medium이고, 언어 줄은 코드 칸(44 · medium) + 결과 문장이다. 줄 사이 4 · 첫 문장과 2.
+    ⚠️ **코드 칸은 최소 44이고 늘어난다** — 소스가 둘 이상이면 칸이 `de (web)`을 든다. 줄바꿈하지 않고(코드가 쪼개지면 안 읽힌다) 그 줄만 칸이 넓어진다 —
+    결과 문장의 시작선이 줄마다 조금 어긋나는 대가를 받는다(grid의 `display: contents` li는 목록 의미를 잃는다).
+  */
   return <Alert variant="warning" size="sm">
-    <div id={id} data-sync-languages className="space-y-1.5">
-      <p>{s.languagesDropped(languages.length)}</p>
-      <ul className="space-y-1">
+    <div id={id} data-sync-languages>
+      <p>{s.languagesDropped(languages.length, <span className="font-medium">{s.languageCount(languages.length)}</span>)}</p>
+      <ul className="mt-0.5 flex flex-col gap-1">
         {shown.map(change => {
           const code = sources > 1 ? s.languageInSource(change.localeCode, change.surfaceSlug) : change.localeCode;
-          return <li key={`${change.surfaceSlug}\0${change.localeCode}`}>{change.operation === "ADD" ? s.languageNotAdded(code, change.translations) : s.languageNotRemoved(code)}</li>;
+          return <li key={`${change.surfaceSlug}\0${change.localeCode}`} className="flex gap-2">
+            <span data-language-code className="min-w-11 shrink-0 font-medium whitespace-nowrap">{code}</span>
+            <span data-language-result className="min-w-0 flex-1">{change.operation === "ADD" ? s.languageNotAdded(change.translations) : s.languageNotRemoved}</span>
+          </li>;
         })}
         {shown.length < languages.length && <li>{s.languagesMore(languages.length - shown.length)}</li>}
       </ul>
