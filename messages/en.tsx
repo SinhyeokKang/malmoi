@@ -3926,6 +3926,14 @@ export const en = {
         save: "Save",
       saved: "Saved",
         failed: "We couldn't save this. Try again in a moment.",
+        /**
+         * 언어 변경이 남아 브랜치를 못 바꾼다 (locale-add 시안 P2) — 일반 실패로 접지 않는다. 그 소스를 이름으로 말하고 할 일을 말한다.
+         * 둘 이상이면 수로 센다(소스 이름을 나열하지 않는다 — 한 줄 캡션이다).
+         */
+        localeChangePending: (source: string): string =>
+          `${source} has a language change that isn't published yet. Finish or cancel the language change first, then change the branch.`,
+        localeChangesPending: (sources: number): string =>
+          `${sources.toLocaleString("en-US")} sources have language changes that aren't published yet. Finish or cancel those language changes first, then change the branch.`,
       },
 
     },

@@ -34,7 +34,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
   const m = useMessages();
   const [pending, startTransition] = useTransition();
   const [branch, setBranch] = useState(baseBranch);
-  const [result, setResult] = useState<"idle" | "saved" | { error: string }>("idle");
+  const [result, setResult] = useState<"idle" | "saved" | { error: string; surfaceSlugs?: readonly string[] }>("idle");
   // 저장된 값 — 같은 값의 [Save]는 눌러도 아무 일이 없는 버튼이라 끈다.
   const [current, setCurrent] = useState(baseBranch);
 
@@ -80,7 +80,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
   const fixed = disabled || unpinned || choice?.mode === "fixed";
   const editable = !fixed && choice !== undefined;
   // 보관 상태가 오면(`disabled`) 옛 거부를 내린다 — 다른 행과 같은 `archivedReason` 한 문장만 선다 (QA D1).
-  const failure = disabled || typeof result !== "object" ? null : result.error;
+  const failure = disabled || typeof result !== "object" ? null : result;
 
   return (
     <form
@@ -99,7 +99,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
           return;
         }
         startTransition(async () => {
-          try { const next = await updateRepositorySettings({ slug, baseBranch: branch }); if (next.ok) { setCurrent(branch); setResult("saved"); } else setResult({ error: next.error }); }
+          try { const next = await updateRepositorySettings({ slug, baseBranch: branch }); if (next.ok) { setCurrent(branch); setResult("saved"); } else setResult(next.error === "locale-change-pending" ? { error: next.error, surfaceSlugs: next.surfaceSlugs } : { error: next.error }); }
           catch { setResult({ error: "unavailable" }); }
         });
       }}
@@ -140,7 +140,13 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
 }
 
 /** 갈래 이름을 문구로. 모르는 값은 재시도 가능한 실패로 접는다 (`PushTokenPanel`과 같은 형). */
-function messageFor(m: Messages, error: string): string {
+function messageFor(m: Messages, { error, surfaceSlugs = [] }: { error: string; surfaceSlugs?: readonly string[] }): string {
+  // 언어 변경이 남은 거부는 재시도로 안 풀린다 — 일반 실패 문구로 접지 않고 그 소스와 할 일을 말한다(시안 P2).
+  if (error === "locale-change-pending") {
+    const f = m.settings.repository.fields;
+    const [only] = surfaceSlugs;
+    return surfaceSlugs.length > 1 ? f.localeChangesPending(surfaceSlugs.length) : only !== undefined ? f.localeChangePending(only) : f.failed;
+  }
   if (isRepositorySettingsError(error)) return repositorySettingsErrorMessage(m, error);
   if (isAccessError(error)) return settingsAccessMessage(m, error);
   return m.settings.repository.fields.failed;

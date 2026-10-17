@@ -79,6 +79,8 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "account.gitlab.expiredOn": ["X"],
   "account.gitlab.usedBy": [2],
   "account.gitlab.expiresSoonNotice": [2, "X"],
+  "settings.repository.fields.localeChangePending": ["web"],
+  "settings.repository.fields.localeChangesPending": [2],
   "settings.repository.gitlab.connectedWith": ["X", "X"],
   "settings.repository.gitlab.connectedWithYours": ["X"],
   "settings.repository.gitlab.expiresSoonYours": [2, "X"],

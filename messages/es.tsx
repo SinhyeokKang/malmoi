@@ -2122,6 +2122,10 @@ export const es = {
         save: "Guardar",
       saved: "Guardado",
         failed: "No pudimos guardarlo. Vuelve a intentarlo en un momento.",
+        localeChangePending: (source: string): string =>
+          `${source} tiene un cambio de idioma que aún no se ha publicado. Termina o cancela ese cambio de idioma y después cambia la rama.`,
+        localeChangesPending: (sources: number): string =>
+          `${sources.toLocaleString("es")} fuentes tienen cambios de idioma que aún no se han publicado. Termina o cancela esos cambios de idioma y después cambia la rama.`,
       },
 
     },

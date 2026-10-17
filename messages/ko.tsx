@@ -2127,6 +2127,10 @@ export const ko = {
         save: "저장",
         saved: "저장됨",
         failed: "저장하지 못했습니다. 잠시 후 다시 시도하세요.",
+        localeChangePending: (source: string): string =>
+          `${source} 소스에 아직 게시하지 않은 언어 변경이 있습니다. 언어 변경을 마치거나 취소한 뒤 브랜치를 바꾸세요.`,
+        localeChangesPending: (sources: number): string =>
+          `소스 ${sources.toLocaleString("ko-KR")}개에 아직 게시하지 않은 언어 변경이 있습니다. 그 언어 변경을 마치거나 취소한 뒤 브랜치를 바꾸세요.`,
       },
 
     },
