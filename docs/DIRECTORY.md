@@ -820,8 +820,8 @@ lib/
                         expiry(planLocaleExpiry — 만료 조건 · ADD 자기 증거 · 빈 관측 보류) · presence(strict 적재와 공유하는 존재 판정 liveLocalesOf/localePresence) ·
                         reached(reachedRepository — 만료 뒤 존재로 리포가 요청대로인지, import 0인 잎이라 클라이언트 결과 갈래도 부른다) ·
                         chrome-codes(Chrome 지원 목록 54개 — 출처 URL·확인일이 머리 주석) · presets(추가 Dialog의 프리셋 — 고정 목록·소스별 구분자·이름 거르기·코드 모양. ⚠️ **클라이언트 잎**이고 표시 규칙만 든다 — 받을지는 서버 미리보기가 정한다) · fingerprint(localeChangeFingerprint — 서버 발급 승인 지문, node:crypto)
-                        / work(server-only 없음 — 전달 목록 읽기·localeWork·readLocaleStates·countLocaleWork) · expire(expireLocaleChanges — 잠금 안 만료 I/O,
-                        적재·야간·모든 Publish가 같이 부른다) · change(**웹 Action·MCP가 같은 코어** — addLocale · previewLocaleRemoval · removeLocale · cancelLocaleRemoval, server-only)
+                        / work(server-only 없음 — 전달 목록 읽기·localeWork·readLocaleStates·countLocaleWork · awaitsResolution/readLocaleWork — Publish `settle`의 DB 판정) · expire(expireLocaleChanges — 잠금 안 만료 I/O,
+                        적재·야간·모든 Publish가 같이 부른다 · dropDeliveredEffects — 만료와 승인 Sync 폐기가 같이 쓰는 전달 효과 빼기) · change(**웹 Action·MCP가 같은 코어** — addLocale · previewLocaleRemoval · removeLocale · cancelLocaleRemoval, server-only)
                         ⚠️ 순수 판정에 server-only를 붙이지 않는다. 격리 PG 시나리오(__tests__/*.integration.ts — change · expire)는 scripts/gate-plan.ts 트리거에 lib/locales/가 들어 있어 pnpm gate가 붙인다
   nightly/              **야간 판정** (2026-09-30, nightly-sync — ARCHITECTURE §3.05). plan(`planNightly` — 프로젝트 하나를
                         Publish / 적재 / 스킵 / 사건 없음으로 가르는 **한 함수**, I/O 0). 껍데기는 `need`를 받을 때마다 그 입력만
@@ -1021,9 +1021,9 @@ lib/
                         Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
                         `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
                         loadOpenPrUrl의 `repositoryId null → undefined`를 그대로 쓰지 않는다(옛 행의 CI가 영구 보류된다)
-                        · loadOpenPrUrlMemo — **Home 표시 전용**(아래 open-pr-memo를 지난다). 게이트는 쓰지 않는다
+                        · loadOpenPrUrlMemo — **Home·번역 화면 표시 전용**(보류 문장 · Publish `settle` — 아래 open-pr-memo를 지난다). 게이트는 쓰지 않는다
   projects/open-pr-memo.ts
-                        Home의 열린 PR 조회 30초 메모(probe-memo와 같은 TTL·상한). 순수 — `server-only`가 없어
+                        Home·번역 화면의 열린 PR 조회 30초 메모(probe-memo와 같은 TTL·상한). 순수 — `server-only`가 없어
                         runSync·importRepository가 forgetOpenPr로 그 프로젝트 항목을 지운다(Publish가 연 PR을 가리지 않게)
   projects/owner-limit.ts
                         server-only. lockOwnerSlots(tx, counted, alsoLock) — 복원·OWNER 승격·OWNER 초대 수락이 같이 부르는 상한 재집계(2026-10-03).
