@@ -277,6 +277,39 @@ describe("expireLocaleChanges — 해소 사건의 PR 번호", () => {
     await expire({ observed: { status: "observed", locales: ["en", "fr"] } });
     expect(await resolvedPullRequests()).toEqual(expect.arrayContaining([["de", null], ["ko", null]]));
   });
+
+  // 주소는 살아 있다 — 번호가 있어도 그 의도의 효과가 목록에 없으면 싣지 않는다(목록 조건을 주소 조건과 따로 잰다).
+  it("리포에서 직접 추가돼 관측된 ADD(목록에 create 없음)는 마지막 PR 번호를 싣지 않는다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "de", value: "Hallo" } });
+    await request("s-web", "de", "ADD");
+    await deliver("s-web", []);
+    await runUrl("https://github.com/o/r/pull/128");
+    await expire({ observed: { status: "observed", locales: ["en", "ko", "fr", "de"] } });
+    expect(await resolvedPullRequests()).toEqual([["de", null]]);
+  });
+
+  it("모순 행(orphan인데 ADD)은 마지막 PR 번호를 싣지 않는다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de", orphaned: true } });
+    await request("s-web", "de", "ADD");
+    await deliver("s-web", []);
+    await runUrl("https://github.com/o/r/pull/128");
+    await expire({});
+    expect(await resolvedPullRequests()).toEqual([["de", null]]);
+  });
+
+  // 확인 뒤 요청은 판정 목록이 뺀다 — 저장 목록을 쓰면 옛 요청의 PR이 새 요청에 붙는다(R-E0 Y2).
+  it("전달 후 취소 뒤 확인보다 늦게 다시 낸 추가는 옛 PR 번호를 싣지 않는다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "de", value: "Hallo" } });
+    // #5가 de 생성을 실었고(확인 R5), 취소로 행이 지워져 저장 목록에 `de create`만 남았다 — 그 뒤 같은 언어를 다시 추가했다.
+    await deliver("s-web", [{ localeCode: "de", effect: "create" }], false, new Date(Date.now() - 60_000));
+    await runUrl("https://github.com/o/r/pull/5");
+    await request("s-web", "de", "ADD");
+    // #5가 머지돼 옛 파일이 base에 들어갔고, 야간이 관측된 ADD를 만료한다.
+    await expire({ observed: { status: "observed", locales: ["en", "ko", "fr", "de"] } });
+    expect(await resolvedPullRequests()).toEqual([["de", null]]);
+  });
 });
 
 describe("readLocaleStates · countLocaleWork", () => {

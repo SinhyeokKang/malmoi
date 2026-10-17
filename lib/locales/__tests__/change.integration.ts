@@ -261,10 +261,23 @@ describe("previewLocaleAdd", () => {
     ["비지원 포맷", OWNER, { slug: "p", surfaceSlug: "app" }, "fr", () => prisma.translationSurface.update({ where: { id: "s-app" }, data: { adapterName: "ts-dict" } })],
     ["보관", OWNER, WEB, "fr", () => prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } })],
     ["없는 소스", OWNER, { slug: "p", surfaceSlug: "nope" }, "fr", async () => {}],
-  ])("%s — 미리보기가 쓰지 않고 실행과 같은 판정을 낸다", async (_label, subject, target, localeCode, arrange) => {
+    ["제거 요청 중", OWNER, WEB, "ko", () => prisma.localeChange.create({ data: { projectId: "p", surfaceId: "s-web", localeCode: "ko", operation: "REMOVE" } })],
+    // 관측 가능하지만 Chrome이 받지 않는 코드.
+    ["chrome-locales 밖 코드", OWNER, { slug: "p", surfaceSlug: "app" }, "eo", () => prisma.translationSurface.update({ where: { id: "s-app" }, data: { adapterName: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json" } })],
+    ["구분자만 다른 철자", OWNER, WEB, "pt-BR", () => prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "pt_BR", name: "pt_BR", orphaned: true } })],
+    ["다른 소스가 쥔 경로", OWNER, WEB, "fr", async () => {
+      await prisma.translationSurface.update({ where: { id: "s-app" }, data: { pathTemplate: "web/{locale}.json" } });
+      await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-app", code: "fr", name: "fr" } });
+    }],
+    ["{locale} 없는 템플릿", OWNER, WEB, "fr", () => prisma.translationSurface.update({ where: { id: "s-web" }, data: { pathTemplate: "web/all.json" } })],
+  ])("%s — 미리보기가 쓰지 않고 실행과 같은 판정을 낸다", async (label, subject, target, localeCode, arrange) => {
     await arrange();
     const before = await state();
     const preview = await previewLocaleAdd(prisma, subject, { ...target, localeCode });
+    // 행마다 노린 갈래에 실제로 닿았는지 — 앞 장벽에서 먼저 걸리면 표가 그 코드를 덮지 못한다(R-E0 Y3).
+    const expected: Record<string, string> = { "제거 요청 중": "removal-pending", "chrome-locales 밖 코드": "unsupported-locale", "구분자만 다른 철자": "locale-collision",
+      "다른 소스가 쥔 경로": "path-conflict", "{locale} 없는 템플릿": "unsafe-path" };
+    if (Object.hasOwn(expected, label)) expect(preview).toEqual({ ok: false, error: expected[label] });
     expect(await state()).toEqual(before);
     const result = await addLocale(prisma, subject, { ...target, localeCode });
     if (result.ok) {
