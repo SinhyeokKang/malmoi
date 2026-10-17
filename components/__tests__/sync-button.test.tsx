@@ -357,7 +357,7 @@ it("미전달 편집이 하나면 경고 줄의 대명사가 it이다", async ()
  * 발급 **실패**는 다르다 — 그때는 확정이 풀리고 `null`을 보내 서버가 재확인을 요구한다(위 [C4]).
  */
 it("지문 도착 전 확정은 aria-disabled + 스피너이고 눌러도 Action을 부르지 않는다 — 도착하면 풀린다", async () => {
-  const issued = deferred<{ approval: string; unsent: number }>();
+  const issued = deferred<{ approval: string; unsent: number; languages: never[] }>();
   mocks.prepare.mockReturnValue(issued.promise);
   await render(<SyncButton {...props} unsent={2} />);
   await click("Sync");
@@ -405,8 +405,8 @@ it("화면 7건·서버 0건이면 일반 Sync 확인이고 그 지문을 싣는
  * 두 번째 응답이 오기 전엔 확정할 수 없고, 온 뒤에는 그 응답의 건수·지문만 쓴다.
  */
 it("닫고 다시 열면 늦게 온 이전 응답을 쓰지 않고 새 응답의 건수·지문만 쓴다", async () => {
-  const first = deferred<{ approval: string; unsent: number }>();
-  const second = deferred<{ approval: string; unsent: number }>();
+  const first = deferred<{ approval: string; unsent: number; languages: never[] }>();
+  const second = deferred<{ approval: string; unsent: number; languages: never[] }>();
   mocks.prepare.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
   await render(<SyncButton {...props} unsent={0} />);
   await click("Sync"); await click("Cancel"); await click("Sync");
