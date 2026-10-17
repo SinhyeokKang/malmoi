@@ -373,7 +373,7 @@ describe("planLanguageRow", () => {
     { name: "L2② Adding 0개", r: row("fr", { change: add, translated: 0 }), input: owner, badge: "adding", unsent: false, link: false, notConfirmed: false, note: "noFileYet", kind: "remove", block: null },
     { name: "L2③ Adding + Unsent", r: row("fr", { change: add, translated: 9, unsent: true }), input: owner, badge: "adding", unsent: true, link: false, notConfirmed: false, note: null, kind: "remove", block: null },
     { name: "L2④ Removing + Unsent", r: row("de", { change: removal, unsent: true }), input: owner, badge: "removing", unsent: true, link: false, notConfirmed: false, note: "readOnly", kind: "cancel", block: null },
-    { name: "L2⑤ Removing 전달됨", r: row("de", { change: removal }), input: owner, badge: "removing", unsent: false, link: true, notConfirmed: false, note: "readOnly", kind: "cancel", block: null },
+    { name: "L2⑤ Removing 전달됨 — 남은 일은 PR 머지(#285)", r: row("de", { change: removal }), input: owner, badge: "removing", unsent: false, link: true, notConfirmed: false, note: "readOnlyDelivered", kind: "cancel", block: null },
     { name: "L2⑥ Adding 전달됨", r: row("fr", { change: add, translated: 9 }), input: owner, badge: "adding", unsent: false, link: true, notConfirmed: false, note: null, kind: "remove", block: null },
     { name: "L2⑦ 취소 뒤 활성 + Unsent", r: row("de", { unsent: true }), input: owner, badge: null, unsent: true, link: false, notConfirmed: false, note: "publishToUpdate", kind: "remove", block: null },
     { name: "L3② Inactive", r: row("es", { orphaned: true }), input: owner, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: "add", block: null },
@@ -439,4 +439,21 @@ it("#279 Sync 상태 줄의 언어 수는 리포에서 읽은 언어만 센다(A
   const modal = card().closest<HTMLElement>('[role="dialog"]')!;
   expect(modal.textContent).toContain(en.sources.importedSummary(248, 2));
   expect(modal.textContent).toContain(en.surfaces.sourceCounts(248, 4));
+});
+
+/** RT4 #285 — 전달된 제거는 이미 게시됐다. 남은 일은 PR/MR 머지(또는 취소)라 보조 줄이 그것을 말한다. 전달 전 문장은 그대로다. */
+it("#285 전달된 Removing 행은 머지를 말하고, 전달 전 행은 게시를 말한다 — GitHub·GitLab", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de", { change: removal }), row("ko", { change: removal, unsent: true })], { pullRequestUrl: "https://github.com/o/r/pull/26" }) });
+  await open();
+  expect(rowOf("de").textContent).toContain(en.sources.locale.readOnlyDelivered);
+  expect(rowOf("de").textContent).not.toContain(en.sources.locale.readOnly);
+  expect(rowOf("ko").textContent).toContain(en.sources.locale.readOnly);
+});
+
+it("#285 GitLab판은 merge request다", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de", { change: removal })], { repoHost: "gitlab", pullRequestUrl: "https://gitlab.com/g/app/-/merge_requests/26" }) });
+  await open("OWNER", "gitlab");
+  const gl = withRepoHost(en, "gitlab");
+  expect(rowOf("de").textContent).toContain(gl.sources.locale.readOnlyDelivered);
+  expect(gl.sources.locale.readOnlyDelivered).toMatch(/merge request/);
 });
