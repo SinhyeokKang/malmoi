@@ -31,8 +31,11 @@
 | DS | T8 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 실측 일치 · 지적 0 | 대기 |
 | B2 | T9 | B 워커 후속 Task | `docs/DESIGN.md` · `docs/DIRECTORY.md` · (있으면) `docs/ARCHITECTURE.md` | DS 끝 | `pnpm gate` · `grep -rn "percent는 완료만" docs/` 0 | 대기 |
 | G | T10 | 지휘자 `pnpm guide:check` → stale이면 Claude Opus 워커(main 체크아웃, `/guide`·`/guide-shots`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | DS 끝(ego 세션 공유 — 겹치지 않게) | `pnpm guide:check` 출력 인용 | 대기 |
+| F1 | #288 (locale-add 후속 — 다른 세션이 2026-10-17 이 런으로 넘김) | Claude Opus high · 워크트리 `srlm-f` | `messages/{en,ko,es}.tsx`의 `cancelAddDone`만 · 사전/DOM 테스트 | — (A와 겹침 없음, B보다 먼저 통합) | `pnpm gate --base dev` | 진행 |
+| F2 | #289 (같은 경로) | F 워커 후속 Task | `components/publish-button.tsx` · `lib/publish/plan.ts` · `messages/*` Publish 절 · DESIGN §6.646 | 사용자 결정 · B 통합 뒤(사전 겹침) | `pnpm gate --base dev` | 결정 대기 |
 | QA | 인계 (b) 목록 | Claude Opus · main 체크아웃 · 단일 워커 | — | 전부 push 뒤 | (b) 목록 전부 확인 | 대기 |
 
+- F1·F2는 tasks 밖 이슈다(#288·#289, 근거 `.scratch/followups/rt6-report.md`). B는 A와 F1이 dev에 들어간 뒤 띄운다(F1과 사전 파일 겹침).
 - tasks ↔ 배치 대조: T0(완료) · T1–T5 → A · T6–T7 → B · T8 → DS · T9 → B2 · T10 → G. 주인 없는 항목 0.
 - `project-row-redesign`은 미착수(T0 열림)라 `components/locale-meter.tsx` 겹침이 지금은 없다. 그쪽이 착수하면 design §6 조율을 따른다.
 
