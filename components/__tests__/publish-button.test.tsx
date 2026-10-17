@@ -717,3 +717,11 @@ it("Publish 모달은 ButtonLink로 내부 이동과 새 탭 외부 링크를 �
   for (const link of internal) expect(link).toMatch(/href=\{routes\.(settings\(slug\)|sources\(slug, )/);
   expect(source).not.toMatch(/<a\b[^>]*buttonClass/);
 });
+
+/** 번역 화면도 서버가 내린 settle promise로 버튼을 켠다 (#282 — 신고한 화면이 번역 화면이다). 도착값은 그 소스 경로의 것만 쓴다(`useArrived`). */
+it("번역 화면 — 셀 편집 0 · settle 도착(열린 PR 없음)이면 Publish가 켜진다", async () => {
+  await render(<TranslationWorkspace {...workspaceProps({ unpublished: 0, publish: { repo: { owner: "o", name: "r", branch: "main", syncBranch: "s" }, lastSentLabel: null, lastPrUrl: null, settle: Promise.resolve(true) } })} />);
+  await act(async () => {});
+  const publish = [...document.querySelectorAll("button")].find(b => visible(b) === "Publish");
+  expect(publish?.getAttribute("aria-disabled")).toBeNull();
+});

@@ -607,6 +607,65 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
   });
 
   /**
+   * **열린 PR이 없음을 확인한 승인 Sync는 폐기한 행의 전달 효과도 뺀다** (#283 — ARCHITECTURE §5.10.2). 그 효과는 어느 PR에도 없다 — 남기면 거둘 PR이
+   * 없는데 Publish가 켜지고 미리보기가 "cancelled after it was sent"라는 거짓 사유를 단다. revision은 그대로다(새 전달 관측이 아니다).
+   */
+  it("전달된 추가 + 열린 PR 없음 + 승인된 Sync → 행·전달 효과가 함께 빠지고 revision은 그대로, 언어 작업 0 (#283)", async () => {
+    await seed();
+    await request("s-web", "fr", "ADD");
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "fr", value: "bonjour" } });
+    await deliver("s-web", [{ localeCode: "fr", effect: "create" }]);
+    const before = await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } });
+    const calls = github();
+    expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }))).toMatchObject({ ok: true });
+    expect(calls.filter(call => call.method === "findOpenPr")).toHaveLength(1);
+    expect(await rows()).toEqual([]);
+    const after = await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } });
+    expect(after).toMatchObject({ deliveredLocaleChanges: [], revision: before.revision });
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
+    expect(await presence()).toMatchObject({ fr: "orphan" });
+  });
+
+  /** 만료를 재사용하지 않은 이유(§5.10.2) — 같은 소스에 값 있는 미전달 ADD가 있으면 `planLocaleExpiry`는 소스째 보류하지만, 폐기는 승인한 행의 효과를 뺀다. */
+  it("같은 소스에 값 있는 미전달 추가(zh)가 함께 있어도 폐기한 fr의 효과는 빠진다", async () => {
+    await seed();
+    await request("s-web", "fr", "ADD");
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "fr", value: "bonjour" } });
+    await deliver("s-web", [{ localeCode: "fr", effect: "create" }]);
+    await request("s-web", "zh", "ADD");
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "zh", value: "你好" } });
+    github();
+    expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }))).toMatchObject({ ok: true });
+    expect(await rows()).toEqual([]);
+    expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } })).toMatchObject({ deliveredLocaleChanges: [] });
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
+  });
+
+  it.each([
+    ["열린 PR", { openPr: { url: "https://example.test/pr/7", number: 7, title: "t" } }],
+    ["조회 실패(fail-closed)", { failOn: "findOpenPr" as const }],
+  ])("%s이면 폐기해도 전달 목록을 남긴다 — 다음 Publish가 정리한다(R3)", async (_name, options) => {
+    await seed();
+    await request("s-web", "fr", "ADD");
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "fr", value: "bonjour" } });
+    await deliver("s-web", [{ localeCode: "fr", effect: "create" }]);
+    github(options);
+    expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }))).toMatchObject({ ok: true });
+    expect(await rows()).toEqual([]);
+    expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } })).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "fr", effect: "create" }] });
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+  });
+
+  it("폐기한 행에 전달 효과가 없으면(값 0개 추가) PR을 묻지 않는다 — 호스트 호출 0", async () => {
+    await seed();
+    await request("s-web", "fr", "ADD");
+    const calls = github();
+    expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }))).toMatchObject({ ok: true });
+    expect(await rows()).toEqual([]);
+    expect(calls.filter(call => call.method === "findOpenPr")).toEqual([]);
+  });
+
+  /**
    * ⚠️ **승인한 의도 행만 지운다** (R-B3 🔴 R1) — 셀 편집의 `approvedTokens`와 같은 결. 승인 뒤(Sync가 파일을 읽는 동안) 들어온 추가·제거 요청은
    * 승인받은 적이 없어 지우지 않고, 사건도 승인한 행에만 남는다.
    */

@@ -4,6 +4,7 @@ import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, localeNotesOf, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { reachedRepository } from "@/lib/locales/reached";
+import { awaitsResolution } from "@/lib/locales/work";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
@@ -539,6 +540,25 @@ describe("만료 판정의 읽기 전용 쪽 — 미리보기가 실행과 같�
     expect(expiryCheckApplies(0, [surface({ ...changes([["de", "ADD"]]), work: 0 })])).toBe(false);
     // 확인 안 된 목록(`null`)은 만료할 수 없다 — 작업 0이면 1층 그대로다.
     expect(expiryCheckApplies(0, [surface({ ...changes([["ko", "REMOVE"]], null), work: 0 })])).toBe(false);
+  });
+
+  /**
+   * **버튼의 `settle`과 실행의 1층 앞 만료가 같은 술어다** (#282) — 셀·언어 작업 0에서 실행이 1층 앞에서 PR을 묻는 조건(`expiryCheckApplies(0, …)`)과
+   * 버튼이 PR 조회를 다는 조건이 갈리면, 버튼이 켜졌는데 실행이 1층에서 끝나거나 실행이 정리할 요청이 있는데 버튼이 꺼진다.
+   */
+  it("awaitsResolution — 행 + 비지 않은 전달 목록이면 참, 값 0개 ADD·확인 안 된 목록·행 없는 목록은 거짓. 작업 0의 expiryCheckApplies와 같은 값", () => {
+    const table: [string, SurfaceLocaleChanges | undefined, boolean][] = [
+      ["행 + 전달 비지 않음", deliveredRemove, true],
+      ["값 0개 ADD만(전달 효과 없음)", { ...changes([["de", "ADD"]]), work: 0 }, false],
+      ["확인 안 된 목록(null)", { ...changes([["ko", "REMOVE"]], null), work: 0 }, false],
+      ["행 없음 + 전달만(전달 뒤 취소)", { ...changes([], [{ localeCode: "fr", effect: "create" }]), work: 0 }, false],
+      ["언어 변경 없음", undefined, false],
+    ];
+    for (const [name, localeChanges, expected] of table) {
+      const surfaces = [surface(localeChanges)];
+      expect(awaitsResolution(surfaces.flatMap(item => item.localeChanges === undefined ? [] : [item.localeChanges])), name).toBe(expected);
+      expect(expiryCheckApplies(0, surfaces), name).toBe(expected);
+    }
   });
 
   it("expiringLocalesOf — 열린 PR 없음(성공한 조회) + 현재 = 전달 + 관측이면 만료로 판정한다. 열림·조회 실패·관측 불가는 0", () => {

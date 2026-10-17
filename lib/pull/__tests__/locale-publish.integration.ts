@@ -673,6 +673,25 @@ describe.each(["github", "gitlab"] as const)("미머지 종료 뒤 만료 전 Pu
     expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "fr" } })).toMatchObject({ orphaned: true });
   });
 
+  /**
+   * **버튼의 DB 판정이 이 창을 안다** (#282 ①) — 셀·언어 작업이 0이라 꺼졌던 창이다. `readLocaleWork`가 `awaiting`을 내고(서버가 그때만 열린 PR을 묻는다),
+   * 정리 Publish 뒤에는 행이 없어 창이 닫힌다.
+   */
+  it("미머지 종료된 추가 · 편집 0 — 버튼 판정은 작업 0 · awaiting, 정리 뒤에는 둘 다 닫힌다 (#282 ①)", async () => {
+    const { readLocaleWork } = await import("@/lib/locales/work");
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake(files);
+    expect(await publish()).toMatchObject({ status: "committed" });
+    await ageRuns();
+    expect(await readLocaleWork(prisma, "p")).toEqual({ work: 0, awaiting: true });
+    fake(files);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    fake(files);
+    expect(await publish(preview.fingerprint)).toMatchObject({ status: "skipped", reason: "no-edits", expired: [{ localeCode: "fr", presence: "orphan" }] });
+    expect(await readLocaleWork(prisma, "p")).toEqual({ work: 0, awaiting: false });
+  });
+
   /** fix1 R2 변형 — 버려질 언어에 전달 뒤 편집이 더 있다. 만료 뒤 그 편집은 비활성 언어의 셀이라 나가지 않는다 — 미리보기가 보낼 수로 세지 않는다. 웹은 Not sent 틀이다. */
   it("미머지 종료된 추가 + 그 언어의 미발송 편집 — 미리보기 보낼 것 0·미발송 0, Publish no-edits, 웹 결과는 No changes가 아니다", async () => {
     await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
