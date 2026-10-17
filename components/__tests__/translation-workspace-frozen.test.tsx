@@ -136,7 +136,8 @@ it("저장이 제거로 거부되면 입력을 남기고 그 칸을 곧바로 �
   // 다시 누를 필요 없이 ①의 형이다 — 서버 상세를 기다리지 않고 얼리고, 서버 상태를 다시 읽는다.
   expect(area(container, "zh").readOnly).toBe(true);
   expect(container.textContent).toContain(w.detail.frozenReason("zh"));
-  expect(area(container, "zh").getAttribute("aria-invalid")).toBe("true");
+  // 얼림은 입력 오류가 아니다 (#274) — 거부 사실은 Alert와 이유 줄이 말한다.
+  expect(area(container, "zh").hasAttribute("aria-invalid")).toBe(false);
   expect(mocks.refresh).toHaveBeenCalled();
 
   // 다음 Save는 다른 언어만 보내고, 성공하면 거부 문장이 상태 문장으로 바뀐다.
@@ -287,7 +288,9 @@ it("얼린 칸은 muted 면·일반 테두리이고 거부 뒤에도 aria-invali
   const frozen = area(container, "zh");
   expect(frozen.readOnly).toBe(true);
   expect(frozen.hasAttribute("aria-invalid")).toBe(false);
-  expect(frozen.className).toContain("bg-muted");
-  expect(frozen.className).toContain("border-border");
-  expect(area(container, "ko").className).not.toContain("bg-muted");
+  expect(frozen.classList.contains("bg-muted")).toBe(true);
+  expect(frozen.classList.contains("border-border")).toBe(true);
+  expect(frozen.classList.contains("bg-background")).toBe(false);
+  expect(frozen.classList.contains("border-input")).toBe(false);
+  expect(area(container, "ko").classList.contains("bg-muted")).toBe(false);
 });

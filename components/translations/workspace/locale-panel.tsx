@@ -267,7 +267,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       value={draft}
       readOnly={readOnly || frozen}
       aria-label={m.translations.cellLabel(keyName, locale.code)}
-      aria-invalid={invalidBy === undefined ? undefined : true}
+      // ⚠️ 얼림은 입력 오류가 아니다 (#274) — 저장 거부 뒤에도 얼린 칸은 빨간 테두리를 들지 않는다. 거부 사실은 푸터 Alert와 이유 줄이 말한다.
+      aria-invalid={invalidBy === undefined || frozen ? undefined : true}
       aria-describedby={[empty ? helpId : undefined, invalidBy].filter(Boolean).join(" ") || undefined}
       placeholder=""
       onChange={event => onEdit(event.target.value)}
@@ -283,6 +284,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         "w-full rounded-md text-sm leading-translation",
         // 빈 칸은 입력이 점선 상자 안쪽 전체다 — 어디를 눌러도 커서가 서고, 원문이 그 첫 줄 자리에 겹친다.
         empty ? "col-start-1 row-start-1 min-h-[42px] border-0 bg-transparent p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
+        // 얼린 칸은 잠긴 값이다(시안 T1 ①·②′) — muted 면 + 일반 테두리. 프리미티브는 `disabled:`만 칠해 호출부가 든다.
+        frozen && !empty && "bg-muted border-border",
       )}
     />
   );
@@ -311,7 +314,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         `placeholder` 속성이 아니라 겹친 span인 이유: 접근 이름과 따로 `aria-describedby`로 읽혀야 하고, 포인터를 가로채지 않아야 한다.
         absolute가 아니라 grid 한 칸에 쌓는다 — 원문이 여러 줄이면 상자가 그 높이를 따라야 다음 행을 덮지 않는다.
       */}
-      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 has-[textarea:focus-visible]:ring-2")}>
+      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 has-[textarea:focus-visible]:ring-2", empty && frozen && "bg-muted")}>
         {field}
         {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-translation">{sourceText}</span>}
       </div>
