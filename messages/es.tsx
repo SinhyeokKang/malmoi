@@ -1379,7 +1379,7 @@ export const es = {
       footer: {
         frozen: (savable: string, frozen: string): string => (savable === "" ? `${frozen}: no se puede guardar` : `${savable} sin guardar · ${frozen}: no se puede guardar`),
         removalPending: {
-          title: (locales: string, _n: number): string => `Se está eliminando ${locales}`,
+          title: (locales: string, n: number): string => `${n === 1 ? "Se está" : "Se están"} eliminando ${locales}`,
           body: "No se guardó nada de esta clave: vuelve a guardar.",
         },
         unsaved: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "cambio sin guardar" : "cambios sin guardar"}`,

@@ -291,6 +291,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       <div className="flex items-center gap-2">
         <LocaleBadge code={locale.code} orphaned={false} />
         {isBase && <span className="text-muted-foreground text-xs">{w.source}</span>}
+        {/* 제거 중 언어 — 언어 배지 바로 옆(시안 T1). 미저장이 없는 얼린 칸에는 이것이 유일한 설명이다. */}
+        {frozen && <StatusBadge state="removing" className="shrink-0" />}
         <span className="ml-auto flex items-center gap-2">
           {/* ⚠️ 전송 중인 셀은 "Not saved"가 아니다 (audit-ux #20) — 버튼 스피너만으로는 어느 셀이 가는 중인지 모른다. */}
           {dirty && sending

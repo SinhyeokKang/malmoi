@@ -152,12 +152,15 @@ it("거부 뒤 도착한 서버 상세가 같은 언어를 읽기 전용으로 �
   const initial = props();
   const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
   await user.type(area(container, "zh"), "空");
+  await user.clear(area(container, "ko"));
+  await user.type(area(container, "ko"), "없음");
   mocks.save.mockResolvedValue({ ok: false, error: "locale-removal-pending", localeCodes: ["zh"] });
   await user.click(saveButton());
   await rerender(<TranslationWorkspace {...initial} detail={detailWith(["zh"])} />);
   expect(area(container, "zh").value).toBe("空");
   expect(area(container, "zh").readOnly).toBe(true);
-  expect(container.textContent).toContain(w.footer.removalPending.title("zh", 1));
+  // ⚠️ 제목 조각은 셀 이유 문장의 앞부분과 같다 — 본문으로 잰다.
+  expect(container.textContent).toContain(w.footer.removalPending.body);
 });
 
 it("세션 만료 중 저장이 거부돼도 얼린 입력과 다른 언어 입력이 남는다", async () => {
@@ -212,6 +215,8 @@ it("거부 뒤 제거가 취소되면 거부 문장을 걷는다 — 더는 참�
   const initial = props();
   const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
   await user.type(area(container, "zh"), "空");
+  await user.clear(area(container, "ko"));
+  await user.type(area(container, "ko"), "없음");
   mocks.save.mockResolvedValue({ ok: false, error: "locale-removal-pending", localeCodes: ["zh"] });
   await user.click(saveButton());
   expect(container.textContent).toContain(w.footer.removalPending.body);
@@ -219,7 +224,7 @@ it("거부 뒤 제거가 취소되면 거부 문장을 걷는다 — 더는 참�
   expect(container.textContent).not.toContain(w.footer.removalPending.body);
   expect(area(container, "zh").readOnly).toBe(false);
   expect(area(container, "zh").value).toBe("空");
-  expect(footer(container)).toBe(w.footer.unsaved(1));
+  expect(footer(container)).toBe(w.footer.unsaved(2));
 });
 
 it("미저장이 없는 얼린 칸도 Removing 배지가 선다 — 이유 문장·Discard change는 없다", async () => {

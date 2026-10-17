@@ -303,6 +303,14 @@ function WorkspaceBody(props: WorkspaceProps) {
     const frozen = new Set(readOnlyOf(detail));
     setStatus(prev => (prev?.kind === "removal-pending" && !prev.locales.some(code => frozen.has(code)) ? null : prev));
   }, [detail]);
+  /*
+    ⚠️ **"save again"은 다시 저장할 것이 있을 때만 참이다** (R-E2 🟡1) — 얼린 언어만 고친 저장이 거부됐거나, 거부 뒤 Escape·Discard로 저장 가능한
+    미저장이 0이 되면 Save가 꺼져 그 문장을 따를 수 없다. 그때는 상태 줄(`footer.frozen`)과 셀 이유가 사실을 말한다. 표시는 렌더에서 바로 거르고
+    (거부 커밋에 Alert가 한 번 서거나 포커스가 빈 결과 줄에 내려앉지 않게), 상태는 effect가 걷는다.
+  */
+  const removalUnactionable = status?.kind === "removal-pending" && savable.length === 0;
+  const footerStatus = removalUnactionable ? null : status;
+  useEffect(() => { if (removalUnactionable) setStatus(null); }, [removalUnactionable]);
 
   // ── 세션 복구 사본 — 이 탭 sessionStorage의 한 키 draft, 사용자별 (spec §3.5) ───────────────────
   const restoredFor = useRef<string | null>(null);
@@ -1100,14 +1108,14 @@ function WorkspaceBody(props: WorkspaceProps) {
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
-                invalid={status?.kind === "cannot-clear" || status?.kind === "removal-pending" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
+                invalid={footerStatus?.kind === "cannot-clear" || footerStatus?.kind === "removal-pending" ? { locales: footerStatus.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
                     alertId={footerAlertId}
                     dirty={dirty.length}
                     frozen={dirty.filter(code => !savable.includes(code))}
                     savable={savable}
-                    status={status}
+                    status={footerStatus}
                     saving={saving}
                     resultRef={resultRef}
                     saveRef={saveRef}
