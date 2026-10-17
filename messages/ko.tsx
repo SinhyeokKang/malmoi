@@ -1456,6 +1456,7 @@ export const ko = {
         confirm: "번역 되돌리기",
         unavailable: "변경된 언어 중 일부는 이전에 보낸 값이 없습니다.",
         unsaved: "먼저 변경을 저장하거나 취소하세요.",
+        frozen: (list: string, _n: number): string => `먼저 ${list} 변경을 버리세요.`,
         busy: "저장, 게시, 동기화 중에는 사용할 수 없습니다.",
         forbidden: "프로젝트 소유자만 보낸 값으로 되돌릴 수 있습니다.",
         failed: { title: "이 키를 되돌리지 못했습니다", body: "아무것도 바뀌지 않았습니다. 다시 시도하거나 마지막 동기화를 확인하세요." },

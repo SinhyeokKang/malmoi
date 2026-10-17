@@ -142,7 +142,10 @@ const REVERT_REASONS = {
   busy: (m: Messages) => m.translations.workspace.revert.busy,
   unavailable: (m: Messages) => m.translations.workspace.revert.unavailable,
 } as const;
-type RevertReason = keyof typeof REVERT_REASONS;
+type RevertReason = keyof typeof REVERT_REASONS | { frozen: string[] };
+/** 얼린 칸(제거 중)은 저장을 거부하므로 이유가 Discard를 가리킨다 (#284). 차단은 그대로다 — 미저장 입력이 남은 채 되돌리면 그 칸의 화면 값과 되돌린 값이 갈린다(저장 가능한 칸과 같은 이유). */
+const revertReasonText = (m: Messages, reason: RevertReason) =>
+  typeof reason === "string" ? REVERT_REASONS[reason](m) : m.translations.workspace.revert.frozen(reason.frozen.join(", "), reason.frozen.length);
 
 /**
  * **재마운트 착지 표식** (translation-tree-range design §4.4 · POSTMORTEM 2026-09-24) — 다른 소스로의 이동(트리 클릭 · 전 소스 결과의 다른 소스 키 ·
@@ -725,7 +728,8 @@ function WorkspaceBody(props: WorkspaceProps) {
   const pendingLocales = detail?.locales.filter(isPending).map(l => l.code) ?? [];
   // 사유 문장("…while a save, publish, or sync is running")이 말하는 넷을 그대로 본다 (audit-ux #3) — 전엔 저장·Revert뿐이라 서버의 `busy`로만 멈췄다.
   const revertBlocked: RevertReason | null = role === "EDITOR" ? "forbidden"
-    : dirty.length > 0 ? "unsaved"
+    : savable.length > 0 ? "unsaved"
+    : dirty.length > 0 ? { frozen: dirty }
     : saving || revertBusy || syncPending || publish.pending ? "busy"
     : revertReason;
 
@@ -1196,7 +1200,7 @@ function Footer({ alertId, dirty, frozen, savable, status, saving, resultRef, sa
             className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-warning-foreground" : "text-muted-foreground")}>
             {text}
           </span>
-          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked](m)}</span>}
+          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{revertReasonText(m, revertBlocked)}</span>}
           {saveLocked && <span id={saveReasonId} className="text-muted-foreground min-w-0 text-xs">{m.repositorySync.waitPublish}</span>}
         </span>
         <span className="ml-auto flex flex-wrap items-center justify-end gap-2">

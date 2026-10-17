@@ -210,6 +210,8 @@ const NOT_A_COUNT: Record<string, string> = {
   "repositorySync.languagesDropped": "count is repositorySync.languageCount",
   // 수를 그리지 않는다 — `n`은 en 동사 수 일치(is/are)에만 쓰고, 언어 목록은 `locales`가 그린다.
   "translations.workspace.footer.removalPending.title": "n is verb agreement only",
+  // 수를 그리지 않는다 — `n`은 명사 수 일치(change/changes)에만 쓰고, 언어 목록은 `list`가 그린다(#284).
+  "translations.workspace.revert.frozen": "n is noun agreement only",
   // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
   "members.seats": "MEMBER_LIMIT = 10",
   "members.seatsFull": "MEMBER_LIMIT = 10",

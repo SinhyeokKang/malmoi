@@ -238,6 +238,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.workspace.footer.cannotClear.title": ["X"],
   "translations.workspace.footer.frozen": ["X", "Y"],
   "translations.workspace.footer.removalPending.title": ["X", 2],
+  "translations.workspace.revert.frozen": ["X", 2],
   "translations.workspace.footer.session.restored": [2],
   "translations.workspace.revert.body": [2, "X"],
   "translations.workspace.syncLock.until": ["X"],

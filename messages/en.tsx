@@ -2922,6 +2922,7 @@ export const en = {
         confirm: "Revert translations",
         unavailable: "The last sent version isn't available for every changed language.",
         unsaved: "Save or discard your changes first.",
+        frozen: (list: string, n: number): string => `Discard the ${list} change${n === 1 ? "" : "s"} first.`,
         busy: "This stays off while a save, publish, or sync is running.",
         forbidden: "Only project owners can revert to a sent version.",
         failed: { title: "We couldn't revert this key", body: "No changes were made. Try again, or check the last sync." },

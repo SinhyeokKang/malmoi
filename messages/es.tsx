@@ -1446,6 +1446,7 @@ export const es = {
         confirm: "Revertir traducciones",
         unavailable: "La última versión enviada no está disponible para todos los idiomas modificados.",
         unsaved: "Primero guarda o descarta tus cambios.",
+        frozen: (list: string, n: number): string => `Primero descarta ${n === 1 ? "el cambio" : "los cambios"} de ${list}.`,
         busy: "Esto queda desactivado mientras se guarda, se publica o se sincroniza.",
         forbidden: "Solo los propietarios del proyecto pueden revertir a una versión enviada.",
         failed: { title: "No pudimos revertir esta clave", body: "No se hizo ningún cambio. Vuelve a intentarlo o revisa la última sincronización." },
