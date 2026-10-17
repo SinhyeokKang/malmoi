@@ -23,6 +23,11 @@ export type ComboboxGroup = { heading?: string; options: readonly ComboboxOption
  * Popover가 열리며 내용으로 포커스를 옮기는 기본 동작(`onOpenAutoFocus`)도 막는다.
  * ⚠️ **열린 목록의 Esc는 목록만 닫는다** — Radix는 가장 위 레이어 하나만 닫으므로 바깥 Dialog는 남는다. IME 조합 중 Esc·Enter는 조합의 것이다.
  * ⚠️ 꺼진 행은 남기고(`aria-disabled`) ↑↓가 건너뛴다 — "이미 있음"을 숨기면 왜 목록에 없는지 모른다.
+ * ⚠️ **Dialog 안이면 목록을 그 Dialog 안으로 portal한다**(DS #270) — `body`로 내보내면 Dialog의 스크롤 잠금(`react-remove-scroll`)이 목록 위의
+ * 휠·트랙패드를 막아 키보드로만 내려갔다. 그릇을 찾아 넣을 뿐이라 prop을 늘리지 않는다.
+ * ⚠️ **목록 그릇은 dialog가 아니다**(DS #271) — Radix Popover의 기본 `role="dialog"`가 이름 없는 dialog로 AX 트리에 섰다. ARIA는 combobox + listbox뿐이다.
+ * ⚠️ **높이 상한은 첫 배치 전부터다**(DS #272) — 가용 높이 변수는 첫 측정 뒤에야 생겨, 그 전엔 상한 없는 전체 목록(20행 741px)을 재고 좁은 화면에서
+ * 위로 뒤집혔다가 다음 갱신에 아래로 튀었다. 변수가 없을 때 300px로 떨어진다.
  */
 export function Combobox({ id, value, onValueChange, onSelect, groups, placeholder, listLabel, readOnly = false, invalid = false, initialFocus = false, "aria-describedby": describedBy }: {
   id: string;
@@ -43,6 +48,8 @@ export function Combobox({ id, value, onValueChange, onSelect, groups, placehold
   const anchor = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => { setContainer(anchor.current?.closest<HTMLElement>('[role="dialog"]') ?? null); }, []);
   const listId = `${id}-listbox`;
   const flat = groups.flatMap(group => group.options);
   const optionId = (option: ComboboxOption) => `${id}-option-${flat.indexOf(option)}`;
@@ -94,9 +101,9 @@ export function Combobox({ id, value, onValueChange, onSelect, groups, placehold
         <ChevronDown aria-hidden className="text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2" />
       </div>
     </Primitive.Anchor>
-    <Primitive.Portal>
-      <Primitive.Content side="bottom" align="start" sideOffset={4} collisionPadding={8}
-        className="bg-popover border-border z-50 flex max-h-[min(300px,var(--radix-popover-content-available-height))] w-(--radix-popover-trigger-width) flex-col overflow-y-auto rounded-lg border p-1 shadow-md"
+    <Primitive.Portal container={container ?? undefined}>
+      <Primitive.Content role="presentation" side="bottom" align="start" sideOffset={4} collisionPadding={8}
+        className="bg-popover border-border z-50 flex max-h-[min(300px,var(--radix-popover-content-available-height,300px))] w-(--radix-popover-trigger-width) flex-col overflow-y-auto rounded-lg border p-1 shadow-md"
         onOpenAutoFocus={event => event.preventDefault()}
         onCloseAutoFocus={event => event.preventDefault()}
         // 입력을 누른 것은 바깥이 아니다 — 닫으면 같은 클릭의 onClick이 다시 연다.
