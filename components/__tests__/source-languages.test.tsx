@@ -271,3 +271,27 @@ describe("기준 언어 — 언어 변경 때문에 막힌 선언(P2)", () => {
     expect([...document.querySelectorAll('[role="option"]')].map(node => node.textContent)).toEqual(["en", "ko"]);
   });
 });
+
+describe("리뷰 🟡 — 예약한 포커스", () => {
+  it("추가 뒤 다시 읽기가 실패해 새 행이 안 서면, 사람이 다른 곳을 조작한 뒤의 다음 다시 읽기가 포커스를 빼앗지 않는다", async () => {
+    mocks.load.mockResolvedValueOnce({ ok: true, detail: detail([row("ko")]) }).mockResolvedValueOnce({ failed: true });
+    mocks.previewAdd.mockResolvedValue({ ok: true, action: "create", path: "apps/web/locales/fr.json", revive: 0 });
+    mocks.add.mockResolvedValue({ ok: true, action: "create", path: "apps/web/locales/fr.json", reissued: 0 });
+    await open();
+    await act(async () => { await user().click(headerAdd()); });
+    const option = [...document.querySelectorAll('[role="option"]')].find(node => node.querySelector("[data-option-code]")?.textContent === "fr")!;
+    await act(async () => { await user().click(option); });
+    // 확정은 위에 선 추가 Dialog의 것이다 — 아래 상세 모달 머리에도 같은 낱말의 버튼이 있다.
+    const confirmAdd = () => [...document.querySelectorAll('[role="dialog"] button')].filter(node => node.textContent === en.sources.locale.addLanguage).at(-1)!;
+    await vi.waitFor(() => expect(confirmAdd().getAttribute("aria-disabled")).toBeNull());
+    await act(async () => { await user().click(confirmAdd()); });
+    // 다시 읽기가 실패했다 — 새 행이 없다. 사람이 다른 곳을 조작한다.
+    const retry = await vi.waitFor(() => [...document.querySelectorAll("button")].find(node => node.textContent === en.sources.retry)!);
+    await act(async () => { await user().click(card().querySelector("h2")!); });
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { change: add, translated: 0, percent: 0 }), row("ko")]) });
+    retry.focus();
+    await act(async () => { await user().click(retry); });
+    await vi.waitFor(() => expect(rowOf("fr")).not.toBeNull());
+    expect(document.activeElement).not.toBe(rowOf("fr").querySelector("a[href]"));
+  });
+});

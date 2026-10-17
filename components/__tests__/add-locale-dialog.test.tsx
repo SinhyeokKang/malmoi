@@ -270,3 +270,20 @@ describe("Chrome — 지원 목록 Select(A3)", () => {
     expect(mocks.previewAdd).toHaveBeenCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "fr" });
   });
 });
+
+describe("리뷰 🟡 — 포커스", () => {
+  it("Chrome 저장 중 트리거는 진짜 disabled가 아니다 — 포커스가 body로 빠지지 않는다", async () => {
+    mocks.add.mockReturnValue(new Promise(() => {}));
+    await open(detail([row("de")], { connection: chrome }));
+    await openAdd();
+    const trigger = dialog()!.querySelector<HTMLElement>('button[role="combobox"]')!;
+    await act(async () => { await user().click(trigger); });
+    await act(async () => { await user().click([...document.querySelectorAll('[role="option"]')].find(node => node.textContent?.startsWith("fr"))!); });
+    await vi.waitFor(() => expect(confirm().getAttribute("aria-disabled")).toBeNull());
+    trigger.focus();
+    await act(async () => { confirm().click(); });
+    expect(mocks.add).toHaveBeenCalled();
+    expect(trigger.hasAttribute("disabled")).toBe(false);
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  });
+});
