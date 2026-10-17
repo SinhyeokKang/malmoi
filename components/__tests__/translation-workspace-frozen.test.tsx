@@ -294,3 +294,36 @@ it("얼린 칸은 muted 면·일반 테두리이고 거부 뒤에도 aria-invali
   expect(frozen.classList.contains("border-input")).toBe(false);
   expect(area(container, "ko").classList.contains("bg-muted")).toBe(false);
 });
+
+/** Revert to last sent의 비활성 이유 — `aria-describedby`가 가리키는 문장이다. */
+const revertReason = () => {
+  const revert = button(w.revert.button)!;
+  const id = revert.getAttribute("aria-describedby");
+  return id === null ? null : document.getElementById(id)?.textContent ?? null;
+};
+
+it("얼린 칸만 미저장이면 Revert 이유가 저장이 아니라 Discard change를 가리킨다 (#284)", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await user.type(area(container, "zh"), "空");
+  await rerender(<TranslationWorkspace {...initial} detail={detailWith(["zh"])} />);
+  expect(button(w.revert.button)!.getAttribute("aria-disabled")).toBe("true");
+  expect(revertReason()).toBe(w.revert.frozen("zh", 1));
+
+  // 저장할 수 있는 칸이 함께 남아 있으면 저장도 길이다 — 기존 문장 그대로.
+  await user.clear(area(container, "ko"));
+  await user.type(area(container, "ko"), "없음");
+  expect(revertReason()).toBe(w.revert.unsaved);
+
+  // Discard로 얼린 입력까지 버리면 Revert가 다시 열린다.
+  await user.keyboard("{Escape}");
+  await user.click(await clickable(w.detail.discardChange));
+  expect(button(w.revert.button)!.getAttribute("aria-disabled")).toBeNull();
+});
+
+it("얼린 미저장 이유 문장은 세 사전이 언어 수에 맞춘다", () => {
+  expect(en.translations.workspace.revert.frozen("zh", 1)).toBe("Discard the zh change first.");
+  expect(en.translations.workspace.revert.frozen("zh, de", 2)).toBe("Discard the zh, de changes first.");
+  expect(es.translations.workspace.revert.frozen("zh, de", 2)).not.toBe(es.translations.workspace.revert.frozen("zh", 1).replace("zh", "zh, de"));
+});
