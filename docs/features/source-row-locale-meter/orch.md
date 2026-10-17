@@ -44,7 +44,7 @@
 | F1 | #288 (locale-add 후속 — 다른 세션이 2026-10-17 이 런으로 넘김) | Claude Opus high · 워크트리 `srlm-f` | `messages/{en,ko,es}.tsx`의 `cancelAddDone`만 · 사전/DOM 테스트 | — (A와 겹침 없음, B보다 먼저 통합) | `pnpm gate --base dev` | 진행 |
 | F2 | #289 (같은 경로) | F 워커 후속 Task | `components/publish-button.tsx` · `lib/publish/plan.ts` · `messages/*` Publish 절 · DESIGN §6.646 | D9 · B 통합 뒤(사전 겹침) | `pnpm gate --base dev` | B 대기 |
 | F3 | #294 (QA) | F 워커 | `messages/*` sources locale 개수 문구 + 테스트 | — | gate | 완료 `d643ad03` |
-| F4 | #296 (QA) | F 워커(F3 뒤) | `components/publish-button.tsx` 정리 미리보기 · DESIGN §6.646 | F3 끝 | gate | 진행 |
+| F4 | #296 (QA) | F 워커(F3 뒤) | `components/publish-button.tsx` 정리 미리보기 · DESIGN §6.646 | F3 끝 | gate | 완료 `603221b0`·`288dac2e` — 규칙을 `PreviewTable`에 둬 행 0인 모든 미리보기에서 빈 표가 사라진다(지휘자 판단: 같은 결함 부류) |
 | B3 | #295 (QA) | B 워커 | `sources/loading.tsx` · sibling-loading · DESIGN §6.66 | — | gate | 완료 `569bbd7d`·`75cac5c9`(통합 대기) |
 | QA | 인계 (b) 목록 | Claude Opus · main 체크아웃 · 단일 워커 | — | 전부 push 뒤 | (b) 목록 전부 확인 | 대기 |
 
