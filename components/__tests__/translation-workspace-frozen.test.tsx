@@ -18,6 +18,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), 
 
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import { en } from "@/messages/en";
+import { es } from "@/messages/es";
 
 import { props } from "./helpers/workspace-props";
 
@@ -26,6 +27,8 @@ const area = (container: HTMLElement, code: string) => container.querySelector<H
 const footer = (container: HTMLElement) => container.querySelector<HTMLElement>("[data-footer-result]")?.textContent ?? "";
 const button = (name: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === name);
 const saveButton = () => button(w.footer.save)!;
+/** 제거 중 배지(`StatusBadge state="removing"`) — 언어 배지 옆에 선다(시안 T1). */
+const removingBadges = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>("span")].filter(el => el.textContent === en.sources.removing && el.children.length === 0);
 /** 클릭할 수 있을 때까지 기다린다 — 저장 응답 뒤 `loading`이 풀리는 커밋을 지나야 한다. */
 async function clickable(name: string): Promise<HTMLButtonElement> {
   for (let i = 0; i < 20; i += 1) {
@@ -61,6 +64,7 @@ it("서버 갱신이 제거를 알리면 그 칸의 입력을 남기고 얼린�
   expect(area(container, "zh").value).toBe("空");
   expect(area(container, "zh").readOnly).toBe(true);
   expect(area(container, "ko").readOnly).toBe(false);
+  expect(removingBadges(container)).toHaveLength(1);
   expect(container.textContent).toContain(w.detail.frozenReason("zh"));
   expect(button(w.detail.discardChange)).toBeDefined();
   expect(footer(container)).toBe(w.footer.frozen("ko", "zh"));
@@ -127,6 +131,8 @@ it("저장이 제거로 거부되면 입력을 남기고 그 칸을 곧바로 �
   expect(container.textContent).toContain(w.footer.removalPending.title("zh", 1));
   expect(container.textContent).toContain(w.footer.removalPending.body);
   expect(container.textContent).not.toContain(w.footer.saveFailed.title);
+  // 거부 문장이 상태를 말하는 동안 상태 줄은 비어 있다 — 같은 미저장을 두 번 말하지 않는다(시안 ②′).
+  expect(footer(container)).toBe("");
   // 다시 누를 필요 없이 ①의 형이다 — 서버 상세를 기다리지 않고 얼리고, 서버 상태를 다시 읽는다.
   expect(area(container, "zh").readOnly).toBe(true);
   expect(container.textContent).toContain(w.detail.frozenReason("zh"));
@@ -191,6 +197,7 @@ it("제거가 취소되면 얼린 입력을 그대로 편집·저장한다 — �
   expect(area(container, "zh").readOnly).toBe(false);
   expect(area(container, "zh").value).toBe("空");
   expect(button(w.detail.discardChange)).toBeUndefined();
+  expect(removingBadges(container)).toHaveLength(0);
   expect(footer(container)).toBe(w.footer.unsaved(1));
   expect(container.textContent).toContain(w.detail.languages(2, 3));
   await user.type(area(container, "zh"), "!");
@@ -213,4 +220,52 @@ it("거부 뒤 제거가 취소되면 거부 문장을 걷는다 — 더는 참�
   expect(area(container, "zh").readOnly).toBe(false);
   expect(area(container, "zh").value).toBe("空");
   expect(footer(container)).toBe(w.footer.unsaved(1));
+});
+
+it("미저장이 없는 얼린 칸도 Removing 배지가 선다 — 이유 문장·Discard change는 없다", async () => {
+  const { container } = await render(<TranslationWorkspace {...props({ detail: detailWith(["zh"]) })} />);
+  expect(removingBadges(container)).toHaveLength(1);
+  expect(button(w.detail.discardChange)).toBeUndefined();
+  expect(container.textContent).not.toContain(w.detail.frozenReason("zh"));
+});
+
+it("얼린 언어만 고친 저장이 거부되면 거부 Alert를 세우지 않는다 — 다시 저장할 것이 없다", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  mocks.save.mockResolvedValue({ ok: false, error: "locale-removal-pending", localeCodes: ["zh"] });
+  await user.click(saveButton());
+  expect(container.textContent).not.toContain(w.footer.removalPending.body);
+  expect(area(container, "zh").value).toBe("空");
+  expect(area(container, "zh").readOnly).toBe(true);
+  expect(saveButton().disabled).toBe(true);
+  // 상태 줄과 셀 이유가 사실을 말한다 — 포커스는 빈 결과 줄에 내려앉지 않는다.
+  expect(footer(container)).toBe(w.footer.frozen("", "zh"));
+  expect(container.textContent).toContain(w.detail.frozenReason("zh"));
+  const focused = document.activeElement as HTMLElement | null;
+  expect(focused?.dataset.footerResult === "true" && focused.textContent === "").toBe(false);
+});
+
+it("거부 뒤 저장 가능한 미저장이 0이 되면 거부 Alert를 걷는다 — 다른 언어 Escape · 얼린 칸 Discard", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.clear(area(container, "ko"));
+  await user.type(area(container, "ko"), "없음");
+  mocks.save.mockResolvedValue({ ok: false, error: "locale-removal-pending", localeCodes: ["zh"] });
+  await user.click(saveButton());
+  expect(container.textContent).toContain(w.footer.removalPending.body);
+  area(container, "ko").focus();
+  await user.keyboard("{Escape}");
+  expect(area(container, "ko").value).toBe("비어 있음");
+  expect(container.textContent).not.toContain(w.footer.removalPending.body);
+  expect(footer(container)).toBe(w.footer.frozen("", "zh"));
+  await user.click(await clickable(w.detail.discardChange));
+  expect(container.textContent).not.toContain(w.footer.removalPending.body);
+  expect(footer(container)).toBe("");
+});
+
+it("es 거부 제목은 언어 수에 동사를 맞춘다", () => {
+  expect(es.translations.workspace.footer.removalPending.title("de", 1)).toBe("Se está eliminando de");
+  expect(es.translations.workspace.footer.removalPending.title("de, fr", 2)).toBe("Se están eliminando de, fr");
 });
