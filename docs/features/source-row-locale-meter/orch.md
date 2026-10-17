@@ -22,6 +22,7 @@
 | D10 | QA-P(prod)는 `bugshot-i18n-test`(PR #15 포함)를 자유롭게 쓰고, GitLab 픽스처 `malmoi-gitlab-test`로도 시험한다. 상주 픽스처는 보관·삭제하지 않는다 | 2026-10-17 사용자 |
 | D11 | project-row-redesign Q1(언어 요청만 미전달인 프로젝트의 행·Home·Inbox 표시)은 **별개 feature**로 뺀다 — #290. P2가 그 스펙에 비목표 + design §1 예외로 적는다 | 2026-10-17 사용자 |
 | D12 | 상세 Languages 카드 오른쪽 수치의 분자는 `meterValue`의 clamp를 지난 `done + review`다(design §2의 문자 그대로인 `translated + needsReview`와 정상 상태에서 같고, 경합 중 분모를 넘지 않는다) | 지휘자 판단 — RB 🟢1, 퍼센트·막대와 같은 clamp를 지나야 한 행의 세 숫자가 같은 사실을 말한다 |
+| D13 | #289 request-closed 본문에도 형제 틀(`no-changes`·`stillOpen`)과 같은 Logs 힌트(`inLogs`)를 둔다 | 지휘자 판단 — RF2 🟢2, 같은 "보낸 것 없음" 부류의 틀이 Logs로 가는 길을 같은 모양으로 둔다(DESIGN §2.4) |
 | D7 | T9(정본 갱신)는 B 워커의 후속 Task, 기능 디렉터리 삭제는 지휘자가 마지막 리포트 직전에 | 지휘자 판단 — 정본 문서는 구현을 아는 워커가 쓰고, orch.md는 런이 끝날 때까지 필요하다 |
 
 ## 배치
