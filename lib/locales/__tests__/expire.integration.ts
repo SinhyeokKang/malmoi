@@ -78,7 +78,7 @@ async function deliver(surfaceId: string, effects: { localeCode: string; effect:
 
 const expire = (over: Partial<LocaleExpiryInput>) => prisma.$transaction(tx => expireLocaleChanges(tx, {
   projectId: "p", surfaceId: "s-web", surfaceSlug: "web", pullRequest: "none-open",
-  observed: { status: "observed", locales: ["en", "ko", "fr"] }, actor: { kind: "AUTOMATION" }, ...over,
+  observed: { status: "observed", locales: ["en", "ko", "fr"] }, actor: { kind: "AUTOMATION" }, via: "nightly", ...over,
 }));
 
 async function locales(surfaceId = "s-web") {

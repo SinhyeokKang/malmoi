@@ -256,7 +256,7 @@ async function expireAtHead(
     let unreadable = false;
     for (const surface of surfaces) {
       const result = await expireLocaleChanges(tx, { projectId: target.id, surfaceId: surface.id, surfaceSlug: surface.slug, pullRequest: "none-open",
-        observed: observeSurfaceLocales(entries, surface), actor: { kind: "AUTOMATION" } });
+        observed: observeSurfaceLocales(entries, surface), actor: { kind: "AUTOMATION" }, via: "nightly" });
       expired ||= result.expired.length > 0;
       // 행 있는 소스의 base를 근거로 쓸 수 없었다(관측 0개는 `expireLocaleChanges`가 이 사유로 접는다) — "받을 것 없음"과 갈라 실패 사건으로 남긴다.
       unreadable ||= result.held === "base-unreadable";

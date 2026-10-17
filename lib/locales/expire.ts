@@ -1,5 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
-import type { LocaleChangeSubtype } from "@/lib/events/payload";
+import type { LocaleChangeSubtype, LocaleChangeVia } from "@/lib/events/payload";
 import type { EventActorInput } from "@/lib/events/record";
 import { recordEvents } from "@/lib/events/record";
 import { reviewNumberFrom } from "@/lib/projects/remote-plan";
@@ -33,6 +33,11 @@ export type LocaleExpiryInput = {
   /** base head에서 관측한 이 소스의 로케일 — strict 적재의 `payload.locales`와 같은 뜻이다. 못 읽었으면 `unreadable`. */
   observed: { status: "observed"; locales: readonly string[] } | { status: "unreadable" };
   actor: EventActorInput;
+  /**
+   * 이 만료를 일으킨 실행 — 사건에 그대로 싣는다(Logs 행위자·주체 필터, 시안 P3). **추론하지 않고 호출부가 넘긴다** — 야간·CI·야간 Publish가 모두
+   * AUTOMATION이라 행위자로는 못 가른다.
+   */
+  via: LocaleChangeVia;
 };
 
 export type LocaleExpiryResult = { expired: ExpiredLocale[]; held: LocaleExpiryHold | null };
@@ -78,7 +83,7 @@ export async function expireLocaleChanges(tx: Prisma.TransactionClient, input: L
       surfaceIds: [surfaceId],
       payload: { kind: "SURFACE" as const, surfaceSlug: input.surfaceSlug, adapter: null, baseLocale: null,
         localeChange: { locale: item.localeCode, operation: item.operation, revived: null, discarded: null, outcome: item.presence, reissued: null,
-          pullRequest: pullRequest(item) } },
+          pullRequest: pullRequest(item), via: input.via } },
     })));
   }
   return { expired: plan.expired, held: plan.held === "base-empty" ? "base-unreadable" : plan.held };

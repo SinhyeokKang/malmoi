@@ -593,6 +593,10 @@ export const es = {
       keys: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "clave" : "claves"}`,
       noPullRequest: "sin pull request",
       declarationOnly: "solo la declaración",
+      translationsBack: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "traducción recuperada" : "traducciones recuperadas"}`,
+      editsDiscarded: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar descartada" : "ediciones sin enviar descartadas"}`,
+      whilePublishing: "al publicar",
+      whileSyncing: "al sincronizar",
       nothingImported: "no se sincronizó nada",
       archivedEffect: "se detuvo la edición y terminaron las publicaciones nocturnas",
       restoredEffect: "se reanudaron la edición y las publicaciones nocturnas",
@@ -651,6 +655,27 @@ export const es = {
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} cambió el idioma base de {source}</>
         ),
+      },
+      locale: {
+        added: (who: ReactNode, code: string, source: string): ReactNode => <>{who} añadió {code} a {source}</>,
+        addedAgain: (who: ReactNode, code: string, source: string): ReactNode => <>{who} volvió a añadir {code} a {source}</>,
+        removalRequested: (who: ReactNode, code: string, source: string): ReactNode => <>{who} pidió quitar {code} de {source}</>,
+        removalCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} canceló la eliminación de {code} en {source}</>,
+        addCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} dejó de añadir {code} a {source}</>,
+        removalClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} cerró la eliminación de {code} en {source}</> : <>{who} cerró la eliminación de {code} en {source}: {outcome}</>
+        ),
+        addClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} cerró la adición de {code} en {source}</> : <>{who} cerró la adición de {code} en {source}: {outcome}</>
+        ),
+        outcome: {
+          gone: "el archivo ya no está en el repositorio",
+          present: "el archivo está en el repositorio",
+          stillPresent: "el archivo sigue en el repositorio",
+          absent: "el archivo no está en el repositorio",
+          notMerged: (pr: string, fact: string): string => `${pr} se cerró sin fusionarse y ${fact}`,
+        },
+        unknown: (who: ReactNode, source: string): ReactNode => <>{who} cambió un idioma en {source}</>,
       },
       settings: {
         created: (who: ReactNode): ReactNode => <>{who} creó este proyecto</>,

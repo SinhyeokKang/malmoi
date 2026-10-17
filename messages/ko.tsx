@@ -599,6 +599,10 @@ export const ko = {
       keys: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개`,
       noPullRequest: "PR 없음",
       declarationOnly: "기준 언어 변경 요청됨",
+      translationsBack: (n: number): string => `번역 ${n.toLocaleString("ko-KR")}개 복원`,
+      editsDiscarded: (n: number): string => `미전송 편집 ${n.toLocaleString("ko-KR")}개 폐기`,
+      whilePublishing: "게시 중",
+      whileSyncing: "동기화 중",
       nothingImported: "동기화한 내용 없음",
       archivedEffect: "편집과 야간 게시 중단됨",
       restoredEffect: "편집과 야간 게시가 다시 시작됨",
@@ -658,6 +662,27 @@ export const ko = {
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} — {source} 소스의 기준 언어를 바꿨습니다</>
         ),
+      },
+      locale: {
+        added: (who: ReactNode, code: string, source: string): ReactNode => <>{who} — {source} 소스에 {code}을(를) 추가했습니다</>,
+        addedAgain: (who: ReactNode, code: string, source: string): ReactNode => <>{who} — {source} 소스에 {code}을(를) 다시 추가했습니다</>,
+        removalRequested: (who: ReactNode, code: string, source: string): ReactNode => <>{who} — {source} 소스에서 {code} 제거를 요청했습니다</>,
+        removalCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} — {source} 소스의 {code} 제거를 취소했습니다</>,
+        addCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} — {source} 소스의 {code} 추가를 취소했습니다</>,
+        removalClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} — {source} 소스의 {code} 제거 요청을 닫았습니다</> : <>{who} — {source} 소스의 {code} 제거 요청을 닫았습니다. {outcome}</>
+        ),
+        addClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} — {source} 소스의 {code} 추가 요청을 닫았습니다</> : <>{who} — {source} 소스의 {code} 추가 요청을 닫았습니다. {outcome}</>
+        ),
+        outcome: {
+          gone: "리포에서 파일이 사라졌습니다",
+          present: "리포에 파일이 있습니다",
+          stillPresent: "리포에 파일이 그대로 있습니다",
+          absent: "리포에 파일이 없습니다",
+          notMerged: (pr: string, fact: string): string => `${pr}이(가) 머지되지 않고 닫혀 ${fact}`,
+        },
+        unknown: (who: ReactNode, source: string): ReactNode => <>{who} — {source} 소스의 언어를 바꿨습니다</>,
       },
       settings: {
         created: (who: ReactNode): ReactNode => <>{who} — 이 프로젝트를 만들었습니다</>,

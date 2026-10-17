@@ -1503,6 +1503,11 @@ export const en = {
       noPullRequest: "no pull request",
       /** 기준 언어는 **선언**이고 CI의 다음 push가 확정한다 (`checkFormat`). */
       declarationOnly: "declaration only",
+      /** 언어 사건의 사실 (시안 P3) — 되살린 번역 수 · 제거 요청이 함께 버린 미전달 편집 수 · 사람의 실행이 일으킨 만료. */
+      translationsBack: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation" : "translations"} back`,
+      editsDiscarded: (n: number): string => `${n.toLocaleString("en-US")} unsent ${n === 1 ? "edit" : "edits"} discarded`,
+      whilePublishing: "while publishing",
+      whileSyncing: "while syncing",
       nothingImported: "nothing was synced",
       archivedEffect: "editing stopped and nightly publishes ended",
       restoredEffect: "editing and nightly publishes resumed",
@@ -1574,6 +1579,32 @@ export const en = {
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} changed the base language of {source}</>
         ),
+      },
+      /**
+       * 언어 사건 (locale-add 시안 P3). **요청은 `asked to remove`다** — 리포는 아직 그대로다. 만료(`…Closed`)만 관측한 사실을 `outcome`으로 붙인다.
+       * 코드는 그대로 쓴다(`zh_CN`) — 행 배지와 같은 낱말이다. 옛 행은 결과 절(`outcome = null`)이나 언어(`unknown`)가 빠진다.
+       */
+      locale: {
+        added: (who: ReactNode, code: string, source: string): ReactNode => <>{who} added {code} to {source}</>,
+        addedAgain: (who: ReactNode, code: string, source: string): ReactNode => <>{who} added {code} to {source} again</>,
+        removalRequested: (who: ReactNode, code: string, source: string): ReactNode => <>{who} asked to remove {code} from {source}</>,
+        removalCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} cancelled removing {code} from {source}</>,
+        addCancelled: (who: ReactNode, code: string, source: string): ReactNode => <>{who} stopped adding {code} to {source}</>,
+        removalClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} closed the removal of {code} in {source}</> : <>{who} closed the removal of {code} in {source} — {outcome}</>
+        ),
+        addClosed: (who: ReactNode, code: string, source: string, outcome: string | null): ReactNode => (
+          outcome === null ? <>{who} closed the addition of {code} in {source}</> : <>{who} closed the addition of {code} in {source} — {outcome}</>
+        ),
+        /** 만료 뒤 리포 관측. ⚠️ PR 번호는 마지막 전달 확인 실행의 것이라(R-E0 W3) "그 PR이 해소했다"보다 강하게 말하지 않는다. */
+        outcome: {
+          gone: "the file is gone from the repository",
+          present: "the file is in the repository",
+          stillPresent: "the file is still in the repository",
+          absent: "the file isn't in the repository",
+          notMerged: (pr: string, fact: string): string => `${pr} closed without merging, ${fact}`,
+        },
+        unknown: (who: ReactNode, source: string): ReactNode => <>{who} changed a language in {source}</>,
       },
       settings: {
         created: (who: ReactNode): ReactNode => <>{who} created this project</>,

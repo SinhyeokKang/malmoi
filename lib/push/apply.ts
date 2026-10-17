@@ -130,7 +130,7 @@ export type ApplyOptions = {
 
 export type LocaleChangeHandling =
   | { kind: "keep" }
-  | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput; observed?: LocaleExpiryInput["observed"] }
+  | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput; via: LocaleExpiryInput["via"]; observed?: LocaleExpiryInput["observed"] }
   | { kind: "discard"; actor: EventActorInput; approved: readonly LocaleIntent[] };
 
 type LocaleIntent = { localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string };
@@ -197,7 +197,7 @@ export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope,
       const { pushTokenHash: _verified, expectedLastPublishedAt: _observed, expectedDeliveryRevision: _revision, pullRequest, onApplied, ...applyOptions } = options;
       const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [],
         // ⚠️ 생략은 `failed`다 — 조회하지 않았으면 만료하지 않는다(fail-closed). 남은 ADD를 지키는 것은 그대로다.
-        localeChanges: { kind: "expire", pullRequest: pullRequest ?? "failed", actor: { kind: "AUTOMATION" } } });
+        localeChanges: { kind: "expire", pullRequest: pullRequest ?? "failed", actor: { kind: "AUTOMATION" }, via: "ci" } });
       const after = await countPending(tx, scope.projectId);
       if (after > 0) throw new PendingEditsDuringApply(after);
       // ⚠️ **재집계 뒤다** — 앞에 두면 보류로 되돌아가는 트랜잭션에도 사건이 쓰였다가 함께 사라진다(무해하지만
@@ -227,7 +227,7 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
   // 만료가 먼저다 — 관측(이 페이로드의 로케일)으로 만료된 ADD는 아래 strict 판정이 다루고, 남은 ADD만 orphan 대상에서 뺀다.
   if (handling.kind === "expire") {
     await expireLocaleChanges(tx, { projectId: scope.projectId, surfaceId: scope.surfaceId, surfaceSlug: surface.slug,
-      pullRequest: handling.pullRequest, observed: handling.observed ?? { status: "observed", locales: payload.locales }, actor: handling.actor });
+      pullRequest: handling.pullRequest, observed: handling.observed ?? { status: "observed", locales: payload.locales }, actor: handling.actor, via: handling.via });
   }
   const rows = await tx.localeChange.findMany({ where: { projectId: scope.projectId, surfaceId: scope.surfaceId }, select: { localeCode: true, operation: true, requestedAt: true } });
   const intents = rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt.toISOString() }));
@@ -275,7 +275,7 @@ async function discardLocaleChanges(
       actor,
       surfaceIds: [surfaceId],
       payload: { kind: "SURFACE" as const, surfaceSlug, adapter: null, baseLocale: null,
-        localeChange: { locale: intent.localeCode, operation: intent.operation, revived: null, discarded: null, outcome: presence === "unchanged" ? null : presence, reissued: null, pullRequest: null } },
+        localeChange: { locale: intent.localeCode, operation: intent.operation, revived: null, discarded: null, outcome: presence === "unchanged" ? null : presence, reissued: null, pullRequest: null, via: "sync" } },
     };
   }));
 }

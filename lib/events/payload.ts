@@ -115,7 +115,15 @@ export type LocaleChangeDetail = {
    * 없던 의도·주소 없는 실행·옛 행은 `null`. `surface.localeChangeResolved`만 싣는다.
    */
   pullRequest: { number: number } | null;
+  /**
+   * 만료(`surface.localeChangeResolved`)를 일으킨 실행 — `publish`(사람의 Publish) · `sync`(승인한 수동 Sync) · `nightly`(야간 방문·야간 Publish) · `ci`(CI 적재).
+   * 행위자 컬럼만으로는 야간·CI가 같은 AUTOMATION이라 Logs가 야간 만료를 "CI"로 그렸다(시안 P3). 다른 subtype·옛 행은 `null`이다.
+   */
+  via: LocaleChangeVia | null;
 };
+
+export const LOCALE_CHANGE_VIAS = ["publish", "sync", "nightly", "ci"] as const;
+export type LocaleChangeVia = (typeof LOCALE_CHANGE_VIAS)[number];
 
 /** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
 export type ValueChange = { before: string | null; after: string | null };
@@ -323,7 +331,7 @@ function localeChangeOf(raw: Record<string, unknown>): LocaleChangeDetail | null
   if (locale === null || operation === null) return null;
   const revived = Object.hasOwn(inner, "revived") && typeof inner.revived === "boolean" ? inner.revived : null;
   return { locale, operation, revived, discarded: num(inner, "discarded"), outcome: oneOfRaw(LOCALE_OUTCOMES, str(inner, "outcome")),
-    reissued: num(inner, "reissued"), pullRequest: pullRequestOf(inner) };
+    reissued: num(inner, "reissued"), pullRequest: pullRequestOf(inner), via: oneOfRaw(LOCALE_CHANGE_VIAS, str(inner, "via")) };
 }
 
 function pullRequestOf(raw: Record<string, unknown>): { number: number } | null {

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, surfaceResultState, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, localeVia, surfaceResultState, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
@@ -52,7 +52,7 @@ export function EventDetail({
   m: Messages;
 }) {
   const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
-  const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
+  const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype, payload: row.payload });
   const run = row.kind === "IMPORT" || row.kind === "PUBLISH";
 
   return (
@@ -224,7 +224,7 @@ function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; no
 
 /** 행 쪽(`event-row.tsx`)과 같은 판정이다 — 자동화 낱말은 `triggerOf`가 정한다. */
 function actorLabel(m: Messages, row: EventRow): string {
-  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
+  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype, via: localeVia(row.payload) }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }

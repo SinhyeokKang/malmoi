@@ -24,7 +24,7 @@ describe("buildSearchText — 무엇이 들어가나", () => {
 
   it("언어 변경은 언어 코드를 싣는다", () => {
     const text = buildSearchText(REF, { kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null,
-      localeChange: { locale: "pt_BR", operation: "ADD", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null } });
+      localeChange: { locale: "pt_BR", operation: "ADD", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null, via: null } });
     expect(text).toContain("pt_br");
     expect(text).toContain("web");
   });

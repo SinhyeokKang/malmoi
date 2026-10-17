@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { Prisma } from "@/generated/prisma/client";
+
 import { NIGHTLY_SUBTYPES } from "../payload";
 import { triggerWhere } from "../trigger-where";
 
@@ -18,10 +20,15 @@ describe("triggerWhere", () => {
     });
   });
 
-  it("ci = AUTOMATION ∧ ¬nightly — 둘의 합이 AUTOMATION 전체다(옛 `automation`)", () => {
+  it("ci = AUTOMATION ∧ ¬nightly — 언어 만료 갈래는 via 없는 옛 행(SQL NULL)까지 ci로 건진다", () => {
     expect(triggerWhere("ci")).toEqual({
       actorKind: "AUTOMATION",
-      NOT: { OR: [{ kind: "PUBLISH" }, { subtype: { in: [...NIGHTLY_SUBTYPES] } }, NIGHTLY_LOCALE_EXPIRY] },
+      NOT: { OR: [{ kind: "PUBLISH" }, { subtype: { in: [...NIGHTLY_SUBTYPES] } }] },
+      OR: [
+        { subtype: { not: "surface.localeChangeResolved" } },
+        { payload: { path: ["localeChange", "via"], not: "nightly" } },
+        { payload: { path: ["localeChange", "via"], equals: Prisma.AnyNull } },
+      ],
     });
   });
 });

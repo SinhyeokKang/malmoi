@@ -266,7 +266,8 @@ async function current(tx: Prisma.TransactionClient, lease: Lease, captured: Tra
 function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { files?: readonly { path: string; mode?: string }[] }, complete: boolean): LocaleChangeHandling {
   const { actor } = lease;
   // 만료의 관측은 적재가 읽은 그 트리에서 Publish 쪽 만료와 같은 함수로 본다(R-B2 Y4) — `payload.locales`는 링크도 로케일로 센다.
-  if (actor.kind === "AUTOMATION") return { kind: "expire", pullRequest: actor.pullRequest, actor: { kind: "AUTOMATION" },
+  // 이 경로의 AUTOMATION은 야간 적재 하나다(CI는 `applyProtectedPush`) — 만료 사건이 "CI"로 서지 않게 실행을 싣는다(시안 P3).
+  if (actor.kind === "AUTOMATION") return { kind: "expire", pullRequest: actor.pullRequest, actor: { kind: "AUTOMATION" }, via: "nightly",
     observed: snapshot.files === undefined ? { status: "unreadable" } : observeSurfaceLocales(snapshot.files, surface) };
   const surfaceId = surface.id;
   if (!complete) return { kind: "keep" };

@@ -7,7 +7,7 @@ import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { eventGlyph, eventSentence, eventView, triggerOf } from "@/lib/events/view";
+import { eventGlyph, eventSentence, eventView, localeVia, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
 import { relativeTime } from "@/lib/relative-time";
 import { formatClock, formatMinute, type DateStyle } from "@/lib/date-format";
@@ -47,7 +47,7 @@ export function EventRow({
   m: Messages;
 }) {
   const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
-  const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
+  const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype, payload: row.payload });
   const sentence = eventSentence(m, style.uiLocale, row, {
     actor: <span className="font-medium">{actorLabel(m, row)}</span>,
     key: translationKey(row),
@@ -103,7 +103,7 @@ export function EventRow({
  * ⚠️ 자동화 낱말은 `triggerOf`(subtype)가 정한다 — 종류로 가르면 야간 적재·스킵이 `CI`로 선다(nightly-sync).
  */
 function actorLabel(m: Messages, row: Row): string {
-  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
+  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype, via: localeVia(row.payload) }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }

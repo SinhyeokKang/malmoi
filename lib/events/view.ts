@@ -10,7 +10,9 @@ import type { UiLocale } from "@/lib/i18n/locales";
 import { addDays, dayKeyAt, formatDayKey, type DateStyle } from "@/lib/date-format";
 
 import type { EventCursor } from "./filter";
-import { LOCALE_CHANGE_SUBTYPES, NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult, type SurfaceOutcome } from "./payload";
+import { reachedRepository } from "@/lib/locales/reached";
+
+import { LOCALE_CHANGE_SUBTYPES, NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult, type LocaleChangeDetail, type LocaleChangeVia, type SurfaceOutcome } from "./payload";
 
 /**
  * Logs 행의 **순수 판정** (logs-rework design §6). 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
@@ -178,6 +180,12 @@ export type GlyphIcon =
   | "arrow-down-to-line"
   | "git-pull-request-arrow"
   | "file-json-2"
+  | "circle-plus"
+  | "rotate-ccw"
+  | "circle-minus"
+  | "undo-2"
+  | "circle-check"
+  | "circle-dot"
   | "globe"
   | "users"
   | "git-branch"
@@ -201,13 +209,36 @@ const KIND_GLYPH_TONE: Readonly<Record<EventKind, GlyphTone>> = {
  * ⚠️ **방향을 글리프가 함께 말한다** — 내보내기는 `git-pull-request-arrow`, 가져오기는
  * `arrow-down-to-line`이다. 같은 `SyncRun`에서 나왔다는 사실이 두 방향을 섞을 근거가 되지 않는다.
  */
-export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtype: string }): {
+export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtype: string; payload?: EventPayload | null }): {
   icon: GlyphIcon;
   tone: GlyphTone;
 } {
   const run = row.kind === "IMPORT" || row.kind === "PUBLISH";
   const tone = run && row.result !== null ? TONE_GLYPH[logsResultTone(row.result)] : KIND_GLYPH_TONE[row.kind];
-  return { icon: glyphIcon(row.kind, row.subtype), tone };
+  const locale = isLocaleChangeSubtype(row.subtype) ? localeGlyph(row.subtype, localeChangeOf(row.payload ?? null)) : null;
+  return { icon: locale ?? glyphIcon(row.kind, row.subtype), tone };
+}
+
+/**
+ * 언어 사건의 글리프 (시안 P3) — 동작마다 갈라 훑어진다: 추가 · 되살림 · 제거 요청 · 취소 · 리포가 요청대로(만료) · 리포가 요청과 달리(만료).
+ * 색은 종류(청록)를 그대로 쓴다 — 같은 Logs의 다른 소스 사건과 같은 칸이다.
+ */
+function localeGlyph(subtype: string, detail: LocaleChangeDetail | null): GlyphIcon {
+  switch (subtype) {
+    case "surface.localeAdded": return detail?.revived === true ? "rotate-ccw" : "circle-plus";
+    case "surface.localeRemovalRequested": return "circle-minus";
+    case "surface.localeChangeCancelled": return "undo-2";
+    default: return detail !== null && detail.outcome !== null && reachedRepository({ operation: detail.operation, presence: detail.outcome }) ? "circle-check" : "circle-dot";
+  }
+}
+
+function localeChangeOf(payload: EventPayload | null): LocaleChangeDetail | null {
+  return payload?.kind === "SURFACE" ? payload.localeChange ?? null : null;
+}
+
+/** 만료를 일으킨 실행 — `triggerOf`에 넘기는 값이다. 언어 사건이 아니거나 옛 행이면 `null`. */
+export function localeVia(payload: EventPayload | null): LocaleChangeVia | null {
+  return localeChangeOf(payload)?.via ?? null;
 }
 
 function isLocaleChangeSubtype(subtype: string): boolean {
@@ -244,9 +275,14 @@ export type Trigger = "manual" | "nightly" | "ci";
  * ⚠️ **`subtype` 컬럼만 본다** — `payload.source`는 옛 행에 없고 `readPayload`가 모르는 값을 `ci`로 접는다.
  * 필터 쪽 술어(`triggerWhere`)가 같은 컬럼을 보고, 같은 행을 가르는지는 `query.integration.ts`가 실제 행으로 잰다.
  */
-export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype: string }): Trigger {
+/**
+ * ⚠️ **언어 만료는 `via`가 가른다** (locale-add 시안 P3) — 야간 방문·야간 Publish·CI 적재가 모두 AUTOMATION · `surface.localeChangeResolved`라 컬럼만으로는
+ * 야간 만료가 "CI"로 섰다. 필터(`triggerWhere`)가 같은 payload 칸을 본다. 옛 행(`via` 없음)은 지금 판정(ci) 그대로다.
+ */
+export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype: string; via?: LocaleChangeVia | null }): Trigger {
   if (row.actorKind === "USER") return "manual";
   if (row.kind === "PUBLISH" || (NIGHTLY_SUBTYPES as readonly string[]).includes(row.subtype)) return "nightly";
+  if (row.subtype === "surface.localeChangeResolved" && row.via === "nightly") return "nightly";
   return "ci";
 }
 
@@ -327,8 +363,8 @@ export function eventSentence(
     case "SURFACE": {
       const slug = payload?.kind === "SURFACE" ? payload.surfaceSlug : m.logs.none;
       if (row.subtype === "surface.removed") return m.logs.sentence.surface.removed(actor, slug);
-      // ⚠️ 언어 변경을 "소스를 추가했다"로 그리지 않는다(locale-add). 전용 문장은 화면 문구 배치가 정한다 — 그 전까지 종류 폴백이다.
-      if (isLocaleChangeSubtype(row.subtype)) return m.logs.sentence.fallback(actor, m.logs.kinds.sources);
+      // ⚠️ 언어 변경을 "소스를 추가했다"로도, 종류 폴백("changed Sources & languages")으로도 그리지 않는다(시안 P3).
+      if (isLocaleChangeSubtype(row.subtype)) return localeSentence(m, row.subtype, actor, slug, payload?.kind === "SURFACE" ? payload.localeChange ?? null : null);
       return row.subtype.startsWith("surface.baseLocale")
         ? m.logs.sentence.surface.baseLocale(actor, slug)
         : m.logs.sentence.surface.added(actor, slug);
@@ -343,6 +379,34 @@ export function eventSentence(
         : sentence(actor);
     }
   }
+}
+
+/**
+ * 언어 사건 문장 (시안 P3). **요청 행은 `asked to remove`다** — 리포는 아직 그대로라 "removed"라고 말하지 않는다. 만료 행만 관측한 사실(파일이 리포에 있나)을 쓴다.
+ * ⚠️ PR 번호는 마지막 전달 확인 실행의 PR이다(R-E0 W3) — 드물게 실제로 닫힌 PR과 다를 수 있어 "그 PR이 해소했다"보다 강하게 단정하지 않는다.
+ * 옛 행은 없는 칸을 뺀 문장이다 — 결과를 모르면 결과 절이 없고, 맥락이 통째로 없으면 언어를 말하지 않는 문장이다.
+ */
+function localeSentence(m: Messages, subtype: string, who: ReactNode, source: string, detail: LocaleChangeDetail | null): ReactNode {
+  const s = m.logs.sentence.locale;
+  if (detail === null) return s.unknown(who, source);
+  const code = detail.locale;
+  switch (subtype) {
+    case "surface.localeAdded": return detail.revived === true ? s.addedAgain(who, code, source) : s.added(who, code, source);
+    case "surface.localeRemovalRequested": return s.removalRequested(who, code, source);
+    case "surface.localeChangeCancelled": return detail.operation === "REMOVE" ? s.removalCancelled(who, code, source) : s.addCancelled(who, code, source);
+    default: {
+      const outcome = detail.outcome === null ? null : resolvedOutcome(m, detail.operation, detail.outcome, detail.pullRequest);
+      return detail.operation === "REMOVE" ? s.removalClosed(who, code, source, outcome) : s.addClosed(who, code, source, outcome);
+    }
+  }
+}
+
+function resolvedOutcome(m: Messages, operation: "ADD" | "REMOVE", presence: "active" | "orphan", pullRequest: { number: number } | null): string {
+  const o = m.logs.sentence.locale.outcome;
+  if (reachedRepository({ operation, presence })) return operation === "REMOVE" ? o.gone : o.present;
+  const fact = operation === "REMOVE" ? o.stillPresent : o.absent;
+  // 번호 표기는 리포 호스트의 것이다(GitHub `#126` · GitLab `!126`) — `withRepoHost`가 덮은 사전이 든다.
+  return pullRequest === null ? fact : o.notMerged(m.home.meta.pr(pullRequest.number), fact);
 }
 
 function settingsSentences(m: Messages): Record<string, (who: ReactNode) => ReactNode> {
@@ -578,7 +642,16 @@ export function eventMeta(m: Messages, row: EventMetaRow, archived: boolean): Ev
     case "SURFACE": {
       if (payload?.kind !== "SURFACE") break;
       if (payload.localeChange !== undefined) {
-        parts.push({ kind: "locale", code: payload.localeChange.locale }, { kind: "badge", text: payload.surfaceSlug });
+        const detail = payload.localeChange;
+        parts.push({ kind: "locale", code: detail.locale }, { kind: "badge", text: payload.surfaceSlug });
+        // 사실만 싣는다(시안 P3) — 되살린 번역 수 · 함께 버린 미전달 편집 수 · 사람의 실행이 일으킨 만료. 없거나 0이면 빈 자리를 채우지 않는다.
+        if (row.subtype === "surface.localeAdded" && detail.revived === true && detail.reissued !== null && detail.reissued > 0) parts.push(m.logs.meta.translationsBack(detail.reissued));
+        if (row.subtype === "surface.localeRemovalRequested" && detail.discarded !== null && detail.discarded > 0) parts.push(m.logs.meta.editsDiscarded(detail.discarded));
+        // 자동화 주체는 행위자 낱말(Nightly · CI)이 이미 말한다 — 사람이면 그가 손으로 닫은 것이 아니라 그 실행이 관측한 결과다.
+        if (row.subtype === "surface.localeChangeResolved" && row.actor.kind === "USER") {
+          if (detail.via === "publish") parts.push(m.logs.meta.whilePublishing);
+          else if (detail.via === "sync") parts.push(m.logs.meta.whileSyncing);
+        }
         break;
       }
       if (payload.adapter !== null) parts.push({ kind: "badge", text: payload.adapter });

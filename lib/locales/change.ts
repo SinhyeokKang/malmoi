@@ -330,7 +330,7 @@ export async function addLocale(prisma: PrismaClient, subject: Subject, input: z
       WHERE ${reviveCellsWhere(scope, code)}`;
     await tx.localeChange.create({ data: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code, operation: "ADD" } });
     await recordLocaleEvent(tx, { scope, userId: subject.userId, surfaceSlug: verdict.surfaceSlug, subtype: "surface.localeAdded",
-      detail: { locale: code, operation: "ADD", revived: action === "revive", discarded: null, outcome: null, reissued: action === "revive" ? reissued : null, pullRequest: null } });
+      detail: { locale: code, operation: "ADD", revived: action === "revive", discarded: null, outcome: null, reissued: action === "revive" ? reissued : null, pullRequest: null, via: null } });
     return { ok: true, action, path, reissued } as const;
   }, { maxWait: 10_000, timeout: 30_000 });
 }
@@ -411,7 +411,7 @@ export async function removeLocale(prisma: PrismaClient, subject: Subject, input
     await recordLocaleEvent(tx, {
       scope, userId: subject.userId, surfaceSlug: state.surface.slug,
       subtype: transition.kind === "request-removal" ? "surface.localeRemovalRequested" : "surface.localeChangeCancelled",
-      detail: { locale: code, operation: transition.kind === "request-removal" ? "REMOVE" : "ADD", revived: null, discarded, outcome: null, reissued: null, pullRequest: null },
+      detail: { locale: code, operation: transition.kind === "request-removal" ? "REMOVE" : "ADD", revived: null, discarded, outcome: null, reissued: null, pullRequest: null, via: null },
     });
     return { ok: true, kind: transition.kind, discarded } as const;
   }, { maxWait: 10_000, timeout: 30_000 });
@@ -432,7 +432,7 @@ export async function cancelLocaleRemoval(prisma: PrismaClient, subject: Subject
     if (state.surface === null) return { ok: false, error: "not-found" } as const;
     await tx.localeChange.delete({ where: { projectId_surfaceId_localeCode: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code } } });
     await recordLocaleEvent(tx, { scope, userId: subject.userId, surfaceSlug: state.surface.slug, subtype: "surface.localeChangeCancelled",
-      detail: { locale: code, operation: "REMOVE", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null } });
+      detail: { locale: code, operation: "REMOVE", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null, via: null } });
     return { ok: true, delivered: hasDelivered(state, code, "delete") } as const;
   }, { maxWait: 10_000, timeout: 30_000 });
 }

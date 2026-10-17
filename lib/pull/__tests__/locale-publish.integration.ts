@@ -306,7 +306,7 @@ async function ciImport(locales: string[]) {
     keys: ["hello", "bye"].map(key => ({ key, namespace: "_root", sourceText: values.en![key]! })),
     translations: locales.flatMap(locale => ["hello", "bye"].map(key => ({ key, locale, value: values[locale]![key]! }))),
     refs: [],
-  }, { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", localeChanges: { kind: "expire", pullRequest: "none-open", actor: { kind: "AUTOMATION" } } });
+  }, { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", localeChanges: { kind: "expire", pullRequest: "none-open", actor: { kind: "AUTOMATION" }, via: "ci" } });
 }
 
 /**

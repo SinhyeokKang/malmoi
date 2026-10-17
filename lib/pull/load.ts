@@ -257,6 +257,8 @@ export async function expireLocalesForPublish(
       const result = await expireLocaleChanges(tx, {
         projectId: input.projectId, surfaceId: surface.surfaceId, surfaceSlug: surface.surfaceSlug,
         pullRequest: input.pullRequest, observed: surface.observed, actor: actor === undefined ? { kind: "AUTOMATION" } : { kind: "USER", userId: actor.userId },
+        // 행위자 없는 Publish는 야간 cron 하나다 — Logs가 그 만료를 "CI"로 그리지 않는다(시안 P3).
+        via: actor === undefined ? "nightly" : "publish",
       });
       expired.push(...result.expired.map(item => ({ surfaceSlug: surface.surfaceSlug, localeCode: item.localeCode, operation: item.operation, presence: item.presence })));
     }
