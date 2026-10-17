@@ -756,8 +756,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
           // 보류로 여기 온 결과는 writer가 값을 버린 것이 아니다 — 설명이 갈린다(#83). no-changes + 보류는 다른 편집이 이미 리포와 같았다.
           const reason = outcome.status === "skipped" ? outcome.reason : null;
           title = p.notSent;
-          // 리포에 닿지 못한 언어 요청을 정리한 no-edits(#267)도 보류와 같은 설명이다 — 쓰지 않았고 그 편집은 여기 남는다. writer 경고 문장이 아니다.
-          description = reason === "withheld" || reason === "no-edits" ? p.withheldDescription.withheld
+          description = reason === "withheld" ? p.withheldDescription.withheld
             : reason === "no-changes" ? (closed === undefined ? p.withheldDescription.noChanges : p.closedPr.description(repo.branch))
             : p.notSentDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
@@ -769,6 +768,14 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
           </Stack>;
           break;
         }
+        case "request-closed":
+          // 보낼 것도 보류할 것도 없이 언어 요청만 닫았다(#289) — Held back 틀이면 Home(To send 0)·Logs(`Nothing to send`)와 갈린다. 무엇을 닫았는지는 만료 줄이 말한다.
+          panel = PANEL.noChanges; inner = false;
+          title = p.language.settle.doneTitle(expiredRequests.length);
+          description = p.language.settle.doneDescription;
+          actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+          body = <Stack>{expired}</Stack>;
+          break;
         case "no-changes":
           panel = PANEL.noChanges; inner = false;
           title = p.noChanges;

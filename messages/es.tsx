@@ -1773,6 +1773,8 @@ export const es = {
           progressDescription: "Comprobando la pull request y el repositorio y cerrando después la solicitud. Normalmente tarda unos segundos.",
           progress: ["Comprobando si la pull request sigue abierta", "Leyendo el repositorio", "Cerrando la solicitud"] as readonly string[],
           stillOpen: "Hay una pull request abierta con cambios de idioma, así que la solicitud se queda hasta que se fusione o se cierre. No se envió nada.",
+          doneTitle: (n: number): string => (n === 1 ? "Solicitud de idioma cerrada" : "Solicitudes de idioma cerradas"),
+          doneDescription: "No se escribió nada en el repositorio.",
         },
         inSource: (code: string, source: string): string => `${code} (${source})`,
       },

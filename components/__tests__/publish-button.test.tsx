@@ -475,13 +475,17 @@ it("no-changes에 보류가 있으면 Not sent 틀이고 nothing-to-send 약속�
   expect(text).toContain(p.withheldDescription.noChanges);
   expect(text).toContain(`${p.withheld.file(1)} ${p.withheld.editor}`);
 });
-it("언어 요청을 리포에 없는 채로 버린 no-edits는 \"Your edits were already in the repository\"가 아니다 (#267 fix1 Y1)", async () => {
+/** #289 — 보류한 값이 없으니 Held back도 아니다(Home To send 0 · Logs `Nothing to send`와 같은 사실). 요청을 닫았다고 말한다. */
+it("언어 요청을 리포에 없는 채로 버린 no-edits는 \"Your edits were already in the repository\"도 Held back도 아니다 (#267 fix1 Y1 · #289)", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "orphan" }] });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const text = document.body.textContent ?? "";
   expect(text).not.toContain(en.translations.publish.noChangesDescription);
   expect(text).not.toContain(en.translations.publish.notSentDescription);
-  expect(text).toContain(en.translations.publish.withheldDescription.withheld);
+  expect(text).not.toContain(en.translations.publish.notSent);
+  expect(text).not.toContain(en.translations.publish.withheldDescription.withheld);
+  expect(document.querySelector('[role="dialog"] h2')?.textContent).toBe("Language request closed");
+  expect(text).toContain("Nothing was written to the repository.");
 });
 it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });

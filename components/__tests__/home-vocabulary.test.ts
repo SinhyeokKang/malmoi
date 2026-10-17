@@ -209,6 +209,7 @@ const NOT_A_COUNT: Record<string, string> = {
   "translations.publish.language.settle.body": "plural only",
   "translations.publish.language.settle.action": "plural only",
   "translations.publish.language.settle.progressTitle": "plural only",
+  "translations.publish.language.settle.doneTitle": "plural only",
   // 추가 취소의 미전달 줄(RT4 #278) — 수는 `count`(= `repositorySync.unsentCount`)가 그리고, `n`은 en 동사·대명사와 es 동사 수 일치에만 쓴다.
   "sources.locale.untrackLine": "count is repositorySync.unsentCount",
   "sources.orphanStripOwner": "n은 분기 판정(0·1·그 외)에만 쓰고 문장에 찍지 않는다",

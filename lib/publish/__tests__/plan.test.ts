@@ -166,11 +166,15 @@ it("base와 같은 값의 행은 same이고 diff가 그 수를 센다 · 다른 
 });
 
 /**
- * fix1 Y1 (#267) — 머지 없이 닫힌 PR/MR의 언어 요청을 버리고 끝난 no-edits는 "파일이 같았다"가 아니다. 그 언어의 편집은 나가지 않았다 — Not sent 틀이다.
+ * fix1 Y1 (#267) — 머지 없이 닫힌 PR/MR의 언어 요청을 버리고 끝난 no-edits는 "파일이 같았다"가 아니다.
+ * #289 — 보류한 값도 없다(Home To send 0 · Logs `Nothing to send`) — Held back이 아니라 요청을 닫았다 틀이다. 보류가 실제로 있으면(`withheld`) Held back 그대로다.
  * 리포가 이미 요청대로였으면(머지) "이미 리포에 있다"가 참이라 No changes 그대로다.
  */
-it("no-edits + 리포에 없는 채로 버린 언어 요청은 Not sent 틀이다 — 리포에 반영된 요청만이면 No changes", () => {
-  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" }] })).toBe("partial");
-  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" }] })).toBe("partial");
+it("no-edits + 리포에 없는 채로 버린 언어 요청은 요청을 닫았다 틀이다 — 보류가 있으면 Held back · 리포에 반영된 요청만이면 No changes", () => {
+  const dropped = { surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" } as const;
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [dropped] })).toBe("request-closed");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" }] })).toBe("request-closed");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [dropped, { surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("request-closed");
+  expect(planPublishView({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: [dropped] })).toBe("partial");
   expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("no-changes");
 });

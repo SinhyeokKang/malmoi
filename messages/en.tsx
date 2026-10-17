@@ -3351,6 +3351,9 @@ export const en = {
           progress: ["Checking whether the pull request is still open", "Reading the repository", "Closing the request"] as readonly string[],
           /** 실행이 열린 PR을 봤다(`no-edits` + `prOpen`) — 정리 미리보기 뒤 PR이 다시 열린 경합이다. "리포에 이미 있다"가 아니다. */
           stillOpen: "A pull request with language changes is open, so the request stays until it's merged or closed. Nothing was sent.",
+          /** 보류 없이 요청만 닫은 결과(#289) — Held back이 아니다. 무엇을 닫았는지는 뒤의 만료 줄이 말한다. */
+          doneTitle: (n: number): string => (n === 1 ? "Language request closed" : "Language requests closed"),
+          doneDescription: "Nothing was written to the repository.",
         },
         /** 만료 안내가 여러 소스에 걸칠 때 언어에 소스를 붙인다(`fr (web)`) — "this source"가 어느 소스인지. */
         inSource: (code: string, source: string): string => `${code} (${source})`,
@@ -4565,7 +4568,7 @@ export const en = {
       },
       published: (view: string, dropped = 0, reached = 0): string =>
         // 보낼 것 없이 언어 요청만 정리했다(#267) — 그것이 이 결과의 이유다. 리포에 닿지 못한 요청이 있으면 "이미 있다"가 거짓이다.
-        (view === "no-changes" || view === "partial") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
+        (view === "no-changes" || view === "partial" || view === "request-closed") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
         : view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
@@ -4625,7 +4628,7 @@ export const en = {
           return `${rest}. Publish with this fingerprint.`;
         },
         published: (view: string, dropped = 0, reached = 0): string =>
-          (view === "no-changes" || view === "partial") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
+          (view === "no-changes" || view === "partial" || view === "request-closed") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
           : view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."
           : view === "partial" ? "Some changes weren't sent. See the result for why."

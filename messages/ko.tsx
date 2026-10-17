@@ -1771,6 +1771,8 @@ export const ko = {
           progressDescription: "PR과 리포지토리를 확인한 뒤 요청을 닫습니다. 보통 몇 초 걸립니다.",
           progress: ["PR이 아직 열려 있는지 확인", "리포지토리 읽기", "요청 닫기"] as readonly string[],
           stillOpen: "언어 변경이 담긴 PR이 열려 있어, 머지되거나 닫힐 때까지 요청이 남습니다. 아무것도 보내지 않았습니다.",
+          doneTitle: (_n: number): string => "언어 요청을 닫았습니다",
+          doneDescription: "리포지토리에 아무것도 쓰지 않았습니다.",
         },
         inSource: (code: string, source: string): string => `${code}(${source})`,
       },

@@ -348,7 +348,40 @@ describe("Publish — 닫힌 언어 요청 정리 (#282)", () => {
     await click("Publish1");
     expect(modal().querySelector("h2")?.textContent).toBe("Close the language request");
     await click("Close request");
+    expect(modal().querySelector("h2")?.textContent).toBe("Held back — some values can't be written to the files");
     expect(modal().textContent).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+  });
+
+  /** #289 — 보류할 것이 없는 정리는 Held back이 아니다. 요청을 닫았다 틀 + 만료 줄(Home To send 0 · Logs `Nothing to send`와 같은 사실). */
+  it("보류 없는 정리 — 결과는 요청을 닫았다 틀이고 만료 줄이 선다", async () => {
+    mocks.preview.mockResolvedValue(ok(dropped));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", expired: dropped.expiringLocales });
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close request");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Language request closed");
+    expect(text).toContain("Nothing was written to the repository.");
+    expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+    expect(text).not.toContain("Held back");
+    expect(text).not.toContain("until they can be sent");
+    expect(button("Close")).toBeDefined();
+  });
+
+  it("보류 없는 정리 · 요청 둘 · GitLab — 복수 제목, merge request 만료 줄", async () => {
+    const two = [...dropped.expiringLocales, { surfaceSlug: "web", localeCode: "ja", operation: "REMOVE", presence: "active" }];
+    mocks.preview.mockResolvedValue(ok({ ...dropped, expiringLocales: two }));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", expired: two });
+    await render(<Host host="gitlab" languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close requests");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Language requests closed");
+    expect(text).toContain("Nothing was written to the repository.");
+    expect(text).toContain("fr wasn't added — its merge request closed without merging. Its translations stay in Malmoi.");
+    expect(text).toContain("ja wasn't removed — its merge request closed without merging. It stays in this source.");
   });
 
   /** 🟡3 — 미리보기 뒤 PR이 다시 열렸다(실행은 실물을 본다). "리포에 이미 있다"가 아니라 요청이 열린 PR을 기다린다고 말한다. */
