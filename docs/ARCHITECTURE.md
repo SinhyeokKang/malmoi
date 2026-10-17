@@ -2516,7 +2516,10 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
     열림·모름(`undefined`)은 꺼진 채다. Home은 그 창에서 보류 판정이 이미 같은 조회를 하므로 promise 하나를 나눠 쓴다(호스트 호출 0 추가). 번역 화면은 그 창에서만 조회를 새로 단다(메모 30초).
     ⚠️ **표시 전용 메모를 "켜는" 쪽에 쓴다** — 실행이 실물로 다시 조회하므로(fail-closed) 옛 "없음"의 대가는 할 일 없는 미리보기 한 번이다. "버튼은 base를 읽지 않는다"는 그대로 참이다(PR 목록만 본다).
   - **미리보기의 정리 갈래**: 보낼 편집·언어 파일 변경이 0이고 `expiringLocales`만 있으면 `Nothing can be sent yet`으로 떨어지지 않고 요청을 닫는 실행 버튼을 세운다(`Close the language request` — DESIGN §6.646).
-    실행은 스냅샷 전 만료를 돌고 `no-edits` + `expired`로 끝난다(§5.10.2 · #267). 만료가 보류되는 드문 갈래(base 관측 0개·못 읽음 · 같은 소스의 값 0개 미전달 ADD)는 `expiringLocales`가 비어 `Nothing can be sent yet`이다.
+    실행은 스냅샷 전 만료를 돌고 `no-edits` + `expired`로 끝난다(§5.10.2 · #267). 만료가 보류되는 드문 갈래(base 관측 0개·못 읽음)는 `expiringLocales`가 비어 `Nothing can be sent yet`이고,
+    그 상태가 이어지는 동안 버튼은 매 방문 켜진다(누를 때마다 할 일 없는 미리보기 — 수용). 같은 소스의 값 0개 미전달 ADD는 이 갈래가 아니다 — 판정이 나머지 행을 만료하고 그 ADD만 남긴다.
+    ⚠️ **웹 Publish는 지문을 넘기지 않는다**(`publishProject` — MCP만 `expectedFingerprint`) — 미리보기 뒤 PR/MR이 다시 열리면 실행은 실물을 보고 만료 없이 `no-edits`로 끝나고,
+    결과는 `Nothing changed` 틀이다(요청은 남고 다음 미리보기가 다시 말한다). 결과 문장만 사실과 어긋나는 경합이라 수용했다.
 - **언어 계획이 뺀 언어의 편집 수** (`withheld.language` · `withoutFileLanguage`): `ProjectLocalePlan.exclude`(보류된 ADD 등)의 언어에 사는 미전달 편집은 파일 보류로 센다 — 실행 결과 `withheld.file`·`SyncRun.withheld`·MCP 수는 그대로 `file + key`다.
   그 중 계획이 뺀 언어의 몫은 따로도 센다(`WithheldCoordinates.languages` → `splitEdits`의 `withheldBy.language` → 결과 `withheld.language`, 미리보기는 `withoutFileLanguage` — 같은 `excluded` 갈래라 **미리보기 = 실행**).
   화면은 "언어 파일이 아직 없다" 줄과 결과의 파일 복구 권유에서 이 수를 뺀다 — 그 언어는 `Held`·`Not included` 행이 설명하고, "파일이 아직 없다"로 또 세면 같은 표 안에서 `이미 리포에 있다`와 모순이다. 모집단(`sendable`·`delivered`)은 바뀌지 않는다.
