@@ -3463,8 +3463,8 @@ export const en = {
     waiting: "Waiting to apply",
     pendingHelp: "If your CI passes the base language for this source, update its workflow entry to the requested language.",
     // ⚠️ 파일이 사라졌다고 단정하지 않는다 — 한 파일에 여러 언어가 드는 형식에서는 파일이 남아도 언어가 빠진다.
-    orphanReason: "This language was removed from the repository.",
-    orphanStrip: (code: string): string => `${code} was removed from the repository.`,
+    orphanReason: "This language is inactive.",
+    orphanStrip: (code: string): string => `${code} is inactive.`,
     orphanStripRest: (translations: number, active: number): string =>
       `The ${translations.toLocaleString("en-US")} translations are kept and stay read-only. It comes back when the language is in the repository again and the next sync runs. It isn't counted in the ${active.toLocaleString("en-US")} active languages.`,
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
@@ -3473,7 +3473,9 @@ export const en = {
     languagesHelp: "Languages come from the repository. Add or remove the files there.",
     baseRow: "Source of every key in this file",
     needReview: (count: number): string => `${count.toLocaleString("en-US")} need review`,
-    missingRepo: "Removed from repository",
+    missingRepo: "Inactive",
+    adding: "Adding",
+    removing: "Removing",
     editorBase: "Only project owners can change the base language of a source.",
     started: "started",
     addedAgo: "added",

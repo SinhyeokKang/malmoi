@@ -2,8 +2,9 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { LocaleChangeSubtype } from "@/lib/events/payload";
 import type { EventActorInput } from "@/lib/events/record";
 import { recordEvents } from "@/lib/events/record";
+import { reviewNumberFrom } from "@/lib/projects/remote-plan";
 
-import { normalizeLocaleEffects } from "./effects";
+import { normalizeLocaleEffects, type LocaleEffect } from "./effects";
 import { planLocaleExpiry, type ExpiredLocale, type ExpiryHold, type PullRequestCheck } from "./expiry";
 import { readLocaleStates } from "./work";
 
@@ -68,14 +69,33 @@ export async function expireLocaleChanges(tx: Prisma.TransactionClient, input: L
       // strict 적재와 같은 존재 판정이다 — orphan이면 `isBase`도 내린다(`lib/push/apply.ts`의 orphan 문장과 같은 결).
       await tx.locale.updateMany({ where: { projectId, surfaceId, code: { in: codes } }, data: presence === "active" ? { orphaned: false } : { orphaned: true, isBase: false } });
     }
+    const pullRequest = await carriedBy(tx, input, state.delivered);
     await recordEvents(tx, plan.expired.map(item => ({
       projectId,
       subtype: "surface.localeChangeResolved" satisfies LocaleChangeSubtype,
       actor: input.actor,
       surfaceIds: [surfaceId],
       payload: { kind: "SURFACE" as const, surfaceSlug: input.surfaceSlug, adapter: null, baseLocale: null,
-        localeChange: { locale: item.localeCode, operation: item.operation, revived: null, discarded: null, outcome: item.presence } },
+        localeChange: { locale: item.localeCode, operation: item.operation, revived: null, discarded: null, outcome: item.presence, reissued: null,
+          pullRequest: pullRequest(item) } },
     })));
   }
   return { expired: plan.expired, held: plan.held === "base-empty" ? "base-unreadable" : plan.held };
+}
+
+/**
+ * 만료된 의도를 실었던 PR/MR 번호 — 그 효과(ADD → create · REMOVE → delete)가 판정용 전달 목록에 있을 때만 마지막 전달 확인 실행의 저장된 주소에서 뽑는다.
+ * 목록에 없던 의도(모순 행·리포에서 직접 추가된 언어)는 어느 PR에도 실리지 않았다. 만료는 열린 PR이 없을 때만 돌므로 그 주소는 방금 닫힌 PR이다.
+ * ⚠️ 호스트를 부르지 않는다 — 관측이 아니라 기록된 주소다. 세 호출부(야간·Publish·CI)가 이 한 곳을 지난다.
+ */
+async function carriedBy(tx: Prisma.TransactionClient, input: LocaleExpiryInput, delivered: readonly LocaleEffect[] | null) {
+  const confirmation = await tx.deliveryConfirmation.findUnique({
+    where: { projectId_surfaceId: { projectId: input.projectId, surfaceId: input.surfaceId } },
+    select: { syncRun: { select: { prUrl: true } }, surface: { select: { project: { select: { repoHost: true } } } } },
+  });
+  const number = confirmation === null ? null : reviewNumberFrom(confirmation.syncRun.prUrl, confirmation.surface.project.repoHost);
+  return (item: ExpiredLocale): { number: number } | null => {
+    const effect = item.operation === "ADD" ? "create" : "delete";
+    return number !== null && (delivered ?? []).some(entry => entry.localeCode === item.localeCode && entry.effect === effect) ? { number } : null;
+  };
 }

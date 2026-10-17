@@ -18,9 +18,9 @@ import {
 } from "@/lib/surfaces/remove";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 import {
-  AddLocaleInput, addLocale, CancelLocaleRemovalInput, cancelLocaleRemoval,
+  AddLocaleInput, addLocale, CancelLocaleRemovalInput, cancelLocaleRemoval, PreviewLocaleAddInput, previewLocaleAdd,
   PreviewLocaleRemovalInput, previewLocaleRemoval, RemoveLocaleInput, removeLocale,
-  type AddLocaleResult, type CancelLocaleRemovalResult, type LocaleRemovalPreview, type RemoveLocaleResult,
+  type AddLocaleResult, type CancelLocaleRemovalResult, type LocaleAddPreview, type LocaleRemovalPreview, type RemoveLocaleResult,
 } from "@/lib/locales/change";
 
 /**
@@ -152,6 +152,24 @@ export async function addSourceLocale(raw: { slug: string; surfaceSlug: string; 
   if (!result.ok) return redrawIfArchived(parsed.data.slug, result.error, result);
   settleLocaleChange(parsed.data.slug);
   return result;
+}
+
+/**
+ * 추가 Dialog가 열릴 때 부른다 — **읽기만 한다**(`revalidatePath` 없음). 실행(`addSourceLocale`)과 같은 판정으로 만들지·되살릴지, 대상 경로,
+ * 되살릴 번역 수(`revive`)를 주고, 실행이 거부할 입력은 같은 코드로 거부한다.
+ */
+export async function previewSourceLocaleAdd(raw: { slug: string; surfaceSlug: string; localeCode: string }): Promise<LocaleAddPreview | LocaleInputError> {
+  const parsed = PreviewLocaleAddInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  try {
+    return await previewLocaleAdd(getPrisma(), { userId: session.userId }, parsed.data);
+  } catch (error) {
+    logFailure("locale-add-preview", error);
+    return { ok: false, error: "unavailable" };
+  }
 }
 
 /** 확인 창이 열릴 때 부른다 — **읽기만 한다**(`revalidatePath` 없음). 대상 경로·번역 수·미전달 수·전달 여부(`null` = 확인 안 됨)·지문을 준다. */

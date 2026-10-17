@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import type { LockedAccess, ProjectAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import type { Subject } from "@/lib/auth/subject";
@@ -35,6 +35,7 @@ import { deliveredOf, readLocaleValueCounts } from "./work";
 
 const LocaleTarget = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), localeCode: z.string().min(1) });
 export const AddLocaleInput = LocaleTarget;
+export const PreviewLocaleAddInput = LocaleTarget;
 export const PreviewLocaleRemovalInput = LocaleTarget;
 export const RemoveLocaleInput = LocaleTarget.extend({ approval: z.string().min(1).nullable() });
 export const CancelLocaleRemovalInput = LocaleTarget;
@@ -49,6 +50,9 @@ export type LocaleChangeError = Exclude<ProjectAccess, { status: "ok" }>["status
   | "sync-running";
 
 export type AddLocaleResult = { ok: true; action: "create" | "revive"; path: string; reissued: number } | { ok: false; error: LocaleChangeError };
+
+/** 추가 미리보기 — 실행이 낼 `action`·`path`와, 되살림이면 토큰을 다시 받을 셀 수(`revive` = 실행의 `reissued`). 거부 코드는 실행과 같다. */
+export type LocaleAddPreview = { ok: true; action: "create" | "revive"; path: string; revive: number } | { ok: false; error: LocaleChangeError };
 
 /**
  * 제거·추가 취소 미리보기. `translations`는 그 언어의 값 있는 번역 수(활성 키), `pendingCount`는 폐기될 그 언어 미전달 편집 수,
@@ -282,6 +286,26 @@ async function discardApproved(tx: Prisma.TransactionClient, input: { scope: Sco
   return writes.length;
 }
 
+/**
+ * 되살림이 새 편집 토큰을 줄 셀 — 그 소스·언어의 값 있는 활성 키(`t`·`k` 별칭). 미리보기의 수(`revive`)와 실행의 쓰기(`reissued`)가 이 술어 하나를
+ * 지난다 — 사본 둘이면 Dialog가 말한 수와 실제로 되살린 수가 갈린다.
+ */
+function reviveCellsWhere(scope: Scope, code: string): Prisma.Sql {
+  return Prisma.sql`t."projectId" = ${scope.projectId} AND t."surfaceId" = ${scope.surfaceId} AND t."localeCode" = ${code} AND t."value" <> ''
+    AND k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId" AND NOT k."orphaned"`;
+}
+
+type AddJudgement = { ok: true; action: "create" | "revive"; path: string; surfaceSlug: string } | { ok: false; error: LocaleChangeError };
+
+/** 추가 판정 — 실행(잠금 뒤)과 미리보기(스냅샷)가 같은 읽기·같은 `judge`를 지난다(POSTMORTEM 2026-09-16 — 미리보기 경로 = 실행 경로). */
+async function judgeAdd(tx: Prisma.TransactionClient, scope: Scope, code: string): Promise<AddJudgement> {
+  const state = await readChangeState(tx, scope, code);
+  const verdict = judge(state, { kind: "add", code }, "missing");
+  if (!verdict.ok) return verdict;
+  if (verdict.transition.kind !== "add" || state.surface === null) return { ok: false, error: "not-found" };
+  return { ok: true, action: verdict.transition.action, path: verdict.transition.path, surfaceSlug: state.surface.slug };
+}
+
 export async function addLocale(prisma: PrismaClient, subject: Subject, input: z.infer<typeof AddLocaleInput>): Promise<AddLocaleResult> {
   const access = await getSurfaceAccess(prisma, { userId: subject.userId, slug: input.slug, surfaceSlug: input.surfaceSlug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
@@ -291,11 +315,9 @@ export async function addLocale(prisma: PrismaClient, subject: Subject, input: z
   return prisma.$transaction(async (tx) => {
     const locked = await lockProjectAccess(tx, { projectId: scope.projectId, userId: subject.userId, permission: "project:settings", surfaceId: scope.surfaceId, credential: subject.credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
-    const state = await readChangeState(tx, scope, code);
-    const verdict = judge(state, { kind: "add", code }, "missing");
-    if (!verdict.ok) return { ok: false, error: verdict.error } as const;
-    if (verdict.transition.kind !== "add" || state.surface === null) return { ok: false, error: "not-found" } as const;
-    const { action, path } = verdict.transition;
+    const verdict = await judgeAdd(tx, scope, code);
+    if (!verdict.ok) return verdict;
+    const { action, path } = verdict;
     if (action === "create") {
       await tx.locale.create({ data: { projectId: scope.projectId, surfaceId: scope.surfaceId, code, name: code, isBase: false } });
     } else {
@@ -305,13 +327,32 @@ export async function addLocale(prisma: PrismaClient, subject: Subject, input: z
     const reissued = action === "create" ? 0 : await tx.$executeRaw`
       UPDATE "Translation" AS t SET "pendingEditToken" = gen_random_uuid()::text
       FROM "StringKey" k
-      WHERE t."projectId" = ${scope.projectId} AND t."surfaceId" = ${scope.surfaceId} AND t."localeCode" = ${code} AND t."value" <> ''
-        AND k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId" AND NOT k."orphaned"`;
+      WHERE ${reviveCellsWhere(scope, code)}`;
     await tx.localeChange.create({ data: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code, operation: "ADD" } });
-    await recordLocaleEvent(tx, { scope, userId: subject.userId, surfaceSlug: state.surface.slug, subtype: "surface.localeAdded",
-      detail: { locale: code, operation: "ADD", revived: action === "revive", discarded: null, outcome: null } });
+    await recordLocaleEvent(tx, { scope, userId: subject.userId, surfaceSlug: verdict.surfaceSlug, subtype: "surface.localeAdded",
+      detail: { locale: code, operation: "ADD", revived: action === "revive", discarded: null, outcome: null, reissued: action === "revive" ? reissued : null, pullRequest: null } });
     return { ok: true, action, path, reissued } as const;
   }, { maxWait: 10_000, timeout: 30_000 });
+}
+
+/**
+ * 추가 Dialog가 열릴 때 — **읽기만 한다.** 인가는 실행과 같은 `getSurfaceAccess(project:settings)`이고 판정은 `judgeAdd` 그대로다. 실행처럼 잠그지 않고
+ * 한 스냅샷(RepeatableRead)에서 읽는다 — 판정 입력과 되살릴 수를 다른 순간에 읽으면 둘이 어느 상태도 가리키지 않는다.
+ * ⚠️ 승인 지문이 없다 — 추가는 버리는 것이 없어 실행이 승인을 요구하지 않는다. 그 사이 상태가 바뀌면 실행이 잠금 뒤 다시 판정한다.
+ */
+export async function previewLocaleAdd(prisma: PrismaClient, subject: Subject, input: z.infer<typeof PreviewLocaleAddInput>): Promise<LocaleAddPreview> {
+  const access = await getSurfaceAccess(prisma, { userId: subject.userId, slug: input.slug, surfaceSlug: input.surfaceSlug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const scope = { projectId: access.projectId, surfaceId: access.surfaceId };
+  const code = input.localeCode;
+  return prisma.$transaction(async (tx) => {
+    const verdict = await judgeAdd(tx, scope, code);
+    if (!verdict.ok) return verdict;
+    if (verdict.action === "create") return { ok: true, action: verdict.action, path: verdict.path, revive: 0 } as const;
+    const [row] = await tx.$queryRaw<{ count: number }[]>`
+      SELECT COUNT(*)::int AS "count" FROM "Translation" AS t, "StringKey" AS k WHERE ${reviveCellsWhere(scope, code)}`;
+    return { ok: true, action: verdict.action, path: verdict.path, revive: row?.count ?? 0 } as const;
+  }, { isolationLevel: "RepeatableRead" });
 }
 
 export async function previewLocaleRemoval(prisma: PrismaClient, subject: Subject, input: z.infer<typeof PreviewLocaleRemovalInput>): Promise<LocaleRemovalPreview> {
@@ -370,7 +411,7 @@ export async function removeLocale(prisma: PrismaClient, subject: Subject, input
     await recordLocaleEvent(tx, {
       scope, userId: subject.userId, surfaceSlug: state.surface.slug,
       subtype: transition.kind === "request-removal" ? "surface.localeRemovalRequested" : "surface.localeChangeCancelled",
-      detail: { locale: code, operation: transition.kind === "request-removal" ? "REMOVE" : "ADD", revived: null, discarded, outcome: null },
+      detail: { locale: code, operation: transition.kind === "request-removal" ? "REMOVE" : "ADD", revived: null, discarded, outcome: null, reissued: null, pullRequest: null },
     });
     return { ok: true, kind: transition.kind, discarded } as const;
   }, { maxWait: 10_000, timeout: 30_000 });
@@ -391,7 +432,7 @@ export async function cancelLocaleRemoval(prisma: PrismaClient, subject: Subject
     if (state.surface === null) return { ok: false, error: "not-found" } as const;
     await tx.localeChange.delete({ where: { projectId_surfaceId_localeCode: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code } } });
     await recordLocaleEvent(tx, { scope, userId: subject.userId, surfaceSlug: state.surface.slug, subtype: "surface.localeChangeCancelled",
-      detail: { locale: code, operation: "REMOVE", revived: null, discarded: null, outcome: null } });
+      detail: { locale: code, operation: "REMOVE", revived: null, discarded: null, outcome: null, reissued: null, pullRequest: null } });
     return { ok: true, delivered: hasDelivered(state, code, "delete") } as const;
   }, { maxWait: 10_000, timeout: 30_000 });
 }

@@ -108,6 +108,13 @@ export type LocaleChangeDetail = {
   discarded: number | null;
   /** 만료 뒤 base 관측이 정한 상태. */
   outcome: "active" | "orphan" | null;
+  /** 되살린 추가가 편집 토큰을 다시 준 셀 수(`addLocale`의 `reissued`). 새로 만든 추가·다른 subtype·옛 행은 `null`. */
+  reissued: number | null;
+  /**
+   * 해소된 의도를 실었던 PR/MR — 마지막 전달 확인 실행의 저장된 주소에서 뽑은 번호다(GitHub `#N`·GitLab `!N` 모두 숫자만). 효과가 전달 목록에
+   * 없던 의도·주소 없는 실행·옛 행은 `null`. `surface.localeChangeResolved`만 싣는다.
+   */
+  pullRequest: { number: number } | null;
 };
 
 /** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
@@ -315,7 +322,15 @@ function localeChangeOf(raw: Record<string, unknown>): LocaleChangeDetail | null
   const operation = oneOfRaw(LOCALE_OPERATIONS, str(inner, "operation"));
   if (locale === null || operation === null) return null;
   const revived = Object.hasOwn(inner, "revived") && typeof inner.revived === "boolean" ? inner.revived : null;
-  return { locale, operation, revived, discarded: num(inner, "discarded"), outcome: oneOfRaw(LOCALE_OUTCOMES, str(inner, "outcome")) };
+  return { locale, operation, revived, discarded: num(inner, "discarded"), outcome: oneOfRaw(LOCALE_OUTCOMES, str(inner, "outcome")),
+    reissued: num(inner, "reissued"), pullRequest: pullRequestOf(inner) };
+}
+
+function pullRequestOf(raw: Record<string, unknown>): { number: number } | null {
+  const value = Object.hasOwn(raw, "pullRequest") ? raw.pullRequest : undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const number = num(value as Record<string, unknown>, "number");
+  return number !== null && Number.isSafeInteger(number) && number > 0 ? { number } : null;
 }
 
 function outcomes(raw: Record<string, unknown>): SurfaceOutcome[] {

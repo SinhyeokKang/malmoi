@@ -275,7 +275,7 @@ async function discardLocaleChanges(
       actor,
       surfaceIds: [surfaceId],
       payload: { kind: "SURFACE" as const, surfaceSlug, adapter: null, baseLocale: null,
-        localeChange: { locale: intent.localeCode, operation: intent.operation, revived: null, discarded: null, outcome: presence === "unchanged" ? null : presence } },
+        localeChange: { locale: intent.localeCode, operation: intent.operation, revived: null, discarded: null, outcome: presence === "unchanged" ? null : presence, reissued: null, pullRequest: null } },
     };
   }));
 }

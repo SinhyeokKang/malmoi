@@ -48,7 +48,7 @@ describe("eventSentence — 언어 변경은 소스 추가로 그리지 않는�
     const parts = eventMeta(en, {
       kind: "SURFACE", subtype: "surface.localeAdded", result: null, actor: { kind: "USER" }, run: null,
       payload: { kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null,
-        localeChange: { locale: "fr", operation: "ADD", revived: true, discarded: null, outcome: null } },
+        localeChange: { locale: "fr", operation: "ADD", revived: true, discarded: null, outcome: null, reissued: null, pullRequest: null } },
     }, false);
     expect(parts).toContainEqual({ kind: "locale", code: "fr" });
     expect(parts).toContainEqual({ kind: "badge", text: "web" });

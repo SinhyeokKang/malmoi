@@ -25,7 +25,7 @@ export type StateKey =
   | "prOpen" | "prCheckFailed" | "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
   | "archived" | "setup" | "active"
   | "logsSynced" | "logsSent" | "logsFailed" | "publishing" | "nothingToSend" | "heldBack" | "superseded" | "notStarted" | "upToDate"
-  | "expired" | "expiresSoon" | "waitingToApply" | "removedFromRepository";
+  | "expired" | "expiresSoon" | "waitingToApply" | "removedFromRepository" | "adding" | "removing";
 
 /** 톤과 variant — 언어와 무관하다. 낱말은 `stateLabel`이 그 화면의 사전에서 고른다. */
 export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateVariant }>> = {
@@ -66,7 +66,11 @@ export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateV
   // GitLab PAT 만료 임박(만료일 ≤ 14일, D11) — 토큰의 자리(`/account`·설정 GitLab 카드)에만 선다. 프로젝트 Connection 행은 `connected` 그대로다(design §2 톤 표).
   expiresSoon: { tone: "warning", variant: "soft-amber" },
   waitingToApply: { tone: "warning", variant: "soft-amber" },
+  // 키 이름은 옛 뜻 그대로 두고 낱말만 `Inactive`다 — 리포에서 지운 것·추가 취소·만료로 접힌 것을 원인을 단정하지 않고 덮는다(locale-add 시안 L).
   removedFromRepository: { tone: "danger", variant: "soft-red" },
+  // 언어 변경 의도(locale-add 시안 L "배지 셋은 톤을 나눈다") — 추가는 정상 흐름이라 Unsent와 같은 면이고, 제거는 편집이 잠겨 warning이다.
+  adding: { tone: "muted", variant: "soft-neutral" },
+  removing: { tone: "warning", variant: "soft-amber" },
 };
 
 /**
@@ -107,6 +111,8 @@ export function stateLabel(m: Messages, key: StateKey, host = "github"): string 
     expiresSoon: m.account.gitlab.expiresSoon,
     waitingToApply: m.sources.waiting,
     removedFromRepository: m.sources.missingRepo,
+    adding: m.sources.adding,
+    removing: m.sources.removing,
   };
   return labels[key];
 }
