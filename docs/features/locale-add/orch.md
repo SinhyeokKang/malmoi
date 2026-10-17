@@ -85,6 +85,7 @@
 | O13 | DS·RT·GS(ego 쓰는 셋)는 한 워커씩 직렬 — ego 태스크 스페이스가 세션을 공유한다 | 메모리(2026-10-11 사용자). 지휘자 판단 |
 | D11 | 번역 화면 저장 거부 Alert(`removal-pending`)는 시안 T1(저장 줄 안)과 달리 **저장 줄 위** — 같은 푸터의 형제 Alert와 같은 자리 | 사용자 2026-10-17(R-E2 🟡2) |
 | D12 | 번역 화면 미저장 문장은 시안 T1 ③(`2 languages not saved`)과 달리 **기존 `N unsaved changes` 유지** — 일반 상태는 이 기능 범위가 아니다 | 사용자 2026-10-17(R-E2 🟡3) |
+| D13 | 언어 이름은 **standard형**(`English (Australia)`)으로 전역 전환 — `languageName` 한 줄, 온보딩·Add sources·Logs·추가 Dialog가 같이 바뀐다 | 사용자 2026-10-17(R-E1 ⚪3) |
 
 ## 1차 런 배치 (2026-10-14 — 완료)
 
@@ -233,3 +234,4 @@
 - E3 질문 3(언어 변경만 있으면 웹 Publish 버튼이 꺼져 P1 ①④⑤에 닿지 않는다) → **지휘자 판단: E3가 `git rebase dev`(E2 통합됨) 뒤 모든 Publish 호스트(Home·번역 화면 `workspace.tsx`)에 `countLocaleWork` 연결 + `lib/publish/plan.ts`**. 배지는 셀 수 유지, 버튼 수와 모달 ①이 같은 출처.
 - E3 `worker_done` — 14커밋(HEAD `7993980a`, `gate: ok` 15536 · PG 884). 서버 추가 A~D + payload `via`(`publish`|`sync`|`nightly`|`ci` — 브리프의 `trigger` 대신, 사람 주체 둘 때문) + Publish 버튼 `languageWork`. 시안과 다르게 둔 곳 9개(Logs 글리프 색·보조줄 · `the repository` vs `main` · Publish 설명문 유지 등)는 R-E3 판정. 미룬 것: ⑥ `Open web` 딥링크(소스 상세 모달 + 언어 행 포커스 — E1 영역) → E1 후속으로. E3 retain. **R-E3** `ctx_bb677e747ee3`(Opus high — 61파일·서버 추가 포함, 지휘자 판단).
 - E1 `worker_done` — 4커밋 `bec893b8..ec42bc21`(`gate: ok` 15571 · PG 883; 1회차 `translation-list-performance` 타임아웃 — load 13, 단독·재실행 green). 새 프리미티브 `combobox.tsx` · `review-number.ts` 잎. 시안과 다른 점: 언어 이름 방언형(`Australian English`) · 용어 테스트가 막은 문장 넷 · 시안에 없는 en 문장 · 기준 언어 초안 이탈 확인 미적용. 소유 밖: `translations-screen.test.ts` 한 줄 등. E1 retain. **R-E1**(Opus high).
+- R-E1 완료(🔴 0 · 🟡 4 · ⚪ 11, 변이 10 중 3만 죽음 — `review-E1.md`). **D13 사용자 결정**(standard형). **E1 fix1**: 🟡1 이름 Enter · 🟡2 테스트 다섯 + `planLanguageRow` 표 · 🟡4 · ⚪2 `no-removal` 다시 읽기 · ⚪10 클릭 대기 · D13 · E3 ⑥ `Open web` 딥링크 수신(쿼리 형을 인계에). 🟡3(portal 목록 휠·VoiceOver)은 **DS 점검 목록**. R-E1 해제·정리.
