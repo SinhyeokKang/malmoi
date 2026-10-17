@@ -12,9 +12,9 @@
 | 조회 | `lib/sources/query.ts` `loadSources` | 기존 `translation.groupBy`의 `by`에 `localeCode`를 더하고, `locale.findMany`에 `isBase`를 더한다. 소스마다 `localeProgress` → `sourceRowMeters`로 `meters`를 싣는다 |
 | 화면 | `components/locale-meter.tsx` | 입력 타입을 `LocaleMeterValue`로 좁힌다 · 루트 `<div>` → `<span>`(버튼 안 phrasing content) · 머리 주석("서버 컴포넌트다")을 공유 컴포넌트로 고친다 |
 | 화면 | `components/sources/sources-screen.tsx` | 이름 칸 셋째 줄에 막대 묶음 + `+N` |
-| 화면 | `components/sources/source-detail-modal.tsx` | 막대 폭을 `meterValue`로 얻고, 오른쪽 수치의 분자를 `translated + needsReview`로 바꾼다 |
+| 화면 | `components/sources/languages-card.tsx`(상세 모달 Languages 카드 — locale-add가 모달에서 분리했다) | 막대 폭을 `meterValue`로 얻고, 오른쪽 수치의 분자를 `translated + needsReview`로 바꾸고, 진행률 칸을 `w-[300px]` → `w-[200px]`로 줄인다(`@max-[850px]:w-auto flex-1`은 그대로) |
 | 골격 | `app/(edit)/projects/[slug]/sources/loading.tsx` | 행 골격에 막대 줄 |
-| 사전 | `messages/{en,ko,es}.tsx` | `sources.moreLanguages(n)`(`+N`) · `sources.moreLanguagesLabel(n)`(`N more languages`) — 시안 문구로 확정 |
+| 사전 | `messages/{en,ko,es}.tsx` | `sources.moreLanguages(n)`(`+${n}`) · `sources.moreLanguagesLabel(n)`(`${n} more languages`, n = 1이면 `1 more language`) — 시안 문구 |
 
 ## 2. 퍼센트 — 한 생산자, 한 정의
 
@@ -42,9 +42,20 @@ export function meterValue(row: LocaleProgress): LocaleMeterValue;           // 
 export function sourceRowMeters(languages: readonly LocaleProgress[]): { shown: LocaleMeterValue[]; hidden: number };
 ```
 
-- `meterValue`: `done = min(total, translated)` · `review = min(max(0, total − done), needsReview)` · `percent`는 입력값 그대로. 모달의 인라인 clamp(`source-detail-modal.tsx:181-182`)를 이 함수로 옮겨 두 화면의 폭이 같은 식에서 나온다.
+- `meterValue`: `done = min(total, translated)` · `review = min(max(0, total − done), needsReview)` · `percent`는 입력값 그대로. 모달의 인라인 clamp(`languages-card.tsx:170`)를 이 함수로 옮겨 두 화면의 폭이 같은 식에서 나온다.
 - `sourceRowMeters`: orphaned를 빼고(순서는 `localeProgress`의 base → 코드순 그대로 — 다시 정렬하지 않는다) 앞 5개를 `shown`, 나머지 수를 `hidden`. **키가 0이면(`total === 0`) `{ shown: [], hidden: 0 }`** — 막대 줄이 서지 않는다(spec 완료 조건 5). 상한 5는 모듈 상수이고 인자가 아니다(설정 가능성 선반영 금지).
 - `loadSources`는 소스마다 `sourceRowMeters(localeProgress({ locales, total: keys, cells }))`를 `meters`로 싣는다. 서버가 자르므로 RSC 페이로드는 행마다 최대 5개 + 수 하나다.
+
+## 4.1 행 시각 (시안 [`Source Row Locale Meter.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Source+Row+Locale+Meter.dc.html), 2026-10-17 수령)
+
+- **자리**: 이름 칸(`flex-col gap-copy-gap`) 안, 경로 줄 아래. 묶음은 `mt-2 flex flex-wrap gap-x-3 gap-y-1.5`(경로와 라벨 줄 사이 3 + 8 = 11). 시작선이 이름과 같아 640 적층에서도 따로 맞출 값이 없다. 행의 `items-center`는 그대로다.
+- **`+N`**: 다섯 뒤의 평문 — `flex h-5 items-center text-xs text-muted-foreground`, 라벨 줄 높이에 위쪽 정렬, 바 자리는 비운다(배지로 만들면 또 하나의 언어로 읽힌다). 접근 이름은 `aria-label` 없이 글자를 바꿔 끼운다: `<span aria-hidden>+54</span><span className="sr-only">54 more languages</span>`.
+- **실패·선택 행**: 막대를 흐리게 하지 않는다(`dimmed`는 "사라진 언어"의 뜻이다). 선택 면 전용 색을 만들지 않는다.
+- **base만 있는 소스**: 막대 하나를 그대로 그린다(키가 0일 때만 줄이 없다).
+- **라벨 글자**: `LocaleMeter` 라벨 줄 `text-xs`(13) 그대로 — brief의 "퍼센트 12"는 틀린 값이었다.
+- **골격**: 막대 자리 **둘**, 각 `w-25 flex-col gap-1.5` = 라벨 `h-4 rounded-full` + 바 `h-2 rounded-full`(30 = 실물 20 + 6 + 4). 둘이면 343 그릇에서도 한 줄이라 골격 줄 수가 폭과 무관하게 하나다. 막대가 한 줄을 넘는 소스(1280에서 6개 이상 · 375에서 3개 이상)와 키 0 소스는 도착할 때 한 줄만큼 높이가 바뀐다 — 골격이 언어 수를 모르므로 받아들인다. 줄 구조는 `SOURCE_CONTENT_STACK`·`SOURCE_STATUS_STACK`을 그대로 쓴다.
+- **상세 모달 진행률 칸**: `w-[200px]`(옛 300, 2026-10-17 사용자 지시). 200에서도 퍼센트와 `229 of 248`이 한 줄에 든다.
+- **상세 모달 예시 수치**: ko 완료 221 + 검토 8 = 229 / 248 → `92%` · `229 of 248`(brief의 `222 of 248`은 92%와 맞지 않았다).
 
 ## 5. `loadSources` 조회
 

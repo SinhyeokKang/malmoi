@@ -1,5 +1,7 @@
 # source-row-locale-meter — design brief (Claude Design)
 
+> 시안: [`Source Row Locale Meter.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Source+Row+Locale+Meter.dc.html) (2026-10-17 수령 — 행 시각의 결론은 design §4.1)
+
 > 신규 페이지의 첫 구현 동안만 시안이 SoT이고, dev에 들어간 뒤로는 코드 + DESIGN.md가 정본이다. 이 변경은 이미 구현된 화면에 요소를 더하는 것이라 시안은 **이 막대 줄과 그 영향**만 다룬다. 기능 정의는 `spec.md`, 데이터·판정은 `design.md`가 정본이다.
 
 ## 한 줄

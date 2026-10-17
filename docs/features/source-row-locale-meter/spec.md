@@ -11,7 +11,7 @@
 ## 문제 (관측된 사실)
 
 1. **로케일 진행이 프로젝트 행에 있어서 깨진다.** `rowLocaleProgress`(`lib/projects/list.ts:341`)가 (소스, 로케일) 쌍을 프로젝트 행에 담고 앞 3개로 잘라, 둘째 소스가 밀려나고 두 소스의 `ko`를 구별할 수 없다(`project-row-redesign` spec 문제 1). (소스, 로케일) 단위 데이터가 들어갈 자리는 소스 행이다(2026-10-15 사용자).
-2. **Sources 목록 행이 진행을 말하지 않는다.** `loadSources`(`lib/sources/query.ts:36`)는 소스별 키 수·언어 수만 행에 싣는다. 로케일별 진행은 상세 모달 Languages 카드(`source-detail-modal.tsx:177-193`)에만 있다.
+2. **Sources 목록 행이 진행을 말하지 않는다.** `loadSources`(`lib/sources/query.ts:36`)는 소스별 키 수·언어 수만 행에 싣는다. 로케일별 진행은 상세 모달 Languages 카드(`components/sources/languages-card.tsx`)에만 있다.
 3. **같은 사실의 퍼센트가 화면마다 다르다.** 프로젝트 행 막대는 `floor((done + review) / total)`(DESIGN §6.63)인데 Sources 상세는 `floor(done / total)`(`localeProgress` — `lib/keys/view.ts:141`, DESIGN §6.66 "percent는 완료만")다. 같은 언어가 목록에서 92%, 상세에서 84%로 보인다. 막대를 소스 행으로 옮기면 이 둘이 **한 화면**에 함께 선다.
 
 ## 결정 (2026-10-15 사용자)
@@ -21,7 +21,8 @@
 | 퍼센트 정의 | **완료 + 검토 대기**로 통일한다 — 상세 모달도 바꾼다(§6.63 규칙을 Sources 상세까지 넓힌다) |
 | 잘림 | **최대 5 + `+N`** |
 | 정렬·base | **base 맨 앞 → 코드순** — 상세 모달의 언어 순서 그대로(orphaned만 뺀다) |
-| 시안 | **design-brief.md를 만든다** — Claude Design 시안을 받은 뒤 구현한다 |
+| 상세 진행률 칸 폭 | **300 → 200** (2026-10-17 사용자 지시) — locale-add 뒤 행 오른쪽에 [Remove language]·[Open]이 서면서 상태 칸이 가장 좁아졌다. 줄인 100은 상태 칸(`flex-1`)으로 간다. 850 미만의 `w-auto flex-1` 규칙은 그대로다 |
+| 시안 | **design-brief.md를 만든다** — Claude Design 시안을 받은 뒤 구현한다. 2026-10-17 수령: [`Source Row Locale Meter.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Source+Row+Locale+Meter.dc.html), 행 시각은 design §4.1 |
 
 ## 완료 조건 (검증 가능한 문장)
 
@@ -38,7 +39,7 @@
 
 - **프로젝트 행에서 막대 빼기** — `project-row-redesign`이 한다.
 - **`LocaleMeter`의 모양 변경** — 폭 100·라벨 줄(국기+코드 배지 · 퍼센트)·바 4px를 그대로 쓴다. 시안이 바꾸자고 하면 그때 판단한다.
-- **상세 모달의 재배치** — 퍼센트 정의와 오른쪽 수치의 분자만 바뀐다. 카드 구조·검토 배지·orphaned 스트립은 그대로다.
+- **상세 모달의 재배치** — 퍼센트 정의, 오른쪽 수치의 분자, 진행률 칸 폭(300 → 200, 2026-10-17 사용자 지시)만 바뀐다. 카드 구조·검토 배지·orphaned 스트립은 그대로다.
 - **소스 단위 합계 막대**(소스 전체 진행 하나) — 로케일별 막대가 그 일을 한다. `loadSources`의 기존 `progress` 필드(완료만, 화면 소비자 없음)는 손대지 않는다.
 - **막대 클릭으로 그 언어의 번역 화면 열기** — 행은 버튼 하나(상세 모달)다. 언어별 이동은 모달의 [Open]이 한다.
 - **보관(제거)된 소스** — `loadSources`가 `archivedAt: null`로 거르므로 행이 없다.
