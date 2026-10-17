@@ -143,7 +143,8 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
 
   const orphaned = detail.languages.filter(row => row.orphaned);
   return <div ref={cardRef}>
-    <Card title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)}
+    {/* 머리 수는 카드가 보이는 행 수다(시안 L2·L6·L7 — DS #276). 서버 `locales`는 Removing을 뺀 작업 언어 수라 Home·Keys·Inbox 분모의 계약이고, 여기 쓰면 바로 아래 행과 어긋난다. */}
+    <Card title={m.sources.languages} count={detail.languages.length} countLabel={m.sources.languageCount(detail.languages.length)}
       description={<span id={helpId}>{help}</span>}
       // 소스 전체의 언어 구성을 바꾸는 동작이라 행이 아니라 머리다(L1). 꺼져도 숨기지 않는다(L4).
       action={<Button data-language-add disabled={busy} aria-disabled={headerBlocked || undefined} aria-describedby={headerBlocked ? helpId : undefined}
@@ -171,9 +172,10 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
             {/*
               ⚠️ **좁은 폭(@max-form)은 세 줄이다**(L5) — ① 코드 + 진행률 ② 상태(전폭) ③ 동작 + [Open](오른쪽). 상태를 숨기지 않고 내린다(audit #42 —
               숨기면 `aria-hidden` Meter의 색 조각만 남는다). 비어 있으면 줄을 만들지 않는다.
+              ⚠️ **줄은 `basis-full`이 나누고 순서는 DOM이 정한다** — `order-*`로 시각 순서를 따로 두면 Tab 순서와 읽는 순서가 갈린다(ListRow 규칙과 같다).
             */}
             <StatusCell plan={plan} row={row} prLabel={prLabel} prHref={detail.pullRequestUrl} />
-            <span className="flex shrink-0 items-center gap-2 @max-form:order-3 @max-form:ml-auto">
+            <span className="flex shrink-0 items-center gap-2 @max-form:ml-auto">
               <RowAction plan={plan} code={row.code} busy={busy} helpId={helpId} cancelling={cancelling === row.code}
                 onAdd={() => setAdding({ code: row.code })}
                 onRemove={() => setRemoving({ code: row.code, adding: row.change?.operation === "ADD" })}
@@ -210,7 +212,7 @@ function StatusCell({ plan, row, prLabel, prHref }: { plan: LanguageRowPlan; row
   const m = useMessages();
   const t = m.sources.locale;
   const chips = plan.badge !== null || plan.unsent || plan.notConfirmed || (plan.link && prLabel !== null) || (plan.badge === null && row.needsReview > 0);
-  return <span className="flex min-w-0 flex-1 flex-col gap-1 text-xs @max-form:order-2 @max-form:basis-full @max-form:empty:hidden">
+  return <span className="flex min-w-0 flex-1 flex-col gap-1 text-xs @max-form:basis-full @max-form:empty:hidden">
     {chips && <span className="flex flex-wrap items-center gap-1.5">
       {plan.badge !== null && <StatusBadge state={plan.badge} />}
       {plan.badge === null && row.needsReview > 0 && <Badge variant="soft-amber">{m.sources.needReview(row.needsReview)}</Badge>}
