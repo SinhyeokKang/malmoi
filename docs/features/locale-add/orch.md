@@ -12,7 +12,7 @@
 
 ## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-17)
 
-**한 줄 상태(2차 런)**: wave ⑥ 진행 — Orca run `run_57570c342d5f`, E0 `ctx_034f87a24937` 작업 중. 브리프·인계는 로컬 `.scratch/orch-locale-add/`(`brief-common.md`·`brief-E0.md`, 인계 사본 `handoffs/`). 다음: E0 리뷰·통합 뒤 E1·E2·E3 브리프에 "시안 위치" 표를 넣는다.
+**한 줄 상태(2차 런)**: 지휘 종료(2026-10-17) — dev `c051677d`(CI success), RT4·RT4b 통과, 워커·워크트리 0. 다음은 `/merge` patch(사용자 D15) → prod RT5(D16). 브리프·인계는 로컬 `.scratch/orch-locale-add/`(`brief-common.md`·`brief-E0.md`, 인계 사본 `handoffs/`). 다음: E0 리뷰·통합 뒤 E1·E2·E3 브리프에 "시안 위치" 표를 넣는다.
 
 **1차 런 상태(2026-10-14 기록)**: 시안 없이 할 수 있는 일은 모두 끝났다. 배치 A1·A2·B1·B2·B3·C1·C2·D와 RT에서 나온 수정 F1·F2가 전부 dev에 들어가 push됐고(마지막 `1bcadabd`, CI success), 실호스트 왕복(RT·RT2·RT3)이 GitHub·GitLab × json-catalog·chrome-locales에서 통과했다. 이번 런의 이슈 #265·#266·#267은 모두 고쳐서 닫았다. **남은 것은 시안이 와야 하는 화면 일체와 `/merge`뿐이다**(이 기능은 화면까지 끝나기 전 머지 금지).
 
@@ -272,3 +272,5 @@
 - 보안 ③ 완료(GS). 
 - RT4 이슈 1차: #278·#279 → **E1 fix5** · #280·#281 → **E3 fix4** · #282 → **D17**(후속, 이슈 열어 둠 + 댓글). #277은 E1 fix4가 dev에 있다 — RT4 재확인 뒤 닫는다.
 - E1 fix5 `worker_done`(#278 단수/복수 · #279 Sync 상태 줄 = 리포에서 읽은 언어 수, `gate: ok` 15700). RT4 이슈 2차: #285 → **E1 fix6** · #284 → **E2b**(새 워커, `lo-E2b`) · #283 → **지휘자 판단: D17과 같은 부류(버튼·사유가 PR 닫힘을 모른다 — R3 설계상 데이터 손실 없음)라 후속**, 이슈 열어 둠 + 댓글.
+- E2b(#284 — 얼린 칸만 남으면 Revert 사유가 Discard를 가리킴) · E3 fix4(#280 375 폭 · #281 거둔 결과가 언어를 이름으로) 완료. 통합(E1 fix5·6 · E2b · E3 fix4) → gate **ok**(15707 · PG 884, load 2) → **push** `1abfb99d..c051677d`. **RT4b** 착수(preview 재확인).
+- **RT4b 완료**(`rt4b-report.md`) — #277~#281·#284·#285 실제 흐름으로 재확인·닫음, 새 결함 0. #282·#283 열림(D17 후속). dev 잔여: `operator-check` orphan zh_CN 번역 1 · 테스트 PR 전부 닫힘 · LocaleChange 0. `c051677d` CI success(run 39027217539). tasks §6 셀 얼리기 수동 · §8 넷째 · §9 첫째·둘째 체크. 모든 워커 해제·워크트리 정리. **지휘 종료 → `/merge` patch.**

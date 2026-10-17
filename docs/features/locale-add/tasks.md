@@ -87,7 +87,7 @@
 - [x] 언어 변경 때문에 막힌 기준 언어 선언(소스 상세 Base language 카드)·기준 브랜치 변경(Settings Repository 카드) 안내(시안 P2). 검증(DOM): `locale-change-pending`이 일반 실패 문구로 접히지 않는다.
 - [x] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.
 - [x] 번역 화면 셀 얼리기 — DOM(jsdom): 서버 갱신 주입 시 입력 보존, 저장 중 제거 거부 시 입력 유지·전용 footer 문구, 세션 만료 중 저장의 입력 보존, 이탈 확인에 얼린 입력 포함. 검증: transition 정리(POSTMORTEM 2187)·클릭 가능 대기를 포함한 DOM 테스트 green.
-- [ ] 번역 화면 셀 얼리기 — 수동: 두 세션·두 언어에서 외부 제거. 검증: `/runtime-test` 리포트에 결과.
+- [x] 번역 화면 셀 얼리기 — 수동: 두 세션·두 언어에서 외부 제거. 검증: `/runtime-test` 리포트에 결과.
 - [x] `summary.ts`가 REMOVE 언어를 읽기 전용으로 싣는다. 검증: 상세 데이터 테스트에 REMOVE 언어 포함, orphan 제외.
 - [x] 완료율·Home·Keys 검색·Inbox·Sources 수를 상태 술어에 맞춘다. 검증: ADD 포함, REMOVE 작업 제외/상태 행 유지, 취소 시 복구.
 - [x] Publish 미리보기·결과의 `New file`/`Updated`/`Removed`와 빈 ADD·보류·PR 갱신 필요(시안 P1 — 제목 규칙 · `Not included`·`Held` · `Taken back from #N` · `locale-plan-refused` 판 · PR 배너 0건 갈래). 검증: 파일 삭제 수를 번역 전달 수로 표시하지 않음, PR 반영 전 완료 문구 없음, 번역 0 · 파일 변경 ≥ 1에서 `0 changes` 문장이 나오지 않음.
@@ -106,13 +106,13 @@
 - [x] ARCHITECTURE: LocaleChange 전이, 전달 목록, 만료, 명시적 delete, `no-changes` 취소 수렴, 전달/머지 구분, MCP 계약(불변식 1 예외는 §0에서 완료).
 - [x] DESIGN Sources·번역 읽기 전용·Publish 상태/문구, Inactive 문구 변경. DIRECTORY 새 모듈. ACTIONS `locale-change-pending`. OPERATIONS 마이그레이션 순서·구버전 구간 영향.
 - [x] CLAUDE 데이터 변경 경로/소유 원칙과 `pnpm sync:agents`. README 기능 설명 검토.
-- [ ] `/guide`로 en·ko·es의 “리포에서만 언어 추가·제거” 문구와 MCP 표 갱신, `/guide-shots`로 stale 스크린샷 갱신.
+- [x] `/guide`로 en·ko·es의 “리포에서만 언어 추가·제거” 문구와 MCP 표 갱신, `/guide-shots`로 stale 스크린샷 갱신.
 - 검증: 정본과 spec의 범위 일치, `pnpm sync:agents:check`, 문서 신선도 및 가이드 게이트 통과.
 
 ## 9. 배포·왕복 검증
 
-- [ ] 배치별 `/push`의 dev migration·검증 게이트. 검증: `pnpm gate`(격리 PG 포함) 통과.
-- [ ] `/runtime-test`: 추가 → 번역 → 개별 취소, 기존 언어 제거 → 읽기 잠금 → 취소, 삭제만 있는 Publish, EDITOR·기준 언어 거부, 승인 Sync, 두 세션 외부 제거. 검증: 화면 결과와 실제 DB/원격 결과 일치.
+- [x] 배치별 `/push`의 dev migration·검증 게이트. 검증: `pnpm gate`(격리 PG 포함) 통과.
+- [x] `/runtime-test`: 추가 → 번역 → 개별 취소, 기존 언어 제거 → 읽기 잠금 → 취소, 삭제만 있는 Publish, EDITOR·기준 언어 거부, 승인 Sync, 두 세션 외부 제거. 검증: 화면 결과와 실제 DB/원격 결과 일치.
 - [x] `/roundtrip` 매트릭스(json-catalog·chrome-locales × GitHub·GitLab): 새 파일 → 머지 → 제거 → 다른 언어 편집 후 재Publish에도 삭제 유지 → 삭제 취소 → 삭제 재요청/머지 → 재추가로 값 복구. 검증: 네 조합 모두 같은 결과.
 - [x] 별도 왕복: 추가 전달 후 취소, 미머지 PR/MR 종료(새 base 커밋 없이 다음 야간 방문, 다른 언어 편집 없음/있음), base에서 대상 선삭제, 네트워크 실패/재시도. 검증: 활성 복구, 종료된 요청의 새 PR/MR 재전송 0, stale diff·중복 실행·거짓 전달 확인 없음.
 - [ ] 프로덕션은 사용자가 별도 `/merge`를 호출할 때, 배치 3과 위 왕복이 끝난 뒤 수행한다. 검증: §2 마이그레이션 순서 선행과 self-host 업그레이드 안내 포함.
