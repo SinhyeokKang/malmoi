@@ -9,6 +9,7 @@ import { withRepoHost } from "@/lib/i18n/host";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { en } from "@/messages/en";
 import { render } from "./helpers/dom";
+import { waitForLayer } from "./helpers/layer";
 
 /**
  * **언어 제거 확인 Dialog — 제거 요청 · 추가 취소 공용** (locale-add E1 — 시안 D1–D4). 무엇이 일어나는지(경로·번역 수·미전달 수·전달 여부)와
@@ -52,8 +53,9 @@ async function open(value: SourceDetail = standard, host = "github") {
   const screen = <SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} />;
   await render(host === "gitlab" ? <RepoHostScope host="gitlab">{screen}</RepoHostScope> : screen);
   await act(async () => { await user().click([...document.querySelectorAll("[data-source-row]")].find(node => node.textContent?.startsWith("web"))!); });
+  await waitForLayer(() => document.querySelector<HTMLElement>('[role="dialog"]'));
 }
-async function openRemove(code: string) { await act(async () => { await user().click(action(code)); }); }
+async function openRemove(code: string) { await act(async () => { await user().click(action(code)); }); await waitForLayer(dialog); }
 
 beforeEach(() => {
   vi.clearAllMocks();

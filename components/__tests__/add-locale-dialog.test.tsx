@@ -9,6 +9,7 @@ import { languageName } from "@/lib/onboarding/language-name";
 import { en } from "@/messages/en";
 import { ko } from "@/messages/ko";
 import { key, render } from "./helpers/dom";
+import { waitForLayer } from "./helpers/layer";
 
 /**
  * **언어 추가 Dialog** (locale-add E1 — 시안 A1–A5). 경로·되살릴 수·필드 판정은 서버 미리보기(`previewSourceLocaleAdd`)가 주고 화면은 템플릿을
@@ -50,9 +51,14 @@ async function open(value: SourceDetail = standard, uiLocale?: "ko") {
   mocks.load.mockResolvedValue({ ok: true, detail: value });
   await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} />, uiLocale ? { uiLocale } : {});
   await act(async () => { await user().click([...document.querySelectorAll("[data-source-row]")].find(node => node.textContent?.startsWith("web"))!); });
+  await waitForLayer(() => document.querySelector<HTMLElement>('[role="dialog"]'));
 }
-async function openAdd() { await act(async () => { await user().click(card().querySelector("header button")!); }); }
-async function choose(code: string) { await act(async () => { await user().click(option(code)!); }); }
+async function openAdd() { await act(async () => { await user().click(card().querySelector("header button")!); }); await waitForLayer(dialog); }
+async function choose(code: string) {
+  // 목록도 레이어다 — 다시 연 직후엔 포인터가 아직 닫혀 있다.
+  await waitForLayer(() => document.querySelector<HTMLElement>('[role="listbox"]')?.parentElement);
+  await act(async () => { await user().click(option(code)!); });
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -285,5 +291,58 @@ describe("리뷰 🟡 — 포커스", () => {
     expect(mocks.add).toHaveBeenCalled();
     expect(trigger.hasAttribute("disabled")).toBe(false);
     expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+describe("R-E1 fix1", () => {
+  it("🟡1 코드 모양이 아닌 이름 조각에는 Use this code 행이 없다 — Enter가 이름으로 찾은 프리셋을 고른다", async () => {
+    await open();
+    await openAdd();
+    await act(async () => { await user().type(combobox(), "Fren"); });
+    expect(options().some(node => node.textContent?.includes(en.sources.locale.useCode))).toBe(false);
+    await key(combobox(), "Enter");
+    expect(mocks.previewAdd).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "fr" });
+    expect(dialog()!.querySelector("[data-field-error]")).toBeNull();
+  });
+
+  it.each([
+    { code: "de", error: "removal-pending", text: en.sources.locale.errors.removalPending("de") },
+    { code: "eo", error: "unsupported-locale", text: en.sources.locale.errors.unsupportedLocale },
+    { code: "fr", error: "unsafe-path", text: en.sources.locale.errors.unsafePath("apps/web/locales/….json") },
+  ])("M7 $error는 필드 자리 문장이다", async ({ code, error, text }) => {
+    mocks.previewAdd.mockResolvedValue({ ok: false, error });
+    await open();
+    await openAdd();
+    await act(async () => { await user().type(combobox(), code); });
+    await key(combobox(), "Escape");
+    await vi.waitFor(() => expect(dialog()!.querySelector("[data-field-error]")?.textContent).toBe(text));
+    expect(dialog()!.querySelector("[data-alert='danger']")).toBeNull();
+  });
+
+  it("M8 확정의 publish-unsettled는 일반 실패로 접히지 않는다", async () => {
+    mocks.add.mockResolvedValue({ ok: false, error: "publish-unsettled" });
+    await open();
+    await openAdd();
+    await choose("fr");
+    await act(async () => { await user().click(confirm()); });
+    const alert = dialog()!.querySelector("[data-alert='danger']")!;
+    expect(alert.textContent).toBe(en.sources.locale.addUnsettled);
+    expect(alert.textContent).not.toBe(en.sources.locale.addFailed);
+  });
+
+  it("M9 응답 순서를 믿지 않는다 — 앞 요청의 늦은 응답이 마지막 요청의 결과를 덮지 않는다", async () => {
+    const pending: ((value: unknown) => void)[] = [];
+    mocks.previewAdd.mockImplementation(() => new Promise(resolve => { pending.push(resolve); }));
+    await open();
+    await openAdd();
+    await choose("de");
+    // 고른 값을 지워 목록을 다시 연다 — 거른 목록엔 de뿐이다.
+    await act(async () => { await user().clear(combobox()); });
+    await choose("fr");
+    expect(pending).toHaveLength(2);
+    await act(async () => { pending[1]!({ ok: true, action: "create", path: "apps/web/locales/fr.json", revive: 0 }); });
+    await act(async () => { pending[0]!({ ok: true, action: "create", path: "apps/web/locales/de.json", revive: 0 }); });
+    expect(dialog()!.querySelector("[data-add-file]")!.textContent).toContain("apps/web/locales/fr.json");
+    expect(dialog()!.querySelector("[data-add-file]")!.textContent).not.toContain("de.json");
   });
 });

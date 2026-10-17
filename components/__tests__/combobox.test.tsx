@@ -100,3 +100,12 @@ it("치면 목록이 다시 열리고 활성은 첫 행으로 돌아간다", asy
   expect(input().getAttribute("aria-expanded")).toBe("true");
   expect(active()?.textContent).toBe("es Spanish");
 });
+
+it("M6 IME 조합 중 Esc는 목록을 닫지 않는다 — 조합 취소다", async () => {
+  await render(<Harness onSelect={() => {}} inDialog />);
+  await act(async () => { input().focus(); });
+  await act(async () => { input().dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true })); });
+  await key(input(), "Escape", { isComposing: true });
+  expect(input().getAttribute("aria-expanded")).toBe("true");
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+});

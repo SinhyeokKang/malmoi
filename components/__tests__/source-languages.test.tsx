@@ -3,12 +3,16 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type React from "react";
 import { RepoHostScope } from "@/components/i18n/messages-provider";
+import { routes } from "@/lib/routes";
+import { planLanguageRow } from "@/components/sources/language-row";
 import { SourcesScreen } from "@/components/sources/sources-screen";
 import { withRepoHost } from "@/lib/i18n/host";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { en } from "@/messages/en";
 import { render } from "./helpers/dom";
+import { waitForLayer } from "./helpers/layer";
 
 /**
  * **Sources 상세 Languages 카드** (locale-add E1 — 시안 L1–L7 · P2). 판정·지문·경로는 서버가 들고, 화면은 상세 데이터(`languages[]`의
@@ -53,10 +57,12 @@ const action = (code: string) => rowOf(code).querySelector<HTMLButtonElement>("[
 /** 배지는 `Badge`의 알약이다 — 톤은 variant 클래스로 잰다(soft-neutral `bg-foreground/5` · soft-amber `bg-warning-soft` · soft-red `bg-destructive/8`). */
 const badgeIn = (scope: Element, text: string) => [...scope.querySelectorAll("span")].find(node => node.textContent === text && node.className.includes("bg-"));
 const describedText = (node: Element) => (node.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean).map(id => document.getElementById(id)?.textContent ?? "").join(" ");
+let rerender: (next: React.ReactNode) => Promise<void> = async () => {};
 async function open(role: "OWNER" | "EDITOR" = "OWNER", host = "github") {
   const screen = <SourcesScreen slug="p" role={role} data={data(host)} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} />;
-  await render(host === "gitlab" ? <RepoHostScope host="gitlab">{screen}</RepoHostScope> : screen);
+  ({ rerender } = await render(host === "gitlab" ? <RepoHostScope host="gitlab">{screen}</RepoHostScope> : screen));
   await act(async () => { await user().click([...document.querySelectorAll("[data-source-row]")].find(node => node.textContent?.startsWith("web"))!); });
+  await waitForLayer(() => document.querySelector<HTMLElement>('[role="dialog"]'));
 }
 
 beforeEach(() => {
@@ -293,5 +299,96 @@ describe("리뷰 🟡 — 예약한 포커스", () => {
     await act(async () => { await user().click(retry); });
     await vi.waitFor(() => expect(rowOf("fr")).not.toBeNull());
     expect(document.activeElement).not.toBe(rowOf("fr").querySelector("a[href]"));
+  });
+});
+
+describe("R-E1 fix1", () => {
+  it("M1 값 0개 Adding은 마지막 PR 주소가 있어도 링크를 세우지 않는다(L2 ② — 낸 파일이 없다)", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { change: add, translated: 0, needsReview: 0, percent: 0 })], { pullRequestUrl: "https://github.com/o/r/pull/128" }) });
+    await open();
+    expect(rowOf("fr").querySelector("a[target]")).toBeNull();
+    expect(rowOf("fr").textContent).toContain(en.sources.locale.noFileYet);
+  });
+
+  it("🟡4 결과 뒤 상세가 두 번 다시 읽혀도(재검증 커밋) notice와 포커스가 남는다", async () => {
+    mocks.load.mockResolvedValueOnce({ ok: true, detail: detail([row("de", { change: removal, unsent: true })]) })
+      .mockResolvedValueOnce({ ok: true, detail: detail([row("de", { unsent: true })]) })
+      .mockResolvedValue({ ok: true, detail: detail([row("de", { unsent: true }), row("ko")]) });
+    mocks.cancel.mockResolvedValue({ ok: true, delivered: true });
+    await open();
+    await act(async () => { await user().click(action("de")); });
+    await vi.waitFor(() => expect(document.activeElement).toBe(action("de")));
+    // 서버의 `revalidatePath`가 바꾼 `data`가 열린 상세를 한 번 더 읽는다.
+    await rerender(<SourcesScreen slug="p" role="OWNER" data={data()} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} />);
+    await vi.waitFor(() => expect(rowOf("ko")).not.toBeNull());
+    expect(mocks.load).toHaveBeenCalledTimes(3);
+    expect(card().querySelector("[data-card-notice] [role='status']")?.textContent).toContain(en.sources.locale.staysIn("de", "web"));
+    expect(document.activeElement).toBe(action("de"));
+  });
+
+  it("⚪2 취소가 no-removal이면(다른 세션이 이미 취소) 상세를 다시 읽는다", async () => {
+    mocks.load.mockResolvedValueOnce({ ok: true, detail: detail([row("de", { change: removal })]) }).mockResolvedValue({ ok: true, detail: detail([row("de")]) });
+    mocks.cancel.mockResolvedValue({ ok: false, error: "no-removal" });
+    await open();
+    await act(async () => { await user().click(action("de")); });
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(action("de").textContent).toBe(en.sources.locale.removeLanguage));
+  });
+});
+
+describe("딥링크 — Publish ⑥ Open <source>가 상세 + 그 언어 행으로 온다(E3 수신)", () => {
+  it("routes.sources가 source·language 쿼리를 싣는다", () => {
+    expect(routes.sources("p", { source: "web", language: "de" })).toBe("/projects/p/sources?source=web&language=de");
+  });
+
+  it("아는 소스·언어면 상세를 열고 그 언어 행의 동작에 포커스한다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de", { change: removal, unsent: true }), row("ko")]) });
+    await render(<SourcesScreen slug="p" role="OWNER" data={data()} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} deepLink={{ source: "web", language: "de" }} />);
+    expect(mocks.load).toHaveBeenCalledWith({ slug: "p", surfaceSlug: "web" });
+    await vi.waitFor(() => expect(document.activeElement).toBe(action("de")));
+  });
+
+  it("모르는 소스면 목록 그대로다", async () => {
+    await render(<SourcesScreen slug="p" role="OWNER" data={data()} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} deepLink={{ source: "nope", language: "de" }} />);
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("모르는 언어면 상세만 연다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("ko")]) });
+    await render(<SourcesScreen slug="p" role="OWNER" data={data()} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} deepLink={{ source: "web", language: "zz" }} />);
+    await vi.waitFor(() => expect(card()).toBeDefined());
+    expect(card().contains(document.activeElement) && document.activeElement?.hasAttribute("data-language-action")).toBe(false);
+  });
+});
+
+/**
+ * **행 판정 표** (시안 L1–L7) — 배지 × Unsent × 전달(링크) × 확인 × 역할 × 지원 × base. 순수 함수라 화면을 그리지 않고 한 표로 고정한다.
+ */
+describe("planLanguageRow", () => {
+  const owner = { canManage: true, supported: true, unconfirmed: false };
+  it.each([
+    { name: "L1 base", r: row("en", { isBase: true }), input: owner, badge: null, unsent: false, link: false, notConfirmed: false, note: "baseRow", kind: "remove", block: "base" },
+    { name: "L1 활성", r: row("ko"), input: owner, badge: null, unsent: false, link: false, notConfirmed: false, note: null, kind: "remove", block: null },
+    { name: "L2② Adding 0개", r: row("fr", { change: add, translated: 0 }), input: owner, badge: "adding", unsent: false, link: false, notConfirmed: false, note: "noFileYet", kind: "remove", block: null },
+    { name: "L2③ Adding + Unsent", r: row("fr", { change: add, translated: 9, unsent: true }), input: owner, badge: "adding", unsent: true, link: false, notConfirmed: false, note: null, kind: "remove", block: null },
+    { name: "L2④ Removing + Unsent", r: row("de", { change: removal, unsent: true }), input: owner, badge: "removing", unsent: true, link: false, notConfirmed: false, note: "readOnly", kind: "cancel", block: null },
+    { name: "L2⑤ Removing 전달됨", r: row("de", { change: removal }), input: owner, badge: "removing", unsent: false, link: true, notConfirmed: false, note: "readOnly", kind: "cancel", block: null },
+    { name: "L2⑥ Adding 전달됨", r: row("fr", { change: add, translated: 9 }), input: owner, badge: "adding", unsent: false, link: true, notConfirmed: false, note: null, kind: "remove", block: null },
+    { name: "L2⑦ 취소 뒤 활성 + Unsent", r: row("de", { unsent: true }), input: owner, badge: null, unsent: true, link: false, notConfirmed: false, note: "publishToUpdate", kind: "remove", block: null },
+    { name: "L3② Inactive", r: row("es", { orphaned: true }), input: owner, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: "add", block: null },
+    { name: "L3③ Inactive + Unsent", r: row("fr", { orphaned: true, unsent: true }), input: owner, badge: "removedFromRepository", unsent: true, link: false, notConfirmed: false, note: "publishToUpdate", kind: "add", block: null },
+    { name: "L3⑤ 확인 안 됨 Adding 값 있음", r: row("fr", { change: add, translated: 9, unsent: true }), input: { ...owner, unconfirmed: true }, badge: "adding", unsent: false, link: false, notConfirmed: true, note: "notConfirmedHelp", kind: "remove", block: "unconfirmed" },
+    { name: "L3⑥ 확인 안 됨 Adding 0개", r: row("zh-CN", { change: add, translated: 0 }), input: { ...owner, unconfirmed: true }, badge: "adding", unsent: false, link: false, notConfirmed: false, note: "noFileYet", kind: "remove", block: null },
+    { name: "L3⑦ 확인 안 됨 Removing", r: row("de", { change: removal }), input: { ...owner, unconfirmed: true }, badge: "removing", unsent: false, link: false, notConfirmed: true, note: "notConfirmedHelp", kind: "cancel", block: "unconfirmed" },
+    { name: "L4 EDITOR 활성", r: row("ko"), input: { ...owner, canManage: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: null, kind: "remove", block: "role" },
+    { name: "L4 EDITOR base — base 사유가 앞선다", r: row("en", { isBase: true }), input: { ...owner, canManage: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: "baseRow", kind: "remove", block: "base" },
+    { name: "L4 EDITOR Inactive", r: row("es", { orphaned: true }), input: { ...owner, canManage: false }, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: "add", block: "role" },
+    { name: "L4 비지원 활성", r: row("ko"), input: { ...owner, supported: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: null, kind: "remove", block: "format" },
+    { name: "L4 비지원 Adding 취소는 켜짐", r: row("fr", { change: add, translated: 6, unsent: true }), input: { ...owner, supported: false }, badge: "adding", unsent: true, link: false, notConfirmed: false, note: null, kind: "remove", block: null },
+    { name: "L4 비지원 Removing 취소는 켜짐", r: row("de", { change: removal, unsent: true }), input: { ...owner, supported: false }, badge: "removing", unsent: true, link: false, notConfirmed: false, note: "readOnly", kind: "cancel", block: null },
+    { name: "L4 비지원 Inactive", r: row("es", { orphaned: true }), input: { ...owner, supported: false }, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: "add", block: "format" },
+  ])("$name", ({ r, input, badge, unsent, link, notConfirmed, note, kind, block }) => {
+    expect(planLanguageRow(r, input)).toEqual({ badge, unsent, link, notConfirmed, note, action: { kind, block } });
   });
 });
