@@ -32,7 +32,7 @@
 | RB | B 리뷰 | Claude Opus high · 리포트 전용 | — | B | 🔴 0 | 대기 |
 | DS | T8 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 실측 일치 · 지적 0 | 대기 |
 | B2 | T9 | B 워커 후속 Task | `docs/DESIGN.md` · `docs/DIRECTORY.md` · (있으면) `docs/ARCHITECTURE.md` | DS 끝 | `pnpm gate` · `grep -rn "percent는 완료만" docs/` 0 | 대기 |
-| P1 | project-row-redesign 스펙 대조 — locale-add(§5.10 · 작업 언어 술어 · 언어 요청 정리 · `locale-change-pending`) + 이 런의 결정(D1–D10)이 그 spec·design·tasks·design-brief에 주는 영향 (2026-10-17 사용자) | Claude Opus high · 워크트리 `srlm-p` | `docs/features/project-row-redesign/*`만 | — (코드 겹침 없음) | 바뀐 단언마다 근거 file:line · 사용자 결정 지점은 `ask` | 진행 |
+| P1 | project-row-redesign 스펙 대조 — locale-add(§5.10 · 작업 언어 술어 · 언어 요청 정리 · `locale-change-pending`) + 이 런의 결정(D1–D10)이 그 spec·design·tasks·design-brief에 주는 영향 (2026-10-17 사용자) | Claude Opus high · 워크트리 `srlm-p` | `docs/features/project-row-redesign/*`만 | — (코드 겹침 없음) | 바뀐 단언마다 근거 file:line · 사용자 결정 지점은 `ask` | 완료 `7e40ad93`(dev 로컬) — Q1 사용자 대기 |
 | P2 | 같은 문서 블로커 해제(사전 조건 충족 표시) + 이 런이 옮긴 줄 번호·타입·fixture 사실 | P 워커 후속 Task | 같음 | A·B·F2 통합 뒤 | 사전 조건 확인문 `rg -n "RowLocaleProgress" components/locale-meter.tsx` 0건이 참 | 대기 |
 | G | T10 | 지휘자 `pnpm guide:check` → stale이면 Claude Opus 워커(main 체크아웃, `/guide`·`/guide-shots`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | DS 끝(ego 세션 공유 — 겹치지 않게) | `pnpm guide:check` 출력 인용 | 대기 |
 | F1 | #288 (locale-add 후속 — 다른 세션이 2026-10-17 이 런으로 넘김) | Claude Opus high · 워크트리 `srlm-f` | `messages/{en,ko,es}.tsx`의 `cancelAddDone`만 · 사전/DOM 테스트 | — (A와 겹침 없음, B보다 먼저 통합) | `pnpm gate --base dev` | 진행 |
@@ -46,6 +46,10 @@
 ## 진행 기록
 
 (배치별 push 해시 · 라운드 · 미완을 여기에 쌓는다)
+
+- F1 #288: `1373e7c5` → dev `d2b91b5e`, push `2df97710` CI success. 리뷰 워커 생략 — 지휘자 판단(사전 3줄 + 테스트).
+- A: `e3b8cc3e`·`80fb0153` — 1차 게이트가 `search-performance.integration.ts:103`(458ms > 300ms)에서만 실패, 병렬 게이트 3개 부하로 판정. A의 질문이 지휘자에게 닿지 않아 failed 인계. RA APPROVE(🔴 0 · 🟡 2) → fix1 `1c321e43`(주석 · `gate-plan` 트리거에 `lib/sources/`). **B 없이 push하지 않는다**(모달 퍼센트와 `X of Y` 분자가 갈린다).
+- P1: `7e40ad93` — 열린 결정 Q1(언어 요청만 미전달인 프로젝트 행)은 사용자 대기.
 
 ## 인수 — 다른 세션(malmoi-8e) 잔여, 2026-10-17
 
