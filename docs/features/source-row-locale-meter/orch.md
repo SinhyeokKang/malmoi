@@ -31,7 +31,7 @@
 
 | 배치 | tasks | 워커 · 모델 | 소유 파일 | 선행 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|
-| A | T1–T5 | Codex `gpt-6-astra` high · 워크트리 | `lib/keys/view.ts` · `lib/sources/meters.ts`(새) · `lib/keys/query.ts`(`loadLocaleCounts`, `loadProjectListAggregates` 머리 주석) · `lib/sources/query.ts` · 그 테스트들(`lib/keys/__tests__/view.test.ts` · `lib/sources/__tests__/{state,meters,query}.test.ts` · `lib/keys/__tests__/sources-progress.integration.ts`) | — | `pnpm gate --base dev`(격리 postgres 포함) | 대기 |
+| A | T1–T5 | Codex `gpt-6-astra` high · 워크트리 | `lib/keys/view.ts` · `lib/sources/meters.ts`(새) · `lib/keys/query.ts`(`loadLocaleCounts`, `loadProjectListAggregates` 머리 주석) · `lib/sources/query.ts` · 그 테스트들(`lib/keys/__tests__/view.test.ts` · `lib/sources/__tests__/{state,meters,query}.test.ts` · `lib/keys/__tests__/sources-progress.integration.ts`) | — | `pnpm gate --base dev`(격리 postgres 포함) | 완료 |
 | RA | A 리뷰 | Claude Opus high · 리포트 전용 | — | A | 🔴 0 | 대기 |
 | B | T6–T7 | Claude Opus high · 워크트리 | `messages/{en,ko,es}.tsx` · `lib/i18n/__tests__/helpers/function-args.ts` · `components/locale-meter.tsx` · `components/sources/{sources-screen,languages-card}.tsx` · `app/(edit)/projects/[slug]/sources/loading.tsx` · 그 DOM 테스트 | A가 dev에 | `pnpm gate --base dev` | 대기 |
 | RB | B 리뷰 | Claude Opus high · 리포트 전용 | — | B | 🔴 0 | 대기 |
@@ -54,7 +54,11 @@
 
 - F1 #288: `1373e7c5` → dev `d2b91b5e`, push `2df97710` CI success. 리뷰 워커 생략 — 지휘자 판단(사전 3줄 + 테스트).
 - A: `e3b8cc3e`·`80fb0153` — 1차 게이트가 `search-performance.integration.ts:103`(458ms > 300ms)에서만 실패, 병렬 게이트 3개 부하로 판정. A의 질문이 지휘자에게 닿지 않아 failed 인계. RA APPROVE(🔴 0 · 🟡 2) → fix1 `1c321e43`(주석 · `gate-plan` 트리거에 `lib/sources/`). **B 없이 push하지 않는다**(모달 퍼센트와 `X of Y` 분자가 갈린다).
-- P1: `7e40ad93` — 열린 결정 Q1(언어 요청만 미전달인 프로젝트 행)은 사용자 대기.
+- P1: `7e40ad93` → dev `dfd495ef`. Q1은 D11(#290).
+- A 통합 `312df1d2`·`c0108513`·`cc8559d9` · B `c3757f49`·`cad6746a`(RB 🟡1 + D12) · F2 `c70d6fe0`..`97ccab1c`(RF2 🟡3 + D13) → push `97ccab1c` CI success. B 통합 뒤 첫 main 게이트는 `search-performance` 부하 실패(377ms) — F2 워커 테스트와 겹침, 단독 재실행 green.
+- DS: 1280·1024 시안 일치 · #291·#292·#293 → D14·D15 → B fix2 `9ecfc167`. 프레임 5·6 미측정(그 상태의 소스를 자연스럽게 만들 수 없음 — 단위·DOM 테스트가 근거). dev 상주 `ds-srlm-many` 생성.
+- B2 `9a8bfe4c`·`95554d5e`(DESIGN·DIRECTORY, ARCHITECTURE 변경 없음) · P2 `aad65108`(project-row-redesign 블로커 해제 2026-10-18 · 마커 0 · D11).
+- 테스트 인프라: `search-performance.integration.ts`(300ms 상한)가 병렬 게이트 부하에서 두 번 실패했다 — 코드 결함 아님, 리포트에 남긴다.
 
 ## 인수 — 다른 세션(malmoi-8e) 잔여, 2026-10-17
 
