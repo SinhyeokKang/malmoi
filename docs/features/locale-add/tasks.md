@@ -93,8 +93,8 @@
 - [x] Publish 미리보기·결과의 `New file`/`Updated`/`Removed`와 빈 ADD·보류·PR 갱신 필요(시안 P1 — 제목 규칙 · `Not included`·`Held` · `Taken back from #N` · `locale-plan-refused` 판 · PR 배너 0건 갈래). 검증: 파일 삭제 수를 번역 전달 수로 표시하지 않음, PR 반영 전 완료 문구 없음, 번역 0 · 파일 변경 ≥ 1에서 `0 changes` 문장이 나오지 않음.
 - [x] 수동 Sync 확인의 언어 변경 구획(시안 P4). 검증(DOM): 셀 편집과 언어 변경을 다른 블록으로 센다, 언어별 결과 한 줄, 다섯 개 초과 접기.
 - [x] Logs 언어 사건 문장 넷 + 만료 두 결과 + 사람 주체(`while publishing`)(시안 P3). 검증: 종류 폴백 문장(“changed Sources & languages”)이 언어 사건에 남지 않음, 옛 payload는 필드 없는 문장.
-- [ ] en·ko·es 문구를 호스트별(`onGitLab`) 어휘로 반영, `orphanStrip` 원인 중립화, 카드 설명 OWNER/EDITOR/비지원 분기. 검증: dictionary-consistency·banned-terms·no-korean-ui green.
-- [ ] `/design-sync`로 신규 UI 대조. 검증: 로컬 핸드오프와 computed style·접근성 트리, 키보드·IME·포커스 복귀·좁은 폭·라이트/다크 확인.
+- [x] en·ko·es 문구를 호스트별(`onGitLab`) 어휘로 반영, `orphanStrip` 원인 중립화, 카드 설명 OWNER/EDITOR/비지원 분기. 검증: dictionary-consistency·banned-terms·no-korean-ui green.
+- [x] `/design-sync`로 신규 UI 대조. 검증: 로컬 핸드오프와 computed style·접근성 트리, 키보드·IME·포커스 복귀·좁은 폭·라이트/다크 확인.
 
 ## 7. MCP
 
@@ -104,7 +104,7 @@
 ## 8. 정본·가이드
 
 - [x] ARCHITECTURE: LocaleChange 전이, 전달 목록, 만료, 명시적 delete, `no-changes` 취소 수렴, 전달/머지 구분, MCP 계약(불변식 1 예외는 §0에서 완료).
-- [ ] DESIGN Sources·번역 읽기 전용·Publish 상태/문구, Inactive 문구 변경. DIRECTORY 새 모듈. ACTIONS `locale-change-pending`. OPERATIONS 마이그레이션 순서·구버전 구간 영향.
+- [x] DESIGN Sources·번역 읽기 전용·Publish 상태/문구, Inactive 문구 변경. DIRECTORY 새 모듈. ACTIONS `locale-change-pending`. OPERATIONS 마이그레이션 순서·구버전 구간 영향.
 - [x] CLAUDE 데이터 변경 경로/소유 원칙과 `pnpm sync:agents`. README 기능 설명 검토.
 - [ ] `/guide`로 en·ko·es의 “리포에서만 언어 추가·제거” 문구와 MCP 표 갱신, `/guide-shots`로 stale 스크린샷 갱신.
 - 검증: 정본과 spec의 범위 일치, `pnpm sync:agents:check`, 문서 신선도 및 가이드 게이트 통과.
