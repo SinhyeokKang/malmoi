@@ -3288,6 +3288,16 @@ export const en = {
           delete: (code: string, pr: string | null): string =>
             `Removing ${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file stays in the repository.`,
         },
+        /**
+         * 언어를 거둔 Publish의 결과 (#281 — 시안 P1 ④⑤의 결과). 미리보기 `takenBack`과 같은 사실을 끝난 일로 말한다 — 일반 no-changes 원인("같은 값이 동기화됐다")이
+         * 아니다. `pr`은 호스트 표기(`#128`·`!128`)이고 호스트 낱말을 넣지 않아 GitLab 덮기가 없다. 제거 취소 줄은 미리보기 `takenBack.delete`가 그대로 참이다.
+         */
+        takenBackDone: {
+          description: (pr: string, branch: string): string => `${pr} was closed because the language changes it carried were taken back. Nothing differs from ${branch} anymore.`,
+          noPr: (branch: string): string => `The language changes were taken back. Nothing differs from ${branch} anymore.`,
+          create: (code: string, pr: string | null): string =>
+            `${code} was cancelled after ${pr === null ? "it was sent" : `${pr} was opened`}, so the file it was adding is no longer sent. Translations stay in Malmoi.`,
+        },
         /** 이 Publish가 먼저 정리할 언어 요청(#267 — R-F2b) — 그 언어를 이름으로 말한다. 리포가 요청대로인지가 갈린다(`reachedRepository`). */
         expiring: {
           addReached: (code: string): string => `${code} is already in the repository, so its request is closed.`,

@@ -285,21 +285,28 @@ function DiffLine({ sign, parts, before }: { sign: string; parts: readonly { tex
 }
 
 /** 파일 머리 행 — 경로 + 오른쪽 낱말(`fileSummary` · 파일 종류). 글리프가 파일에 생기는 일을 가른다(시안 P1 — 색은 muted, 새 배지 없음). */
+/*
+ * ⚠️ **파일 머리·사유 줄은 표의 520에 묶이지 않는다** (#280) — 좁으면 표가 가로로 스크롤하는데(#232), 칸 전체 폭에 서면 머리 오른쪽 낱말(`Taken back from #1`)과
+ * 사유 문장이 보이는 폭 밖으로 나가 "왜 PR을 닫나"를 읽으려면 옆으로 밀어야 했다. 안쪽 상자가 스크롤러의 보이는 폭(`100cqw` — 스크롤러가 컨테이너다)을
+ * 갖고 왼쪽에 붙는다(`sticky left-0`). 넓으면 표 폭과 같다. 머리는 좁으면 낱말이 경로 아래 줄로 내려간다(`flex-wrap`).
+ */
 function FileHead({ path, label, icon: Icon = FileJson2 }: { path: string; label: string; icon?: typeof FileJson2 }) {
   return <tr>
-    <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
-      <span className="flex items-center gap-2">
+    <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b p-0 text-left text-xs font-normal">
+      <span data-file-head className="sticky left-0 flex w-[100cqw] flex-wrap items-center gap-x-2 gap-y-1 px-3.5 py-[9px]">
         <Icon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{path}</span>
+        <span className="min-w-0 truncate">{path}</span>
         <span className="text-muted-foreground ml-auto shrink-0">{label}</span>
       </span>
     </th>
   </tr>;
 }
 
-/** 편집 행 없이 사유 한 줄만 서는 파일 — 편집 없이 바뀌는 파일 · 삭제 · 빈 추가 · 보류 · 거두기. */
+/** 편집 행 없이 사유 한 줄만 서는 파일 — 편집 없이 바뀌는 파일 · 삭제 · 빈 추가 · 보류 · 거두기. 폭은 `FileHead`와 같은 규칙이다(#280). */
 function FileNote({ children }: { children: ReactNode }) {
-  return <tr><td colSpan={3} className="border-divider text-muted-foreground border-t px-3.5 py-[11px] text-xs leading-5">{children}</td></tr>;
+  return <tr><td colSpan={3} className="border-divider text-muted-foreground border-t p-0 text-xs leading-5">
+    <div data-file-note className="sticky left-0 w-[100cqw] px-3.5 py-[11px]">{children}</div>
+  </td></tr>;
 }
 
 const FILE_ICON = { new: FilePlus2, updated: FileJson2, removed: FileMinus2 } as const;
@@ -337,7 +344,8 @@ function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: st
       ⚠️ **좁으면 표가 가로로 스크롤한다** (#232) — `table-fixed`에 Key 220 · 언어 84를 고정한 채 모달이 341로 줄면 Value가 37로 눌려 값이 글자 단위로 세로 감겼다.
       최소 폭 520(Key 220 + 언어 84 + Value 216)을 주고 이 칸이 두 방향으로 스크롤한다. 넓은 모달은 그 폭보다 넓어 그대로다. 머리 `sticky`는 그대로 붙는다.
     */}
-    <div className="min-h-0 flex-1 overflow-auto">
+    {/* `@container/preview` — 파일 머리·사유 줄이 이 스크롤러의 보이는 폭(`100cqw`)을 잰다(#280). */}
+    <div className="@container/preview min-h-0 flex-1 overflow-auto">
       <table className="w-full min-w-[520px] table-fixed border-separate border-spacing-0">
         <TableHead />
         {preview.groups.map(group => {
@@ -667,6 +675,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
         .map(request => <p key={`expired:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground text-xs">{expiringLine(m, request, expiredSources > 1)}</p>);
       // no-changes 실행이 닫은 PR (B1 r3) — 조용히 닫힌 채 두지 않고 이유와 링크를 보인다. 보류가 섞여 Not sent 틀이어도 같은 줄이다.
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
+      // 이 실행이 거둔 언어 효과(#281) — 미리보기의 `withdrawnLocales`와 같은 판정이다.
+      const withdrawn = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.withdrawn ?? [] : [];
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
         {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
         <InlineLink href={closed.url} target="_blank" rel="noreferrer">{p.closedPr.view(closed.number)}</InlineLink>
@@ -724,8 +734,30 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
         }
         case "no-changes":
           panel = PANEL.noChanges; inner = false;
-          title = p.noChanges; description = closed === undefined ? p.noChangesDescription : p.closedPr.description(repo.branch);
+          title = p.noChanges;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+          if (withdrawn.length > 0) {
+            /*
+              언어를 거둬 PR이 닫혔다(#281) — "같은 값이 동기화됐거나 편집을 되돌렸다"는 일어나지 않은 원인이다. 미리보기의 `Taken back` 사유와 같은 사실을
+              결과 데이터(`withdrawn` — 실행이 미리보기와 같은 함수로 센다)로 말한다.
+            */
+            const prLabel = closed === undefined ? null : m.home.meta.pr(closed.number);
+            description = prLabel === null ? p.language.takenBackDone.noPr(repo.branch) : p.language.takenBackDone.description(prLabel, repo.branch);
+            body = <Stack>
+              <Alert variant="success" className="shrink-0">
+                {withdrawn.map(item => <p key={`${item.surfaceSlug}:${item.localeCode}`}>{item.effect === "create" ? p.language.takenBackDone.create(item.localeCode, prLabel) : p.language.takenBack.delete(item.localeCode, prLabel)}</p>)}
+              </Alert>
+              {closed !== undefined && <p className="text-muted-foreground text-xs">
+                {role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}{" "}
+                <InlineLink href={closed.url} target="_blank" rel="noreferrer">{p.closedPr.view(closed.number)}</InlineLink>
+              </p>}
+              {withheld}
+              {expired}
+              <Hint icon={History}>{p.inLogs}</Hint>
+            </Stack>;
+            break;
+          }
+          description = closed === undefined ? p.noChangesDescription : p.closedPr.description(repo.branch);
           body = <Stack>
             <Alert variant="success" className="shrink-0">{p.noChangesBody(repo.branch)}</Alert>
             {closedLine}

@@ -21,8 +21,8 @@ import { countFileChangedValues } from "./changed-values";
 import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 import type { LocaleEffect } from "@/lib/locales/effects";
 import {
-  NO_LOCALE_PLAN, capturedBySurface, deliverableLocaleWork, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, observedLocalesOf, planProjectLocales,
-  type ExpiredLocaleRequest, type LocaleNotes, type LocaleRefusalSite, type ProjectLocalePlan, type SurfaceLocaleChanges,
+  NO_LOCALE_PLAN, capturedBySurface, deliverableLocaleWork, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, observedLocalesOf, planProjectLocales, withdrawnLocalesOf,
+  type ExpiredLocaleRequest, type LocaleNotes, type LocaleRefusalSite, type ProjectLocalePlan, type SurfaceLocaleChanges, type WithdrawnLocale,
 } from "./locales";
 
 /**
@@ -167,7 +167,8 @@ export type PullResult =
    * `closedPr` — 이 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 sync 브랜치를 base로 되돌릴 때 그 PR은 할 일이 없다 — 조용히 닫히게 두지 않고
    * 코멘트와 함께 닫은 뒤 결과·Logs(`SyncRun.prUrl`)가 그 사실을 말한다.
    */
-  | { status: "skipped"; reason: "no-changes"; withheld?: Withheld; closedPr?: { number: number; url: string }; locales?: LocaleNotes }
+  /** `withdrawn` — 이 실행이 열린 PR에서 거둔 언어 효과(전달 뒤 취소, #281). 미리보기의 `withdrawnLocales`와 같은 함수·같은 입력이다. 없으면 필드가 없다. */
+  | { status: "skipped"; reason: "no-changes"; withheld?: Withheld; closedPr?: { number: number; url: string }; locales?: LocaleNotes; withdrawn?: WithdrawnLocale[] }
   /** 실린 편집 0 + 보류 > 0 + 언어 작업 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다. */
   | { status: "skipped"; reason: "withheld"; withheld: Withheld; locales?: LocaleNotes }
   | { status: "skipped"; reason: "writer-warnings"; warnings: PullWarning[] }
@@ -605,7 +606,8 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
     // (sync-edit-protection — ARCHITECTURE §3의 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
     // 언어 변경도 여기서 수렴한다 — 전달된 의도의 취소가 base와 같은 렌더가 되면 PR 닫기·되돌림이 끝난 **뒤에만** 캡처 목록을 확인한다(design §4 목표 4).
     await deps.saveLastPulledAt(project.id, captured, undefined, split.delivered, deliveryContexts, split.withheld, deliveredLocales);
-    return { status: "skipped", reason: "no-changes", ...withheld, ...(closedPr === undefined ? {} : { closedPr }), ...localeNotes };
+    const withdrawn = withdrawnLocalesOf(localePlan, surfaces);
+    return { status: "skipped", reason: "no-changes", ...withheld, ...(closedPr === undefined ? {} : { closedPr }), ...localeNotes, ...(withdrawn.length === 0 ? {} : { withdrawn }) };
   }
 
   // 쓰기 전에 센다 — 렌더가 끝난 순간의 base 원문(`current`)과 새 원문을 견주는 관측이고, 아래 쓰기는 이 값을 보지 않는다.

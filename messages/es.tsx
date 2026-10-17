@@ -1728,6 +1728,12 @@ export const es = {
           delete: (code: string, pr: string | null): string =>
             `La eliminación de ${code} se canceló después de que se ${pr === null ? "enviara" : `abriera ${pr}`}, así que el archivo se queda en el repositorio.`,
         },
+        takenBackDone: {
+          description: (pr: string, branch: string): string => `${pr} se cerró porque se retiraron los cambios de idioma que contenía. Ya no hay diferencias con ${branch}.`,
+          noPr: (branch: string): string => `Se retiraron los cambios de idioma. Ya no hay diferencias con ${branch}.`,
+          create: (code: string, pr: string | null): string =>
+            `${code} se canceló después de ${pr === null ? "enviarse" : `abrirse ${pr}`}, así que el archivo que añadía ya no se envía. Las traducciones se conservan en Malmoi.`,
+        },
         expiring: {
           addReached: (code: string): string => `${code} ya está en el repositorio, así que su solicitud se cierra.`,
           addNotReached: (code: string): string => `${code} no se añadió: su pull request se cerró sin fusionarse. Sus traducciones se conservan en Malmoi.`,

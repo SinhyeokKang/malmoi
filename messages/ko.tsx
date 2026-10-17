@@ -1728,6 +1728,12 @@ export const ko = {
           delete: (code: string, pr: string | null): string =>
             `${pr === null ? "보낸 뒤" : `${pr} 요청이 열린 뒤`} ${code} 제거가 취소되어 파일이 리포지토리에 남습니다.`,
         },
+        takenBackDone: {
+          description: (pr: string, branch: string): string => `${pr} 요청에 담긴 언어 변경을 회수해 그 요청을 닫았습니다. 이제 ${branch} 브랜치와 다른 점이 없습니다.`,
+          noPr: (branch: string): string => `언어 변경을 회수했습니다. 이제 ${branch} 브랜치와 다른 점이 없습니다.`,
+          create: (code: string, pr: string | null): string =>
+            `${pr === null ? "보낸 뒤" : `${pr} 요청이 열린 뒤`} ${code} 추가가 취소되어 그 파일을 더 보내지 않습니다. 번역은 Malmoi에 남습니다.`,
+        },
         expiring: {
           addReached: (code: string): string => `${code} 언어는 이미 리포지토리에 있어 요청을 닫습니다.`,
           addNotReached: (code: string): string => `${code} 언어는 추가되지 않았습니다. PR이 머지되지 않고 닫혔습니다. 번역은 Malmoi에 남습니다.`,
