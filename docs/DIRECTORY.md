@@ -797,7 +797,7 @@ lib/
   expiry.ts             ⚠️ 잎. isExpired(expiresAt, now) — 초대·MCP 토큰의 만료 경계 하나(정각 = 만료). 인증 경계와 카드 표시가 같은 식이어야
                         카드가 "활성"이라 말하는 순간에 401이 나지 않는다. OAuth 인라인 비교는 범위 밖이다
   publish/              Publish 모달이 읽는 순수 판정 다섯. diff(셀 단위 조립·키 병합·상한) ·
-                        plan(결과 8갈래 planPublishView + 버튼 planPublishButton, 둘 다 never 검사) ·
+                        plan(결과 10갈래 planPublishView + 버튼 planPublishButton, 둘 다 never 검사) ·
                         warnings(파일별 묶기 — 파서 원문의 개행을 보존한다) · words(낱말 diff) ·
                         preview(모달 상태 다섯의 계약). ⚠️ server-only는 read.ts와 load-preview.ts(공유 코어)다 — read는 base 트리를
                         읽어 "무엇을 덮는가"를 만든다. fingerprint(Publish 지문 — preview_publish가 내고 publish가 재계산해 대조)는
