@@ -35,7 +35,7 @@ type Row = SourceDetail["languages"][number];
 const row = (code: string, over: Partial<Row> = {}): Row => ({ code, isBase: false, orphaned: false, total: 248, translated: 200, needsReview: 0, untranslated: 48, percent: 80, change: null, unsent: false, ...over });
 const add = { operation: "ADD" as const, requestedAt: new Date("2026-10-16T00:00:00Z") };
 const removal = { operation: "REMOVE" as const, requestedAt: new Date("2026-10-16T00:00:00Z") };
-const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 2, orphanedLocales: 0, progress: { total: 248, done: 210, review: 12, percent: 84 } };
+const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 2, orphanedLocales: 0, meters: { shown: [], hidden: 0 }, progress: { total: 248, done: 210, review: 12, percent: 84 } };
 const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
 const connection = { adapterName: "json-catalog", pathTemplate: "apps/web/locales/{locale}.json", format: "JSON catalog" };
 const data = (host = "github"): SourcesData => ({ installed: true, repoHost: host, repository, sources: [web, { ...web, id: "s-emails", slug: "emails" }] });

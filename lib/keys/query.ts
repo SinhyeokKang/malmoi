@@ -407,8 +407,8 @@ export function assembleProjectListRows(
  * 로케일별 진행률의 재료 (6b-5). **집계는 `localeProgress`가 한다** — 여기는 조회만이다.
  *
  * ⚠️ **번역 화면의 조회를 재사용하지 않는다.** 그쪽은 셀과 `refs`를 들고 오므로 903키 프로젝트에서
- * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 **셀에서 `{ localeCode, needsReview }`
- * 둘만** 뽑는다 — `value`를 select하면 번역 본문 전체가 따라온다.
+ * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 로케일·검토 여부별로 집계한다.
+ * 셀 행이나 번역 본문은 가져오지 않는다.
  *
  * ⚠️ **필터 둘이 판정이다.**
  * - `value: { not: "" }` — 빈 값은 미번역이다. 편집 UI에서 값을 지우면 빈 문자열 행이 남는다
@@ -422,18 +422,19 @@ export function assembleProjectListRows(
 export type LocaleCounts = {
   /** 살아 있는 키 수 — 전 로케일 공통 분모다. */
   total: number;
-  cells: { localeCode: string; needsReview: boolean }[];
+  cells: { localeCode: string; needsReview: boolean; count: number }[];
 };
 
 export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, surfaceId: string): Promise<LocaleCounts> {
   const [total, cells] = await Promise.all([
     prisma.stringKey.count({ where: { projectId, surfaceId, orphaned: false, surface: { archivedAt: null } } }),
-    prisma.translation.findMany({
+    prisma.translation.groupBy({
+      by: ["localeCode", "needsReview"],
       where: { projectId, surfaceId, surface: { archivedAt: null }, value: { not: "" }, stringKey: { orphaned: false } },
-      select: { localeCode: true, needsReview: true },
+      _count: { _all: true },
     }),
   ]);
-  return { total, cells };
+  return { total, cells: cells.map(cell => ({ localeCode: cell.localeCode, needsReview: cell.needsReview, count: cell._count._all })) };
 }
 
 
@@ -443,8 +444,8 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, 
  * ⚠️ **`Promise.all`로 보낸다.** 순차로 보내면 도쿄 리전 왕복이 다섯 번 쌓이고, 그 고정 비용은
  * 이미 실측돼 있다 (POSTMORTEM 2026-09-09 — 3.3초의 원인이 함수 리전이었다).
  *
- * ⚠️ **`loadLocaleCounts`를 재사용하지 않는다** — 그쪽은 프로젝트 하나 전용이고 셀을 **행으로**
- * 전부 가져온다. 여기 필요한 것은 개수뿐이라 `groupBy`가 맞고, 그래서 `value`가 애초에 안 딸려온다.
+ * ⚠️ **`loadLocaleCounts`를 재사용하지 않는다** — 그쪽은 프로젝트 하나의 소스 전용이다.
+ * 여기서는 프로젝트 여럿을 한 번에 집계해야 왕복 수가 늘지 않는다.
  */
 export type ProjectListAggregates = {
   /** ① 작업 언어 — 살아 있고 제거 예정이 아닌 로케일(`workLocaleWhere`). 셀 접기도 이 집합을 따르므로 제거 예정의 값은 진행률에서 빠진다. */

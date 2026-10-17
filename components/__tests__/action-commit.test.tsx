@@ -111,7 +111,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
-  const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: null, lastCommitAt: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null, createdAt: new Date("2026-09-19T00:00:00Z"), keys: 0, locales: 1, orphanedLocales: 0, progress: { total: 0, done: 0, review: 0, percent: 0 } };
+  const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: null, lastCommitAt: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null, createdAt: new Date("2026-09-19T00:00:00Z"), keys: 0, locales: 1, orphanedLocales: 0, meters: { shown: [], hidden: 0 }, progress: { total: 0, done: 0, review: 0, percent: 0 } };
   const data: SourcesData = { installed: true, repoHost: "github", sources: [source], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } };
   const detail: SourceDetail = { ...source, installed: true, repoHost: "github", pullRequestUrl: null, importActive: false, localeDelivery: "confirmed", languages: [{ code: "en", isBase: true, orphaned: false, total: 0, translated: 0, needsReview: 0, untranslated: 0, percent: 0, change: null, unsent: false }] };
 

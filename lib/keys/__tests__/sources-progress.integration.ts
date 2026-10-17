@@ -48,8 +48,10 @@ afterAll(async () => {
 
 import { loadSource, loadSources } from "@/lib/sources/query";
 import { localeProgress } from "../view";
+import { meterValue } from "@/lib/sources/meters";
+import { localeRole } from "@/lib/translations/summary";
 
-it("실제 DB에서 소스 격리·고아 키 제외·84%와 89.5% 차이를 보존한다", async () => {
+it("실제 DB에서 소스 격리·고아 키 제외·검토를 포함한 89%를 보존한다", async () => {
   await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","updatedAt") VALUES ('p','p','P','o','r',now()),('other','other','Other','o','r',now());
     INSERT INTO "TranslationSurface" (id,"projectId",slug) VALUES ('s','p','web'),('s2','p','other'),('foreign','other','web'),('empty','p','empty');
     INSERT INTO "Locale" ("projectId","surfaceId",code,name) VALUES ('p','s','en','English'),('p','s2','en','English'),('other','foreign','en','English');
@@ -57,7 +59,7 @@ it("실제 DB에서 소스 격리·고아 키 제외·84%와 89.5% 차이를 보
     INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash",orphaned,"updatedAt") SELECT 'k'||n,'p','s','k'||n,'root','Hello','hash',n=249,now() FROM generate_series(1,249) n;
     INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"needsReview","updatedAt") SELECT 't'||n,'p','s','k'||n,'en','value',n>210 AND n<=222,now() FROM generate_series(1,249) n WHERE n<=222 OR n=249`);
   const detail = await loadSource(prisma, en, "p", "s", "OWNER");
-  expect(detail?.languages.find(row => row.code === "en")).toMatchObject({ translated: 210, needsReview: 12, untranslated: 26, total: 248, percent: 84 });
+  expect(detail?.languages.find(row => row.code === "en")).toMatchObject({ translated: 210, needsReview: 12, untranslated: 26, total: 248, percent: 89 });
   expect((210 + 12) / 248 * 100).toBeCloseTo(89.516, 2);
   expect(detail?.languages.some(row => row.code === "ja" && row.orphaned)).toBe(true);
   expect((await loadSource(prisma, en, "p", "s2", "OWNER"))?.languages[0]).toMatchObject({ total: 0, percent: 0 });
@@ -83,4 +85,40 @@ it("대량 적재 직후 ANALYZE 전 상세 쿼리 시간을 기록한다", asyn
   process.stdout.write(JSON.stringify({ sourcesDetailBeforeAnalyzeMs: performance.now() - start, keys: 1446, cells: 8676 }) + "\n");
   expect(detail?.languages).toHaveLength(6);
   expect(detail?.languages.every(row => row.total === 1446 && row.percent === 100)).toBe(true);
+});
+
+it("작업 언어의 행 막대는 상세와 같고 제거 예정·고아·키 0·보관 소스는 제외한다", async () => {
+  await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","updatedAt") VALUES ('p','p','P','o','r',now()),('other','other','Other','o','r',now());
+    INSERT INTO "TranslationSurface" (id,"projectId",slug) VALUES ('s','p','web'),('empty','p','empty'),('archived','p','archived'),('foreign','other','web');
+    UPDATE "TranslationSurface" SET "archivedAt"=now() WHERE id='archived';
+    UPDATE "TranslationSurface" SET "lastImportedAt"=now(), "lastImportFailedAt"=now(), "lastImportError"='failed' WHERE id='s';
+    INSERT INTO "Locale" ("projectId","surfaceId",code,name,"isBase",orphaned)
+      SELECT 'p','s',code,code,code='ko',code='ja' FROM unnest(ARRAY['ko','de','en','es','fr','it','ja','zh']) code;
+    INSERT INTO "Locale" ("projectId","surfaceId",code,name) VALUES ('p','empty','en','English'),('p','archived','en','English'),('other','foreign','en','English');
+    INSERT INTO "LocaleChange" ("projectId","surfaceId","localeCode",operation) VALUES ('p','s','de','ADD'),('p','s','zh','REMOVE');
+    INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash",orphaned,"updatedAt")
+      SELECT 'k'||n,'p','s','k'||n,'root','Hello','hash',n=3,now() FROM generate_series(1,3) n;
+    INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash","updatedAt") VALUES ('foreign-key','other','foreign','key','root','Hello','hash',now()),('archived-key','p','archived','key','root','Hello','hash',now());
+    INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"needsReview","updatedAt")
+      SELECT code||n,'p','s','k'||n,code,CASE WHEN code='en' AND n=2 THEN '' ELSE 'value' END,n=2,now()
+      FROM unnest(ARRAY['ko','de','en','es','fr','ja','zh']) code CROSS JOIN generate_series(1,3) n;
+    INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"updatedAt") VALUES ('foreign-value','other','foreign','foreign-key','en','value',now()),('archived-value','p','archived','archived-key','en','value',now())`);
+  const list = await loadSources(prisma, en, "p", "EDITOR");
+  expect(list?.sources.map(source => source.id).sort()).toEqual(["empty", "s"]);
+  const detail = await loadSource(prisma, en, "p", "s", "EDITOR");
+  expect(detail).not.toBeNull();
+  const work = detail!.languages.filter(locale => localeRole(locale) === "work");
+  const source = list?.sources.find(source => source.id === "s");
+  expect(source?.meters).toEqual({ shown: work.slice(0, 5).map(meterValue), hidden: 1 });
+  expect(source?.meters.shown.map(meter => meter.code)).toEqual(["ko", "de", "en", "es", "fr"]);
+  expect(source?.meters.shown[0]).toEqual({ code: "ko", total: 2, done: 1, review: 1, percent: 100 });
+  expect(source?.meters.shown[2]).toEqual({ code: "en", total: 2, done: 1, review: 0, percent: 50 });
+  expect(source).toMatchObject({ locales: 6, orphanedLocales: 1, progress: { total: 12, done: 5, review: 4, percent: 41 } });
+  expect(detail?.languages.find(locale => locale.code === "zh")).toMatchObject({ change: { operation: "REMOVE" }, percent: 100 });
+  expect(detail?.languages.find(locale => locale.code === "ja")).toMatchObject({ orphaned: true, percent: 100 });
+  expect(detail?.languages.find(locale => locale.code === "it")).toMatchObject({ translated: 0, needsReview: 0, untranslated: 2, percent: 0 });
+  expect(list?.sources.find(source => source.id === "empty")?.meters).toEqual({ shown: [], hidden: 0 });
+  expect((await loadSource(prisma, en, "p", "empty", "EDITOR"))?.languages[0]).toMatchObject({ total: 0, percent: 0 });
+  expect(await loadSource(prisma, en, "p", "archived", "EDITOR")).toBeNull();
+  expect(await loadSource(prisma, en, "p", "foreign", "EDITOR")).toBeNull();
 });

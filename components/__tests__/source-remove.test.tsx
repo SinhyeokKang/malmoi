@@ -18,7 +18,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: mocks.runFirst
 vi.mock("@/components/sources/add-sources-modal", () => ({ AddSourcesModal: () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace, push: mocks.push }) }));
 
-const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 2, orphanedLocales: 0, progress: { total: 248, done: 210, review: 12, percent: 84 } };
+const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 2, orphanedLocales: 0, meters: { shown: [], hidden: 0 }, progress: { total: 248, done: 210, review: 12, percent: 84 } };
 const emails = { ...web, id: "s-emails", slug: "emails" };
 const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
 const two: SourcesData = { installed: true, repoHost: "github", repository, sources: [emails, web] };
