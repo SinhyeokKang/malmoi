@@ -230,11 +230,19 @@ async function openWith(unsent: number, languages: Language[]) {
   return dialog()!;
 }
 const languageBlock = () => document.querySelector<HTMLElement>("[data-sync-languages]");
+/** 첫 문장 — 수 조각이 medium이다(시안 P4 · #275). */
+const lead = () => languageBlock()!.querySelector("p")!;
+/** 언어 줄 — 코드 칸(44 · medium)과 결과 문장이 따로 선다(시안 P4 · #275). 접힘 줄은 코드 칸이 없다. */
+const rows = () => [...languageBlock()!.querySelectorAll("li")].map(li => {
+  const code = li.querySelector("[data-language-code]");
+  return code === null ? [li.textContent] : [code.textContent, li.querySelector("[data-language-result]")?.textContent];
+});
 
 it("편집과 언어 변경이 함께면 블록이 둘이고 편집 블록이 먼저다", async () => {
   const node = await openWith(12, [lang("fr", "ADD", 9), lang("de", "REMOVE")]);
   const block = languageBlock()!;
-  expect(block.textContent).toBe("2 language changes will be dropped.fr won't be added. Its 9 translations are kept in Malmoi.de won't be removed. It stays in this source.");
+  expect(lead().textContent).toBe("2 language changes will be dropped.");
+  expect(rows()).toEqual([["fr", "won't be added. Its 9 translations are kept in Malmoi."], ["de", "won't be removed. It stays in this source."]]);
   // 같은 amber 형의 블록 둘이다 — 편집 경고 · 언어 변경.
   expect(node.querySelectorAll('[data-alert="warning"]')).toHaveLength(2);
   const editLine = [...node.querySelectorAll("p")].find(p => p.textContent?.includes("12 unsent edits"))!;
@@ -247,27 +255,44 @@ it("편집과 언어 변경이 함께면 블록이 둘이고 편집 블록이 �
   expect(node.getAttribute("aria-describedby")?.split(" ")).toContain(block.id);
 });
 
+/**
+ * **시안 P4의 형** (#275) — 첫 문장의 수는 medium, 언어 줄은 `flex gap-2` 안에 코드 칸(폭 44 · medium) + 결과 문장, 줄 사이 4 · 첫 문장과 2.
+ * jsdom은 레이아웃을 계산하지 않아 클래스로 잰다(실측은 DS 몫).
+ */
+it("첫 문장의 수가 medium이고 언어 줄은 44 코드 칸 + 결과 문장이다", async () => {
+  await openWith(0, [lang("fr", "ADD", 9), lang("de", "REMOVE")]);
+  const count = lead().querySelector(".font-medium");
+  expect(count?.textContent).toBe("2 language changes");
+  const list = languageBlock()!.querySelector("ul")!;
+  expect(list.className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-1", "mt-0.5"]));
+  const [first] = [...list.querySelectorAll("li")];
+  expect(first!.className.split(" ")).toEqual(expect.arrayContaining(["flex", "gap-2"]));
+  const code = first!.querySelector("[data-language-code]")!;
+  expect(code.className.split(" ")).toEqual(expect.arrayContaining(["min-w-11", "shrink-0", "font-medium"]));
+  expect(first!.querySelector("[data-language-result]")!.className.split(" ")).toEqual(expect.arrayContaining(["min-w-0", "flex-1"]));
+});
+
 it("언어 변경만 있으면 그 블록 하나이고 Send changes first 줄이 없다", async () => {
   const node = await openWith(0, [lang("de", "REMOVE")]);
-  expect(languageBlock()!.textContent).toBe("1 language change will be dropped.de won't be removed. It stays in this source.");
+  expect(lead().textContent).toBe("1 language change will be dropped.");
+  expect(rows()).toEqual([["de", "won't be removed. It stays in this source."]]);
   expect(node.textContent).not.toContain(en.repositorySync.sendFirst);
   expect(node.textContent).not.toContain("unsent edit");
 });
 
 it("값 없는 추가는 번역 수를 말하지 않는다", async () => {
   await openWith(0, [lang("fr", "ADD", 0)]);
-  expect(languageBlock()!.textContent).toBe("1 language change will be dropped.fr won't be added.");
+  expect(rows()).toEqual([["fr", "won't be added."]]);
 });
 
 it("다섯 개를 넘으면 앞 넷과 and N more로 접는다", async () => {
   await openWith(0, ["ja", "ko", "fr", "de", "es", "it", "pt"].map(code => lang(code, "REMOVE")));
-  const lines = [...languageBlock()!.querySelectorAll("li")].map(li => li.textContent);
-  expect(lines).toEqual([
-    "ja won't be removed. It stays in this source.",
-    "ko won't be removed. It stays in this source.",
-    "fr won't be removed. It stays in this source.",
-    "de won't be removed. It stays in this source.",
-    "and 3 more",
+  expect(rows()).toEqual([
+    ["ja", "won't be removed. It stays in this source."],
+    ["ko", "won't be removed. It stays in this source."],
+    ["fr", "won't be removed. It stays in this source."],
+    ["de", "won't be removed. It stays in this source."],
+    ["and 3 more"],
   ]);
 });
 
@@ -276,10 +301,10 @@ it("다섯 개면 접지 않는다", async () => {
   expect(languageBlock()!.querySelectorAll("li")).toHaveLength(5);
 });
 
-it("소스가 둘 이상이면 언어 줄이 소스를 함께 말한다", async () => {
+it("소스가 둘 이상이면 코드 칸이 소스를 함께 든다 — 44를 넘으면 칸이 늘고 줄바꿈하지 않는다", async () => {
   await openWith(0, [lang("de", "REMOVE", 0, "web"), lang("fr", "ADD", 2, "emails")]);
-  const lines = [...languageBlock()!.querySelectorAll("li")].map(li => li.textContent);
-  expect(lines).toEqual(["de (web) won't be removed. It stays in this source.", "fr (emails) won't be added. Its 2 translations are kept in Malmoi."]);
+  expect(rows()).toEqual([["de (web)", "won't be removed. It stays in this source."], ["fr (emails)", "won't be added. Its 2 translations are kept in Malmoi."]]);
+  expect(languageBlock()!.querySelector("[data-language-code]")!.className.split(" ")).toContain("whitespace-nowrap");
 });
 
 it("언어 변경이 없으면 블록이 없다", async () => {
