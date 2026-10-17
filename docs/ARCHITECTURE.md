@@ -2502,8 +2502,8 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 - **미리보기의 거둘 효과** (`withdrawnLocales`, 2026-10-14 RT #265): 전달 후 취소로 되돌린 파일은 base와 같아 `fileChanges`에 없지만, 열린 PR에는 옛 삭제·새 파일이 남아 있고
   Publish가 그것을 거둔다. 미리보기는 **전달 목록에 있는데 이번 캡처에 없는 효과**(`withdrawnLocalesOf`, `lib/pull/locales.ts` — 소스 slug·코드순)를 싣고, 비면 필드가 없다.
   확인 안 된 목록(`null`)은 무엇이 실렸는지 몰라 말하지 않는다(그동안 취소는 거부된다). MCP `preview_publish`는 이를 `languages.withdrawn`으로 싣고, 파일 변경이 0이어도
-  "Nothing to send."가 아니라 이미 보낸 언어 변경을 되돌린다고 말한다. 웹 Publish 모달도 같은 목록을 읽는다 — 파일 diff가 0이어도 `Taken back` 행이 열린 PR에서 무엇을 거두는지 말하고, 바뀐 파일이 없으면 제목이 PR 닫기가 된다(DESIGN §6.646).
-  `WithdrawnLocale`·`LocaleNotes.empty[]`·`LocaleNotes.withheld[]`는 **대상 파일 경로**(`path`)를 같이 싣는다 — 화면이 템플릿을 채우지 않고 서버가 `localeFilePath`로 계산한 값이다(템플릿을 모르면 `null`).
+  "Nothing to send."가 아니라 이미 보낸 언어 변경을 되돌린다고 말한다. 웹 Publish 모달도 같은 목록을 읽는다 — 파일 diff가 0이어도 `Taken back` 행이 열린 PR에서 무엇을 거두는지 말하고, 바뀐 파일이 없고 열린 PR이 있으면 제목이 PR 닫기가 된다(DESIGN §6.646).
+  `WithdrawnLocale`·`LocaleNotes.empty[]`·`LocaleNotes.withheld[]`는 **대상 파일 경로**(`path`)를 같이 싣는다 — 화면이 템플릿을 채우지 않는다. `empty[]`·`WithdrawnLocale`은 서버가 `localeFilePath`로 계산한 값이라 템플릿을 모르면 `null`이고, `withheld[].path`는 계획이 원래 싣던 값(`string`, `null` 없음)이다.
 - **언어만 있는 Publish에 닿는 길** (`languageWork`): 셀 편집이 0이어도 `countLocaleWork`(`lib/locales/work.ts` — 소스별 현재 효과 ≠ 전달 효과의 합)가 0보다 크면 Publish 버튼이 켜진다.
   **버튼과 모달이 같은 값을 받는다** — Home(`(home)/page.tsx`)과 번역 화면(`translations/page.tsx`)이 서버에서 한 번 세어 `PublishButton`(`planPublishButton`)과 `PublishModal` 둘에 넘기고,
   모달은 그 값으로 미리보기를 기다리는 동안의 제목(`Publish language changes`)과 진행 제목을 고른다. ⚠️ **버튼은 base를 읽지 않는다** — 작업이 보류된 ADD(`proposal-path-exists`)뿐이어도 켜지고,
@@ -2513,7 +2513,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   화면은 "언어 파일이 아직 없다" 줄과 결과의 파일 복구 권유에서 이 수를 뺀다 — 그 언어는 `Held`·`Not included` 행이 설명하고, "파일이 아직 없다"로 또 세면 같은 표 안에서 `이미 리포에 있다`와 모순이다. 모집단(`sendable`·`delivered`)은 바뀌지 않는다.
 - **결정적 거부의 자리** (`LocalePlanRefused.site`): `locale-plan-refused`(`path-conflict`·`duplicate-path`·`unsafe-path`)가 거부한 소스·언어·경로를 쥔 소스(`LocaleRefusalSite` = `{ surfaceSlug, localeCode, ownerSlug }`)를 싣는다.
   미리보기 `refused`는 이를 `plan: { refusal, surfaceSlug, localeCode, ownerSlug }`로 옮기고 화면이 어느 소스의 어느 언어가 무엇에 막혔는지 말한 뒤 그 소스 상세로 보낸다(Sources 딥링크 `?source=&language=`).
-  안전하지 않은 경로는 계산하지 못해 언어를 모르고(`localeCode: null`), 경로 충돌인데 그 경로를 쥔 소스를 못 찾으면(계획 뒤 경합) `ownerSlug: null`이라 화면이 "다른 소스의 것"이라는 사실만 말한다.
+  안전하지 않은 경로는 계산하지 못해 언어를 모르고(`localeCode: null`), 경로 충돌인데 그 경로를 쥔 소스를 못 찾으면 `ownerSlug: null`이고 화면이 "다른 소스의 것"이라는 사실만 말한다(방어용 — 소유 소스는 계획과 같은 메모리 `formats`에서 찾아 `path-conflict`면 늘 나온다).
 - **결과 미확정 동안 언어 변경은 거부한다** — 새 사유 코드를 만들지 않고 기존 `publish-unsettled` 장벽(`planPublishBarrier`)과 RUNNING 실행권을 재사용한다. 응답이 유실된 실행은 원격에 새 파일·삭제를 실었을 수 있는데 전달 목록은 갱신되지 않아,
   그 사이 취소를 받으면 PR에 stale diff가 남는다. **확인이 무효화된 동안(`delivered: null`)도 같다** — 대상 행의 효과가 현재 목록에 있으면(REMOVE, 값 있는 ADD) 두 취소를 막는다. 새 요청(작업을 늘리는 쪽)과 값 0개 ADD의 취소는 막지 않는다.
 - **PR/MR 본문**: 삭제 파일이 있으면 `(removed)` 표시와 "앱 코드의 이 언어 참조(import·지원 언어 목록 등)를 정리해야 한다" 안내를 붙인다(`pullRequestBody` — 두 호스트 공통, 삭제가 없으면 옛 본문과 바이트 동일).
@@ -2534,7 +2534,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 | PR/MR 조회 실패·응답 유실 | 만료하지 않고 의도 유지 |
 
 webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 야간 방문 또는 Publish까지 최대 하루 늦을 수 있다. Sources는 진입 시 호스트를 부르지 않고 서버가 마지막으로 관측한 결과만 쓴다.
-**Sources 언어 행의 PR 링크 출처는 저장된 `Project.lastPrUrl` 하나다** (2026-10-17, D5) — `loadSourceDetail`이 `pullRequestUrl: string | null`로 싣고(호스트 호출 0 · `projectId`로 좁힘 · 역할 무관 — 번역 화면의 `lastPrUrl`과 같다),
+**Sources 언어 행의 PR 링크 출처는 저장된 `Project.lastPrUrl` 하나다** (2026-10-17 사용자) — `loadSourceDetail`이 `pullRequestUrl: string | null`로 싣고(호스트 호출 0 · `projectId`로 좁힘 · 역할 무관 — 번역 화면의 `lastPrUrl`과 같다),
 번호는 화면이 `reviewNumberFrom(url, repoHost)`(`lib/projects/review-number.ts` — GitHub `/pull/N` · GitLab `/-/merge_requests/N`)로 뽑는다. ⚠️ **이 링크는 열린 PR이라는 뜻도 그 언어를 실었다는 뜻도 아니다** — 마지막 Publish가 만든 PR일 뿐이라
 화면은 행이 "전달됨"(Adding·Removing · 미전달 없음 · 확인됨)일 때만 링크를 세우고 번호를 못 뽑으면 링크를 만들지 않는다. 조회 실패(`prCheckFailed`) 상태는 Sources에 없다 — 그 상태는 Home이 그때 조회한 결과다.
 야간 PR/MR 조회가 실패하면 행이 있는 프로젝트는 그 밤의 Publish 전체가 `pr-check-failed`로 보류된다(종료된 요청을 다시 싣지 않기 위한 fail-closed 비용).
@@ -2546,7 +2546,7 @@ webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 �
 문서 55개에서 `es_419` 제외)로 좁힌다. 경로는 소스 `pathTemplate`에서 서버가 계산하고 `isPathSafeRepoPath`와 소스 간 경로 소유 판정을 지난다. **로케일 수 상한은 두지 않는다** —
 `/api/push`의 `MAX_LOCALES`(200)는 그대로라 그 위의 리포는 기존 페이로드 검증이 거부한다. 입력 코드는 객체 프로퍼티가 아니라 `Map`·배열로 다룬다(`__proto__` 표 테스트).
 
-**추가 미리보기는 실행 판정을 공유한다** (`previewSourceLocaleAdd` → `previewLocaleAdd`, 2026-10-17 D4): 실행 `addLocale`과 **같은 `judgeAdd`**(같은 `readChangeState` + `planLocaleChange`/`planLocaleAdd` + 경로 소유)와 **같은 되살림 셀 술어**(`reviveCellsWhere`)를 지난다 —
+**추가 미리보기는 실행 판정을 공유한다** (`previewSourceLocaleAdd` → `previewLocaleAdd`, 2026-10-17 사용자): 실행 `addLocale`과 **같은 `judgeAdd`**(같은 `readChangeState` + `planLocaleChange`/`planLocaleAdd` + 경로 소유)와 **같은 되살림 셀 술어**(`reviveCellsWhere`)를 지난다 —
 화면이 템플릿을 채우거나 되살릴 수를 따로 세면 미리보기가 실행과 어긋난다(POSTMORTEM 2026-09-16). 결과는 `{ ok: true, action: "create" | "revive", path, revive }`(`revive` = 실행의 `reissued`와 같은 셈 — 값 있는 활성 키, orphan 키 제외, `create`면 0)
 또는 실행과 **같은 거부 집합**(`unsupported-format`·`removal-pending`·`invalid-code`·`unsupported-locale`·`already-active`·`locale-collision`·`unsafe-path`·`path-conflict` + 접근 계열·`publish-unsettled`·`archived`)이다.
 읽기 전용이고 RepeatableRead 스냅샷이며 잠금이 없다 — 승인 지문이 없다(추가는 버리는 것이 없다). 그 사이 상태가 바뀌면 실행이 잠금 뒤 다시 판정한다.
@@ -2559,10 +2559,11 @@ webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 �
   ⚠️ **뒤의 셋(2026-10-17)은 additive이고 옛 행은 `null`이다** — 파서(`readPayload`)가 없는 칸을 `null`로 읽고 문장은 그 절을 뺀다. `reissued: number | null`은 `surface.localeAdded`이고 되살림일 때만 수(새로 만든 추가는 `null`)다.
   `pullRequest: { number } | null`은 `surface.localeChangeResolved`만 싣는다 — 만료된 의도의 효과(ADD→create · REMOVE→delete)가 판정용 전달 목록에 있을 때 **마지막 전달 확인 실행의 `SyncRun.prUrl`**에서 `reviewNumberFrom`으로 뽑는다(번호는 양의 안전 정수만).
   전달 목록에 없던 의도(모순 행·리포 직접 추가)·확인보다 뒤에 낸 요청·주소 없는 실행은 `null`이다 — 옛 요청의 PR을 새 요청에 붙이지 않으려고 저장 목록이 아니라 판정 목록을 쓴다. 번호 표기(`#N`·`!N`)는 화면이 호스트로 고른다.
-  `via: "publish" | "sync" | "nightly" | "ci" | null`은 만료(`surface.localeChangeResolved`)를 일으킨 실행이다 — 야간 방문·야간 Publish·CI 적재가 모두 AUTOMATION이라 컬럼만으로는 가를 수 없어서다.
-  만료 세 경로(야간 `expireAtHead` · Publish · CI `lib/push/apply.ts`)는 공용 코어 `expireLocaleChanges` 한 곳에서 기록하고, 승인한 수동 Sync의 폐기(`discardLocaleChanges`)도 같은 subtype을 직접 기록한다(`via: "sync"`, `pullRequest: null` — PR에 실린 해소가 아니다).
+  `via: "publish" | "sync" | "nightly" | "ci" | null`은 만료(`surface.localeChangeResolved`)를 일으킨 실행이다 — 야간 방문·야간 Publish·야간 적재·CI 적재가 모두 AUTOMATION이라 컬럼만으로는 가를 수 없고 사건 행위자 낱말(`Nightly`·`CI`)이 이 값을 따라야 해서다.
+  `nightly`의 출처는 야간 방문(`lib/nightly/run.ts`)·행위자 없는 Publish(`lib/pull/load.ts` — 사람의 Publish는 `publish`)·AUTOMATION 적재(`lib/import/run.ts` — 야간 적재 하나)이고 `ci`는 CI 적재(`lib/push/apply.ts`)다.
+  호출 자리는 이렇게 넷이지만 기록은 공용 코어 `expireLocaleChanges` 한 곳에서 하고, 승인한 수동 Sync의 폐기(`discardLocaleChanges`)도 같은 subtype을 직접 기록한다(`via: "sync"`, `pullRequest: null` — PR에 실린 해소가 아니다).
   ⚠️ **`triggerWhere`는 JSON 경로 비교의 NULL을 직접 건진다** (`lib/events/trigger-where.ts`): 행위자 필터 `ci`는 `nightly`의 여집합이어야 하는데 via 없는 옛 행에서 `payload->'localeChange'->'via'` 비교가 SQL NULL이라 `NOT (… OR NULL)`이 NULL이 되어 그 행이 어느 쪽에도 안 들었다.
-  그래서 `ci`는 `NOT nightly` 하나로 적지 않고 "언어 만료가 아님 ∨ via ≠ nightly ∨ via 없음(`Prisma.AnyNull`)"으로 직접 적는다 — **`AnyNull`을 값으로 물어야 해서 이 모듈만 `@/generated/prisma/client`를 값 import한다**(타입 전용이 아니다). 여집합인지는 `query.integration.ts`가 실제 행(via nightly · ci · 없음)으로 잰다.
+  그래서 `ci`는 `NOT nightly` 하나로 적지 않고 "언어 만료가 아님 ∨ via ≠ nightly ∨ via 없음(`Prisma.AnyNull`)"으로 직접 적는다 — **`AnyNull`을 값으로 물어야 해서 `lib/events/` 안에서는 이 모듈만 `@/generated/prisma/client`를 값 import한다**(타입 전용이 아니다). 여집합인지는 `query.integration.ts`가 실제 행(via nightly · ci · 없음)으로 잰다.
   ⚠️ **파일 삭제를 번역 전달 성공으로 기록하지 않는다.** base를 못 읽으면 결과·사건은 실패/보류다("삭제 완료"·`no-changes` 금지).
 - **스키마**: `LocaleChange`·`DeliveryConfirmation.deliveredLocaleChanges`는 additive이고 백필이 없다(마이그레이션 `20261014060000_locale_change`; 배포 순서는 OPERATIONS "언어 추가·제거 배포 순서", 구버전 구간은 "언어 추가·제거 이전으로 되돌리기"). `lib/privacy/collected.ts`에 `LocaleChange: "not-personal"`.
   새 환경변수·패키지·cron은 없다(SELF-HOSTING §3).
