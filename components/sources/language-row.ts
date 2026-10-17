@@ -27,7 +27,7 @@ export type LanguageRowPlan = {
   /** 마지막 Publish 링크 — 그 언어의 효과가 실렸다고 말할 수 있는 행(Adding·Removing + 전달됨)만이다. */
   link: boolean;
   notConfirmed: boolean;
-  note: "baseRow" | "noFileYet" | "readOnly" | "notConfirmedHelp" | "publishToUpdate" | null;
+  note: "baseRow" | "noFileYet" | "readOnly" | "readOnlyDelivered" | "notConfirmedHelp" | "publishToUpdate" | null;
   action: { kind: "add" | "remove" | "cancel"; block: ActionBlock | null };
 };
 
@@ -53,12 +53,14 @@ export function planLanguageRow(row: LanguageRow, input: { canManage: boolean; s
     const adding = row.change.operation === "ADD";
     const carried = !adding || values > 0;
     const unknown = input.unconfirmed && carried;
+    // 전달됨 — 링크를 세우는 같은 조건이다. 전달된 제거는 이미 게시됐으니 보조 줄이 남은 일(머지·취소)을 말한다(RT4 #285).
+    const delivered = !unknown && !row.unsent && carried;
     return {
       badge: adding ? "adding" : "removing",
       unsent: !unknown && row.unsent,
-      link: !unknown && !row.unsent && carried,
+      link: delivered,
       notConfirmed: unknown,
-      note: unknown ? "notConfirmedHelp" : !adding ? "readOnly" : !row.unsent && !carried ? "noFileYet" : null,
+      note: unknown ? "notConfirmedHelp" : !adding ? (delivered ? "readOnlyDelivered" : "readOnly") : !row.unsent && !carried ? "noFileYet" : null,
       action: { kind: adding ? "remove" : "cancel", block: block(role, unknown && "unconfirmed") },
     };
   }

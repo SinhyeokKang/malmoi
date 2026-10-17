@@ -1985,6 +1985,7 @@ export const es = {
       baseReason: "Elige otro idioma base antes de quitar este.",
       noFileYet: "Al publicar se crea el archivo en cuanto tenga una traducción.",
       readOnly: "Solo lectura hasta que la eliminación se publique o se cancele.",
+      readOnlyDelivered: "Solo lectura hasta que se fusione la pull request o se cancele la eliminación.",
       notConfirmed: "Sin confirmar en la pull request",
       notConfirmedHelp: "Publica de nuevo primero. La última publicación no terminó, así que Malmoi no sabe qué contiene la pull request.",
       publishToUpdate: "Publica para actualizar la pull request.",
@@ -2057,6 +2058,7 @@ export const es = {
       cancelAddDone: (code: string, n: number): string => `${code} está inactivo. ${n === 1 ? "Su traducción se conserva" : `Sus ${n.toLocaleString("es")} traducciones se conservan`} en Malmoi.`,
       onGitLab: {
         notConfirmed: "Sin confirmar en la merge request",
+        readOnlyDelivered: "Solo lectura hasta que se fusione la merge request o se cancele la eliminación.",
         notConfirmedHelp: "Publica de nuevo primero. La última publicación no terminó, así que Malmoi no sabe qué contiene la merge request.",
         publishToUpdate: "Publica para actualizar la merge request.",
         viewPullRequest: (pr: string): string => `Ver la merge request ${pr}`,

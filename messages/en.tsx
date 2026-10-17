@@ -3664,6 +3664,8 @@ export const en = {
       baseReason: "Choose another base language before removing this one.",
       noFileYet: "Publishing creates the file once it has a translation.",
       readOnly: "Read-only until the removal is published or cancelled.",
+      /** 제거가 이미 PR에 실렸다 — 남은 일은 머지(또는 취소)다(RT4 #285). */
+      readOnlyDelivered: "Read-only until the pull request is merged or the removal is cancelled.",
       notConfirmed: "Not confirmed in the pull request",
       notConfirmedHelp: "Publish again first. The last publish couldn't finish, so Malmoi can't tell what the pull request contains.",
       publishToUpdate: "Publish to update the pull request.",
@@ -3748,6 +3750,7 @@ export const en = {
       cancelAddDone: (code: string, n: number): string => `${code} is inactive. Its ${n.toLocaleString("en-US")} ${n === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
       onGitLab: {
         notConfirmed: "Not confirmed in the merge request",
+        readOnlyDelivered: "Read-only until the merge request is merged or the removal is cancelled.",
         notConfirmedHelp: "Publish again first. The last publish couldn't finish, so Malmoi can't tell what the merge request contains.",
         publishToUpdate: "Publish to update the merge request.",
         viewPullRequest: (pr: string): string => `View merge request ${pr}`,

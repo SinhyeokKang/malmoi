@@ -1981,6 +1981,7 @@ export const ko = {
       baseReason: "이 언어를 제거하려면 먼저 다른 기준 언어를 고르세요.",
       noFileYet: "번역이 하나라도 생기면 게시할 때 파일이 만들어집니다.",
       readOnly: "제거가 게시되거나 취소될 때까지 읽기 전용입니다.",
+      readOnlyDelivered: "PR이 머지되거나 제거가 취소될 때까지 읽기 전용입니다.",
       notConfirmed: "PR 반영 여부 확인 안 됨",
       notConfirmedHelp: "먼저 다시 게시하세요. 마지막 게시가 끝나지 않아 PR에 무엇이 들어 있는지 Malmoi가 알 수 없습니다.",
       publishToUpdate: "게시하면 PR이 업데이트됩니다.",
@@ -2053,6 +2054,7 @@ export const ko = {
       cancelAddDone: (code: string, n: number): string => `${code} 언어는 비활성 상태입니다. 번역 ${n.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`,
       onGitLab: {
         notConfirmed: "MR 반영 여부 확인 안 됨",
+        readOnlyDelivered: "MR이 머지되거나 제거가 취소될 때까지 읽기 전용입니다.",
         notConfirmedHelp: "먼저 다시 게시하세요. 마지막 게시가 끝나지 않아 MR에 무엇이 들어 있는지 Malmoi가 알 수 없습니다.",
         publishToUpdate: "게시하면 MR이 업데이트됩니다.",
         viewPullRequest: (pr: string): string => `MR ${pr} 보기`,
