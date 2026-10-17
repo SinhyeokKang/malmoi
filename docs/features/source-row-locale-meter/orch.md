@@ -43,6 +43,9 @@
 | G | T10 + **stale 19컷 전부**(2026-10-18 `pnpm guide:check` — 이 런 몫 sources·languages-card·source-details·publish-result·publish-language-changes 외에 locale-add·이전 변경분 포함, `/merge` 전 재촬영 원칙) | Claude Opus 워커(main 체크아웃, `/guide-shots` + 필요하면 `/guide`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | QA 끝 뒤(ego 세션 공유 — 겹치지 않게) | `pnpm guide:check` stale 0 | 대기 |
 | F1 | #288 (locale-add 후속 — 다른 세션이 2026-10-17 이 런으로 넘김) | Claude Opus high · 워크트리 `srlm-f` | `messages/{en,ko,es}.tsx`의 `cancelAddDone`만 · 사전/DOM 테스트 | — (A와 겹침 없음, B보다 먼저 통합) | `pnpm gate --base dev` | 진행 |
 | F2 | #289 (같은 경로) | F 워커 후속 Task | `components/publish-button.tsx` · `lib/publish/plan.ts` · `messages/*` Publish 절 · DESIGN §6.646 | D9 · B 통합 뒤(사전 겹침) | `pnpm gate --base dev` | B 대기 |
+| F3 | #294 (QA) | F 워커 | `messages/*` sources locale 개수 문구 + 테스트 | — | gate | 완료 `d643ad03` |
+| F4 | #296 (QA) | F 워커(F3 뒤) | `components/publish-button.tsx` 정리 미리보기 · DESIGN §6.646 | F3 끝 | gate | 진행 |
+| B3 | #295 (QA) | B 워커 | `sources/loading.tsx` · sibling-loading · DESIGN §6.66 | — | gate | 완료 `569bbd7d`·`75cac5c9`(통합 대기) |
 | QA | 인계 (b) 목록 | Claude Opus · main 체크아웃 · 단일 워커 | — | 전부 push 뒤 | (b) 목록 전부 확인 | 대기 |
 
 - F1·F2는 tasks 밖 이슈다(#288·#289, 근거 `.scratch/followups/rt6-report.md`). B는 A와 F1이 dev에 들어간 뒤 띄운다(F1과 사전 파일 겹침).
@@ -52,6 +55,8 @@
 ## 진행 기록
 
 (배치별 push 해시 · 라운드 · 미완을 여기에 쌓는다)
+
+- QA(로컬 `20ad566f`): 통과 — 줄바꿈 수 · `+N` · `bn-BD` 102 · 넓은 골격 = 실물 · 850 경계 · #289 실호스트 2회(Home To send 0 · Logs `Nothing to send` 일치) · #288 · #287 EDITOR 띠. 이슈 #294(F3) · #295(B3) · #296(F4). 미측정: GitLab판 문구(gitlab.com 세션·토큰 없음) · 비지원 어댑터 갈래 · DS 프레임 5·6. operator-check에 PR #7·#8을 열고 닫았다(머지 없음), 비활성 fr 셀에 편집 토큰 1(미전달로 세지 않음).
 
 - F1 #288: `1373e7c5` → dev `d2b91b5e`, push `2df97710` CI success. 리뷰 워커 생략 — 지휘자 판단(사전 3줄 + 테스트).
 - A: `e3b8cc3e`·`80fb0153` — 1차 게이트가 `search-performance.integration.ts:103`(458ms > 300ms)에서만 실패, 병렬 게이트 3개 부하로 판정. A의 질문이 지휘자에게 닿지 않아 failed 인계. RA APPROVE(🔴 0 · 🟡 2) → fix1 `1c321e43`(주석 · `gate-plan` 트리거에 `lib/sources/`). **B 없이 push하지 않는다**(모달 퍼센트와 `X of Y` 분자가 갈린다).
