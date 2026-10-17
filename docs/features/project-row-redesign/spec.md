@@ -1,6 +1,6 @@
 # project-row-redesign — spec
 
-> 2026-10-14 착수 · 2026-10-15 `/feature-review` 반영. `/projects` 목록의 **프로젝트 행 하나**를 다시 짠다. 다루는 것은 셋이다 — 무엇을 보여 주나(메타), 어떤 상태를 말하나(상태), 어떻게 그리나(UI). 함께 **Inbox 항목을 행의 띠와 같은 판정에 묶는다**.
+> 2026-10-14 착수 · 2026-10-15 `/feature-review` 반영 · 2026-10-17 locale-add(ARCHITECTURE §5.10 · 작업 언어 술어 `lib/keys/work-locale.ts`)와 `source-row-locale-meter`(orch D1–D10)에 맞춰 대조했다. `/projects` 목록의 **프로젝트 행 하나**를 다시 짠다. 다루는 것은 셋이다 — 무엇을 보여 주나(메타), 어떤 상태를 말하나(상태), 어떻게 그리나(UI). 함께 **Inbox 항목을 행의 띠와 같은 판정에 묶는다**.
 > 그릇(그룹 카드 셋·검색·빈 상태·머리)은 이번 범위가 아니다(DESIGN §6.63 그대로).
 > 짝 기능: `source-row-locale-meter`가 로케일 진행 막대(`LocaleMeter`)를 Sources 화면의 소스 행으로 가져간다. 이 스펙은 프로젝트 행에서 막대를 빼는 쪽만 맡는다(조율은 design.md §5).
 
@@ -44,14 +44,15 @@
 
 ### 4. Inbox와 행의 띠가 다른 할 일을 센다
 Inbox 항목(`lib/inbox/plan.ts`)과 행 띠(`rowBanner`)가 따로 판정한다.
-- **Inbox에만 있다**: `never_filled`(한 번도 채워지지 않은 언어).
+- **Inbox에만 있다**: `never_filled`(지금 값이 하나도 없는 작업 언어 — 이력은 보지 않아 채웠다가 비운 언어도 선다, `lib/home/attention.ts:98-99`·malmoi#134).
 - **띠에만 있다**: `needs_reconnect`, 그리고 원격 신호 셋(`pr_open`·`pr_check_failed`·`repo_ahead`).
 
 ## 완료 조건 (검증 가능한 문장)
 
 1. **프로젝트 행에 언어 막대가 없다** — 행에 둘째 줄이 없고 `LocaleMeter`·`Meter`가 0개다(DOM 테스트). `LocaleMeter` 컴포넌트는 지우지 않는다(`source-row-locale-meter`가 이어받는다).
 2. **대표 메타가 리포 줄 아래 한 줄에 선다** — 순서는 `sources · keys · languages · synced`다.
-   - 소스 수·키 수·언어 수는 **Sources 화면·사이드바 배지와 같은 정의**다. 같은 fixture에서 같은 수가 나오는지 postgres 교차 테스트로 확인한다.
+   - 소스 수·키 수는 **Sources 화면·사이드바 배지와 같은 정의**다. 같은 fixture에서 같은 수가 나오는지 postgres 교차 테스트로 확인한다.
+   - 언어 수는 Sources 행의 `N languages`와 **같은 작업 언어 술어**(`workLocaleWhere` — orphaned와 제거 예정 REMOVE를 빼고 추가 ADD는 센다)로 센다. 다만 소스를 가로지른 고유 대상(비-base) 코드라 같은 수를 내는 다른 화면은 없다(design §1).
    - 언어 수가 0이면 그 칸을 생략한다.
    - 동기화 시각은 Home 카드와 같은 함수(`lastSyncTime`)에서 나온다. `null`·`"unrecorded"`면 칸을 생략한다.
    - 좁으면 메타 줄은 감기고 숨지 않는다.

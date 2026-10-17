@@ -29,13 +29,13 @@
 | 칸 | 정의 | 같은 정의의 다른 자리 | 문구 | 생략 조건 |
 |---|---|---|---|---|
 | 소스 수 | 비보관 `TranslationSurface` 수(첫 적재 전 소스 포함) | Sources 화면 `sources.count` | `sources.count(n)` | — (늘 선다) |
-| 키 수 | 비보관 소스의 비-orphaned 키 합. `keyTotals`(`query.ts:487`)를 **행의 비보관 `surfaces` id로 합산**한다(`LiveLocale`로 돌면 로케일 수만큼 중복된다) | 사이드바 배지 `MembershipRow.keyCount`(`query.ts:206` — `_count`, 다른 로더) · Home `Keys` | `translations.keys(n)` | — |
-| 언어 수 | 비보관 소스의 비-orphaned `Locale.code` 중 **어느 소스에서든 대상(비-base)인 고유 코드** 수 | — | `sources.languageCount(n)` | 0이면 생략(깨진 것으로 읽힌다) |
+| 키 수 | 비보관 소스의 비-orphaned 키 합. `keyTotals`(`query.ts:561` <!-- P2 -->)를 **행의 비보관 `surfaces` id로 합산**한다(`LiveLocale`로 돌면 로케일 수만큼 중복된다) | 사이드바 배지 `MembershipRow.keyCount`(`query.ts:207` <!-- P2 --> — `_count`, 다른 로더) · Home `Keys` | `translations.keys(n)` | — |
+| 언어 수 | 비보관 소스의 **작업 언어**(`workLocaleWhere` — orphaned와 제거 예정 REMOVE를 빼고 추가 ADD는 센다, `lib/keys/work-locale.ts:11-14`) 중 **어느 소스에서든 대상(비-base)인 고유 코드** 수. 목록 집계의 ① `locales`가 이미 이 집합이다(`query.ts:450,482` <!-- P2 -->) | 같은 수는 없다 — 술어만 Sources 행 `N languages`(`loadSurfaceCounts`, `query.ts:650-657` <!-- P2 -->)와 같고, 그쪽은 소스별·base 포함이다 | `sources.languageCount(n)` | 0이면 생략(깨진 것으로 읽힌다) |
 | 동기화 | `lastSyncTime(surfaces)`(`lib/home/sync-time.ts:11`) 재사용 — 비보관 소스 `lastImportedAt`의 최댓값 | **Home 카드**(`count-cards.tsx:157`). Home 메타 열 Last sync는 사건 `finishedAt`이라 다른 값이다(`lib/home/meta.ts:73`) | `home.cards.synced(when)` | `null`·`"unrecorded"`면 생략(`synced(null)`은 `not synced yet`이라 칩을 되풀이한다) |
 
 - **순서는 기존 `surfaces.sourceCounts`(keys → languages)를 따른다.** `synced …`는 소문자로 시작하므로 맨 뒤에 둔다.
-- **동기화의 뜻**: "리포의 값이 마지막으로 들어온 시각"이다. 같은 내용을 다시 push해도 갱신된다(`lib/push/apply.ts:343,399`). 보류(`deferred`)·실패·`partial-import`일 때는 움직이지 않는다. 그래서 적재가 보류된 프로젝트는 오래된 시각을 보인다. 그 이유는 같은 행의 띠(미발송·열린 PR)가 말하므로 따로 설명하지 않는다. 적재 실패 행(h)의 시각은 마지막 **성공** 시각이고, Home `lastGoodSync`와 같은 뜻이다.
-- **상대 시각의 형**: `<time dateTime={iso} aria-label={formatMinute(at, useDateStyle())}>{relativeTime(at, now)}</time>`. 리포의 기존 형(`source-detail-modal.tsx:252-253`, DESIGN §6.68)이다. `title`은 쓰지 않는다(리포 사례 0). `project-list.tsx`는 `"use client"`이므로 **`now`는 서버(`page.tsx`)가 만들어 prop으로 넘긴다**(`relative-time.ts:9-10`). 이 화면은 UTC 고정 표면(`FIXED_UTC`)이 아니다.
+- **동기화의 뜻**: "리포의 값이 마지막으로 들어온 시각"이다. 같은 내용을 다시 push해도 갱신된다(`lib/push/apply.ts:439,495` — 성공이면 `importOutcomeFields`가 싣는다, `lib/projects/import-status.ts:88`). 보류(`deferred` — 미전달 편집·열린 PR·`publish-raced`·`locale-change-pending`)·실패·`partial-import`일 때는 움직이지 않는다. 그래서 적재가 보류된 프로젝트는 오래된 시각을 보인다. 그 이유는 같은 행의 띠(미발송·열린 PR)가 말하므로 따로 설명하지 않는다. 적재 실패 행(h)의 시각은 마지막 **성공** 시각이고, Home `lastGoodSync`와 같은 뜻이다.
+- **상대 시각의 형**: `<time dateTime={iso} aria-label={formatMinute(at, useDateStyle())}>{relativeTime(at, now)}</time>`. 리포의 기존 형(`source-detail-modal.tsx:217` · `source-status.tsx:23`, DESIGN §6.68)이다. `title`은 쓰지 않는다(리포 사례 0). `project-list.tsx`는 `"use client"`이므로 **`now`는 서버(`page.tsx`)가 만들어 prop으로 넘긴다**(`relative-time.ts:11-12`). 이 화면은 UTC 고정 표면(`FIXED_UTC`)이 아니다.
 - 계산은 서버 조립 층(`assembleProjectListRows`)에서 한다. `lastSyncTime`을 클라이언트 그래프에 올리지 않는다. 행에는 값(`lastSync: string | "unrecorded" | null`)만 싣는다.
 
 걷은 후보: 마지막 Publish(띠가 같은 축을 말한다) · 전체 진행률 하나 · 역할·멤버 수(2026-09-30 사용자) · 브랜치. 언어별 진행 막대는 `source-row-locale-meter`로 옮겨 간다.
@@ -77,7 +77,7 @@ function planProjectRow(row: RowInput, todos: readonly ProjectTodo[]): ProjectRo
   - `openPr === undefined`는 "이번 목록 요청이 PR을 확인하지 못했다"는 뜻이다(`lib/projects/remote.ts:101-104`). CI 보류를 뜻하지 않는다.
   - 원격 조회가 마감(8초)을 넘기면 PR 번호를 가진 행 전부가 한꺼번에 이 상태가 된다(`remote.ts:164-170`).
   - CI 보류는 미발송·열린 PR에서도 똑같이 생긴다.
-  - 그래서 칩은 `active`, 그룹은 `All set`이고, 띠가 지금 우선순위대로 말한다. 미발송이 있으면 미발송이 이긴다(`list.ts:218-222`, Home도 같은 순서 — DESIGN §6.64).
+  - 그래서 칩은 `active`, 그룹은 `All set`이고, 띠가 지금 우선순위대로 말한다. 미발송이 있으면 미발송이 이긴다(`list.ts:221-223`, Home도 같은 순서 — DESIGN §6.64).
   - `prCheckFailed` 칩은 목록에 생기지 않는다. 따라서 375 폭의 긴 칩 문제도 생기지 않는다.
 - **미발송·리포 앞섬이 `All set`으로 내려간다**(지금은 attention). 칩과 그룹이 어긋나던 원인이 이 둘이었다. ⚠️ **DESIGN §6.63 "검토 대기와 열린 PR은 All set"의 근거("읽고 누르면 되는 것")를 미발송·리포 앞섬·PR 조회 실패·빈 언어까지 넓히는 결정이다.** DESIGN §2.4 :179의 칩 순서도 바뀐다(`syncing` 추가).
 - **All set 카드 안의 띠는 전부 muted다**(2026-10-15 사용자). warning·danger 띠는 Needs attention 사유(2–5)에만 쓴다. 지금 `review` 띠는 warning이다(`project-list.tsx:354`).
@@ -93,7 +93,7 @@ function planProjectRow(row: RowInput, todos: readonly ProjectTodo[]): ProjectRo
 ## 3. 호스트 문장
 
 **행 전체가 `withRepoHost(useMessages(), row.repoHost)`를 지난다.** 지금은 `ProjectBanner`(`:347`)·`BannerAction`(`:409`)만 덮는다. `withRepoHost`는 WeakMap memo(`lib/i18n/host.ts:25`)라 행마다 불러도 비용이 없다.
-- `StatusBadge`는 사전을 스스로 읽고 PR/MR 낱말을 `host` prop으로만 가른다(`status-badge.tsx:18-21`, `canon.ts:88`). 새 칩 집합(§2 표)에는 호스트에 따라 바뀌는 낱말이 없으므로 `host`는 넘기지 않는다. 이 사실은 DOM 테스트(`/github|pull request/i` 0건)가 고정한다.
+- `StatusBadge`는 사전을 스스로 읽고 PR/MR 낱말을 `host` prop으로만 가른다(`components/ui/status-badge.tsx:13-21`, `lib/status/canon.ts:81,92`). 새 칩 집합(§2 표)에는 호스트에 따라 바뀌는 낱말이 없으므로 `host`는 넘기지 않는다. 이 사실은 DOM 테스트(`/github|pull request/i` 0건)가 고정한다.
 - 둘째 줄 상태 문장이 사라지면 `onGitLab.meter`도 소비자를 잃는다. 사전에서 지운다. `host.test.ts`의 세 사전 노드 일치가 같이 움직인다.
 
 ## 4. 할 일 — `projectTodos` (순수) · Inbox 정렬 (2026-10-15 사용자)
@@ -120,8 +120,10 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 | `pr_open`·`pr_check_failed`·`repo_ahead` | ✅ | ❌ | 원격 신호 — 목록 전용 |
 
 - 행 띠 = `projectTodos` ∪ 원격 신호 중 §2 표 우선순위의 첫 항목이다. Inbox = `projectTodos` 전부(역할 필터 후)를 `compareItems`로 정렬한 것이다.
-- **`needs_reconnect`의 `at`**: GitLab 토큰 만료면 `gitlabTokenExpiresAt`, GitHub 리포 id 누락이면 `null`이다. `null`은 정렬에서 뒤로 가고, `seenAt`이 있으면 안 읽음으로 세지 않는다(`isUnread` 그대로).
-- **`never_filled` 재료**: 목록 로더가 이미 읽는 `loadProjectListAggregates`(`keyTotals`·`cells`)와 소스 로케일로 `neverFilledLocales`(`lib/home/attention.ts:108`)를 돌린다. Inbox 로더가 이미 같은 일을 한다(`lib/inbox/load.ts:51`). 새 왕복은 없고, 로케일 select에 `name`·`createdAt`만 붙는다.
+- **`needs_reconnect`의 `at`**: GitLab 토큰 만료면 `gitlabTokenExpiresAt`, 연결 고정이 빠진 행(`repoConnectionPinned` 거짓 — GitHub 설치·리포 id 누락, GitLab 연결 참조·리포 id 누락, `lib/repo-host/target.ts:111-117` · `lib/projects/list.ts:93-95`)은 `null`이다. `null`은 정렬에서 뒤로 가고, `seenAt`이 있으면 안 읽음으로 세지 않는다(`isUnread` 그대로).
+- **`never_filled` 재료**: 목록 로더가 이미 읽는 `loadProjectListAggregates`(`keyTotals`·`cells`)와 소스 로케일로 `neverFilledLocales`(`lib/home/attention.ts:110`)를 돌린다. Inbox 로더가 이미 같은 일을 한다(`lib/inbox/load.ts:51`). 새 왕복은 없고, 로케일 select(지금 `{ code }`)에 `name`·`orphaned`·`createdAt`·`change: { select: { operation } }`이 붙는다 — 그 함수가 `localeRole`로 작업 언어를 고르는 입력이다(`attention.ts:111`, Inbox select `load.ts:25`).
+- **작업 언어 술어를 따른다**(locale-add): `never_filled`·`review`는 제거 예정(REMOVE) 언어를 빼고 추가(ADD) 언어는 센다(`attention.ts:105-106` · `loadReviewAttention`의 `notRemoving` · 목록 ①). 그래서 OWNER가 방금 추가한 빈 언어는 행에 `never_filled` 띠로 바로 선다(`at` = `Locale.createdAt`). `unsent`는 이 술어를 쓰지 않는다 — 제거 요청이 그 언어의 미전달을 폐기하므로 0이다(`work-locale.ts:8`).
+- **언어 요청 자체는 할 일 종류가 아니다**(2026-10-17 확인): Home·Inbox 어느 쪽도 `LocaleChange`를 읽어 항목을 세우지 않는다(`lib/home/*`·`lib/inbox/*`에 0건). Home은 [Publish] 버튼만 `languageWork`로 켠다(ARCHITECTURE §5.10.4). <!-- P1-Q1: 행 띠·Inbox에 둘지 코디네이터 결정 대기 -->
 - Home의 Attention 카드는 손대지 않는다(`collectAttention` 결과를 그대로 쓴다).
 - 가이드: Inbox 항목 서술(`guide/en/translate/edit.md:43`)이 바뀐다 → T12.
 
@@ -130,7 +132,7 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 - `LocaleMeter` 컴포넌트는 **지우지 않는다.** 이 기능이 프로젝트 행에서 막대를 빼면, 남는 소비자는 그 기능의 소스 행 하나가 된다.
 - `rowLocaleProgress` 함수와 `ProjectListRow.meters`는 이 기능이 지운다. 그 기능은 둘 다 import하지 않는다(그쪽 design §6). 함께 움직이는 테스트: `lib/surfaces/__tests__/counts.test.ts:2,11`.
 - **순서: 그 기능이 먼저다**(spec "사전 조건"). 그 기능의 T7이 `LocaleMeter` 입력을 `LocaleMeterValue`로 바꾼 뒤 이 기능이 들어간다. 그래서 이 기능이 늦게 끝나는 쪽이다.
-- `RowLocaleProgress` 타입은 이 기능이 T6에서 `rowLocaleProgress`와 함께 지운다. 그 시점에는 `LocaleMeter`가 이미 그 타입을 쓰지 않는다. `status-badges.test.tsx:48`·`parallel-p2-meter-error.test.tsx:22`가 넘기는 모양도 그 기능이 이미 옮겼는지 T6에서 확인한다.
+- `RowLocaleProgress` 타입은 이 기능이 T6에서 `rowLocaleProgress`와 함께 지운다. 그 시점에는 `LocaleMeter`가 이미 그 타입을 쓰지 않는다. `status-badges.test.tsx:48`·`parallel-p2-meter-error.test.tsx:22` <!-- P2 -->가 넘기는 모양도 그 기능이 이미 옮겼는지 T6에서 확인한다.
 - DESIGN §6.63 머리의 `LocaleMeter` 소비자 서술("Projects와 Sources")은 이 기능이 T11에서 "Sources 소스 행(§6.66)"으로 고친다. 늦게 끝나는 쪽이 고친다는 규칙(그쪽 tasks T9)에 따른 결과다. 막대 자체(`components/ui/meter.tsx`)는 Sources 상세 모달도 쓰는 공유 프리미티브다.
 - 목록 골격(`app/(edit)/projects/(list)/loading.tsx`)의 미터 줄은 이 기능이 지운다. Sources 골격의 막대 줄은 그 기능이 더한다.
 
@@ -142,7 +144,7 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 
 ## 스키마 변경
 
-**없다.** `TranslationSurface.lastImportedAt`(`prisma/schema.prisma:164`)·`Locale`·`StringKey`가 이미 있다. 표면은 `include`로 읽고 있어(`query.ts:297`) `lastImportedAt`·`lastCommitAt`이 이미 실려 온다. 바꿀 것은 `ProjectListMemberRow`(`:341-350`)와 조립 층이다.
+**없다.** `TranslationSurface.lastImportedAt`(`prisma/schema.prisma:164`)·`Locale`·`StringKey`가 이미 있다. 표면은 `include`로 읽고 있어(`query.ts:298` <!-- P2 -->) `lastImportedAt`·`lastCommitAt`이 이미 실려 온다. 바꿀 것은 `ProjectListMemberRow`(`:342-351` <!-- P2 -->)와 조립 층이다.
 
 ## 새 환경변수
 
@@ -152,11 +154,11 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 
 - export 결정성·blob SHA·인증 경계·병합 없음(§0) — 무관하다(읽기 화면).
 - **모든 쿼리는 `projectId`로 좁힌다.** 새 재료는 기존 `loadProjectList`·`loadProjectListAggregates`의 `projectId in ids` 안에서만 는다. 새 왕복을 만들지 않는다(셸 로더 `loadMemberships`에 얹지 않는다 — DESIGN §6.63 끝 문단). Inbox 배지 경로는 호스트 API를 부르지 않는다.
-- `pendingWhere` SQL 사본(⑤ 미발송)은 건드리지 않는다. `pnpm test:projects:postgres`가 대조한다(`scripts/gate-plan.ts`의 `lib/keys/`(:30)·`lib/projects/list.ts`(:55) 트리거).
+- `pendingWhere` SQL 사본(⑤ 미발송)은 건드리지 않는다. `pnpm test:projects:postgres`가 대조한다(`scripts/gate-plan.ts`의 `lib/keys/`(:31)·`lib/projects/list.ts`(:57) 트리거).
 
 ## 과거 함정 (POSTMORTEM)
 
-- **같은 엔터티를 여러 화면에 그릴 때 색·모서리 교차 계약**(2026-09-17 썸네일 — 목록 4px vs Home `rounded`): 행 썸네일은 `ProjectThumbnail` 하나만 쓴다. ⚠️ 골격 썸네일이 아직 `rounded-[4px]`다(`loading.tsx:83`, 실물은 8) — T7에서 고친다. 확인 명령: `rg -n 'bg-foreground.*size-7|ProjectThumbnail|rounded-\[4px\]' components/home components/projects 'app/(edit)/projects'`.
+- **같은 엔터티를 여러 화면에 그릴 때 색·모서리 교차 계약**(2026-09-17 썸네일 — 목록 4px vs Home `rounded`): 행 썸네일은 `ProjectThumbnail` 하나만 쓴다. ⚠️ 골격 썸네일이 아직 `rounded-[4px]`다(`loading.tsx:83` <!-- P2 -->, 실물은 8) — T7에서 고친다. 확인 명령: `rg -n 'bg-foreground.*size-7|ProjectThumbnail|rounded-\[4px\]' components/home components/projects 'app/(edit)/projects'`.
 - **다른 화면의 컨트롤을 부르는 문구**(2026-09-24 `Send changes` vs 실제 버튼 `Publish`): 띠 링크 문구는 대상 버튼의 사전 값을 테스트에서 참조해 묶는다. 새 `never_filled` 띠도 이 규칙을 따른다.
 - **`.sr-only`와 스크롤 컨테이너**(2026-10-13 #260): 행마다 `position:absolute` 요소를 늘리지 않는다. 메타는 눈에 보이는 글자이고 sr-only를 새로 만들지 않는다. 세로 스크롤 실측은 T10.
 - **화면 용어를 늘리면 DESIGN §10.1 표부터**: 새 낱말(`never_filled` 띠·PR 조회 실패 띠·Inbox `needs_reconnect`)은 §10.1 표와 대조한 뒤 `terminology.test.ts`의 `BANNED`를 같이 본다.

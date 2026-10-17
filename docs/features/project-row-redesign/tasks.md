@@ -23,13 +23,14 @@
 - [ ] **T2 — `projectTodos`** (`lib/inbox/plan.ts` 또는 `lib/home/attention.ts` 옆 — `/tdd`에서 정한다). design.md §4 표대로 DB 할 일을 모은다.
   - 검증: 새 단위 테스트가 green이다.
     - 종류별 생성 조건과 역할 필터(`setup`은 OWNER만, `needs_reconnect`·`import_failed`의 EDITOR 문장 플래그)
-    - `needs_reconnect`의 `at`: GitLab 만료면 만료일, GitHub id 누락이면 `null`
+    - `needs_reconnect`의 `at`: GitLab 만료면 만료일, 연결 고정이 빠진 행(`repoConnectionPinned` 거짓 — GitHub 설치·리포 id, GitLab 연결 참조·리포 id)이면 `null`
+    - `never_filled`·`review`가 작업 언어를 따른다: 제거 예정(REMOVE) 언어는 항목이 없고, 값 없는 추가(ADD) 언어는 `never_filled`로 선다(design §4)
     - **`planInbox`가 `projectTodos`를 쓰도록 바꾼 뒤에도 기존 Inbox 테스트(`lib/inbox/__tests__/*`)가 그대로 green이다.** 단 새 `needs_reconnect` 항목은 기대값에 더한다.
 - [ ] **T3 — 메타 조립** (`lib/keys/query.ts` 조립 층의 순수 부분).
   - 검증: 단위 테스트(`lib/keys/__tests__/list-rows.test.ts`)가 green이다. 다음 사례를 둔다.
     - 소스 수에 첫 적재 전 소스를 포함한다.
     - 키 수는 표면 id로 합산하고, 로케일 수만큼 중복되지 않는다.
-    - 언어 수는 고유 비-base 코드다. 한 소스에서 base이고 다른 소스에서 대상인 코드도 센다.
+    - 언어 수는 작업 언어의 고유 비-base 코드다. 한 소스에서 base이고 다른 소스에서 대상인 코드도 센다. 제거 예정(REMOVE) 언어는 빼고 추가(ADD) 언어는 센다(`workLocaleWhere` — 목록 집계 ①이 이미 그 집합이다).
     - orphaned 로케일·키, 보관 소스를 제외한다.
     - `lastSyncTime`의 세 갈래(시각 · `"unrecorded"` · `null`)
   - 별도 `projectRowMeta` 함수는 만들지 않는다.
@@ -37,9 +38,9 @@
 ──
 
 ## 2. 로더 — 추가만
-- [ ] **T4 — `loadProjectList` 재료 추가** (`lib/keys/query.ts`). `ProjectListMemberRow`(`:341-350`)에 다음을 **더한다**.
+- [ ] **T4 — `loadProjectList` 재료 추가** (`lib/keys/query.ts`). `ProjectListMemberRow`(`:342-351` <!-- P2 -->)에 다음을 **더한다**.
   - `sourceCount`·`keyCount`·`languageCount`·`lastSync`
-  - `never_filled` 재료: 로케일 select에 `name`·`createdAt`을 더하고, 이미 읽는 aggregates로 `neverFilledLocales`를 돌린다.
+  - `never_filled` 재료: 로케일 select(지금 `{ code }` — orphaned 포함 전체, 원격 경로 판정이 쓴다)에 `name`·`orphaned`·`createdAt`·`change: { select: { operation } }`을 더하고, 이미 읽는 aggregates로 `neverFilledLocales`를 돌린다(입력 모양 `lib/home/attention.ts:111`, Inbox 선례 `lib/inbox/load.ts:25`).
 
   `meters`는 아직 남긴다. 새 왕복이 없고 전부 `projectId in ids`다.
   - 검증: `pnpm typecheck` · `pnpm test` green, `pnpm test:projects:postgres` green(`pnpm gate`가 트리거로 붙인다 — 손으로 판정하지 않는다).
@@ -60,7 +61,8 @@
   - 둘째 줄(막대·상태 문장)을 없애고, 리포 줄 아래 메타 줄을 둔다(감김).
   - 상대 시각은 `<time dateTime aria-label={formatMinute}>`이고, `now`는 서버 prop으로 받는다.
   - All set 띠는 muted로 둔다.
-  - 지울 것: `rowChip`·`projectGroup`·`rowBanner`(export)·`meterSlot`·`rowLocaleProgress`·`ProjectListRow.meters`. `RowLocaleProgress` 타입도 지운다 — 사전 조건상 `LocaleMeter`는 이미 `LocaleMeterValue`를 받는다(design §5). `messages/en.tsx:1874`·`lib/keys/query.ts:222`의 주석에 남은 옛 이름도 고친다.
+  - 지울 것: `rowChip`·`projectGroup`·`rowBanner`(export)·`meterSlot`·`rowLocaleProgress`·`ProjectListRow.meters`. `RowLocaleProgress` 타입(`lib/projects/list.ts:263`)도 지운다 — 사전 조건상 `LocaleMeter`는 이미 `LocaleMeterValue`를 받는다(design §5).
+  - 주석에 남은 옛 이름도 고친다(T11 `rg`가 센다): `messages/en.tsx`의 띠 절 주석(`rowBanner` — 지금 `:1961` <!-- P2 -->) · `lib/keys/query.ts:223`(`rowBanner`·`meterSlot`)·`:495`(`rowLocaleProgress`) <!-- P2 --> · `lib/projects/list.ts:231,376,442` · `lib/shell/switcher.ts:9`(`projectGroup`).
   - 검증(DOM 테스트):
     - GitLab setup 행과 GitLab PR 조회 실패 행에서 `/github|pull request/i`가 0건이다.
     - 상태 표 전 행에서 칩 낱말이 띠 문장에 들어가지 않는다.
@@ -73,15 +75,15 @@
     - `ring-inset` 단언을 새로 둔다(지금 테스트에는 0건이고 주석뿐이다).
     - All set 띠 톤이 muted다.
   - 검증(옮기거나 갱신할 기존 테스트 — 깨지지 않아야 할 것 포함):
-    - `lib/projects/__tests__/list.test.ts:192-216,359-390,399-463`(옛 함수 테스트 → T1로 이관)
+    - `lib/projects/__tests__/list.test.ts:192-217`(`projectGroup`)`·219-293`(`rowBanner`)`·321-357`(`rowChip`)`·359-390`(`meterSlot`)`·399-471`(`rowLocaleProgress`) — 옛 함수 테스트 → T1로 이관
     - `lib/status/__tests__/cross-screen.test.ts:14,42`(`REAL` 묶음)`·143·389`
-    - `components/__tests__/projects-screen.test.ts:145-147,344,468,473`
+    - `components/__tests__/projects-screen.test.ts:145-147,344,468,473` <!-- P2 -->
     - `components/__tests__/project-row.test.tsx:258`
     - `lib/surfaces/__tests__/counts.test.ts:2,11`
     - `meters: []` 픽스처 넷: `project-row.test.tsx:46` · `projects-list-links.test.tsx:24` · `state-links.test.tsx:91` · `projects-cards.test.tsx:44`
-    - 검색 하이라이트 `projects-screen.test.ts:553`(변경 없이 green)
-- [ ] **T7 — 로딩 골격** (`app/(edit)/projects/(list)/loading.tsx`). 미터 줄을 지우고 메타 줄을 둔다. 썸네일 모서리를 `rounded-[4px]` → `ProjectThumbnail`과 같은 8로 고친다(POSTMORTEM 2026-09-17 부류).
-  - 검증(자동): `projects-screen.test.ts:385-436,495-500` · `loading-parity.test.tsx:268-283` · `projects-list-links.test.tsx:81-86`이 green이다.
+    - 검색 하이라이트 `projects-screen.test.ts:553` <!-- P2 -->(변경 없이 green)
+- [ ] **T7 — 로딩 골격** (`app/(edit)/projects/(list)/loading.tsx` <!-- P2 -->). 미터 줄을 지우고 메타 줄을 둔다. 썸네일 모서리를 `rounded-[4px]` → `ProjectThumbnail`과 같은 8로 고친다(POSTMORTEM 2026-09-17 부류).
+  - 검증(자동): `projects-screen.test.ts:385-436,495-500` <!-- P2 --> · `loading-parity.test.tsx:268-283` · `projects-list-links.test.tsx:81-86`이 green이다.
   - 검증(**수동**): `pnpm dev`에서 골격 행과 실물 행의 `getBoundingClientRect().height`를 견준다. 첫 적재 전 행과 정상 행 둘 다 같아야 한다.
 
 ──
@@ -108,11 +110,11 @@
     - §6.63: 행·메타·그룹 근거 확장·띠 톤·둘째 줄 제거·역할·멤버 수 제거 근거(2026-09-30)
     - §2.4: `:160` PR 조회 실패의 자리, `:179` 칩 순서에 `syncing`
     - §10.1: 새 낱말
-    - `:1290`·`:1351`의 미터 서술
+    - 미터 서술 — 치수 표 `:1323-1325`(Meter 칸·바·대체 문장) · 표 `:1357-1358`(Meter·Meter 자리의 문장) <!-- P2 -->
     - §6.63 머리의 `LocaleMeter` 소비자 서술을 "Sources 소스 행(§6.66)"으로 고친다(이 기능이 늦게 끝나는 쪽이다 — design §5).
-  - ARCHITECTURE: §6.36(`:3212,3215` — `projectGroup`), §6.365 Inbox 항목
-  - PRODUCT: `:1133`(`rowBanner`), §4.1 `:431`(언어 미터 감김 문장), Inbox 항목 서술이 있으면 그것도
-  - DIRECTORY: `:310,536`(`LocaleMeter`)
+  - ARCHITECTURE: §6.36(`:3458,3461` — `projectGroup`), §6.365 Inbox 항목
+  - PRODUCT: `:1161`(`rowBanner`), §4.1 `:434`(언어 미터 감김 문장), `:1149`·`:1156`(보관·Summary 문단의 "행의 Meter"), Inbox 항목 서술이 있으면 그것도
+  - DIRECTORY: `:321,556`(`ui/meter.tsx`·`locale-meter.tsx`의 `LocaleMeter` 소비자 서술) <!-- P2 -->
   - 그 뒤 `docs/features/project-row-redesign/`를 지운다.
   - 검증: `/push` 4단계 문서 신선도를 통과한다. **디렉터리를 지운 뒤** `rg -n "meterSlot|rowChip|projectGroup|rowBanner|[rR]owLocaleProgress|meter\.note|onGitLab\.meter" docs lib components app messages`가 0건이다(주석의 옛 이름 포함. 타입 `ProjectGroup`은 남으므로 대소문자를 무시하지 않는다).
 - [ ] **T12 — 가이드 영향** — Inbox 항목 서술(`guide/en/translate/edit.md:43`)이 `needs_reconnect` 추가로 바뀐다. `/guide`로 en·ko·es 세 벌을 같은 커밋에서 고친다. `/projects` 행을 찍은 컷은 2026-10-14 기준 `guide/SHOOTING.md`에 매핑이 없다.
