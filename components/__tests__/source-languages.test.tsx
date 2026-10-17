@@ -428,3 +428,15 @@ it("#277 설명 줄 언어 수 == 카드 머리 수(Inactive·Removing 포함), 
   const listRow = [...document.querySelectorAll("[data-source-row]")].find(node => node.textContent?.startsWith("web"))!;
   expect(listRow.textContent).toContain(en.surfaces.sourceCounts(248, 2));
 });
+
+/**
+ * RT4 #279 — Sync 상태 줄은 "리포에서 읽은" 사실을 말한다. 앱에서 요청한 Adding은 리포에 없고 Inactive는 리포에서 사라졌다 — 둘 다 빼고,
+ * Removing은 아직 리포에 있으니 센다. 설명 줄·카드 머리(D14 — 목록 행 수)와는 다른 자리다.
+ */
+it("#279 Sync 상태 줄의 언어 수는 리포에서 읽은 언어만 센다(Adding·Inactive 제외, Removing 포함)", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { change: add }), row("de", { change: removal }), row("es", { orphaned: true })], { locales: 3 }) });
+  await open();
+  const modal = card().closest<HTMLElement>('[role="dialog"]')!;
+  expect(modal.textContent).toContain(en.sources.importedSummary(248, 2));
+  expect(modal.textContent).toContain(en.surfaces.sourceCounts(248, 4));
+});

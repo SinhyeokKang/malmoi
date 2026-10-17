@@ -229,3 +229,11 @@ describe("확정", () => {
     expect(mocks.remove).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "de", approval: "fp-2" });
   });
 });
+
+/** RT4 #278 — 1건이면 동사·대명사가 단수다. */
+it("#278 미전달 1건의 추가 취소 줄은 단수다", async () => {
+  mocks.preview.mockResolvedValue(ready({ kind: "cancel-add", path: "apps/web/locales/fr.json", translations: 9, pendingCount: 1, delivered: false }));
+  await open();
+  await openRemove("fr");
+  expect(dialog()!.querySelector("[data-alert='neutral']")!.textContent).toBe(`${en.repositorySync.unsentCount(1)} stops being tracked. Add the language again to bring it back.`);
+});
