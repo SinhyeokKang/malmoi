@@ -197,3 +197,18 @@ it("제거가 취소되면 얼린 입력을 그대로 편집·저장한다 — �
   await user.click(await clickable(w.footer.save));
   expect(mocks.save.mock.calls[0]?.[0]).toMatchObject({ changes: [{ localeCode: "zh", value: "空!" }] });
 });
+
+it("거부 뒤 제거가 취소되면 거부 문장을 걷는다 — 더는 참이 아니다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await user.type(area(container, "zh"), "空");
+  mocks.save.mockResolvedValue({ ok: false, error: "locale-removal-pending", localeCodes: ["zh"] });
+  await user.click(saveButton());
+  expect(container.textContent).toContain(w.footer.removalPending.body);
+  await rerender(<TranslationWorkspace {...initial} detail={detailWith([])} />);
+  expect(container.textContent).not.toContain(w.footer.removalPending.body);
+  expect(area(container, "zh").readOnly).toBe(false);
+  expect(area(container, "zh").value).toBe("空");
+  expect(footer(container)).toBe(w.footer.unsaved(1));
+});
