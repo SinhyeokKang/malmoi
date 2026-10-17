@@ -517,7 +517,7 @@ components/
   onboarding/repo-input.ts
                         repoInputOf — ① 리포 행 → Action 입력(GitHub { owner, repo } · GitLab 숫자 id 하나). 모달의 다섯 호출이 이 함수 하나로 입력을 만든다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        remove-source-dialog · sources-archived · languages-card · language-row · add-locale-dialog · remove-locale-dialog 열하나 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
+                        remove-source-dialog · sources-archived · languages-card · add-locale-dialog · remove-locale-dialog 열 컴포넌트 + `.ts` 둘 — language-row.ts(아래) · row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
                         languages-card(locale-add, 2026-10-17)는 상세 모달의 Languages 카드다 — 머리 [Add language] · 행(코드·진행률·상태 배지·동작 하나·[Open]) · Inactive 띠 · 결과 notice · 포커스 예약을 든다.
                         language-row는 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
                         add-locale-dialog는 추가 Dialog(json은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
