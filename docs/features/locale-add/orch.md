@@ -225,3 +225,4 @@
 - R-E2 완료(🔴 0 · 🟡 4 · ⚪ 6, 변이 8 중 7 — `review-E2.md`). 🟡2·🟡3 → **D11·D12 사용자 결정**(둘 다 지금대로). **E2 fix1**: 🟡1(저장 가능 0이면 Alert 없음) · 🟡4(es 수 일치) · M7 단언 · `Removing` 배지(E0 통합 뒤). R-E2 해제·정리.
 - main 체크아웃 `pnpm gate` **ok**(15469 · PG 883). tasks §6 새 넷 체크. E0 해제·워크트리 정리. wave ⑦ 착수: E1 · E3 + E2 fix1.
 - wave ⑦ — **E1** `ctx_e14f9f6656c2` · **E3** `ctx_3e30e41ce60f`(Opus high, base `01cc042d`) · **E2 fix1** `ctx_5d39562474c8`(같은 터미널).
+- E3 질문(데이터 공백 넷 — A Sync 언어별 목록 · B Not included/Taken back 경로 · C `locale-plan-refused` 소스·소유 소스 · D Settings 문장의 소스 이름) → **지휘자 판단: A~D 모두 E3가 추가 필드로**(시안이 정본, 그 파일을 쥔 다른 배치 없음). 조건: additive만 · 판정 변경·호스트 호출·미리보기 쓰기 없음 · C는 기존 경로 소유 판정 재사용 · 필드마다 red 먼저 · 브리프 밖 파일은 인계에. 비-additive가 필요하면 그 하나만 소스 없는 문장 + 미룸.
