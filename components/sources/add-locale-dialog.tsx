@@ -10,6 +10,7 @@ import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { FormGroup } from "@/components/ui/form-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LocaleFlag } from "@/components/translations/locale-badge";
 import type { Messages } from "@/lib/i18n";
 import { localeCollisionKey } from "@/lib/locales/add-plan";
 import { CHROME_LOCALE_CODES } from "@/lib/locales/chrome-codes";
@@ -130,7 +131,7 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
   const inactive = languages.filter(language => language.orphaned);
   const fieldError = check.kind === "field" ? check.text : undefined;
   const ready = check.kind === "ready" ? check : null;
-  const row = (value: string) => <><span data-option-code className="w-13 shrink-0">{value}</span><span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">{name(value)}</span></>;
+  const row = (value: string) => <><OptionFlag code={value} /><span data-option-code className="w-13 shrink-0">{value}</span><span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">{name(value)}</span></>;
   const groups: ComboboxGroup[] = [];
   if (!chrome && initialCode === null) {
     const typed = query.trim();
@@ -173,7 +174,7 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
               <SelectContent>{CHROME_LOCALE_CODES.map(value => {
                 const taken = active.has(localeCollisionKey(value));
                 return <SelectItem key={value} value={value} disabled={taken}>
-                  <span className="flex min-w-0 items-center gap-2"><span className="w-13 shrink-0">{value}</span><span className="text-muted-foreground truncate text-xs">{name(value)}</span>{taken && <span className="text-gray-dim ml-auto pl-2 text-xs">{m.sources.locale.added}</span>}</span>
+                  <span className="flex min-w-0 items-center gap-2"><OptionFlag code={value} /><span className="w-13 shrink-0">{value}</span><span className="text-muted-foreground truncate text-xs">{name(value)}</span>{taken && <span className="text-gray-dim ml-auto pl-2 text-xs">{m.sources.locale.added}</span>}</span>
                 </SelectItem>;
               })}</SelectContent>
             </Select>}
@@ -205,6 +206,14 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
       </div>
     </DialogContent>
   </Dialog>;
+}
+
+/**
+ * 행의 깃발 열(시안 A1·A3) — Languages 카드 행과 같은 `LocaleFlag`다. ⚠️ **깃발이 없는 코드도 16 자리를 남긴다** — 비우면 그 행만 코드 열이 왼쪽으로
+ * 붙어 목록의 코드가 한 선에 서지 않는다.
+ */
+function OptionFlag({ code }: { code: string }) {
+  return <span data-option-flag className="flex w-4 shrink-0"><LocaleFlag code={code} /></span>;
 }
 
 function FileBlock({ m, path, create }: { m: Messages; path: string; create: boolean }) {
