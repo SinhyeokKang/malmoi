@@ -53,7 +53,7 @@ describe("기준 언어 저장 상태", () => {
   });
 });
 it("동시 적재로 분모가 작아져도 진행률이 경계를 넘지 않는다", () => {
-  const [row] = localeProgress({ locales: [{ code: "en", isBase: false, orphaned: false }], total: 1, cells: [{ localeCode: "en", needsReview: false }, { localeCode: "en", needsReview: false }, { localeCode: "en", needsReview: true }] });
+  const [row] = localeProgress({ locales: [{ code: "en", isBase: false, orphaned: false }], total: 1, cells: [{ localeCode: "en", needsReview: false, count: 1 }, { localeCode: "en", needsReview: false, count: 1 }, { localeCode: "en", needsReview: true, count: 1 }] });
   expect(row?.untranslated).toBe(0);
   expect(row?.percent).toBe(100);
 });

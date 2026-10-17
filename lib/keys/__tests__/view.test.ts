@@ -107,15 +107,15 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
         locales,
         total: 4,
         cells: [
-          { localeCode: "en", needsReview: false },
-          { localeCode: "en", needsReview: false },
-          { localeCode: "ko", needsReview: false },
-          { localeCode: "ko", needsReview: true },
+          { localeCode: "en", needsReview: false, count: 1 },
+          { localeCode: "en", needsReview: false, count: 1 },
+          { localeCode: "ko", needsReview: false, count: 1 },
+          { localeCode: "ko", needsReview: true, count: 1 },
         ],
       }),
     ).toEqual([
       { code: "en", isBase: true, orphaned: false, total: 4, translated: 2, needsReview: 0, untranslated: 2, percent: 50 },
-      { code: "ko", isBase: false, orphaned: false, total: 4, translated: 1, needsReview: 1, untranslated: 2, percent: 25 },
+      { code: "ko", isBase: false, orphaned: false, total: 4, translated: 1, needsReview: 1, untranslated: 2, percent: 50 },
     ]);
   });
 
@@ -125,11 +125,31 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
       locales: [{ code: "ko", isBase: false, orphaned: false }],
       total: 10,
       cells: [
-        ...Array.from({ length: 3 }, () => ({ localeCode: "ko", needsReview: false })),
-        ...Array.from({ length: 2 }, () => ({ localeCode: "ko", needsReview: true })),
+        ...Array.from({ length: 3 }, () => ({ localeCode: "ko", needsReview: false, count: 1 })),
+        ...Array.from({ length: 2 }, () => ({ localeCode: "ko", needsReview: true, count: 1 })),
       ],
     });
     expect(ko).toMatchObject({ translated: 3, needsReview: 2, untranslated: 5 });
+  });
+
+  it("개수를 합산하고 완료 84개와 검토 8개를 92%로 센다", () => {
+    const [row] = localeProgress({
+      locales: [{ code: "ko", isBase: false, orphaned: false }], total: 100,
+      cells: [
+        { localeCode: "ko", needsReview: false, count: 80 },
+        { localeCode: "ko", needsReview: false, count: 4 },
+        { localeCode: "ko", needsReview: true, count: 8 },
+      ],
+    });
+    expect(row).toMatchObject({ translated: 84, needsReview: 8, untranslated: 8, percent: 92 });
+  });
+
+  it("검토를 더한 분자가 분모를 넘으면 100%로 제한한다", () => {
+    const [row] = localeProgress({
+      locales: [{ code: "ko", isBase: false, orphaned: false }], total: 100,
+      cells: [{ localeCode: "ko", needsReview: false, count: 84 }, { localeCode: "ko", needsReview: true, count: 20 }],
+    });
+    expect(row).toMatchObject({ translated: 84, needsReview: 20, untranslated: 0, percent: 100 });
   });
 
   it("셀이 없는 로케일은 0이다 — 행을 빼지 않는다", () => {
@@ -153,7 +173,7 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
     const [only] = localeProgress({
       locales: [{ code: "ko", isBase: false, orphaned: false }],
       total: 903,
-      cells: Array.from({ length: 902 }, () => ({ localeCode: "ko", needsReview: false })),
+      cells: [{ localeCode: "ko", needsReview: false, count: 902 }],
     });
     expect(only?.percent).toBe(99);
   });
@@ -162,7 +182,7 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
     const [only] = localeProgress({
       locales: [{ code: "ko", isBase: false, orphaned: false }],
       total: 2,
-      cells: Array.from({ length: 2 }, () => ({ localeCode: "ko", needsReview: false })),
+      cells: Array.from({ length: 2 }, () => ({ localeCode: "ko", needsReview: false, count: 1 })),
     });
     expect(only?.percent).toBe(100);
   });
@@ -172,7 +192,7 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
     const [base] = localeProgress({
       locales: [{ code: "en", isBase: true, orphaned: false }],
       total: 4,
-      cells: [{ localeCode: "en", needsReview: false }],
+      cells: [{ localeCode: "en", needsReview: false, count: 1 }],
     });
     expect(base).toMatchObject({ isBase: true, translated: 1, untranslated: 3, percent: 25 });
   });
@@ -218,7 +238,7 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
     const [row] = localeProgress({
       locales: [{ code: "fr", isBase: false, orphaned: true }],
       total: 2,
-      cells: [{ localeCode: "fr", needsReview: false }],
+      cells: [{ localeCode: "fr", needsReview: false, count: 1 }],
     });
     expect(row).toMatchObject({ code: "fr", orphaned: true, translated: 1, percent: 50 });
   });
@@ -229,7 +249,7 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
       localeProgress({
         locales: [{ code: "ko", isBase: false, orphaned: false }],
         total: 1,
-        cells: [{ localeCode: "zz", needsReview: false }],
+        cells: [{ localeCode: "zz", needsReview: false, count: 1 }],
       }).map((l) => [l.code, l.translated]),
     ).toEqual([["ko", 0]]);
   });
