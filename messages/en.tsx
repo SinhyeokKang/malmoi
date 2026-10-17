@@ -3515,9 +3515,6 @@ export const en = {
   locales: {
     /** base 배지 — 가장 흔한 상태가 조용해야 하므로 나머지 행에는 배지가 없다 (DESIGN §6.2). */
     base: "Base",
-    orphaned: {
-      badge: "Removed from repository",
-    },
     empty: {
       description: "They appear after the first sync reads your translation files.",
     },

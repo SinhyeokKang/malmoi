@@ -1878,9 +1878,6 @@ export const ko = {
 
   locales: {
     base: "기준",
-    orphaned: {
-      badge: "리포지토리에서 제거됨",
-    },
     empty: {
       description: "첫 동기화로 번역 파일을 읽으면 언어 목록이 표시됩니다.",
     },

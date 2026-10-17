@@ -1875,9 +1875,6 @@ export const es = {
 
   locales: {
     base: "Base",
-    orphaned: {
-      badge: "Quitado del repositorio",
-    },
     empty: {
       description: "Aparecen después de que la primera sincronización lea tus archivos de traducción.",
     },

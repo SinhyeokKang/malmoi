@@ -69,6 +69,7 @@ export async function expireLocaleChanges(tx: Prisma.TransactionClient, input: L
       // strict 적재와 같은 존재 판정이다 — orphan이면 `isBase`도 내린다(`lib/push/apply.ts`의 orphan 문장과 같은 결).
       await tx.locale.updateMany({ where: { projectId, surfaceId, code: { in: codes } }, data: presence === "active" ? { orphaned: false } : { orphaned: true, isBase: false } });
     }
+    // 확인 뒤 요청은 판정 목록이 뺀다 — 저장 목록을 쓰면 옛 요청의 PR이 새 요청에 붙는다.
     const pullRequest = await carriedBy(tx, input, state.delivered);
     await recordEvents(tx, plan.expired.map(item => ({
       projectId,
