@@ -357,6 +357,26 @@ function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: st
   const withoutFile = preview.withoutFile - (preview.withoutFileLanguage ?? 0);
   // 만료 안내가 여러 소스에 걸치면 줄이 소스를 함께 말한다 — "It stays in this source."가 어느 소스인지(R-E3 ⚪6).
   const expiringSources = new Set((preview.expiringLocales ?? []).map(request => request.surfaceSlug)).size;
+  // #128 — 편집 없이 바뀌는 파일. 상한 밖 행이 있으면 그 파일에 편집이 있는지 모르므로 단정하지 않는다(푸터의 파일 수는 그대로 실행의 수다).
+  // 전부 보류면(`sending === 0`이고 언어 파일도 없으면) 실행은 `skipped/withheld`라 아무 파일도 안 바꾼다 — 그 파일들을 약속하지 않는다(#128 r5).
+  const otherFiles = preview.truncated === 0 && (preview.sendable.total > 0 || hasLanguageWork(preview))
+    ? preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)) : [];
+  /*
+    ⚠️ **설 행이 없으면 표를 그리지 않는다** (#296) — 요청만 닫는 미리보기는 나갈 것이 없어 행이 0인데, 빈 머리(`Key | Language | Value`)가 서고
+    341에서 최소 폭 520이 가로 스크롤을 만들었다. 그때는 표 아래 줄(만료·보류 수)만 남는다. 행이 하나라도 있으면 표는 그대로다.
+  */
+  const rows = preview.groups.length + otherFiles.length + (preview.locales?.empty.length ?? 0) + (preview.locales?.withheld.length ?? 0) + (preview.withdrawnLocales?.length ?? 0);
+  // 표가 없으면 줄이 상자 없이 본문에 선다 — 빈 `flex-1` 테두리 상자도 빈 표와 같은 결함이다.
+  const line = rows > 0 ? "text-muted-foreground px-3.5 py-[11px] text-xs" : "text-muted-foreground text-xs";
+  const notes = <>
+    {preview.truncated > 0 && <p className={line}>{p.truncated(preview.truncated)}</p>}
+    {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
+    {/* 보류된 언어의 셀은 빼고 센다 — 그 이유는 언어 행(Held · Not included)이 말한다. "파일이 아직 없다"로 또 세면 "이미 main에 있다"와 모순이다(R-E3 Y1). */}
+    {withoutFile > 0 && <p className={line}>{p.withoutFile(withoutFile)}</p>}
+    {preview.withoutKey > 0 && <p className={line}>{p.withoutKey(preview.withoutKey)}</p>}
+    {preview.expiringLocales?.map(request => <p key={`expiring:${request.surfaceSlug}:${request.localeCode}`} className={line}>{expiringLine(m, request, expiringSources > 1)}</p>)}
+  </>;
+  if (rows === 0) return <div className="flex shrink-0 flex-col gap-2">{notes}</div>;
   return <TableShell>
     {/*
       ⚠️ **좁으면 표가 가로로 스크롤한다** (#232) — `table-fixed`에 Key 220 · 언어 84를 고정한 채 모달이 341로 줄면 Value가 37로 눌려 값이 글자 단위로 세로 감겼다.
@@ -401,9 +421,7 @@ function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: st
           })}
         </tbody>;
         })}
-        {/* #128 — 편집 없이 바뀌는 파일. 상한 밖 행이 있으면 그 파일에 편집이 있는지 모르므로 단정하지 않는다(푸터의 파일 수는 그대로 실행의 수다). */}
-        {/* 전부 보류면(`sending === 0`이고 언어 파일도 없으면) 실행은 `skipped/withheld`라 아무 파일도 안 바꾼다 — 그 파일들을 약속하지 않는다(#128 r5). */}
-        {preview.truncated === 0 && (preview.sendable.total > 0 || hasLanguageWork(preview)) && preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)).map(path => {
+        {otherFiles.map(path => {
           const kind = kinds.get(path);
           // 삭제 파일의 번역은 Malmoi에 남는다 — 그 수를 전달 수로 말하지 않는다(시안 P1 ①).
           return <tbody key={`other:${path}`}>
@@ -426,12 +444,7 @@ function PreviewTable({ preview, branch }: { preview: PublishPreview; branch: st
           <FileNote>{item.effect === "create" ? l.takenBack.create(item.localeCode, pr) : l.takenBack.delete(item.localeCode, pr)}</FileNote>
         </tbody>)}
       </table>
-      {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
-      {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
-      {/* 보류된 언어의 셀은 빼고 센다 — 그 이유는 언어 행(Held · Not included)이 말한다. "파일이 아직 없다"로 또 세면 "이미 main에 있다"와 모순이다(R-E3 Y1). */}
-      {withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(withoutFile)}</p>}
-      {preview.withoutKey > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutKey(preview.withoutKey)}</p>}
-      {preview.expiringLocales?.map(request => <p key={`expiring:${request.surfaceSlug}:${request.localeCode}`} className="text-muted-foreground px-3.5 py-[11px] text-xs">{expiringLine(m, request, expiringSources > 1)}</p>)}
+      {notes}
     </div>
   </TableShell>;
 }

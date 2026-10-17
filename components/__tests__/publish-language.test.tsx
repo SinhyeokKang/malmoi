@@ -290,8 +290,23 @@ describe("Publish — 닫힌 언어 요청 정리 (#282)", () => {
     expect(text).toContain("The pull request this request was sent in is no longer open. Nothing goes out and no new pull request opens — publishing only closes it.");
     expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
     expect(text).not.toContain(en.translations.publish.nothingSendable.title);
+    // #296 — 나갈 것이 없으니 표에 채울 행도 없다. 빈 머리(`Key | Language | Value`)를 그리지 않는다(341에서 최소 폭 520이 가로 스크롤을 만들었다).
+    expect(modal().querySelector("table")).toBeNull();
+    // 빈 표를 감싸던 `flex-1` 테두리 상자·스크롤러도 서지 않는다 — 만료 줄만 본문에 선다.
+    expect(modal().querySelector("[class*='@container/preview']")).toBeNull();
     await click("Close request");
     expect(mocks.pull).toHaveBeenCalledTimes(1);
+  });
+
+  it("정리 미리보기에 표에 설 행이 있으면 표는 그대로다 (#296 대조)", async () => {
+    const held = [{ surfaceSlug: "web", localeCode: "zh-CN", path: "apps/web/locales/zh-CN.json", reason: "proposal-path-exists" }];
+    mocks.preview.mockResolvedValue(ok({ ...dropped, locales: { withheld: held, empty: [] } }));
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    expect(modal().querySelector("h2")?.textContent).toBe("Close the language request");
+    expect(modal().querySelector("table")).not.toBeNull();
+    expect(modal().textContent).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
   });
 
   it("요청이 둘이면 복수로 말한다 · GitLab은 merge request", async () => {
