@@ -796,7 +796,7 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
   있고 버튼은 DB 판정으로 첫 렌더부터 서 있다. 그래서 **콜드 착지의 비용(위 표)은 수용한 결정이다.** 다음에 이 화면이 느리다는 제보가 오면 FCP·클릭
   커밋 시간부터 보고, 문서 종료 시각은 GitHub 왕복 수(위 열)와 함께 본다.
 - **따뜻한 착지가 평평한 이유는 메모 둘이다** — probe 메모(§6.5.2 — Home·번역 화면, 30초)와 **Home 열린 PR 메모**(`lib/projects/open-pr-memo.ts` —
-  `OPEN_PR_MEMO_TTL_MS` = probe와 같은 30초, **Home 표시 전용**이라 `/api/push` 게이트는 쓰지 않는다). Publish와 수동 Sync가 그 프로젝트의 항목을
+  `OPEN_PR_MEMO_TTL_MS` = probe와 같은 30초, **Home·번역 화면 표시 전용**(보류 문장 · 정리 버튼 — §5.10.4 `settle`)이라 `/api/push` 게이트는 쓰지 않는다). Publish와 수동 Sync가 그 프로젝트의 항목을
   지운다(`forgetOpenPr`) — 방금 연 PR은 바로 보이고, GitHub에서 직접 머지·닫은 PR만 TTL 동안 늦게 보인다.
 
 ⚠️ **절대값 판정에 `pnpm dev`를 쓰지 않는다.** 같은 화면을 dev 서버로 재면 FCP가 688ms인데
@@ -2410,7 +2410,7 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 �
 | REMOVE | 제거 취소 | 행 삭제, 편집 허용. 전달된 적이 있으면 목록 차이로 다음 Publish 작업이 생긴다 |
 | 어느 행이든 | Publish가 PR/MR 경계까지 성공 | **스냅샷 때 캡처한 효과 목록**을 전달 목록으로 쓴다. 행은 유지 |
 | 어느 행이든 | 만료(5.10.2) | 행 삭제, base 관측으로 활성/orphan, **전달 목록에서 그 효과를 뺀다** |
-| 어느 행이든 | 승인한 수동 Sync 성공 | **승인된 행만** 삭제하고 리포 파일 집합대로 활성/orphan. **전달 목록은 유지**한다 |
+| 어느 행이든 | 승인한 수동 Sync 성공 | **승인된 행만** 삭제하고 리포 파일 집합대로 활성/orphan. 열린 PR/MR이 없음을 **성공한 조회로** 확인했으면 폐기한 행의 효과를 전달 목록에서 뺀다(revision 불변). 열려 있거나 조회에 실패하면 **전달 목록은 유지**한다 |
 
 - ⚠️ **폐기는 값을 마지막 전달 값으로 되돌린다 — 제거에만.** 토큰만 비우면 값이 DB에 남아 제거를 취소한 뒤 다음 Publish에 추적 없이 실린다. 그래서 제거 폐기는
   `planKeyRevert`와 같은 판정으로 복원 기준(`TranslationBaseline`)을 쓰고 `translation.reverted` 사건을 셀마다 남긴다. 복원 기준이 없는 미전달 셀이 있으면 거부한다(fail-closed).
@@ -2456,8 +2456,11 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   템플릿에 맞는 경로의 mode를 모르거나 언어 변경을 받지 않는 어댑터·경로 미정이면 `unreadable`(fail-closed)이다. Publish(`observedLocalesOf`)·같은 head 야간(`observeSurfaceLocales`, `lib/import/observe.ts`)·야간 적재 만료가 모두 이 함수에 위임한다.
   CI `/api/push`는 트리가 없어 페이로드의 `locales`가 유일한 관측이다.
   ⚠️ **알려진 잔여 차이**: strict 적재의 존재 판정(`localesToKeep`, `lib/import/locales.ts`)은 아직 심볼릭 링크된 언어 파일을 센다(파싱은 실패해 부분 적재가 된다). 링크된 언어 파일에서만 만료 판정과 갈리고, 적재 코어를 바꾸는 일이라 이 기능 범위 밖에 남겼다.
-- **수동 Sync는 전달 목록을 유지한다** — 승인한 수동 Sync가 행만 지우고 목록까지 비우면, 열린 PR에 실린 삭제가 작업 0으로 남아 그 PR을 머지할 때 폐기한 제거가 리포에 들어간다. 목록을 남기면 작업 1이 되어
-  다음 Publish가 `no-changes`로 수렴하고 목록을 쓴다. 소스 제거는 그 소스의 행과 목록을 비운다(재등록으로 삭제가 새지 않게). 수동 Sync 중에 들어온 요청이 승인 없이 지워지지 않도록,
+- **수동 Sync는 열린 PR/MR이 있거나 모르면 전달 목록을 유지한다** — 승인한 수동 Sync가 행만 지우고 목록까지 비우면, 열린 PR에 실린 삭제가 작업 0으로 남아 그 PR을 머지할 때 폐기한 제거가 리포에 들어간다. 목록을 남기면 작업 1이 되어
+  다음 Publish가 `no-changes`로 수렴하고 목록을 쓴다. ⚠️ **열린 PR/MR이 없음을 성공한 조회로 확인했으면 폐기한 행의 효과를 목록에서 뺀다** (2026-10-17, #283) — 그 효과는 어느 PR에도 없다(만료가 효과를 빼는 근거와 같다).
+  남기면 거둘 PR이 없는데 버튼이 켜지고 미리보기가 `Taken back`(`cancelled after it was sent`)이라는 거짓 사유를 단다. 조회는 승인된 행 가운데 저장 목록에 효과가 있는 코드가 있을 때만 lease 뒤·표면 루프 앞에서 **한 번** 한다(`runImport` → `loadOpenPrUrl`, 호스트 2회).
+  빼는 줄은 만료와 같은 헬퍼(`dropDeliveredEffects`, `lib/locales/expire.ts`)이고 revision은 그대로다. ⚠️ **만료를 재사용하지 않는다** — `planLocaleExpiry`는 소스 단위로 목록 일치를 요구해, 같은 소스에 값 있는 미전달 ADD가 있으면 폐기한 코드도 보류한다.
+  폐기는 승인으로 이미 행을 지우므로 그 조건이 필요 없다. 조회와 tx 사이에 PR/MR이 다시 열리는 경합은 만료와 같은 것이고 수용한다(머지하면 다음 적재가 관측대로 정한다). 소스 제거는 그 소스의 행과 목록을 비운다(재등록으로 삭제가 새지 않게). 수동 Sync 중에 들어온 요청이 승인 없이 지워지지 않도록,
   lease에 **승인된 행**(`approvedLocaleChanges` — 소스·코드·연산·`requestedAt`)을 실어 완전한 적재만 그 행을 지운다. 부분 적재(파싱 실패 파일)는 의도를 남긴다.
 
 ### 5.10.3 자동 적재 보류와 승인 경계
@@ -2508,6 +2511,12 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   **버튼과 모달이 같은 값을 받는다** — Home(`(home)/page.tsx`)과 번역 화면(`translations/page.tsx`)이 서버에서 한 번 세어 `PublishButton`(`planPublishButton`)과 `PublishModal` 둘에 넘기고,
   모달은 그 값으로 미리보기를 기다리는 동안의 제목(`Publish language changes`)과 진행 제목을 고른다. ⚠️ **버튼은 base를 읽지 않는다** — 작업이 보류된 ADD(`proposal-path-exists`)뿐이어도 켜지고,
   그때 모달이 `Nothing can be sent yet` + `Held` 행으로 이유를 말한다(실행도 아무것도 쓰지 않는다 — 미리보기 = 실행). 배지는 셀 수라 서지 않는다.
+  - **셋째 입력 `settle`** (2026-10-17, #282): 셀·언어 작업이 0이어도 **행이 있고 그 소스의 전달 목록이 비지 않으면**(`awaitsResolution` — 실행의 `expiryCheckApplies` 셋째 절과 같은 술어, `lib/pull/locales.ts`)
+    전달된 PR/MR이 닫혔는지 모른다. 두 화면은 그 좁은 창에서만 메모된 열린 PR 조회(`loadOpenPrUrlMemo`)를 **기다리지 않고** 버튼으로 내리고(`planSettleLookup`), 없음(`null`)이 도착하면 켠다.
+    열림·모름(`undefined`)은 꺼진 채다. Home은 그 창에서 보류 판정이 이미 같은 조회를 하므로 promise 하나를 나눠 쓴다(호스트 호출 0 추가). 번역 화면은 그 창에서만 조회를 새로 단다(메모 30초).
+    ⚠️ **표시 전용 메모를 "켜는" 쪽에 쓴다** — 실행이 실물로 다시 조회하므로(fail-closed) 옛 "없음"의 대가는 할 일 없는 미리보기 한 번이다. "버튼은 base를 읽지 않는다"는 그대로 참이다(PR 목록만 본다).
+  - **미리보기의 정리 갈래**: 보낼 편집·언어 파일 변경이 0이고 `expiringLocales`만 있으면 `Nothing can be sent yet`으로 떨어지지 않고 요청을 닫는 실행 버튼을 세운다(`Close the language request` — DESIGN §6.646).
+    실행은 스냅샷 전 만료를 돌고 `no-edits` + `expired`로 끝난다(§5.10.2 · #267). 만료가 보류되는 드문 갈래(base 관측 0개·못 읽음 · 같은 소스의 값 0개 미전달 ADD)는 `expiringLocales`가 비어 `Nothing can be sent yet`이다.
 - **언어 계획이 뺀 언어의 편집 수** (`withheld.language` · `withoutFileLanguage`): `ProjectLocalePlan.exclude`(보류된 ADD 등)의 언어에 사는 미전달 편집은 파일 보류로 센다 — 실행 결과 `withheld.file`·`SyncRun.withheld`·MCP 수는 그대로 `file + key`다.
   그 중 계획이 뺀 언어의 몫은 따로도 센다(`WithheldCoordinates.languages` → `splitEdits`의 `withheldBy.language` → 결과 `withheld.language`, 미리보기는 `withoutFileLanguage` — 같은 `excluded` 갈래라 **미리보기 = 실행**).
   화면은 "언어 파일이 아직 없다" 줄과 결과의 파일 복구 권유에서 이 수를 뺀다 — 그 언어는 `Held`·`Not included` 행이 설명하고, "파일이 아직 없다"로 또 세면 같은 표 안에서 `이미 리포에 있다`와 모순이다. 모집단(`sendable`·`delivered`)은 바뀌지 않는다.
@@ -2533,7 +2542,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 | 추가 PR/MR이 머지 없이 닫힘 | 전달 목록에 `create`가 있어 만료 조건이 선다 → base에 파일이 없으면 그 언어 orphan(값 보존) |
 | PR/MR 조회 실패·응답 유실 | 만료하지 않고 의도 유지 |
 
-webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 야간 방문 또는 Publish까지 최대 하루 늦을 수 있다. Sources는 진입 시 호스트를 부르지 않고 서버가 마지막으로 관측한 결과만 쓴다.
+webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 야간 방문 또는 Publish까지 최대 하루 늦을 수 있다. 그 창에서는 Publish 버튼이 열린 PR/MR 없음을 확인하고 켜진다(§5.10.4 `settle`). Sources는 진입 시 호스트를 부르지 않고 서버가 마지막으로 관측한 결과만 쓴다.
 **Sources 언어 행의 PR 링크 출처는 저장된 `Project.lastPrUrl` 하나다** (2026-10-17 사용자) — `loadSourceDetail`이 `pullRequestUrl: string | null`로 싣고(호스트 호출 0 · `projectId`로 좁힘 · 역할 무관 — 번역 화면의 `lastPrUrl`과 같다),
 번호는 화면이 `reviewNumberFrom(url, repoHost)`(`lib/projects/review-number.ts` — GitHub `/pull/N` · GitLab `/-/merge_requests/N`)로 뽑는다. ⚠️ **이 링크는 열린 PR이라는 뜻도 그 언어를 실었다는 뜻도 아니다** — 마지막 Publish가 만든 PR일 뿐이라
 화면은 행이 "전달됨"(Adding·Removing · 미전달 없음 · 확인됨)일 때만 링크를 세우고 번호를 못 뽑으면 링크를 만들지 않는다. 조회 실패(`prCheckFailed`) 상태는 Sources에 없다 — 그 상태는 Home이 그때 조회한 결과다.
@@ -4175,7 +4184,7 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 ⚠️ **Home과 번역 화면만 probe를 30초 기억한다** (2026-09-29 Home, malmoi#107 · 2026-10-01 번역 화면, ux-drift-unify — `lib/github-connect/probe-memo.ts`). Home은 probe로 상태 매트릭스(DESIGN §6.64)를 정해 Suspense로 뺄 수 없고, 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다(Home 1.4–1.9 s vs Logs 0.6–0.8 s). 키에 **저장된 `installationId`·`repositoryId`**가 들어 Reconnect 직후 옛 결과로 `installation-changed`를 거짓 표시하지 않고, `error`는 기억하지 않으며, 인스턴스마다 최대 500개다. **대가는 App 제거 뒤 TTL 동안 Home이 옛 `ok`를 말하는 것**이다 — 그동안 Publish가 켜져도 서버가 GitHub에서 판정한다. 설정 화면·MCP·재연결 Action은 메모를 거치지 않는다 — 설정은 고치러 가는 자리이고 MCP는 그 값이 판정 근거다(`loadConnectionHealth`의 `memo`를 켜는 곳이 그 둘뿐인지 `probe-memo.test.ts`가 소스에서 센다).
 
-⚠️ **Home의 열린 PR 조회도 같은 TTL로 따로 기억한다** (2026-10-01, ux-drift-unify U15 — `lib/projects/open-pr-memo.ts`). 편집 0인 프로젝트는 보류 사유(Q6)를 말하려고 착지·`?event=` 상세마다 GitHub 2회(리포 신원 + PR 목록)를 냈다. 스트리밍은 그대로이고 메모가 그 호출을 없앤다. 키는 **slug(= sync 브랜치) + 저장된 owner/repo/`installationId`/`repositoryId`**이고, **모름(`undefined`)은 기억하지 않는다** — `pr-check-failed`는 fail-closed 보류라 일시 장애를 TTL 동안 붙잡을 이유가 없다. **Publish(`runSync` — 웹·MCP·야간)와 수동 Sync(`importRepository`)가 그 프로젝트의 항목을 결과와 무관하게 지우고**, 지우는 사이에 돌던 조회의 답은 넣지 않는다 — 방금 연 PR을 "보류 없음"으로 말하지 않게. **대가는 GitHub에서 직접 머지·닫은 PR을 TTL 동안 열린 것으로 말하는 것**이다. ⚠️ **메모된 조회(`loadOpenPrUrlMemo`)의 호출부는 Home 하나다** — `/api/push`·야간·Publish 미리보기·Sync 확인·설정·MCP는 `loadOpenPrUrl`로 실물을 본다(옛 "없음"이 적재를 통과시키면 게이트가 fail-open이 된다). `open-pr-memo.test.ts`가 소스에서 센다.
+⚠️ **Home의 열린 PR 조회도 같은 TTL로 따로 기억한다** (2026-10-01, ux-drift-unify U15 — `lib/projects/open-pr-memo.ts`). 편집 0인 프로젝트는 보류 사유(Q6)를 말하려고 착지·`?event=` 상세마다 GitHub 2회(리포 신원 + PR 목록)를 냈다. 스트리밍은 그대로이고 메모가 그 호출을 없앤다. 키는 **slug(= sync 브랜치) + 저장된 owner/repo/`installationId`/`repositoryId`**이고, **모름(`undefined`)은 기억하지 않는다** — `pr-check-failed`는 fail-closed 보류라 일시 장애를 TTL 동안 붙잡을 이유가 없다. **Publish(`runSync` — 웹·MCP·야간)와 수동 Sync(`importRepository`)가 그 프로젝트의 항목을 결과와 무관하게 지우고**, 지우는 사이에 돌던 조회의 답은 넣지 않는다 — 방금 연 PR을 "보류 없음"으로 말하지 않게. **대가는 GitHub에서 직접 머지·닫은 PR을 TTL 동안 열린 것으로 말하는 것**이다. ⚠️ **메모된 조회(`loadOpenPrUrlMemo`)의 호출부는 Home과 번역 화면 둘이다**(표시 전용 — 보류 문장 · 정리 버튼, 2026-10-17 #282. 번역 화면은 §5.10.4 `settle` 창에서만 부른다) — `/api/push`·야간·Publish 미리보기·Sync 확인·설정·MCP는 `loadOpenPrUrl`로 실물을 본다(옛 "없음"이 적재를 통과시키면 게이트가 fail-open이 된다). `open-pr-memo.test.ts`가 소스에서 센다.
 
 **번역 화면의 연결은 DB 판정이 먼저고 GitHub 판정은 스트리밍이다** (2026-10-01, ux-drift-unify 🔴 F — #52 재발 경로였다: 끊겨도 Publish·Sync가 켜져 있었다).
 설치·리포 id로 가를 수 있는 둘(`not-connected`·`unpinned`)은 첫 렌더부터 버튼을 끈다 — GitHub 왕복 0. 나머지(App 제거 · 설치 교체 · 리포 교체)는
