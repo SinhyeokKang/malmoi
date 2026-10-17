@@ -12,7 +12,7 @@
 
 ## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-17)
 
-**한 줄 상태(2차 런)**: 인테이크 완료 — 아래 "2차 런 배치"의 wave ⑥(E0)부터 띄운다. 첫 지휘 동작: ① 새 Orca run ② E0 브리프(시안이 필요 없는 배치) ③ E0 통합 뒤 E1·E2·E3 브리프에 "시안 위치" 표를 넣는다.
+**한 줄 상태(2차 런)**: wave ⑥ 진행 — Orca run `run_57570c342d5f`, E0 `ctx_034f87a24937` 작업 중. 브리프·인계는 로컬 `.scratch/orch-locale-add/`(`brief-common.md`·`brief-E0.md`, 인계 사본 `handoffs/`). 다음: E0 리뷰·통합 뒤 E1·E2·E3 브리프에 "시안 위치" 표를 넣는다.
 
 **1차 런 상태(2026-10-14 기록)**: 시안 없이 할 수 있는 일은 모두 끝났다. 배치 A1·A2·B1·B2·B3·C1·C2·D와 RT에서 나온 수정 F1·F2가 전부 dev에 들어가 push됐고(마지막 `1bcadabd`, CI success), 실호스트 왕복(RT·RT2·RT3)이 GitHub·GitLab × json-catalog·chrome-locales에서 통과했다. 이번 런의 이슈 #265·#266·#267은 모두 고쳐서 닫았다. **남은 것은 시안이 와야 하는 화면 일체와 `/merge`뿐이다**(이 기능은 화면까지 끝나기 전 머지 금지).
 
@@ -213,3 +213,4 @@
 - R-F2b 완료(🔴 0 · 🟡 1 · ⚪ 4 — 통합 가능, revert 정당). 🟡 웹 "Not sent" 제목·설명이 빠진 언어 요청을 이름으로 말하지 않음 → **시안 배치**(문구). ⚪ ARCHITECTURE "API 0회" 줄에 §5.10 예외 포인터 → 지휘자 문서 커밋. R-F2b 해제·정리.
 - F2 fix2 `worker_done` — `22728b03`(도달 불가 필터 revert). **F2 통합**(cherry-pick 8) + ARCHITECTURE "API 0회" 예외 포인터(지휘자 문서 커밋) · main 체크아웃 `pnpm gate` **ok**. F2 해제·정리. push 뒤 **RT3**(#267 재실측).
 - **RT3 완료** — GitHub·GitLab 둘 다 4/4: 머지 없이 닫힌 REMOVE·ADD("반영 없이 닫힘 — Publish가 요청을 버린다", 파일 약속 없음, PR #27/#29·MR !23/!24) · 머지된 REMOVE·ADD("이미 리포에 반영", PR #28/#30·MR !25/!26) · 평소 셀 편집 Publish 문구 불변(PR #31·MR !27). **#267 닫음**, 새 결함 0. 미측정: 웹 Publish 모달. RT 해제. tasks §9 셋째·넷째 체크. **런의 시안 없는 범위 종료.**
+- **2차 런** 2026-10-17 05:09Z — 인테이크 메모(`.scratch/orch-locale-add/intake-2026-10-17.md`)를 orch.md와 대조(어긋남 없음). 로컬 P 사본(5차)에 P1 0건 갈래·GitLab판·②③ 불변이 반영된 것을 확인. ⚠️ 이 지휘 세션의 `DesignSync`는 권한이 없다(`/design-login` 필요) — 허브·D·T 실물은 아직 못 봤다. wave ⑥ — Orca run `run_57570c342d5f` · **E0** `ctx_034f87a24937`(Opus 5.5 medium, `lo-E0`, base `d0fa1654` 확인).
