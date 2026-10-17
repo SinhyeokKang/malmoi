@@ -1,15 +1,15 @@
 # project-row-redesign — spec
 
-> 2026-10-14 착수 · 2026-10-15 `/feature-review` 반영 · 2026-10-17 locale-add(ARCHITECTURE §5.10 · 작업 언어 술어 `lib/keys/work-locale.ts`)와 `source-row-locale-meter`(orch D1–D10)에 맞춰 대조했다. `/projects` 목록의 **프로젝트 행 하나**를 다시 짠다. 다루는 것은 셋이다 — 무엇을 보여 주나(메타), 어떤 상태를 말하나(상태), 어떻게 그리나(UI). 함께 **Inbox 항목을 행의 띠와 같은 판정에 묶는다**.
+> 2026-10-14 착수 · 2026-10-15 `/feature-review` 반영 · 2026-10-17 locale-add(ARCHITECTURE §5.10 · 작업 언어 술어 `lib/keys/work-locale.ts`)와 `source-row-locale-meter`(orch D1–D10)에 맞춰 대조했다 · 2026-10-18 그 기능이 dev에 들어가 사전 조건을 풀고 orch D11–D15를 반영했다. `/projects` 목록의 **프로젝트 행 하나**를 다시 짠다. 다루는 것은 셋이다 — 무엇을 보여 주나(메타), 어떤 상태를 말하나(상태), 어떻게 그리나(UI). 함께 **Inbox 항목을 행의 띠와 같은 판정에 묶는다**.
 > 그릇(그룹 카드 셋·검색·빈 상태·머리)은 이번 범위가 아니다(DESIGN §6.63 그대로).
 > 짝 기능: `source-row-locale-meter`가 로케일 진행 막대(`LocaleMeter`)를 Sources 화면의 소스 행으로 가져간다. 이 스펙은 프로젝트 행에서 막대를 빼는 쪽만 맡는다(조율은 design.md §5).
 
-## 사전 조건
+## 사전 조건 — ✅ 충족(2026-10-18)
 
-**`source-row-locale-meter`가 dev에 먼저 들어가 있어야 착수한다**(2026-10-15 사용자).
+**`source-row-locale-meter`가 dev에 먼저 들어가 있어야 착수한다**(2026-10-15 사용자). → 2026-10-18 충족: 그 기능의 데이터 층(`312df1d2`·`c0108513`)과 화면(`c3757f49` — `LocaleMeter`가 `LocaleMeterValue`를 받는다, 후속 `cad6746a`·`9ecfc167`)이 dev에 있다. 아래는 이 조건을 둔 이유로 남긴다.
 - 이 기능이 먼저 나가면 소스 행에 막대가 붙기 전까지 언어별 진행이 목록 어디에도 없는 창이 생긴다.
 - 그 기능이 `LocaleMeter` 입력을 `LocaleMeterValue`로 바꿔 두면 이 기능이 늦게 끝나는 쪽이 된다. 그래서 고아 타입 `RowLocaleProgress` 삭제와 DESIGN §6.63 소비자 서술 정정을 이 기능이 조건 없이 맡는다.
-- 확인: `rg -n "RowLocaleProgress" components/locale-meter.tsx`가 0이다. `/orchestrate`·`/ship` 착수 전에 이것을 본다.
+- 확인: `rg -n "RowLocaleProgress" components/locale-meter.tsx`가 0이다 — 2026-10-18 dev `9ecfc167`에서 0건을 확인했다.
 
 ## 사용자
 
@@ -44,7 +44,7 @@
 
 ### 4. Inbox와 행의 띠가 다른 할 일을 센다
 Inbox 항목(`lib/inbox/plan.ts`)과 행 띠(`rowBanner`)가 따로 판정한다.
-- **Inbox에만 있다**: `never_filled`(지금 값이 하나도 없는 작업 언어 — 이력은 보지 않아 채웠다가 비운 언어도 선다, `lib/home/attention.ts:98-99`·malmoi#134).
+- **Inbox에만 있다**: `never_filled`(지금 값이 하나도 없는 작업 언어 — 이력은 보지 않아 채웠다가 비운 언어도 선다, `lib/home/attention.ts:97-98`·malmoi#134).
 - **띠에만 있다**: `needs_reconnect`, 그리고 원격 신호 셋(`pr_open`·`pr_check_failed`·`repo_ahead`).
 
 ## 완료 조건 (검증 가능한 문장)
@@ -83,3 +83,4 @@ Inbox 항목(`lib/inbox/plan.ts`)과 행 띠(`rowBanner`)가 따로 판정한다
 - **Sources 화면의 막대** — `source-row-locale-meter`가 맡는다.
 - **Inbox의 원격 신호** — 열린 PR·PR 조회 실패·리포 앞섬은 Inbox에 넣지 않는다. 배지 Action이 매 헤더에서 불리므로 호스트 API를 부르면 헤더마다 비용이 든다(2026-10-15 사용자).
 - **실시간 갱신·폴링** — 목록은 요청 시점 값이다.
+- **언어 요청만 미전달인 프로젝트의 표시** — 전달 전 언어 제거(`locale-change-pending`으로 CI·야간 적재 전체 보류)나 값 있는 언어 추가만 남은 프로젝트를 행·Home·Inbox가 어떻게 말할지는 별개 기능이다(2026-10-17 사용자 — malmoi#290, source-row-locale-meter orch D11). 이 기능에서는 그 프로젝트가 칩 `Active`·`All set`·띠 없음으로 남는다(design §1 예외).
