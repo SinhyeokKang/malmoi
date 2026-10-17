@@ -131,7 +131,7 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
  *
  * ⚠️ **`[Publish]`는 EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다.
  */
-export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, languageWork = 0, paused, pausedReason }: {
+export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, languageWork = 0, settle, paused, pausedReason }: {
   slug: string;
   /** 기본 표면 — `[Sync]` Dialog의 `Publish first`가 가리킨다 (audit-ux #4b). */
   surfaceSlug?: string;
@@ -141,6 +141,8 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
   unsent: number;
   /** 언어 변경 작업 수(`countLocaleWork`) — 셀 편집이 0이어도 [Publish]가 켜진다(locale-add 시안 P1 ①④). */
   languageWork?: number;
+  /** 전달된 언어 요청의 PR이 더는 열려 있지 않다(#282 — 보류 판정과 같은 조회를 나눠 쓴다). 좁은 창 밖이면 없다. */
+  settle?: Promise<boolean>;
   /**
    * 미연결·보관 — 둘 다 보낼 곳이 없다. **버튼 둘이 비활성이고 부재가 아니다** (DESIGN §6.64) —
    * 부재는 역할 갈래의 규칙이다.
@@ -178,7 +180,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton count={unsent} languageWork={languageWork} disabled={paused || syncPending} publish={publish} pausedReason={paused ? pausedReason : undefined} />
+      <PublishButton count={unsent} languageWork={languageWork} settle={settle === undefined ? undefined : { later: settle, identity: slug }} disabled={paused || syncPending} publish={publish} pausedReason={paused ? pausedReason : undefined} />
     </div>
   );
 }

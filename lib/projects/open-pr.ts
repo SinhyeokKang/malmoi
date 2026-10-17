@@ -23,7 +23,7 @@ export async function loadOpenPrForImportGate(
 /**
  * sync 브랜치에 열린 Malmoi PR — `null`은 없음, **`undefined`는 모름**(실패·마감·리포 id 없음)이다. 게이트가 모름을 보류로 읽는다(fail-closed).
  * GitHub 2회(리포 신원 확인 + PR 목록)이고 **언제나 실물을 본다** — 게이트·설정·MCP·Publish 미리보기가 이것을 부른다.
- * Home 표시만 `loadOpenPrUrlMemo`를 지난다.
+ * Home·번역 화면 표시만 `loadOpenPrUrlMemo`를 지난다.
  */
 export async function loadOpenPrUrl(
   slug: string,
@@ -62,7 +62,8 @@ export async function loadOpenPrUrl(
 }
 
 /**
- * **Home 표시 전용** (ux-drift-unify U15) — `loadOpenPrUrl`을 `OPEN_PR_MEMO_TTL_MS` 동안 기억한다. 호출부는 Home 하나다(`open-pr-memo.test.ts` 배선).
+ * **Home·번역 화면 표시 전용** (ux-drift-unify U15 · #282) — `loadOpenPrUrl`을 `OPEN_PR_MEMO_TTL_MS` 동안 기억한다. 호출부는 Home(보류 문장 · `settle`)과
+ * 번역 화면(`settle`의 좁은 창에서만) 둘이다(`open-pr-memo.test.ts` 배선).
  * ⚠️ **게이트에 쓰지 않는다** — 옛 "없음"이 적재를 통과시킨다. Publish·수동 Sync가 그 프로젝트의 항목을 지운다(`forgetOpenPr`).
  */
 export function loadOpenPrUrlMemo(slug: string, project: Parameters<typeof loadOpenPrUrl>[1]): Promise<string | null | undefined> {

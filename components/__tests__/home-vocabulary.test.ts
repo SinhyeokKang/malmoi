@@ -204,6 +204,10 @@ const NOT_A_COUNT: Record<string, string> = {
   "projects.count": "PROJECT_LIMIT = 3",
   // 수는 `count`(= `repositorySync.unsentCount`, 구분자를 쓴다)가 그린다 — `n`은 es 동사 수 일치에만 쓴다.
   "sources.removal.unsent": "count is repositorySync.unsentCount",
+  // 닫을 언어 요청 수(#282 settle) — 수를 찍지 않고 단·복수(제목·본문·버튼 낱말)만 가른다. 수는 표 아래 언어별 만료 줄이 이름으로 든다.
+  "translations.publish.language.settle.title": "plural only",
+  "translations.publish.language.settle.body": "plural only",
+  "translations.publish.language.settle.action": "plural only",
   // 추가 취소의 미전달 줄(RT4 #278) — 수는 `count`(= `repositorySync.unsentCount`)가 그리고, `n`은 en 동사·대명사와 es 동사 수 일치에만 쓴다.
   "sources.locale.untrackLine": "count is repositorySync.unsentCount",
   "sources.orphanStripOwner": "n은 분기 판정(0·1·그 외)에만 쓰고 문장에 찍지 않는다",

@@ -44,7 +44,8 @@ import { loadOpenPrUrlMemo } from "@/lib/projects/open-pr";
 import { repoWebUrl } from "@/lib/projects/repo-web";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
-import { countLocaleWork } from "@/lib/locales/work";
+import { readLocaleWork } from "@/lib/locales/work";
+import { planSettleLookup } from "@/lib/publish/plan";
 
 /**
  * 프로젝트 Home — **진입의 착지점** (PRODUCT §7.7 결정 1).
@@ -151,7 +152,7 @@ export default async function ProjectHomePage({
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
   const target = repoTargetOf(project);
-  const [aggregates, events, review, openEvent, health, runs, writeLock, languageWork] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, runs, writeLock, localeWork] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -182,8 +183,10 @@ export default async function ProjectHomePage({
     // 다른 실행의 적재 lease — [Sync]·배너 [Try again]을 멈춘다(sync-lock R5). 같은 라운드라 왕복이 늘지 않는다.
     loadWriteLock(prisma, projectId, now),
     // 언어 변경 작업 수 — 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). 미리보기가 그 파일을 보이는 것과 같은 상태 술어다(`countLocaleWork`).
-    countLocaleWork(prisma, projectId),
+    // 같은 읽기가 `awaiting`(전달된 언어 요청이 PR 결말을 기다린다 — #282 `settle`의 DB 판정)도 낸다.
+    readLocaleWork(prisma, projectId),
   ]);
+  const languageWork = localeWork.work;
   // 번역 사건은 키 **이름**을 든다 — Logs와 같은 해석이다(translation-rework T12).
   const translationHref = openEvent?.payload?.kind === "TRANSLATION"
     ? await translationLinkFor(prisma, { projectId, slug, surfaceSlug: openEvent.payload.surfaceSlug, key: openEvent.payload.key })
@@ -252,15 +255,22 @@ export default async function ProjectHomePage({
    * ⚠️ **메모를 거친다** (U15 — T18 실측: 착지·상세마다 GitHub 2회) — 연결 확인과 같은 TTL이다. 표시 전용이라서이고 게이트는 실물을 본다.
    * Publish·수동 Sync가 이 프로젝트의 항목을 지우므로 방금 연 PR은 바로 보이고, GitHub에서 직접 머지한 PR만 TTL 동안 늦게 보인다(`open-pr-memo.ts`).
    */
+  let openPr: Promise<string | null | undefined> | undefined;
+  const lookupOpenPr = () => openPr ??= loadOpenPrUrlMemo(slug, project).catch((error: unknown) => {
+    logFailure("home-open-pr", error);
+    return undefined;
+  });
   const hold = planHomeHold(
     { pending: counts.toSend, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
-    () => loadOpenPrUrlMemo(slug, project).catch((error: unknown) => {
-      logFailure("home-open-pr", error);
-      return undefined;
-    }),
+    lookupOpenPr,
   );
   const heldNow = hold instanceof Promise ? null : hold;
   const heldLater = hold instanceof Promise ? hold : undefined;
+  /*
+    [Publish]의 `settle` (#282 — ARCHITECTURE §5.10.4). ⚠️ **새 조회가 아니다** — 보류 판정이 PR을 조회하는 갈래(`heldLater`)일 때만 같은 promise를 나눠 쓴다.
+    그 창은 미전달 0이라 `planHomeHold`가 이미 묻는다. 조회하지 않는 갈래(보관·끊김·게이트 없음)는 버튼도 꺼진 채라 묻지 않는다.
+  */
+  const settle = planSettleLookup({ count: counts.toSend, languageWork, awaiting: localeWork.awaiting, applies: heldLater !== undefined }, lookupOpenPr);
   /**
    * 메타 열 탭 셋 (project-card-tabs). ⚠️ **PR state는 새 조회가 아니다** — 위 보류 판정이 PR을 조회하는 갈래(`heldLater`)일 때만 자리를 잡고,
    * 같은 promise의 결론(`homeLate`)이 Hold와 함께 늦게 채운다. 조회하지 않는 갈래면 행이 없다.
@@ -308,6 +318,7 @@ export default async function ProjectHomePage({
             role={role}
             unsent={counts.toSend}
             languageWork={languageWork}
+            settle={settle}
             paused={paused}
             /* 멈춘 원인 문장 — Sync·Publish가 같은 원인이라 같은 문장을 각자 `title` + 자기 sr-only로 든다. 보관이 먼저, 끊김은 번역 화면과 같은 문장이다. */
             pausedReason={archived ? `${m.home.banner.archived.title}.` : connectionReason(m, health.status, role) ?? undefined}

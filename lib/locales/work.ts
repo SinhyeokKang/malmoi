@@ -157,3 +157,19 @@ export async function countLocaleWork(db: Db, projectId: string, surfaceId?: str
   const states = await readLocaleStates(db, projectId, surfaceId);
   return states.reduce((sum, state) => sum + state.work.length, 0);
 }
+
+/**
+ * **전달된 언어 변경의 PR/MR 결말을 기다리는 행이 있나** (#282) — 행이 있고 그 소스의 견줄 전달 목록이 비지 않았다. 작업이 0인 이 창에서 실행은 1층 앞에서
+ * PR/MR을 묻고 만료를 돈다(`expiryCheckApplies`의 셋째 절이 이 함수다). 버튼의 `settle`도 이 창에서만 열린 PR 조회를 단다 — 둘이 갈리면 버튼이 켜졌는데
+ * 실행이 1층에서 끝나거나, 실행이 정리할 요청이 있는데 버튼이 꺼진다.
+ * ⚠️ 값 0개 ADD(전달 효과 없음)·확인 안 된 목록(`null`)은 아니다 — 만료할 수 없거나 원격 0회를 지킨다.
+ */
+export function awaitsResolution(surfaces: readonly { rows: readonly unknown[]; delivered: readonly unknown[] | null }[]): boolean {
+  return surfaces.some(surface => surface.rows.length > 0 && (surface.delivered?.length ?? 0) > 0);
+}
+
+/** 버튼의 DB 판정 두 값 — 작업 수(`countLocaleWork`와 같다)와 `awaitsResolution`. 같은 읽기 한 번에서 낸다. */
+export async function readLocaleWork(db: Db, projectId: string): Promise<{ work: number; awaiting: boolean }> {
+  const states = await readLocaleStates(db, projectId);
+  return { work: states.reduce((sum, state) => sum + state.work.length, 0), awaiting: awaitsResolution(states) };
+}

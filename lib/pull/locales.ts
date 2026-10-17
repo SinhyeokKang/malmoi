@@ -1,7 +1,7 @@
 import { localeFilePath, supportsLocaleChanges } from "@/lib/locales/add-plan";
 import { localeEffects, sameLocaleEffects, type LocaleEffect, type LocaleOperation } from "@/lib/locales/effects";
 import { planLocaleExpiry, type PullRequestCheck } from "@/lib/locales/expiry";
-import { localeWork } from "@/lib/locales/work";
+import { awaitsResolution, localeWork } from "@/lib/locales/work";
 import { planLocalePublish, type LocalePublishPlan } from "@/lib/locales/publish-plan";
 import { localeFromPath } from "@/lib/adapters/chrome-locales";
 import { compareCodeUnits } from "@/lib/compare";
@@ -174,7 +174,8 @@ export type ExpiredLocaleRequest = { surfaceSlug: string; localeCode: string; op
 export function expiryCheckApplies(unpublished: number, surfaces: readonly { localeChanges?: SurfaceLocaleChanges }[]): boolean {
   if (!hasLocaleRows(surfaces)) return false;
   if (unpublished > 0 || localeWorkOf(surfaces) > 0) return true;
-  return surfaces.some(surface => (surface.localeChanges?.rows.length ?? 0) > 0 && (surface.localeChanges?.delivered?.length ?? 0) > 0);
+  // 버튼의 `settle`과 같은 술어다(#282) — 셀·언어 작업 0에서 실행이 PR을 묻는 창과 버튼이 PR을 묻는 창이 하나다.
+  return awaitsResolution(surfaces.flatMap(surface => surface.localeChanges === undefined ? [] : [surface.localeChanges]));
 }
 
 /**

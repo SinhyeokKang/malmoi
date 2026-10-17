@@ -3088,6 +3088,11 @@ export const en = {
             addNotReached: (code: string): string => `${code} wasn't added — its merge request closed without merging. Its translations stay in Malmoi.`,
             removeNotReached: (code: string): string => `${code} wasn't removed — its merge request closed without merging. It stays in this source.`,
           },
+          settle: {
+            hint: "The merge request for a language change is no longer open. Publish to close its request.",
+            body: (n: number): string =>
+              `The merge request ${n === 1 ? "this request was" : "these requests were"} sent in is no longer open. Nothing goes out and no new merge request opens \u2014 publishing only closes ${n === 1 ? "it" : "them"}.`,
+          },
           createdDescription: "The language changes are in a merge request. They reach the product once someone on the team merges it.",
           updatedDescription: (n: number): string =>
             `!${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
@@ -3327,6 +3332,17 @@ export const en = {
          * 켜진다(버튼은 base를 읽지 않는다). 그때는 모달이 Held 행으로 이유를 말한다(R-E3 ⚪2).
          */
         ready: "There are language changes to publish.",
+        /**
+         * 셀·언어 작업 0 · 전달된 언어 요청의 PR/MR이 더는 열려 있지 않다(#282 — ARCHITECTURE §5.10.4 `settle`). `hint`는 켜진 [Publish]의 sr·`title`이고, 나머지는 만료될 요청만
+         * 있는 미리보기다 — 보낼 것이 없으니 `Nothing can be sent yet`으로 떨어지지 않고 요청을 닫는 실행을 세운다. 어느 언어가 어떻게 끝났는지는 표 아래 `expiring` 줄이 말한다.
+         */
+        settle: {
+          hint: "The pull request for a language change is no longer open. Publish to close its request.",
+          title: (n: number): string => (n === 1 ? "Close the language request" : "Close the language requests"),
+          body: (n: number): string =>
+            `The pull request ${n === 1 ? "this request was" : "these requests were"} sent in is no longer open. Nothing goes out and no new pull request opens \u2014 publishing only closes ${n === 1 ? "it" : "them"}.`,
+          action: (n: number): string => (n === 1 ? "Close request" : "Close requests"),
+        },
         /** 만료 안내가 여러 소스에 걸칠 때 언어에 소스를 붙인다(`fr (web)`) — "this source"가 어느 소스인지. */
         inSource: (code: string, source: string): string => `${code} (${source})`,
       },

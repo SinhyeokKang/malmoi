@@ -1574,6 +1574,10 @@ export const ko = {
             addNotReached: (code: string): string => `${code} 언어는 추가되지 않았습니다. MR이 머지되지 않고 닫혔습니다. 번역은 Malmoi에 남습니다.`,
             removeNotReached: (code: string): string => `${code} 언어는 제거되지 않았습니다. MR이 머지되지 않고 닫혔습니다. 이 소스에 남습니다.`,
           },
+          settle: {
+            hint: "언어 변경의 MR이 더 이상 열려 있지 않습니다. 게시하면 요청을 닫습니다.",
+            body: (_n: number): string => "요청을 보낸 MR이 더 이상 열려 있지 않습니다. 아무것도 보내지 않고 새 MR도 열지 않으며, 게시하면 요청만 닫습니다.",
+          },
           createdDescription: "언어 변경을 MR에 담았습니다. 팀원이 머지하면 서비스에 반영됩니다.",
           updatedDescription: (n: number): string =>
             `!${n} MR이 아직 열려 있어 두 번째 MR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
@@ -1755,6 +1759,12 @@ export const ko = {
         updatedDescription: (n: number): string =>
           `#${n} PR이 아직 열려 있어 두 번째 PR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
         ready: "게시할 언어 변경이 있습니다.",
+        settle: {
+          hint: "언어 변경의 PR이 더 이상 열려 있지 않습니다. 게시하면 요청을 닫습니다.",
+          title: (_n: number): string => "언어 요청 닫기",
+          body: (_n: number): string => "요청을 보낸 PR이 더 이상 열려 있지 않습니다. 아무것도 보내지 않고 새 PR도 열지 않으며, 게시하면 요청만 닫습니다.",
+          action: (_n: number): string => "요청 닫기",
+        },
         inSource: (code: string, source: string): string => `${code}(${source})`,
       },
 

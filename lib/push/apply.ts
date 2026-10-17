@@ -11,9 +11,9 @@ import { planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import { liveLocalesOf, localePresence } from "@/lib/locales/presence";
-import { expireLocaleChanges, type LocaleExpiryInput } from "@/lib/locales/expire";
+import { dropDeliveredEffects, expireLocaleChanges, type LocaleExpiryInput } from "@/lib/locales/expire";
 import type { PullRequestCheck } from "@/lib/locales/expiry";
-import { readLocaleStates } from "@/lib/locales/work";
+import { deliveredOf, readLocaleStates } from "@/lib/locales/work";
 import type { LocaleChangeSubtype } from "@/lib/events/payload";
 import { recordEvents, type EventActorInput } from "@/lib/events/record";
 import { keptAddLocales, planLocaleImportGate } from "./locale-gate";
@@ -120,7 +120,7 @@ export type ApplyOptions = {
    * - `expire` — 자동 적재(CI·야간). 같은 잠금 안에서 만료를 먼저 돌고(`expireLocaleChanges`), 남은 ADD를 뺀다. 관측은 `observed`이고, 없으면 이 페이로드의
    *   로케일이다(CI — 그것이 유일한 관측이다). 야간은 base 트리에서 Publish 쪽과 같은 함수로 본 관측을 넘긴다(`observeLocaleFiles`, R-B2 Y4).
    * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. **승인한 의도 행(`approved` — 종류·요청 시각까지 일치)만** 지우고, 존재는 이 적재가 리포대로
-   *   정한다. 승인 뒤 들어온 행은 남고 그 ADD는 orphan 대상에서 뺀다(R-B3 R1). 전달 목록은 남긴다.
+   *   정한다. 승인 뒤 들어온 행은 남고 그 ADD는 orphan 대상에서 뺀다(R-B3 R1). 전달 목록은 `pullRequest`가 `none-open`일 때만 폐기한 코드의 효과를 뺀다(#283).
    *
    * ⚠️ **생략의 기본이 `keep`이다** — 빠졌을 때 의도를 보존하는 쪽이 안전하다(`approvedTokens`와 같은 근거). 기본을 strict로 두면 첫 적재·새 호출부
    * 하나가 방금 추가한 빈 언어를 orphan시킨다.
@@ -131,7 +131,8 @@ export type ApplyOptions = {
 export type LocaleChangeHandling =
   | { kind: "keep" }
   | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput; via: LocaleExpiryInput["via"]; observed?: LocaleExpiryInput["observed"] }
-  | { kind: "discard"; actor: EventActorInput; approved: readonly LocaleIntent[] };
+  /** `pullRequest` — 실행이 lease 뒤 한 번 본 열린 PR/MR 상태(#283). 묻지 않았으면 `failed`다 — 목록을 남긴다(fail-closed). */
+  | { kind: "discard"; actor: EventActorInput; approved: readonly LocaleIntent[]; pullRequest: PullRequestCheck };
 
 type LocaleIntent = { localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string };
 
@@ -242,16 +243,19 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
       for (const statement of statements) results.push(await statement);
       return results;
     });
-  if (handling.kind === "discard") await discardLocaleChanges(tx, scope, surface.slug, payload.locales, discarded, handling.actor);
+  if (handling.kind === "discard") await discardLocaleChanges(tx, scope, surface.slug, payload.locales, discarded, handling.actor, handling.pullRequest);
   return outcome;
 }
 
 /**
  * **승인된 수동 Sync가 의도를 지운다** (locale-add design §1 전이 표 마지막 행) — 행 삭제 · 사건. 존재는 방금 strict 적재가 리포대로 정했고,
  * 사건의 `outcome`은 그 판정(`localePresence`)과 같은 값이다. 값·키·로케일 행은 지우지 않는다.
- * ⚠️ **전달 목록은 남긴다** (2026-10-14 지휘자 결정 keep-delivered) — 제거가 열린 PR에 실린 채 목록까지 비우면 작업이 0이라 아무도 sync 브랜치를 다시
+ * ⚠️ **열린 PR/MR이 있거나 모르면 전달 목록은 남긴다** (2026-10-14 지휘자 결정 keep-delivered) — 제거가 열린 PR에 실린 채 목록까지 비우면 작업이 0이라 아무도 sync 브랜치를 다시
  * 만들지 않고, 그 PR을 머지하면 방금 버린 제거가 리포에 들어간다. 남은 차이가 언어 작업이 되어 다음 Publish가 `no-changes`로 PR을 정리하고 목록을
  * 비운다(전달 뒤 취소와 같은 길). 소스 제거는 되살림 누수 때문에 목록을 비운다(`lib/surfaces/remove.ts`).
+ * ⚠️ **열린 PR/MR이 없음을 성공한 조회로 확인했으면(`none-open`) 폐기한 코드의 효과를 뺀다** (#283) — 그 효과는 어느 PR에도 없다. 남기면 거둘 PR이 없는데
+ * Publish가 켜지고 미리보기가 "cancelled after it was sent"라는 거짓 사유를 단다. 만료와 같은 헬퍼다(revision 불변). 만료(`planLocaleExpiry`)를 부르지 않는다 —
+ * 그 판정은 소스 단위로 목록 일치를 요구해 같은 소스의 값 있는 미전달 ADD가 폐기한 코드까지 보류한다.
  * ⚠️ 이 적재와 같은 tx다 — 사건이 실패하면 적재도 롤백된다(상태 변경 사건).
  */
 async function discardLocaleChanges(
@@ -261,11 +265,16 @@ async function discardLocaleChanges(
   observed: readonly string[],
   intents: readonly LocaleIntent[],
   actor: EventActorInput,
+  pullRequest: PullRequestCheck,
 ): Promise<void> {
   const { projectId, surfaceId } = scope;
   if (intents.length === 0) return;
   // 행마다 종류·요청 시각까지 걸어 지운다 — 표면 tx가 읽은 뒤의 상태가 아니라 승인한 행이 지울 대상이다.
   await tx.localeChange.deleteMany({ where: { projectId, surfaceId, OR: intents.map(intent => ({ localeCode: intent.localeCode, operation: intent.operation, requestedAt: new Date(intent.requestedAt) })) } });
+  if (pullRequest === "none-open") {
+    const confirmation = await tx.deliveryConfirmation.findUnique({ where: { projectId_surfaceId: { projectId, surfaceId } }, select: { deliveredLocaleChanges: true, invalidatedAt: true } });
+    await dropDeliveredEffects(tx, scope, deliveredOf(confirmation), new Set(intents.map(intent => intent.localeCode)));
+  }
   const live = liveLocalesOf(observed);
   await recordEvents(tx, [...intents].sort((a, b) => (a.localeCode < b.localeCode ? -1 : a.localeCode > b.localeCode ? 1 : 0)).map(intent => {
     const presence = localePresence(live, intent.localeCode);

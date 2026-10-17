@@ -21,14 +21,29 @@ export function planPublishView(outcome: PullOutcome): PublishView {
  * @param pausedReason 꺼진 원인을 호출부가 알 때의 사유 — 번역 화면의 연결 끊김(malmoi#160). 없으면 원인 없는 `paused`다.
  * @param languageWork 언어 변경 작업 수(`countLocaleWork` — 미리보기가 거둘·보낼 파일과 같은 상태). 셀 편집이 0이어도 이게 있으면 Publish가 할 일이 있다
  *   (locale-add 시안 P1 ①④⑤) — 배지는 셀 수 그대로라 서지 않고, 켜진 이유를 `hint`가 sr로 말한다.
+ * @param settle 전달된 언어 요청의 PR/MR이 더는 열려 있지 않음이 확인됐다(#282 — `planSettleLookup`의 도착값). 셀·언어 작업이 0이어도 실행이 그 요청을 닫으므로 켠다.
  */
-export function planPublishButton(m: Messages, { count, languageWork = 0, paused, otherPending, publishPending, pausedReason }: { count: number; languageWork?: number; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
-  const nothing = count === 0 && languageWork === 0;
+export function planPublishButton(m: Messages, { count, languageWork = 0, settle = false, paused, otherPending, publishPending, pausedReason }: { count: number; languageWork?: number; settle?: boolean; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
+  const idle = count === 0 && languageWork === 0;
+  const nothing = idle && !settle;
   return { mode: publishPending ? "progress" as const : "preview" as const,
     disabled: !publishPending && (nothing || paused || otherPending),
     badge: !publishPending && count > 0 ? count : null,
     hint: nothing ? m.translations.publish.nothing : paused || otherPending ? pausedReason ?? m.translations.publish.paused
-      : count === 0 && !publishPending ? m.translations.publish.language.ready : "" };
+      : count === 0 && !publishPending ? (idle ? m.translations.publish.language.settle.hint : m.translations.publish.language.ready) : "" };
+}
+
+/**
+ * **버튼의 `settle` 조회는 좁은 창에서만 만든다** (#282 — ARCHITECTURE §5.10.4). 셀·언어 작업이 0이고, 행이 전달된 PR/MR의 결말을 기다리고(`awaitsResolution`),
+ * 조회가 뜻이 있을 때(`applies` — 게이트·연결, 호출부가 정한다)만 `lookup`을 부른다. 그 밖은 `undefined` — 번역 화면은 키 클릭·저장마다 다시 렌더된다.
+ * 열린 PR 없음(`null`)만 참이다. 열림·모름(`undefined`)·거부는 거짓이라 버튼이 꺼진 채다. ⚠️ 표시 전용 메모를 켜는 쪽에 쓰지만 실행이 실물로 다시 묻는다(fail-closed).
+ */
+export function planSettleLookup(
+  input: { count: number; languageWork: number; awaiting: boolean; applies: boolean },
+  lookup: () => Promise<string | null | undefined>,
+): Promise<boolean> | undefined {
+  if (input.count > 0 || input.languageWork > 0 || !input.awaiting || !input.applies) return undefined;
+  return lookup().then(pr => pr === null, () => false);
 }
 
 /**

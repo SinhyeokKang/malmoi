@@ -1565,6 +1565,11 @@ export const es = {
             addNotReached: (code: string): string => `${code} no se añadió: su merge request se cerró sin fusionarse. Sus traducciones se conservan en Malmoi.`,
             removeNotReached: (code: string): string => `${code} no se quitó: su merge request se cerró sin fusionarse. Se queda en esta fuente.`,
           },
+          settle: {
+            hint: "La merge request de un cambio de idioma ya no está abierta. Publica para cerrar su solicitud.",
+            body: (n: number): string =>
+              `La merge request en la que se ${n === 1 ? "envió esta solicitud" : "enviaron estas solicitudes"} ya no está abierta. No se envía nada ni se abre una merge request nueva; al publicar solo se ${n === 1 ? "cierra" : "cierran"}.`,
+          },
           createdDescription: "Los cambios de idioma están en una merge request. Llegan al producto cuando alguien del equipo la fusione.",
           updatedDescription: (n: number): string =>
             `!${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
@@ -1755,6 +1760,13 @@ export const es = {
         updatedDescription: (n: number): string =>
           `#${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, incluidos los cambios de idioma.`,
         ready: "Hay cambios de idioma por publicar.",
+        settle: {
+          hint: "La pull request de un cambio de idioma ya no está abierta. Publica para cerrar su solicitud.",
+          title: (n: number): string => (n === 1 ? "Cerrar la solicitud de idioma" : "Cerrar las solicitudes de idioma"),
+          body: (n: number): string =>
+            `La pull request en la que se ${n === 1 ? "envió esta solicitud" : "enviaron estas solicitudes"} ya no está abierta. No se envía nada ni se abre una pull request nueva; al publicar solo se ${n === 1 ? "cierra" : "cierran"}.`,
+          action: (n: number): string => (n === 1 ? "Cerrar solicitud" : "Cerrar solicitudes"),
+        },
         inSource: (code: string, source: string): string => `${code} (${source})`,
       },
 

@@ -5,8 +5,10 @@ import type { ProjectRepoColumns } from "@/lib/repo-host/target";
  * **Home의 열린 PR 조회를 짧게 기억한다** (ux-drift-unify U15 — T18 실측: 편집 0인 프로젝트는 Home 착지·`?event=` 상세마다
  * GitHub 2회였다 — 리포 신원 + PR 목록). 연결 확인 메모(`probe-memo.ts`)와 같은 TTL·상한·모양이다.
  *
- * ⚠️ **Home 표시에만 쓴다** — 보류를 **말하는** 자리이지 판정하는 자리가 아니다. 게이트(`/api/push`·야간·Publish 미리보기·Sync 확인·
+ * ⚠️ **Home·번역 화면 표시에만 쓴다** — 보류를 **말하는** 자리이고, 닫힌 언어 요청을 정리하는 [Publish]를 **켜는** 자리다(#282 `settle` — 번역 화면은 그 좁은
+ * 창에서만 부른다). 판정하는 자리가 아니다 — 켠 버튼을 누르면 실행이 실물로 다시 묻는다. 게이트(`/api/push`·야간·Publish 미리보기·Sync 확인·
  * 설정·MCP)는 `loadOpenPrUrl`을 그대로 불러 언제나 실물을 본다. 거기서 옛 "없음"을 쓰면 fail-closed가 깨진다.
+ * 같은 인스턴스(`homeOpenPrMemo`)를 두 화면이 나눠 쓴다 — 같은 slug면 같은 답이고, `forgetOpenPr`가 한 번에 지운다.
  *
  * ⚠️ **PR 상태를 바꿀 수 있는 실행이 그 프로젝트의 항목을 지운다**(`forgetOpenPr`) — Publish(`runSync`)가 PR을 열고, 수동 Sync는
  * 머지 뒤 사람이 누르는 다음 버튼이다. 안 지우면 방금 연 PR을 TTL 동안 "보류 없음"으로 말한다. ⚠️ **대가: GitHub에서 직접 머지·닫은

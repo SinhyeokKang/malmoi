@@ -30,6 +30,7 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { PullWarning } from "@/lib/pull/run";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SlowNotice } from "@/components/slow-notice";
+import { useArrived } from "@/components/use-arrived";
 import type { Messages } from "@/lib/i18n";
 
 /** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
@@ -85,8 +86,9 @@ export function usePublish(slug: string, server?: unknown) {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
     // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다. 번역 0이어도 바뀌거나 거둘 언어 파일이 있으면 할 일이 있다(시안 P1 ①④).
+    // 닫을 언어 요청만 있어도 할 일이 있다 — 실행이 만료를 돈다(#282).
     const total = current.current.preview.sendable.total;
-    if (total === 0 && !hasLanguageWork(current.current.preview)) return;
+    if (total === 0 && !hasLanguageWork(current.current.preview) && (current.current.preview.expiringLocales?.length ?? 0) === 0) return;
     running.current = true; generation.current++; setPending(true); setRunTotal(total); setRunLabel(label);
     current.current = { kind: "running" }; setState(current.current);
     // ⚠️ **다시 실행하지 않는다** (malmoi#135) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고, 그때 서버는 PR을 냈다. 두 번 나갈 수 있다.
@@ -132,10 +134,15 @@ function hasLanguageWork(preview: PublishPreview): boolean {
 
 /** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
 /** @param languageWork 언어 변경 작업 수 — 셀 편집이 0이어도 이게 있으면 켜진다(시안 P1 ①④). 배지는 셀 수다. */
-export function PublishButton({ id, count, languageWork = 0, publish, disabled = false, pausedReason }: { id?: string; count: number; languageWork?: number; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
+/**
+ * @param settle 서버가 좁은 창에서만 내린 "전달된 언어 요청의 PR/MR이 더는 열려 있지 않다" 판정(#282 — `planSettleLookup`)과 그 판정이 속한 화면(`useArrived`).
+ *   도착 전·창 밖(`undefined`)은 꺼진 채다 — ⚠️ 창이 닫혀 promise가 사라지면 옛 도착값을 쓰지 않는다(정리 Publish 뒤 재검증).
+ */
+export function PublishButton({ id, count, languageWork = 0, settle, publish, disabled = false, pausedReason }: { id?: string; count: number; languageWork?: number; settle?: { later: Promise<boolean>; identity: string }; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
   const m = useMessages();
   const p = m.translations.publish;
-  const plan = planPublishButton(m, { count, languageWork, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
+  const arrived = useArrived(settle?.later, settle?.identity ?? "");
+  const plan = planPublishButton(m, { count, languageWork, settle: settle !== undefined && arrived === true, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
   const reasonId = useId();
   // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
   // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
@@ -520,8 +527,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
   let alert = false;
   switch (state.kind) {
     case "preview-loading":
-      // 번역 0 · 언어 작업만이면 "0 changes"를 말하지 않는다 — 바닥의 파일 수는 조회 뒤에야 안다(시안 P1 ①).
-      if (count === 0 && languageWork > 0) { title = p.language.title; description = p.language.intro(label); footer = null; }
+      // 번역 0이면 "0 changes"를 말하지 않는다 — 바닥의 파일 수는 조회 뒤에야 안다(시안 P1 ①). 언어 작업 0이면 닫을 요청만 있는 창이다(#282 `settle`).
+      if (count === 0) { title = p.language.title; description = p.language.intro(label); footer = null; }
       else { title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count); }
       body = <>
         <AlertSkeleton />
@@ -587,6 +594,18 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, languageW
       // 언어 파일 변경 — 새 파일·삭제. PR 줄의 0건 갈래가 이 수로 센다(결정 D10). 갱신 파일은 번역 변경이 말한다.
       const languageFiles = added + removed;
       const leftOut = (data.locales?.empty.length ?? 0) + (data.locales?.withheld.length ?? 0);
+      const expiring = data.expiringLocales ?? [];
+      if (sending === 0 && !hasLanguageWork(data) && expiring.length > 0) {
+        /*
+          닫힐 요청만 있다(#282) — 실행은 스냅샷 전 만료를 돌고 `no-edits` + `expired`로 끝난다(ARCHITECTURE §5.10.4). `Nothing can be sent yet` + [Close]로 떨어지면
+          닫을 길이 없었다. 어느 언어가 어떻게 끝났는지는 표 아래 만료 줄이 말한다. 지문이 다르면(그 사이 PR이 다시 열렸다) 실행이 다시 확인을 요구한다.
+        */
+        const confirmLabel = l.settle.action(expiring.length);
+        title = l.settle.title(expiring.length); description = l.settle.body(expiring.length); footer = null;
+        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
+        body = <PreviewTable preview={data} branch={repo.branch} />;
+        break;
+      }
       if (sending === 0 && !hasLanguageWork(data)) {
         // 전부 보류면 PR을 만들거나 바꿀 것이 없다 — 그 버튼을 두지 않고 이유를 말한다. 표의 보류 줄이 사유별로 선다.
         title = p.nothingSendable.title; description = p.nothingSendable.body; footer = p.notStarted;
