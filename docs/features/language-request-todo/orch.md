@@ -59,4 +59,8 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 - main 게이트(K·A·B) `gate: ok`(15972 + 격리 PG 898). **push** `1191e41b..b269cbc8` — 중간 지점(A는 로더 미배선이라 화면 변화는 K뿐). CI run 39120572205 → success.
 - C `worker_done` — 5b27bfee · 1d5363e8, `gate: ok`(15998 + 격리 PG 898). O2 넷 모두 배선, 되돌리면 red. 리뷰 C: 🔴 0 · 🟡 1 · ⚪ 5 — Y1 목록 로더 1 vs N 호출 수 테스트 없음 → C fix1(Dispatch `ctx_d066d4119b94`, 테스트만). **C 통합(로컬)** `b5485ab1..227a2c01`, main 게이트 실행 → green이면 DS 시작(C fix1은 테스트만이라 DS 뒤에 통합).
 - main 게이트(C) `gate: ok`(15998 + 898). DS 시작 — Dispatch `ctx_9925b2e6b622` · `term_7ab6ac96`(main 체크아웃). C fix1 `worker_done` — a4f1837b(`it.each([1, 5])` 목록 로더 호출 수, 프로젝트별 읽기로 바꾸면 5 사례만 red) + ⚪1–3, `gate: ok`. DS 뒤 통합. A 터미널은 DS 결함 대비로 유지.
+- DS `worker_done` — **불일치 0 · BugShot 0**(사본 `handoffs/handoff-DS.md`; 폐기용 프로젝트 넷 보관, PR #28 닫음). 못 잰 것: 거둘 것만 남은 Inbox 항목, 시트 배지 숫자 → QA. 기능과 무관한 셸 기존 값 차이는 결함으로 내지 않았다.
+- C fix1 통합 `f2eb402e` → `gate: ok` → **push** `b269cbc8..f2eb402e`, CI run 39123329641. QA Task(DS 터미널) Dispatch `ctx_598e224e6ecf` — T9 흐름 ①②③ + K4. DOC를 QA와 병행(지휘자 판단 — 문서만, main 체크아웃과 겹치지 않는다): 새 워크트리 `lrt-doc` · Dispatch `ctx_97d3986185f5`.
+- CI run 39123329641 → success.
+- DOC `worker_done` — 791d3fad(DESIGN) · 4f9b376a(ARCHITECTURE) · 0bec20c0(PRODUCT) · 5cecc86f(DIRECTORY) · c26a133a(가이드 en/ko/es — "야간도 보류"라는 옛 오기를 함께 고침), `gate: ok`. **가이드 컷 stale 6**(`project-home` · `home-publish` · `home-paused` · `home-sync-tab` · `inbox-open` · `inbox-page`) → `/guide-shots`를 **머지 전 로컬에서** 돈다(메모리 guide-shots-before-merge). QA가 ego·main 체크아웃을 쓰는 중이라 QA 뒤 같은 터미널(단일 QA 워커)에 맡긴다. DOC 통합도 QA 뒤.
 
