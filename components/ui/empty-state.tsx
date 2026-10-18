@@ -45,8 +45,9 @@ export function EmptyState({
   </div>;
   if (placement !== "page") return <div className={cn("flex shrink-0 flex-col items-center text-center", placement === "inset" ? "gap-2.5 p-8" : "border-border bg-background gap-3.5 rounded-lg border px-6 py-12", className)}>
     {Icon !== undefined && <IconTile size="lg"><Icon aria-hidden /></IconTile>}
-    <div className="flex flex-col items-center gap-1.5">
-      <p className="text-base font-medium">{title}</p>
+    {/* 가운데 정렬만으로는 무공백 질의의 min-content 폭을 줄이지 못한다(#302). */}
+    <div className="flex max-w-full flex-col items-center gap-1.5">
+      <p className="text-base font-medium wrap-anywhere">{title}</p>
       {description !== undefined && <p className="text-muted-foreground max-w-[46ch] text-sm leading-relaxed text-pretty">{description}</p>}
     </div>
     {action}
