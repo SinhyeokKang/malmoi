@@ -50,7 +50,7 @@ describe("Select before the API rename", () => {
     const popup = find<HTMLElement>(document.body, '[role="listbox"]');
     expect(container.contains(popup)).toBe(false);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
-    for (const token of ["z-50", "shadow-md", "overflow-y-auto", "min-w-[var(--radix-select-trigger-width)]"]) expect(popup.classList.contains(token), token).toBe(true);
+    for (const token of ["z-50", "shadow-md", "overflow-y-auto", "max-h-[min(300px,var(--radix-select-content-available-height,300px))]", "min-w-[var(--radix-select-trigger-width)]"]) expect(popup.classList.contains(token), token).toBe(true);
     const [editor, disabled, owner] = [...popup.querySelectorAll<HTMLElement>('[role="option"]')];
     const lines = find(editor!, "span.flex-col");
     expect(lines.children).toHaveLength(2);

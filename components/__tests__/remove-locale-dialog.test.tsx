@@ -37,7 +37,7 @@ const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
 const connection = { adapterName: "json-catalog", pathTemplate: "apps/web/locales/{locale}.json", format: "JSON catalog" };
 const base = row("en", { isBase: true, translated: 248, untranslated: 0, percent: 100 });
 const detail = (languages: Row[], over: Partial<SourceDetail> = {}): SourceDetail => ({
-  ...web, installed: true, repoHost: "github", repository, connection, pullRequestUrl: "https://github.com/o/r/pull/128", importActive: false, localeDelivery: "confirmed",
+  ...web, installed: true, repoHost: "github", repository, connection, pullRequestUrl: "https://github.com/o/r/pull/128", importActive: false, languageChangesSupported: true, localeDelivery: "confirmed",
   languages: [base, ...languages], ...over,
 });
 const standard = detail([row("de", { translated: 201 }), row("fr", { change: add, translated: 9, unsent: true }), row("ko")]);
@@ -211,6 +211,21 @@ describe("확정", () => {
     await act(async () => { await user().click(inDialog(en.sources.locale.removeLanguage)!); });
     expect(card().querySelector("[data-card-notice]")!.textContent).toBe(en.sources.locale.cancelAddDone("fr", 9));
     await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("header button")));
+  });
+
+  it("비지원 Adding 취소 성공은 머리 버튼 대신 Languages h2로 포커스한다", async () => {
+    const unsupported = { languageChangesSupported: false, connection: { adapterName: "ts-dict", pathTemplate: "src/dict.ts", format: "TypeScript dictionary" } };
+    mocks.preview.mockResolvedValue(ready({ kind: "cancel-add", path: "src/dict.ts", translations: 9, pendingCount: 0, delivered: false }));
+    mocks.remove.mockResolvedValue({ ok: true, kind: "cancel-add", discarded: 0 });
+    await open(detail([row("fr", { change: add, translated: 9, unsent: true })], unsupported));
+    await openRemove("fr");
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { orphaned: true, translated: 9 })], unsupported) });
+    await act(async () => { await user().click(inDialog(en.sources.locale.removeLanguage)!); });
+    await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
+    expect(card().querySelector("h2")?.getAttribute("tabindex")).toBe("-1");
+    expect(card().querySelector("[data-language-add]")).toBeNull();
+    expect(action("fr")).toBeNull();
+    expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ slug: "p", surfaceSlug: "web", localeCode: "fr", approval: "fp-1" });
   });
 
   it("추가 취소 성공 · 보존 번역 0개: 0개를 보존한다고 말하지 않는다(#288)", async () => {

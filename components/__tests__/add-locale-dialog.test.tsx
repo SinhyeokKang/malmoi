@@ -37,7 +37,7 @@ const chrome = { adapterName: "chrome-locales", pathTemplate: "extension/_locale
 const data: SourcesData = { installed: true, repoHost: "github", repository, sources: [web, { ...web, id: "s-emails", slug: "emails" }] };
 const base = row("en", { isBase: true, translated: 248, untranslated: 0, percent: 100 });
 const detail = (languages: Row[], over: Partial<SourceDetail> = {}): SourceDetail => ({
-  ...web, installed: true, repoHost: "github", repository, connection: json, pullRequestUrl: null, importActive: false, localeDelivery: "confirmed",
+  ...web, installed: true, repoHost: "github", repository, connection: json, pullRequestUrl: null, importActive: false, languageChangesSupported: true, localeDelivery: "confirmed",
   languages: [base, ...languages], ...over,
 });
 const standard = detail([row("ja"), row("ko"), row("es", { orphaned: true, translated: 164 })]);
