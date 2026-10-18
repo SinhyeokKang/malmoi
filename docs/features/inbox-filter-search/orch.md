@@ -68,3 +68,5 @@
 - A 통합: fb80f919, 8eff5540, f4e30a78. D 시작 기준 f4e30a78 이후 계획 갱신 커밋. A/B/C 잔여 구현 소유권과 사전 보정은 D로 이관한다.
 
 - D 소유권 추가: 새 Inbox Clear filters의 RotateCcw 실제 소비자 두 경로를 visual-system.test.ts의 CLEAR 정확 명부에 등재한다. 검사 완화는 없다. 사용자 push 보류 동안 Q는 로컬 gate 뒤 진행할 수 있다.
+
+- 사용자 push 보류 해제: locale-change-formats 문서가 0dbb94fa로 커밋됐고 작업 트리가 깨끗함을 확인했다. 최종 gate 후 dev push를 진행한다.
