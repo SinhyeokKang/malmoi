@@ -5,7 +5,7 @@
 - 정본: [spec](./spec.md), [design](./design.md), [tasks](./tasks.md). T1a–T6 전체를 dev까지 반영한다. 프로덕션은 별도 `/merge`다.
 - 시작 dev: `97ea8678a1b582fbb0da41848078d7d34852fa62` (origin/dev와 동일, 깨끗한 작업 트리).
 - 선행 language-request-todo: plan의 union 및 row-slots가 호출하는 attention-view의 language_unsent 렌더를 확인했다.
-- Orca Run: 생성 후 기록. 원격 쓰기는 지휘자만 수행한다.
+- Orca Run: `run_ae50d5479fd5`. 원격 쓰기는 지휘자만 수행한다.
 
 ## 결정 기록
 
@@ -21,9 +21,9 @@
 
 | 배치 | tasks 항목 | 소유 파일 | 선행 | 모델/effort | 검증 | 상태 |
 |---|---|---|---|---|---|---|
-| A | T1a, T1b와 모든 하위 검증 | lib/query-list.ts, lib/events/filter.ts, lib/inbox/filter.ts, lib/inbox/__tests__/filter.test.ts, components/__tests__/client-graph.test.ts | 없음 | gpt-6.1-sol/high | 파서·전수 종류·검색·실효 필터·순서·unread 및 gate | 대기 |
-| B | T2와 모든 하위 검증·동일 커밋 문서 | components/ui/filter-menu.tsx, Logs 필터, translations/workspace 필터 및 호출부, visual-system/hand-copies 테스트, CLAUDE.md와 생성 미러, DESIGN §6.4, DIRECTORY | 없음 | gpt-6.1-sol/high | 기존 소비자 회귀·직속 버튼·미러 및 gate | 대기 |
-| C | T3와 모든 하위 검증 | messages/en·ko·es.tsx, i18n function-args 및 동일 값 허용 목록 | 없음 | gpt-6.1-sol/medium | translate 모드 ①, 사전·용어 및 gate | 대기 |
+| A | T1a, T1b와 모든 하위 검증 | lib/query-list.ts, lib/events/filter.ts, lib/inbox/filter.ts, lib/inbox/__tests__/filter.test.ts, components/__tests__/client-graph.test.ts | 없음 | gpt-6.1-sol/high | 파서·전수 종류·검색·실효 필터·순서·unread 및 gate | 실행 중 |
+| B | T2와 모든 하위 검증·동일 커밋 문서 | components/ui/filter-menu.tsx, Logs 필터, translations/workspace 필터 및 호출부, visual-system/hand-copies 테스트, CLAUDE.md와 생성 미러, DESIGN §6.4, DIRECTORY | 없음 | gpt-6.1-sol/high | 기존 소비자 회귀·직속 버튼·미러 및 gate | 실행 중 |
+| C | T3와 모든 하위 검증 | messages/en·ko·es.tsx, i18n function-args 및 동일 값 허용 목록 | 없음 | gpt-6.1-sol/medium | translate 모드 ①, 사전·용어 및 gate | 실행 중 |
 | R1 | A/B/C 독립 리뷰 | 리포트만 | A/B/C 완료 | gpt-6-astra/medium | 인계 주장·diff·POSTMORTEM·시나리오 분류 | 대기 |
 | D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 대기 |
 | R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 대기 |
@@ -43,3 +43,10 @@
 ## 완료 증거
 
 착수 전. 배치별 커밋, 리뷰 라운드, gate, CI, QA, 미완 항목을 진행 중 기록한다.
+
+- A: task_c2e742929cd0 / ctx_fb12de2b66f1 / ifs-a / Sol high, activity working 확인.
+- B: task_c3e51e771d34 / ctx_b54b9b22c5bb / ifs-b / Sol high, activity working 확인.
+- C: task_b11d264c8251 / ctx_0db408f14b5e / ifs-c / Sol medium, activity working 확인.
+- 지휘자 판단 — T1b의 `CLIENT_LIB_FILES` 등재는 실제 클라이언트 소비자가 생기는 D 커밋으로 이관한다. 정확 일치 검사를 완화하지 않는다. A는 독립 잎 그래프 검증을 수행한다. A가 지시 수신·적용을 확인했다.
+- 지휘자 판단 — T2의 parallel-p3-search-filter-consumers 테스트 import/JSX 이름 변경은 호출부 개명에 포함한다. 동작 단언 변경·호환 alias는 없다.
+- 검증 런타임: 시스템 Node26 대신 B가 저장소 밖에 마련한 `/tmp/malmoi-node24/node-v24.15.0-darwin-arm64/bin`을 PATH 선두에 둔다. 의존성·환경 파일 변경 없음.
