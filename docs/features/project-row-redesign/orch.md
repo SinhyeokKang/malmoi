@@ -19,14 +19,16 @@
 | D6 | DS 행을 둔다(기존 화면이지만 이 변경용 시안이 있다) | 지휘자 판단 — orchestrate §0 4.5, 선례 search-ux-unify·srlm D6 |
 | D7 | T11(정본)은 B 워커의 후속 Task. 기능 디렉터리 삭제와 T11 끝의 `rg` 0건 확인은 지휘자가 마지막 리포트 직전에 | 지휘자 판단 — 정본은 구현을 아는 워커가 쓰고, orch.md는 런이 끝날 때까지 필요하다(srlm D7) |
 | D8 | A는 리뷰(RA) 뒤 단독 push한다 | 지휘자 판단 — 더하기만이라 화면 변화가 없고(D5), CI 신호를 B 전에 받는다 |
+| D10 | A의 임시 타입 경계: `ProjectRowPlan.banner = RowBanner \| never_filled`, 새 메타는 `ProjectListRow`와의 교차 반환형으로 싣는다 — `RowBanner`·`ProjectListRow` 승격과 컴포넌트 픽스처 넷 갱신은 B(T6). A의 커밋은 green 경계 둘(T1–T3 / T4)이 `/ship`의 red 테스트 커밋보다 우선한다 | 지휘자 판단 — "T1–T4는 더하기만"과 "경계마다 gate green"을 함께 지키는 유일한 형 (A 질문 msg_95a78a28fd8a) |
+| D11 | 행과 Inbox의 DB 할 일은 둘 다 `projectTodos` 하나에서 나온다. 목록 경로의 `review`는 시각 재료가 없으므로 `at: null`을 허용하는 `ProjectTodo` 갈래를 둔다(기존 `AttentionItem` 타입과 분리). 시각을 꾸미지 않고 새 왕복을 만들지 않는다 — 같은 쿼리의 select에 더할 수 있는 재료(`Project.createdAt` 등)는 더한다. Inbox 경로는 실제 시각을 넘기므로 출력·정렬이 그대로다 | 지휘자 판단 — spec 완료 조건 6("순수 함수 하나가 내고 행 띠와 Inbox가 둘 다 쓴다")을 문자 그대로 지키는 쪽(A 질문 msg_e1c1e319e94e) |
 | D9 | G(T12)는 이월 stale 2컷(`inbox-open`·`inbox-page`)과 그 시점 `pnpm guide:check`의 stale 전부를 찍는다 | 지휘자 판단 — `/merge` 전 stale 0 원칙(인수 브리프 · 메모리 guide-shots-before-merge) |
 
 ## 배치
 
 | 배치 | tasks | 워커 · 모델 | 소유 파일 | 선행 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|
-| A | T1–T4 | Codex `gpt-6-astra` high · 워크트리 | `lib/projects/list.ts`(추가만) · `lib/inbox/plan.ts` · (필요하면) `lib/home/attention.ts`·`lib/inbox/load.ts` · `lib/keys/query.ts`(추가만) · 그 테스트(`lib/projects/__tests__/list.test.ts` · `lib/inbox/__tests__/*` · `lib/keys/__tests__/list-rows.test.ts` · `source-remove-consumers.integration.ts` · `list-aggregates.integration.ts`) | — | `pnpm gate --base dev`(격리 postgres 포함) | 대기 |
-| RA | A 리뷰 | Claude Opus high · 리포트 전용 | — | A | 🔴 0 | 대기 |
+| A | T1–T4 | Codex `gpt-6-astra` high · 워크트리 `prr-a` | `lib/projects/list.ts`(추가만) · `lib/inbox/plan.ts` · (필요하면) `lib/home/attention.ts`·`lib/inbox/load.ts` · `lib/keys/query.ts`(추가만) · 그 테스트(`lib/projects/__tests__/list.test.ts` · `lib/inbox/__tests__/*` · `lib/keys/__tests__/list-rows.test.ts` · `source-remove-consumers.integration.ts` · `list-aggregates.integration.ts`) | — | `pnpm gate --base dev`(격리 postgres 포함) | 완료 `598934f3`·`02913db2` |
+| RA | A 리뷰 | Claude Opus high · 리포트 전용 | — | A | 🔴 0 | APPROVE 🔴0·🟡1·🟢5 → B로 이월 |
 | B | T5–T8 | Claude Opus high · 워크트리 | `messages/{en,ko,es}.tsx` · `components/projects/project-list.tsx` · `app/(edit)/projects/(list)/{page,loading}.tsx` · `components/inbox/*` · `lib/home/attention-view.ts` · `lib/inbox/{plan,load}.ts` · 옛 함수 삭제(`lib/projects/list.ts` · `lib/keys/query.ts` `meters`) · 주석(`lib/shell/switcher.ts` · `components/locale-meter.tsx`) · tasks T5–T8이 이름 댄 테스트 전부 | A가 dev에 | `pnpm gate --base dev` | 대기 |
 | RB | B 리뷰 | Claude Opus high · 리포트 전용 | — | B | 🔴 0 | 대기 |
 | DS | T9 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 프레임 실측 일치 · 지적 0 | 대기 |
@@ -41,3 +43,6 @@
 ## 진행 기록
 
 (배치별 push 해시 · 라운드 · 미완을 여기에 쌓는다)
+
+- A: `598934f3`(T1–T3)·`02913db2`(T4), 두 경계 모두 `gate: ok`(단위 15,815 · 격리 PG 894). 조회 횟수 6회 유지. 질문 셋 → D10·D11 + 픽스처·client-graph 허용 목록 승인. `projectTodos`는 `lib/inbox/project-todos.ts`. 런타임 (b) 없음. 인계 사본 `.scratch/prr-orchestrate/handoffs/handoff-A.md`.
+- RA: APPROVE(`.scratch/prr-orchestrate/review-A.md`). 🟡1(`query.ts` 검토 수가 `foldCells` 손 사본)·🟢1–3(표 테스트 상태 도달 단언 · `lastSync`의 `"unrecorded"` 갈래 · 행 todos 전량 직렬화)은 B의 T6에 싣는다 — 지휘자 판단: B가 같은 파일에서 `rowLocaleProgress`·`meters`를 지우는 자리라 한 번에 정리된다. A 워커는 해제.
