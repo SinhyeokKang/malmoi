@@ -3,7 +3,7 @@
 > 착수 조건: language-request-todo의 T4(`InboxItem` union에 `language_unsent` — `lib/inbox/plan.ts`)와 T7(`components/inbox/row-slots.tsx` 렌더)이 dev에 들어간 뒤. T1 테스트가 `language_unsent`를 참조하므로 T4 전에는 컴파일되지 않는다. 순서: 순수 판정 → 프리미티브 이관 → 사전 → 화면 → 확인 → 정본. 커밋 경계는 `──`. 커밋마다 `pnpm gate` green(출력을 파이프로 거르지 않는다). 병렬 게이트에서 search-performance 300ms 판정만 red면 단독으로 다시 돌려 확인한 뒤에만 push한다.
 
 ## 1. 순수 판정
-- [ ] **T1a — `lib/query-list.ts`** — `lib/events/filter.ts`의 `list()`·`text()`·`encodeList`·`MAX_TEXT`·`MAX_ITEMS`를 글자 그대로 옮기고 events가 import한다(design §1).
+- [x] **T1a — `lib/query-list.ts`** — `lib/events/filter.ts`의 `list()`·`text()`·`encodeList`·`MAX_TEXT`·`MAX_ITEMS`를 글자 그대로 옮기고 events가 import한다(design §1).
   - 검증(자동): 기존 `lib/events/__tests__/*filter*` 수정 없이 green · `client-graph.test.ts` — `CLIENT_LIB_FILES`에 `lib/query-list.ts` 한 줄 등재(정확 일치 검사, 완화 금지).
 - [ ] **T1b — `lib/inbox/filter.ts`** — `INBOX_KIND_FILTERS` · `inboxKindOf` · `parseInboxFilter` · `inboxQuery` · `inboxFilterOptions` · `effectiveInboxFilter` · `hasNarrowing` · `filterInbox`(design §1–§4). `plan.ts`는 `import type`만.
   - 검증(자동): `lib/inbox/__tests__/filter.test.ts` — 최소 행:
@@ -17,14 +17,14 @@
 ──
 
 ## 2. 프리미티브 이관
-- [ ] **T2 — `components/ui/filter-menu.tsx`** — Logs 지역 `Filter`와 번역 화면 `FilterMenu` 껍데기를 하나로(design §7). 번역 화면은 `OptionsFilterMenu` 래퍼로 바꾸고 호출부 이름을 고친다. 트리거를 감싸는 요소를 두지 않는다.
+- [x] **T2 — `components/ui/filter-menu.tsx`** — Logs 지역 `Filter`와 번역 화면 `FilterMenu` 껍데기를 하나로(design §7). 번역 화면은 `OptionsFilterMenu` 래퍼로 바꾸고 호출부 이름을 고친다. 트리거를 감싸는 요소를 두지 않는다.
   - 검증(자동) — 갱신이 필요한 테스트: `components/__tests__/visual-system.test.ts:300-308`(소스 문자열 검사 대상 경로를 새 프리미티브로) · `components/__tests__/hand-copies.test.ts:154`(FieldTrigger 규칙 `paths`). 그 밖은 **수정 없이 green**: Logs `logs-trigger` · `logs-custom-range` · `logs-removed-source` · `logs-stale-event` · `logs-refresh-pending` · `logs-events` · `loading-parity`(행 직속 버튼 5개) · `responsive-activity` · 번역 필터 테스트 · `parallel-p3-search-filter-consumers.test.tsx`.
   - 같은 커밋: 프리미티브 모듈 54 → 55 — `CLAUDE.md` 스택 표(PostToolUse 훅이 `AGENTS.md` 미러 재생성) · `docs/DESIGN.md` §6.4 모듈 서수 · `docs/DIRECTORY.md`. 숫자를 세는 테스트는 없어 손으로 맞춘다.
 
 ──
 
 ## 3. 사전
-- [ ] **T3 — `inbox.filters.*` · `inbox.search.*` · `inbox.noMatch.*`** — 종류 라벨은 design §2 표의 en 낱말(출처 키 재사용 여부는 여기서 정한다) · 새 키 `All items` · `Any project` · `Clear projects` · noMatch 제목 둘(`No items match these filters` · `No items match "{q}"`) · 검색 placeholder. 세 사전 같은 커밋(`/translate` 모드 ①).
+- [x] **T3 — `inbox.filters.*` · `inbox.search.*` · `inbox.noMatch.*`** — 종류 라벨은 design §2 표의 en 낱말(출처 키 재사용 여부는 여기서 정한다) · 새 키 `All items` · `Any project` · `Clear projects` · noMatch 제목 둘(`No items match these filters` · `No items match "{q}"`) · 검색 placeholder. 세 사전 같은 커밋(`/translate` 모드 ①).
   - 검증(자동): `dictionary-consistency` · `terminology` green · 함수 값 키(이름 목록 트리거·`noMatch(q)`)는 `lib/i18n/__tests__/helpers/function-args.ts` `FUNCTION_ARGS` 행 · ko·es가 en과 같은 값이면 `SAME_AS_EN` 등재. 미사용 키 검사는 없어 단독 커밋이 red를 내지 않는다.
 
 ──

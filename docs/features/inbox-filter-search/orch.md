@@ -21,11 +21,11 @@
 
 | 배치 | tasks 항목 | 소유 파일 | 선행 | 모델/effort | 검증 | 상태 |
 |---|---|---|---|---|---|---|
-| A | T1a, T1b와 모든 하위 검증 | lib/query-list.ts, lib/events/filter.ts, lib/inbox/filter.ts, lib/inbox/__tests__/filter.test.ts, components/__tests__/client-graph.test.ts | 없음 | gpt-6.1-sol/high | 파서·전수 종류·검색·실효 필터·순서·unread 및 gate | 실행 중 |
-| B | T2와 모든 하위 검증·동일 커밋 문서 | components/ui/filter-menu.tsx, Logs 필터, translations/workspace 필터 및 호출부, visual-system/hand-copies 테스트, CLAUDE.md와 생성 미러, DESIGN §6.4, DIRECTORY | 없음 | gpt-6.1-sol/high | 기존 소비자 회귀·직속 버튼·미러 및 gate | 실행 중 |
-| C | T3와 모든 하위 검증 | messages/en·ko·es.tsx, i18n function-args 및 동일 값 허용 목록 | 없음 | gpt-6.1-sol/medium | translate 모드 ①, 사전·용어 및 gate | 실행 중 |
-| R1 | A/B/C 독립 리뷰 | 리포트만 | A/B/C 완료 | gpt-6-astra/medium | 인계 주장·diff·POSTMORTEM·시나리오 분류 | 대기 |
-| D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 대기 |
+| A | T1a, T1b와 모든 하위 검증 | lib/query-list.ts, lib/events/filter.ts, lib/inbox/filter.ts, lib/inbox/__tests__/filter.test.ts, components/__tests__/client-graph.test.ts | 없음 | gpt-6.1-sol/high | 파서·전수 종류·검색·실효 필터·순서·unread 및 gate | 완료·dev 통합 (명부 등재 D) |
+| B | T2와 모든 하위 검증·동일 커밋 문서 | components/ui/filter-menu.tsx, Logs 필터, translations/workspace 필터 및 호출부, visual-system/hand-copies 테스트, CLAUDE.md와 생성 미러, DESIGN §6.4, DIRECTORY | 없음 | gpt-6.1-sol/high | 기존 소비자 회귀·직속 버튼·미러 및 gate | 완료·dev 통합 |
+| C | T3와 모든 하위 검증 | messages/en·ko·es.tsx, i18n function-args 및 동일 값 허용 목록 | 없음 | gpt-6.1-sol/medium | translate 모드 ①, 사전·용어 및 gate | 완료·dev 통합 |
+| R1 | A/B/C 독립 리뷰 | 리포트만 | A/B/C 완료 | gpt-6-astra/medium | 인계 주장·diff·POSTMORTEM·시나리오 분류 | A/B/C 모두 통과 |
+| D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 착수 |
 | R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 대기 |
 | E | T6 정본 및 가이드 본문 | PRODUCT, DESIGN, DIRECTORY, guide/en·ko·es/translate/edit.md | D 통합 | gpt-6.1-sol/medium | guide 규칙·문서별 커밋·신선도 | 대기 |
 | Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·gate·push | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 대기 |
@@ -64,3 +64,5 @@
 - A: `718e2754`, `e4008157` 구현 커밋 확정. 단독 재시도 901파일·16,061 tests passed / 2 skipped, 격리 PG 단계 진행 중. 확정 diff로 R1-A를 병행하며 gate 완료 전 통합하지 않는다.
 - R1-A `ctx_0c77b2240ec1`: 🔴0/🟡0, 독립 163 tests passed 및 추출 본문 동일성 확인. 참고 1건: query-list.ts 끝 빈 줄(diff --check exit2)은 D에서 제거한다. 최종 gate는 별도 대기.
 - A 최종 완료: `718e2754`, `e4008157`, `5c3553ac`. 단위/DOM 16,061 passed, 격리 PostgreSQL 898 passed, build·미러 gate ok. EOF는 A가 마지막 정리 커밋으로 제거했고 대상 163건 재검증. 지휘자가 마지막 whitespace-only diff 확인, D의 EOF 정리 몫은 해소됐다.
+
+- A 통합: fb80f919, 8eff5540, f4e30a78. D 시작 기준 f4e30a78 이후 계획 갱신 커밋. A/B/C 잔여 구현 소유권과 사전 보정은 D로 이관한다.
