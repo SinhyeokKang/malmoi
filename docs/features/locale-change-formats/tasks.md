@@ -20,14 +20,14 @@
 
 T4~T6은 한 커밋이다 — T4만 들어가면 Publish가 새 파일을 조용히 빠뜨리면서 "create 전달"로 기록한다.
 
-- [ ] T4. `SUPPORTED_ADAPTERS`에 두 포맷 + 주석 갱신 (design §2.1). 비지원 예시 픽스처를 `ts-dict`로 교체(`add-plan.test.ts`·`change-plan.test.ts`·`components/__tests__/source-languages.test.tsx`).
+- [x] T4. `SUPPORTED_ADAPTERS`에 두 포맷 + 주석 갱신 (design §2.1). 비지원 예시 픽스처를 `ts-dict`로 교체(`add-plan.test.ts`·`change-plan.test.ts`·`components/__tests__/source-languages.test.tsx`).
   `mcp` 네임스페이스 `unsupported-format` 거부 문구와 `add_locale` 도구 설명(en만)을 네 포맷으로.
   검증: `pnpm exec vitest run lib/locales lib/mcp components/__tests__/source-languages.test.tsx` green(`write-tools.test.ts` 거부 갈래·ASCII 요구 포함).
-- [ ] T5. `renderLocaleFiles` 갈래 — ADD create·revive 언어 + surgical + 원본 없음 → `create`(early return 앞, `tagged`) (design §2.5).
+- [x] T5. `renderLocaleFiles` 갈래 — ADD create·revive 언어 + surgical + 원본 없음 → `create`(early return 앞, `tagged`) (design §2.5).
   `lib/publish/read.ts` 미리보기 갈래 — create·revive 언어를 `withoutFile`에서 뺀다 (design §2.5.1). **미리보기 = 실행 행을 먼저 쓴다.**
   검증: `pnpm exec vitest run lib/pull lib/publish` green — 생성(create·revive) · 비-ADD 원본 없음은 `missingOriginal` 유지 · base 없음·create 실패는 `undeliverable` `blocking` ·
   yaml·code-dict ADD 미리보기 == 실행(`read.test.ts`) · 값 0개 ADD 파일 없음(A6).
-- [ ] T6. 만료 관측 — `observeLocaleFiles`(`lib/pull/locales.ts`)가 yaml·code-dict 템플릿(`{locale}.yml` · `{locale}/common.yml` · `src/locales/{locale}.ts`)에서
+- [x] T6. 만료 관측 — `observeLocaleFiles`(`lib/pull/locales.ts`)가 yaml·code-dict 템플릿(`{locale}.yml` · `{locale}/common.yml` · `src/locales/{locale}.ts`)에서
   `observed`를 낸다는 **직접 테스트를 새로 만든다**(지금 직접 테스트가 없다 — 코드 변경은 없을 것으로 예상).
   검증: `pnpm exec vitest run lib/pull/__tests__/locale-publish.test.ts lib/import/__tests__/observe.test.ts` + 새 테스트 green. 커밋 전 `pnpm gate` green(`lib/locales`·`lib/pull`이 `test:projects:postgres`를 트리거한다).
 

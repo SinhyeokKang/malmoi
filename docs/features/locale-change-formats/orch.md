@@ -21,7 +21,7 @@
 | 배치 | 항목 | 소유 파일 | 선행 | 모델/effort | 출시 차단·게이트 | 상태 |
 |---|---|---|---|---|---|---|
 | A | T1,T2,T3; T11 계약 선기록 | lib/adapters/**, lib/survey/one.ts·__tests__/classify.test.ts, messages/{en,ko,es}.tsx(writer 경고만), docs/ARCHITECTURE.md | 인테이크 | Codex gpt-6-astra/high — 생성 결정성·루트·AST 계약 | 차단. red→green, 계약 매트릭스, pnpm gate --base dev, 독립 리뷰 | dev 통합·리뷰 통과 |
-| B | T4,T5,T6 | lib/locales/**, lib/pull/**, lib/publish/**, lib/import 테스트, lib/mcp 테스트, source-languages.test.tsx 비지원 fixture, messages/en.tsx MCP | A 통합 | Codex gpt-6-astra/medium — 미리보기·실행·관측 정합성 | 차단. T4–T6 원자 커밋, preview==execution, 격리 postgres 포함 gate, 독립 리뷰 | 대기 |
+| B | T4,T5,T6 | lib/locales/**, lib/pull/**, lib/publish/**, lib/import 테스트, lib/mcp 테스트, source-languages.test.tsx 비지원 fixture, messages/en.tsx MCP | A 통합 | Codex gpt-6-astra/medium — 미리보기·실행·관측 정합성 | 차단. T4–T6 원자 커밋, preview==execution, 격리 postgres 포함 gate, 독립 리뷰 | dev 통합·리뷰 통과 |
 | C | T7,T8,T9 | components/sources/**, components/ui/select.tsx, lib/sources/query.ts, 관련 DOM/순수 테스트·SourceDetail fixture, messages/{en,ko,es}.tsx languagesHelp 삭제 | B 통합 | Codex gpt-6.1-sol/high — 기존 UI·판정 변경 | 차단. 동작·포커스·300px 테스트, gate, 독립 리뷰 | 대기 |
 | D | T10,T11 최종 대조,T12,T12-1,T13 본문 | PRODUCT, ARCHITECTURE, DESIGN, CLAUDE/AGENTS 미러, guide en/ko/es, AUTHORING, README, DIRECTORY 영향 | C 통합 | Codex gpt-6.1-sol/high — 사실·번역 대조 | 차단. 문서별 커밋, guide 스킬, test·미러·문서 신선도 | 대기 |
 | R | 각 A/B/C/D 독립 리뷰 | 리포트만; 해당 diff·인계·POSTMORTEM | 각 배치 완료 | Codex gpt-6-astra: A 리뷰 high, 나머지 medium — 독립 불변식 검증 | 차단. 🔴 0, 🟡 수정/판정 기록; 시나리오/런타임 분류 확인 | 대기 |
@@ -58,3 +58,6 @@
 - A 구현 완료: `195bd0d6..a987963e`, 6커밋. `pnpm gate --base dev` 성공(16,118 passed/2 skipped, build·미러), 어댑터+survey 897 passed. 의도된 red 21건과 앞 구분자 red 2건 확인. 기존 write 불변, 생성 테스트를 `create.test.ts`에 모은 편차는 R-A에서 판정. 구현 워커 release 후 독립 R-A 시작.
 
 - R-A `ctx_276bc664a02c`: 🔴0·🟡0, 직접 관련 테스트 400+경계 probe 3 통과. A 승인 편차 전부 타당. A dev 통합 `905ef2ad..f87e0d55`; 리뷰 워커 release. T2/T3 검증 명령에 공통 create.test.ts 추가.
+
+- A 통합 dev gate 성공(`gate-A.log`). 임시 A 워크트리 clean·git cherry +0 확인 후 제거.
+- B `ctx_14f07ee7b15d`: 67b73010·77ee8bbb 구현 완료, 전체 gate 단위 16,126/2 skipped·PostgreSQL 906·build·미러 성공. R-B `ctx_b86d83286831` Astra medium: 🔴0·🟡0, 독립 재실행 1,728+PG51 통과. 구현·리뷰 워커 release.
