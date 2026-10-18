@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
-type Ready = { kind: "request-removal" | "cancel-add"; path: string; translations: number; pendingCount: number; delivered: boolean | null; approval: string };
+type Ready = { kind: "request-removal" | "cancel-add"; path: string | null; translations: number; pendingCount: number; delivered: boolean | null; approval: string };
 type Preview = { kind: "loading" } | ({ kind: "ready" } & { data: Ready }) | { kind: "failed" } | { kind: "busy-sync" };
 /** 결과 단계 — 이 Dialog 안에서 기다려도 풀리지 않는 거부다. 설명·확정을 걷고 Alert 한 장 + [Close]다(시안 D4 ①③④). */
 type Outcome = { kind: "refused"; text: string } | { kind: "unsettled" };
@@ -140,7 +140,7 @@ export function RemoveLocaleDialog({ open, onOpenChange, slug, source, code, add
               }}>{m.sources.retry}</Button>}>{preview.kind === "failed" ? t.previewFailed(code) : t.syncRunning(code)}</Alert>
               : ready !== null && <>
                 <Facts m={m} code={code} translations={ready.translations}
-                  path={ready.kind === "cancel-add" && ready.delivered === false ? t.notCreatedYet(ready.path) : ready.path}
+                  path={ready.path !== null && ready.kind === "cancel-add" && ready.delivered === false ? t.notCreatedYet(ready.path) : ready.path}
                   pullRequest={ready.delivered === null ? t.couldntConfirm : !ready.delivered ? t.notSentYet
                     : pullRequest === null ? t.inOpenPr : ready.kind === "cancel-add" ? t.prAdds(pullRequest) : t.prRemoves(pullRequest)} />
                 {/* 손실이 큰 것부터 — 버려지는 미전달 편집, 그다음 사람이 리포에서 할 일. 앱 코드 경고는 아직 리포에 없는 언어(추가 취소)엔 없다. */}
@@ -159,11 +159,11 @@ export function RemoveLocaleDialog({ open, onOpenChange, slug, source, code, add
 }
 
 /** 대상은 사실 판 하나다 — 문장 속에 섞으면 경로가 줄 가운데서 꺾여 읽기 어렵다(D1). 라벨 열 96은 Facts 형이다. */
-function Facts({ m, code, path, translations, pullRequest }: { m: Messages; code: string; path: string; translations: number; pullRequest: string }) {
+function Facts({ m, code, path, translations, pullRequest }: { m: Messages; code: string; path: string | null; translations: number; pullRequest: string }) {
   const t = m.sources.locale;
   return <dl data-removal-facts className="border-border bg-muted/40 space-y-2 rounded-lg border p-3">
     <Fact width={96} label={t.factLanguage}>{code}</Fact>
-    <Fact width={96} label={t.factFile}><span className="wrap-anywhere">{path.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>)}</span></Fact>
+    {path !== null && <Fact width={96} label={t.factFile}><span className="wrap-anywhere">{path.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>)}</span></Fact>}
     <Fact width={96} label={t.factTranslations}>{t.keptInMalmoi(translations)}</Fact>
     <Fact width={96} label={t.factPullRequest}>{pullRequest}</Fact>
   </dl>;

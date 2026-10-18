@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type React from "react";
 import { RepoHostScope } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
-import { planLanguageRow } from "@/components/sources/language-row";
+import { inactiveLanguageRecovery, languageCardHelp, planLanguageRow } from "@/components/sources/language-row";
 import { SourcesScreen } from "@/components/sources/sources-screen";
 import { withRepoHost } from "@/lib/i18n/host";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
@@ -41,7 +41,7 @@ const connection = { adapterName: "json-catalog", pathTemplate: "apps/web/locale
 const data = (host = "github"): SourcesData => ({ installed: true, repoHost: host, repository, sources: [web, { ...web, id: "s-emails", slug: "emails" }] });
 const base = row("en", { isBase: true, translated: 248, untranslated: 0, percent: 100 });
 const detail = (languages: Row[], over: Partial<SourceDetail> = {}): SourceDetail => ({
-  ...web, installed: true, repoHost: "github", repository, connection, pullRequestUrl: null, importActive: false, localeDelivery: "confirmed",
+  ...web, installed: true, repoHost: "github", repository, connection, pullRequestUrl: null, importActive: false, languageChangesSupported: true, localeDelivery: "confirmed",
   languages: [base, ...languages], ...over,
 });
 const editorDetail = (languages: Row[], over: Partial<SourceDetail> = {}): SourceDetail => {
@@ -108,19 +108,83 @@ describe("카드 머리와 설명 — OWNER·EDITOR·비지원 포맷 세 갈래
     expect(card().textContent).toContain(`es ${en.sources.orphanStrip("es").slice(3)} ${en.sources.orphanStripRest(164)} ${en.sources.orphanStripEditor}`);
   });
 
-  it("비지원 포맷 OWNER: 새 추가·제거는 꺼지고 남은 Adding·Removing의 취소만 켜진다(L4)", async () => {
-    mocks.load.mockResolvedValue({ ok: true, detail: detail([
-      row("ko"), row("fr", { change: add, unsent: true, translated: 6 }), row("de", { change: removal, unsent: true }), row("es", { orphaned: true, translated: 3 }),
-    ], { connection: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", format: "YAML" } }) });
-    await open();
-    expect(card().querySelector("header")!.textContent).toContain(en.sources.languagesHelp);
-    for (const control of [headerAdd(), action("ko"), action("es")]) {
-      expect(control.getAttribute("aria-disabled")).toBe("true");
-      expect(describedText(control)).toBe(en.sources.languagesHelp);
+  it.each(["OWNER", "EDITOR"] as const)("비지원 포맷 %s: 새 동작·설명은 없고 취소는 권한을 따른다", async role => {
+    const rows = [row("ko"), row("fr", { change: add, unsent: true, translated: 6 }), row("de", { change: removal, unsent: true }), row("es", { orphaned: true, translated: 3 })];
+    const value = role === "OWNER" ? detail(rows, { languageChangesSupported: false, connection: { adapterName: "ts-dict", pathTemplate: "src/dict.ts", format: "TypeScript dictionary" } })
+      : editorDetail(rows, { languageChangesSupported: false });
+    mocks.load.mockResolvedValue({ ok: true, detail: value });
+    await open(role);
+    expect(card().querySelector("[data-language-add]")).toBeNull();
+    expect(card().querySelector("header > div")).toBeNull();
+    for (const code of ["en", "ko", "es"]) expect(rowOf(code).querySelector("[data-language-action]")).toBeNull();
+    for (const code of ["fr", "de"]) expect(action(code).getAttribute("aria-disabled")).toBe(role === "OWNER" ? null : "true");
+    if (role === "OWNER") expect(card().textContent).toContain(en.sources.orphanStripUnsupported);
+    else {
+      for (const code of ["fr", "de"]) expect(describedText(action(code))).toBe(en.sources.languagesHelpEditor);
+      expect(card().textContent).not.toContain(en.sources.orphanStripUnsupported);
+      expect(card().textContent).not.toContain(en.sources.orphanStripEditor);
     }
-    expect(action("fr").getAttribute("aria-disabled")).toBeNull();
-    expect(action("de").getAttribute("aria-disabled")).toBeNull();
-    expect(card().textContent).toContain(en.sources.orphanStripUnsupported);
+    // 동작 없는 행에도 Open은 같은 동작 칸의 끝에 선다. 실제 좌표는 Q가 잰다.
+    for (const code of ["en", "ko", "fr"]) {
+      const open = rowOf(code).querySelector("[data-language-open]")!;
+      expect(open).not.toBeNull();
+      expect(open.parentElement?.lastElementChild).toBe(open);
+    }
+  });
+
+  it("EDITOR 지원 포맷의 머리·행은 클릭·Enter로 창을 열거나 Action을 부르지 않는다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: editorDetail([row("ko"), row("de", { change: removal }), row("es", { orphaned: true })]) });
+    await open("EDITOR");
+    for (const control of [headerAdd(), action("en"), action("ko"), action("de"), action("es")]) {
+      await act(async () => { await user().click(control); });
+      control.focus();
+      await act(async () => { await user().keyboard("{Enter}"); });
+      expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    }
+    for (const mock of [mocks.previewAdd, mocks.add, mocks.previewRemove, mocks.remove, mocks.cancel]) expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("OWNER의 base·미확정 취소 행은 클릭·Enter로 열리지 않고 사유를 유지한다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("fr", { change: add, translated: 6 }), row("de", { change: removal })], { localeDelivery: "unconfirmed" }) });
+    await open();
+    expect(describedText(action("en"))).toBe(en.sources.locale.baseReason);
+    for (const code of ["fr", "de"]) expect(describedText(action(code))).toBe(en.sources.locale.notConfirmedHelp);
+    for (const code of ["en", "fr", "de"]) {
+      await act(async () => { await user().click(action(code)); });
+      action(code).focus();
+      await act(async () => { await user().keyboard("{Enter}"); });
+      expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    }
+    for (const mock of [mocks.previewRemove, mocks.remove, mocks.cancel]) expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("비지원 Removing 취소 뒤 사라진 동작 대신 Languages h2로 포커스한다", async () => {
+    mocks.load.mockResolvedValueOnce({ ok: true, detail: detail([row("de", { change: removal, unsent: true })], { languageChangesSupported: false }) })
+      .mockResolvedValue({ ok: true, detail: detail([row("de")], { languageChangesSupported: false }) });
+    mocks.cancel.mockResolvedValue({ ok: true, delivered: false });
+    await open();
+    await act(async () => { await user().click(action("de")); });
+    await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
+    expect(mocks.cancel).toHaveBeenCalledExactlyOnceWith({ slug: "p", surfaceSlug: "web", localeCode: "de" });
+    expect(card().querySelector("h2")?.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("비지원 Removing 취소 뒤 재조회가 늦어도 새 상세의 h2로 포커스한다", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.load.mockResolvedValueOnce({ ok: true, detail: detail([row("de", { change: removal, unsent: true })], { languageChangesSupported: false }) })
+      .mockReturnValueOnce(new Promise(r => { resolve = r; }));
+    mocks.cancel.mockResolvedValue({ ok: true, delivered: false });
+    await open();
+    await act(async () => { await user().click(action("de")); });
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    await act(async () => { resolve({ ok: true, detail: detail([row("de")], { languageChangesSupported: false }) }); });
+    await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
+  });
+
+  it("비지원 행 딥링크는 동작이 없으면 Languages h2로 포커스한다", async () => {
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de")], { languageChangesSupported: false }) });
+    await render(<SourcesScreen slug="p" role="OWNER" data={data()} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} deepLink={{ source: "web", language: "de" }} />);
+    await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
   });
 });
 
@@ -138,7 +202,7 @@ describe("Inactive 띠 끝 문장 — 보존 번역 수 0·1·2(#287)", () => {
       expect(strip()).toBe(`es is inactive. ${c.rest} ${c.owner}`);
     });
     it(`비지원 OWNER · 번역 ${c.n}개`, async () => {
-      mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: c.n })], { connection: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", format: "YAML" } }) });
+      mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: c.n })], { languageChangesSupported: false, connection: { adapterName: "ts-dict", pathTemplate: "src/dict.ts", format: "TypeScript dictionary" } }) });
       await open();
       expect(strip()).toBe(`es is inactive. ${c.rest} ${en.sources.orphanStripUnsupported}`);
     });
@@ -410,13 +474,31 @@ describe("planLanguageRow", () => {
     { name: "L4 EDITOR 활성", r: row("ko"), input: { ...owner, canManage: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: null, kind: "remove", block: "role" },
     { name: "L4 EDITOR base — base 사유가 앞선다", r: row("en", { isBase: true }), input: { ...owner, canManage: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: "baseRow", kind: "remove", block: "base" },
     { name: "L4 EDITOR Inactive", r: row("es", { orphaned: true }), input: { ...owner, canManage: false }, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: "add", block: "role" },
-    { name: "L4 비지원 활성", r: row("ko"), input: { ...owner, supported: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: null, kind: "remove", block: "format" },
+    { name: "L4 비지원 활성", r: row("ko"), input: { ...owner, supported: false }, badge: null, unsent: false, link: false, notConfirmed: false, note: null, kind: null, block: null },
     { name: "L4 비지원 Adding 취소는 켜짐", r: row("fr", { change: add, translated: 6, unsent: true }), input: { ...owner, supported: false }, badge: "adding", unsent: true, link: false, notConfirmed: false, note: null, kind: "remove", block: null },
     { name: "L4 비지원 Removing 취소는 켜짐", r: row("de", { change: removal, unsent: true }), input: { ...owner, supported: false }, badge: "removing", unsent: true, link: false, notConfirmed: false, note: "readOnly", kind: "cancel", block: null },
-    { name: "L4 비지원 Inactive", r: row("es", { orphaned: true }), input: { ...owner, supported: false }, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: "add", block: "format" },
+    { name: "L4 비지원 Inactive", r: row("es", { orphaned: true }), input: { ...owner, supported: false }, badge: "removedFromRepository", unsent: false, link: false, notConfirmed: false, note: null, kind: null, block: null },
   ])("$name", ({ r, input, badge, unsent, link, notConfirmed, note, kind, block }) => {
-    expect(planLanguageRow(r, input)).toEqual({ badge, unsent, link, notConfirmed, note, action: { kind, block } });
+    expect(planLanguageRow(r, input)).toEqual({ badge, unsent, link, notConfirmed, note, action: kind === null ? null : { kind, block } });
   });
+});
+
+describe("포맷이 권한보다 앞서는 카드 설명·Inactive 복구 표", () => {
+  it.each([
+    { supported: true, canManage: true, help: "languagesHelpOwner", recovery: "orphanStripOwner" },
+    { supported: true, canManage: false, help: "languagesHelpEditor", recovery: "orphanStripEditor" },
+    { supported: false, canManage: true, help: null, recovery: "orphanStripUnsupported" },
+    { supported: false, canManage: false, help: null, recovery: null },
+  ])("$supported / OWNER $canManage", ({ supported, canManage, help, recovery }) => {
+    expect(languageCardHelp({ supported, canManage })).toBe(help);
+    expect(inactiveLanguageRecovery({ supported, canManage })).toBe(recovery);
+  });
+
+  for (const canManage of [true, false]) {
+    it.each([row("en", { isBase: true }), row("ko"), row("es", { orphaned: true })])(`비지원 OWNER ${canManage} · $code 새 동작 없음`, r => {
+      expect(planLanguageRow(r, { supported: false, canManage, unconfirmed: false }).action).toBeNull();
+    });
+  }
 });
 
 describe("DS fix3", () => {

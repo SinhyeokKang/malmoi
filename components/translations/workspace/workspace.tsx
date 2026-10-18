@@ -43,7 +43,7 @@ import { countTree, type NodeCount } from "@/lib/translations/tree-narrow";
 import { summarizeKey, workLocaleCodes } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
-import { FilterMenu } from "./filter-menu";
+import { OptionsFilterMenu } from "./filter-menu";
 import { KeyList } from "./key-list";
 import { DetailCrumb, LanguageMenu, LocalePanel, LocalePanelSkeleton, type DetailView } from "./locale-panel";
 import { TreePanel } from "./tree-panel";
@@ -1039,7 +1039,7 @@ function WorkspaceBody(props: WorkspaceProps) {
               treeButton={treeCollapsed ? { ref: treeAnchor, open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span data-range-label="" className="text-muted-foreground text-xs">{rangeLabel}</span> } : undefined}
               empty={listEmpty}
               filter={
-                <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus](m)} on={shownStatus !== "all"} size="sm" disabled={noKeys} align="end"
+                <OptionsFilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus](m)} on={shownStatus !== "all"} size="sm" disabled={noKeys} align="end"
                   value={shownStatus} hint={w.filters.state.newHint}
                   options={STATUSES.map(status => ({ value: status, label: STATUS_LABEL[status](m) }))}
                   onSelect={value => go(withStatus(view.query, value as Status), "filter")}

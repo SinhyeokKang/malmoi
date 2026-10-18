@@ -2987,3 +2987,30 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 테스트: `lib/__tests__/viewport.test.ts`가 iOS UA 일곱(Safari·CriOS·FxiOS·카카오톡·인스타그램·iPad·iPod)에서만 `maximumScale: 1`, Android·Windows·Mac·UA 없음에서는 없음, 어떤 UA에서도 `userScalable` 없음, 모든 UA에서 `interactiveWidget: "resizes-content"`를 고정한다. `signin-screen.test.ts`가 레이아웃이 정적 `viewport` 대신 `generateViewport` → `viewportFor`를 쓰는지 본다.
   - grep: `rg -n "maximumScale|userScalable|maximum-scale|user-scalable" app lib components` — `lib/viewport.ts` 밖에 생기면 Android 핀치를 막는 전역 설정이 아닌지 본다. 2026-10-18 실행: `lib/viewport.ts` 하나.
   - 규칙: 처음 열 때 입력에 포커스를 주는 표면(Dialog `data-initial-focus` · Combobox `initialFocus`)은 iOS에서 이 판정에 기댄다 — 입력 글자 크기를 16 미만으로 유지하는 한 `viewportFor`의 iOS 갈래를 지우지 않는다.
+
+
+### 2026-10-18 — 긴 프로젝트 이름의 Inbox 메뉴가 375px 화면 밖으로 잘렸다 (#301)
+
+- **영역**: `components/ui/dropdown-menu.tsx`(`DropdownMenuContent`) · `components/inbox/inbox-filters.tsx`(Project 필터).
+- **증상**: QA가 dev `d6df61b3`의 375×900 화면에서 긴 UMT 프로젝트 이름 두 개로 Project 메뉴를 열었다. 메뉴는 x=8·폭448·오른쪽456으로 화면을81px 넘었고 문서 폭은375여서 스크롤로도 잘린 부분을 볼 수 없었다. 트리거의240px 말줄임과 전체 접근 이름은 정상이라 메뉴 자체의 결함이었다.
+- **근본 원인**: Radix의 `collisionPadding=8`은 위치를 밀거나 뒤집고 가용 폭을 CSS 변수로 내지만, 콘텐츠의 최대 폭을 대신 제한하지 않는다. 공용 Content는 가용 **높이**만 CSS 상한으로 쓰고 최대 **폭**은 `max-w-md`(28rem)로 고정했다. 긴 이름이 그 상한까지 메뉴를 넓히면 충돌 회피가 왼쪽을8px에 맞춰도 오른쪽은 화면을 넘었다.
+- **그물**: 잡은 것은 긴 실제 프로젝트 이름과375px 뷰포트를 함께 쓴 브라우저 QA다. 놓친 것은 기존 DOM 테스트·typecheck·빌드·정적 리뷰였다. 기존 DOM 검사는 트리거의 말줄임·전체 접근 이름·키보드 연속 선택을 검사했지만 메뉴의 CSS 폭 상한은 검사하지 않았고 jsdom은 레이아웃을 계산하지 않는다. 새 `dropdown-menu-width.test.tsx`5건은 실제 열린 기본/FilterMenu의 유틸을 Tailwind로 컴파일해 최대 폭이 `min(기존 28rem, Radix 가용 폭)`인지, 소비자의240·256·360px 폭이 남는지 검사한다(수정 전5건 red, 수정 후 관련9파일175건 green). 실제 브라우저의 수정 후 경계·말줄임 재측정은 아직 남아 있다.
+- **재발 방지**: `rg -n 'max-w-.*radix.*available-width|max-w-md|content-available-height' components/ui -g '*.tsx'`와 `rg -n '<DropdownMenuContent' app components -g '!**/__tests__/**'`를 실행했다. 공용 DropdownMenuContent를 쓰는6개 직접 소비자(FilterMenu·헤더 Inbox·프로젝트 스위처·사용자 메뉴·언어 스위처·테마 스위처)는 같은 폭 경계를 받는다. Select는 트리거 폭을 최소 폭으로 쓰고 Combobox는 트리거 폭으로 고정하므로 같은 변경을 복사하지 않았다. 새 메뉴 검증에서는 긴 사용자 데이터와 좁은 뷰포트를 함께 열어 `getBoundingClientRect()`의 좌우 경계와 문서 폭을 비교한다. CSS/DOM 통과를 실제 픽셀 경계 확인으로 대신하지 않는다.
+
+
+### 2026-10-18 — 무공백 검색어의 Inbox 빈 결과 제목이 카드 밖으로 잘렸다 (#302)
+
+- **영역**: `components/ui/empty-state.tsx`(`EmptyState` card·inset / `NoMatch`) · `app/(edit)/inbox/page.tsx`.
+- **증상**: QA가 375×900 화면에서 W 200자를 검색했다. 325px 카드 안의 제목이 폭 2932.1875px·x=-1278.59375·오른쪽 1653.59375로 그려져 양쪽이 잘렸지만 문서 폭은 375px 그대로였다. `Clear filters`는 동작했다.
+- **근본 원인**: 카드형 빈 상태는 제목 묶음을 flex의 교차 축 중앙에 놓았지만 폭 상한을 두지 않았다. 무공백 질의가 제목의 min-content 폭을 키웠고, 일반 줄바꿈 규칙은 단어 안을 끊지 못해 가운데 정렬된 묶음과 제목이 카드 밖으로 자랐다. 문서 바깥의 clipping이 문서 폭 증가를 막아 `scrollWidth`만 보는 검사도 놓쳤다.
+- **그물**: 잡은 것은 최대 길이 질의와 좁은 화면을 함께 쓴 실제 QA다. 놓친 것은 짧은 질의만 쓴 기존 NoMatch DOM·타입·빌드·정적 리뷰였다. 새 `empty-state-title-width.test.tsx`는 실제 Inbox 서버 페이지에 200자 질의를 넣어 en·ko·es 제목·검색 입력·Clear 링크가 전체 문자열을 유지하는지 검사하고, card·inset의 ReactNode 제목·설명·버튼 동작도 검사한다. 실제 DOM에서 가져온 유틸을 Tailwind로 컴파일해 묶음의 `max-width: 100%`와 제목의 `overflow-wrap: anywhere`를 확인했다(수정 전 5건 red, 수정 후 기존 회귀 포함 9파일 48건 green). 픽셀 경계와 줄바꿈 재측정은 아직 남았다.
+- **재발 방지**: `rg -n 'max-w-full|wrap-anywhere|items-center' components/ui/empty-state.tsx`와 `rg -n '<(NoMatch|EmptyState)' app components -g '!**/__tests__/**'`를 실행했다. card·inset의 공용 제목 묶음에 폭 상한을, 제목에만 anywhere 줄바꿈을 둬 소비자별 사본·API를 만들지 않았다. page·list 분기와 제목 크기·굵기·간격·설명·액션은 그대로다. 긴 질의 QA는 문서 폭과 함께 제목·카드 각각의 `getBoundingClientRect()`를 비교한다. CSS/DOM 통과를 실제 375px 경계 확인으로 대신하지 않는다.
+
+
+### 2026-10-19 — ts-dict의 남은 언어 추가 요청을 취소할 수 없었다 (#303)
+
+- **영역**: `lib/locales/change-plan.ts` · `lib/locales/change.ts` · `components/sources/remove-locale-dialog.tsx`.
+- **증상**: locale-change-formats QA가 실제 `src/i18n/namespaces/*.ts` 소스에 남은 ADD 요청의 Remove language를 열자 미리보기가 `unsafe-path`로 실패했다. 비지원 포맷의 기존 요청 취소를 유지한다는 B2 계약과 어긋났다.
+- **근본 원인**: 제거와 추가 취소가 한 판정·미리보기 형식을 공유하면서 파일을 지우지 않는 취소에도 언어별 경로를 요구했다. 비지원 포맷 테스트는 어댑터 이름만 ts-dict로 바꾸고 `{locale}.json` 경로를 남겨 실제 다중 언어 glob을 검증하지 않았다. UI 테스트도 성공 응답을 직접 주어 코어 거부를 보지 못했다.
+- **그물**: 실제 경로를 쓴 브라우저 QA와 MCP 미리보기가 잡았다. 기존 단위·DOM·독립 리뷰는 형식과 경로가 맞지 않는 픽스처를 놓쳤다. 새 회귀는 단위·DOM 4건과 격리 PostgreSQL 3건에서 수정 전 실패했다. Server Action → 격리 DB → Sources·Logs 뷰 모델 시나리오로 미리보기와 실행, 값·저자 보존과 토큰 정리, 권한·낡은 지문·미확정 전달 거부를 함께 검사한다.
+- **재발 방지**: `rg -n 'localeFilePath|cancel-add|path: preview.path' lib/locales/change-plan.ts lib/locales/change.ts lib/mcp/tools/locales.ts components/sources/remove-locale-dialog.tsx`로 소비자를 대조했다. 취소의 경로는 계산할 수 있을 때만 표시하고 없으면 `null`을 전달하며 Dialog는 File 행을 생략한다. 새 제거 요청은 경로 검증을 계속 요구한다. 포맷 픽스처는 어댑터 이름뿐 아니라 그 포맷의 실제 경로 규약을 함께 써야 한다. 수정 후 브라우저 포커스·MCP 재검증은 QA 담당자가 수행한다.

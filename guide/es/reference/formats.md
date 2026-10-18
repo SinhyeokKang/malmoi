@@ -22,10 +22,14 @@ Los diccionarios de código con un archivo por idioma admiten `.ts`, `.tsx`, `.j
 
 ## Conserva la estructura del archivo {#file-structure}
 
-Los catálogos YAML y los diccionarios de código conservan los comentarios, las líneas en blanco y el orden de las claves. Los catálogos JSON y los mensajes de extensiones de Chrome conservan la representación de su archivo — sangría, contenedores en una línea, escapes y orden de los campos.
+Los catálogos YAML y los diccionarios de código existentes conservan los comentarios, las líneas en blanco y el orden de las claves. Los catálogos JSON y los mensajes de extensiones de Chrome conservan la representación de su archivo — sangría, contenedores en una línea, escapes y orden de los campos.
 
 Los valores vienen de Malmoi; el archivo existente aporta la estructura o la representación.
 
 ## Añade y quita idiomas {#languages}
 
-Los propietarios del proyecto pueden añadir y quitar un idioma en Malmoi en los catálogos JSON y los mensajes de extensión de Chrome, que guardan un archivo por idioma. Consulta [Añade y quita idiomas](../setup/languages.md#languages). En los demás formatos, añade o borra el archivo del idioma en el repositorio.
+Los propietarios del proyecto pueden añadir y quitar idiomas en Malmoi en catálogos JSON y YAML, mensajes de extensiones de Chrome y diccionarios con un archivo por idioma. Consulta [Añade y quita idiomas](../setup/languages.md#languages). Un diccionario que contiene todos los idiomas en un archivo requiere cambiar los objetos de idioma en el repositorio; su tarjeta no tiene acciones para nuevas adiciones o eliminaciones ni descripción.
+
+Para los archivos nuevos de YAML y de código por idioma, Malmoi toma del archivo base las convenciones de raíz, estructura plana o anidada de claves, forma de exportación y formato, cuando corresponda. La raíz de idioma de YAML debe coincidir con el código del idioma base. Una exportación con nombre conserva su nombre; se rechaza un nombre que contenga el código del idioma base. Solo se escriben claves con traducciones. No se copian los valores del idioma base, comentarios, sentencias `import` ni declaraciones de tipos. Publicar se detiene si no puede crear el archivo con seguridad; cancela la adición o crea el archivo en el repositorio. Una vez creado, las publicaciones posteriores conservan su estructura.
+
+Los archivos nuevos pueden contener solo algunas claves. Si una traducción posterior necesita un mapa padre que no está en el archivo, Malmoi inserta la ruta restante como una clave literal con puntos, como `"a.b.c"`. Comprueba que la búsqueda anidada de tu aplicación pueda leerla y registra los idiomas nuevos en las sentencias `import` o las listas de idiomas admitidos cuando sea necesario; Malmoi no cambia ese código.

@@ -151,7 +151,7 @@ const RULES: Rule[] = [
     handCopy: () => false,
     bad: 'import {SkeletonLine as Line} from "@/components/ui/skeleton"; export const Demo = () => <Line size="xs" />;',
     good: 'import {Skeleton} from "@/components/ui/skeleton"; export const Demo = () => <Skeleton size="xs" />;' },
-{ primitive: "FieldTrigger", retired: [], paths: ["components/logs/log-filters.tsx", "components/translations/workspace/filter-menu.tsx"], minimum: 2,
+{ primitive: "FieldTrigger", retired: [], paths: ["components/ui/filter-menu.tsx", "components/logs/log-filters.tsx", "components/translations/workspace/filter-menu.tsx"], minimum: 2,
     handCopy: (node, file) => /Trigger$/.test(canonicalTag(node, file)) && /inline-flex/.test(classes(node, file)) && /rounded-md/.test(classes(node, file)) && /border/.test(classes(node, file)),
     bad: 'export const Demo = () => <DropdownMenuTrigger className="inline-flex h-9 rounded-md border px-2.5">Filter</DropdownMenuTrigger>;',
     good: 'import {FieldTrigger} from "@/components/ui/field-trigger"; export const Demo = () => <DropdownMenuTrigger asChild><FieldTrigger>Filter</FieldTrigger></DropdownMenuTrigger>;' },

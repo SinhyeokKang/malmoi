@@ -424,3 +424,35 @@ export function sameMeaning(a: ReadResult, b: ReadResult, dropEmpty: boolean): b
   }
   return true;
 }
+
+/** 정수 모양 키도 코드 유닛 순서를 지켜야 하므로 객체가 아니라 Map으로 조립한다. */
+export type EntryTree = Map<string, string | EntryTree>;
+
+export function nestEntries(entries: readonly LocaleEntry[], separator: string): { tree: EntryTree; shadowed: string[] } {
+  const tree: EntryTree = new Map();
+  const shadowed = new Set<string>();
+  for (const entry of [...entries].sort((a, b) => compareKeys(a.key, b.key))) {
+    const parts = entry.key.split(separator);
+    let current = tree;
+    for (const [i, part] of parts.entries()) {
+      const prior = current.get(part);
+      if (i === parts.length - 1) {
+        if (prior instanceof Map) shadowed.add(entry.key);
+        else current.set(part, entry.message);
+      } else {
+        if (typeof prior === "string") shadowed.add(parts.slice(0, i + 1).join(separator));
+        const child = prior instanceof Map ? prior : new Map<string, string | EntryTree>();
+        current.set(part, child);
+        current = child;
+      }
+    }
+  }
+  // 전체 경로 순서와 각 맵의 키 순서는 다를 수 있다(a-b와 a.b).
+  const sort = (map: EntryTree): EntryTree => new Map([...map].sort(([a], [b]) => compareKeys(a, b)).map(([key, value]) => [key, value instanceof Map ? sort(value) : value]));
+  return { tree: sort(tree), shadowed: [...shadowed].sort(compareKeys) };
+}
+
+/** 혼합 구조는 중첩으로 만든다. 맵이 하나라도 있으면 평평한 규약이라고 단정할 수 없다. */
+export function keyStructure(keys: readonly { key: string; map: boolean }[], separator: string): "flat" | "nested" {
+  return keys.some(k => k.key.includes(separator)) && !keys.some(k => k.map) ? "flat" : "nested";
+}

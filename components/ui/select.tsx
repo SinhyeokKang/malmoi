@@ -57,7 +57,7 @@ export function SelectContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "bg-popover border-border z-50 max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-x-hidden overflow-y-auto rounded-lg border py-1 shadow-md",
+          "bg-popover border-border z-50 max-h-[min(300px,var(--radix-select-content-available-height,300px))] min-w-[var(--radix-select-trigger-width)] overflow-x-hidden overflow-y-auto rounded-lg border py-1 shadow-md",
           className,
         )}
         {...props}

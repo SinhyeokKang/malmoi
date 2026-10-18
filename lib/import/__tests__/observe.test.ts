@@ -64,3 +64,13 @@ describe("observeSurfaceLocales", () => {
     expect(observeSurfaceLocales(base, surface)).toEqual({ status: "observed", locales: ["en", "ko"] });
   });
 });
+
+// 야간 관측도 Publish와 같은 새 포맷 지원 집합을 쓴다.
+it.each([
+  ["yaml-catalog", "config/{locale}.yml"],
+  ["yaml-catalog", "locales/{locale}/common.yml"],
+  ["code-dict", "src/locales/{locale}.ts"],
+])("%s %s 야간 관측은 활성 파일을 찾는다", (adapterName, pathTemplate) => {
+  expect(observeSurfaceLocales([{ path: pathTemplate.replace("{locale}", "fr"), mode: "100644" }], { adapterName, pathTemplate }))
+    .toEqual({ status: "observed", locales: ["fr"] });
+});

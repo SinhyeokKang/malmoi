@@ -71,6 +71,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered, locales: localePlan });
   /** 렌더에서 뺀 언어(REMOVE · 경로가 이미 있는 ADD · 값 0개 ADD) — 그 셀은 실행이 보류하므로 표에 약속하지 않는다. */
   const excluded = new Set(localePlan.surfaces.flatMap(plan => plan.exclude.map(code => `${plan.surfaceId}\0${code}`)));
+  const creates = new Set(localePlan.surfaces.flatMap(plan => plan.creates.map(item => `${plan.surfaceId}\0${item.localeCode}`)));
   warnings.push(...blockingErrors(rendered).map(({ surfaceSlug, error: { path, code, key, detail } }) => (
     { surfaceSlug, path, code, ...(key === undefined ? {} : { key }), ...(detail === undefined ? {} : { detail }) }
   )));
@@ -134,8 +135,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       if (!surface.localeCodes.includes(row.localeCode)) throw new Error("Preview path unavailable");
       // 실행의 `planDelivery`와 같은 판정이다 — 언어 통째 보류는 파일 보류로 센다(결과의 `withheld.file`).
       if (excluded.has(`${surface.id}\0${row.localeCode}`)) { withoutFile++; withoutFileLanguage++; heldKeys.add(row.keyId); continue; }
-      // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다. 실행은 그 셀을 보류한다.
-      if (surgicalPerLocale) {
+      // 수술적 치환의 원본 부재는 보류하되, ADD 계획의 생성·복구는 실행이 새 파일을 내므로 포함한다.
+      if (surgicalPerLocale && !creates.has(`${surface.id}\0${row.localeCode}`)) {
         const target = paths.find(p => p.locale === row.localeCode);
         if (target !== undefined && !shas.has(target.path)) { withoutFile++; heldKeys.add(row.keyId); continue; }
       }

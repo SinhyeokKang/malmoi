@@ -22,8 +22,8 @@ describe("supportsLocaleChanges", () => {
   it.each([
     ["json-catalog", true],
     ["chrome-locales", true],
-    ["yaml-catalog", false],
-    ["code-dict", false],
+    ["yaml-catalog", true],
+    ["code-dict", true],
     ["ts-dict", false],
     [null, false],
     ["__proto__", false],
@@ -107,7 +107,7 @@ describe("planLocaleAdd", () => {
     expect(planLocaleAdd(input({ code: "pt_BR", locales }))).toEqual({ ok: false, error: "locale-collision" });
   });
 
-  it.each(["yaml-catalog", "code-dict", "ts-dict", null])("rejects unsupported format %s", adapterName => {
+  it.each(["ts-dict", null])("rejects unsupported format %s", adapterName => {
     expect(planLocaleAdd(input({ surface: { ...json, adapterName } }))).toEqual({ ok: false, error: "unsupported-format" });
   });
 

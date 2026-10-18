@@ -2,11 +2,11 @@
 
 Add a language to a source or remove one from the source's details, then publish the change to your repository as a file.
 
-Project owners change a source's languages; translators (Editor role) can see each language's status but not change it. Adding and removing work for **JSON catalog** and **Chrome extension messages** sources, which keep one file per language. For other formats, add or delete the language file in the repository, and Malmoi picks the change up on the next update.
+Project owners change a source's languages; translators (Editor role) can see each language's status but not change it. Adding and removing work for **JSON catalog**, **YAML catalog**, **Chrome extension messages**, and **Code dictionary (one file per language)** sources. For a code dictionary containing all languages in one file, change the language objects in the repository; Malmoi reads the change on the next update.
 
 ## Open the Languages card {#languages}
 
-Open **Sources**, open the source's details, and find the **Languages** card. Each row shows a language's progress and one action. A language that isn't in the source can be added with **Add language** at the top of the card.
+Open **Sources**, open the source's details, and find the **Languages** card. Each row shows a language's progress and any available action. For supported formats, a language that isn't in the source can be added with **Add language** at the top of the card.
 
 A row can show:
 
@@ -18,12 +18,14 @@ A row can show:
 
 ![The Languages card of a source, with an Add language button above rows for the base language, regular languages, one being added, one being removed, and an inactive one](/guide/languages-card.webp "Each row shows the language's status and one action.")
 
-On the base language's row, **Remove language** is turned off; choose another [base language](sources.md#base-language) first. For translators, and for formats that don't support adding and removing, the buttons are turned off too, and the card's description says why.
+For supported formats, **Remove language** is turned off on the base language's row; choose another [base language](sources.md#base-language) first. Translators see disabled buttons and a description saying only project owners can change languages.
+
+For an all-languages code dictionary, the card has no description or new add or remove actions, including on base and inactive rows. Any remaining addition or removal can still be canceled by a project owner, unless the last publish is unconfirmed and may have included that change. For an inactive language, owners are told to restore the file in the repository and sync; translators see only that its translations are kept.
 
 ## Add a language {#add}
 
 1. In the **Languages** card, choose **Add language**.
-2. For a JSON catalog, choose a language from **Common languages** or type a code in **Language code**: a lowercase language with an optional region, such as `fr`, `pt-BR`, or `zh_TW`. Languages that were in this source before are listed first, under **Previously in this source**. For Chrome extension messages, choose from **Language**; Chrome supports a fixed list of codes.
+2. For a JSON or YAML catalog or a code dictionary with one file per language, choose a language from **Common languages** or type a code in **Language code**: a lowercase language with an optional region, such as `fr`, `pt-BR`, or `zh_TW`. Languages that were in this source before are listed first, under **Previously in this source**. For Chrome extension messages, choose from **Language**; Chrome supports a fixed list of codes.
 3. Check **File to create**, the path the file will have. Choose **Add language** again to confirm.
 
 ![The Add a language dialog over the source details, with es chosen as the language code and i18n/emails/es.json under File to create](/guide/language-add.webp "Choose a language and check the file Malmoi will create.")
@@ -31,6 +33,8 @@ On the base language's row, **Remove language** is turned off; choose another [b
 Malmoi refuses a language that is already in the source, one whose file path matches an existing language's (for example `pt-BR` and `pt_br`), one that would write to a file another source owns, and one that is being removed — cancel that removal instead.
 
 The new language appears with **Adding**, and translators can open it and translate right away. The file doesn't exist in your repository yet: Publish creates it, once the language has at least one translation. Until then Publish lists the language as **Not included**.
+
+New YAML and per-language code files follow the base file's root, key structure, export, and formatting conventions where applicable. They contain translated keys only, without the base file's comments, `import` statements, or type declarations. If those conventions can't be used safely, Publish stops; cancel the addition or create the file in the repository. See [New language files](../reference/formats.md#languages) for the limits, including later dotted-key insertions. Register the language in your app's code where needed.
 
 If you add a language that was in this source before, Malmoi brings back its saved translations as unsent edits, so the next Publish sends them.
 

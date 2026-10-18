@@ -206,6 +206,7 @@ const KIND_OF: Record<AdapterErrorCode, ReadErrorKind> = {
   "key-shadowed": "other",
   "write-parse-failed": "other",
   "write-no-default-export": "other",
+  "write-create-unsupported": "other",
   "write-locale-object-missing": "other",
   "write-empty-unsupported": "other",
   "write-slot-not-string-literal": "other",

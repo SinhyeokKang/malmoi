@@ -127,7 +127,7 @@ export function renderLocaleFiles(
   baseLocale: string,
   current: ReadonlyMap<string, string>,
   /**
-   * 새로 만드는 언어(ADD의 create)와 그 표현 출처 — 같은 소스의 기준 언어 파일 내용이다(locale-add design §4). 원본이 없는 재생성 파일에만 쓴다.
+   * 추가·복구하는 언어(ADD의 create·revive)와 그 표현 출처 — 같은 소스의 기준 언어 파일 내용이다. 원본 없는 파일 생성에만 쓴다.
    * 그 밖의 원본 없는 파일은 지금까지처럼 기본 표현이다 — 출처를 넓히면 기존 리포의 바이트가 바뀐다.
    */
   represent?: { locales: ReadonlySet<string>; source: string | undefined },
@@ -150,11 +150,19 @@ export function renderLocaleFiles(
         fail(`per-locale path carries no locale: ${p.path} (resolveLocalePaths bug)`);
       }
       // ⚠️ **원본이 없을 때의 처리가 두 방식의 계약 차이다.**
-      //   - 수술적 — 파일을 **안 만든다**. 치환할 대상이 없다 (§1.4)
+      //   - 수술적 — ADD만 create로 생성한다. 나머지는 치환할 대상이 없어 파일을 안 만든다 (§1.4)
       //   - 재생성 — **계속 만든다**. 원본은 표현(들여쓰기)만 주고, 없으면 기본값이다
       // 이 줄이 뒤섞이면 새 로케일이 PR에서 조용히 빠지거나, 수술적 어댑터가 없던 파일을 만든다.
       const original = current.get(p.path);
       if (original === undefined && adapter.writeStrategy === "surgical") {
+        // ADD 계획이 허용한 생성·복구만 예외다 — 기준 파일 부재도 create가 blocking 오류로 보고한다.
+        if (represent?.locales.has(locale) && adapter.create !== undefined) {
+          const { content, errors } = adapter.create(
+            { ...format, representationSource: represent.source },
+            { locale, baseLocale, entries: buildWriteEntries(rowsForLocale(keys, locale), { isBase: false }) },
+          );
+          return { path: p.path, locale, content, ...(errors.length === 0 ? {} : { errors: tagged(errors, locale) }) };
+        }
         // ⚠️ **안 내는 것도 보고한다.** `null`만 돌려주면 `planPullChanges`가 건너뛰고 warnings에도
         // 안 실려 그 로케일이 흔적 없이 PR에서 빠진다 — ts-dict의 로케일 객체 부재는 에러로
         // 내는데 파일 부재만 예외였다 (2026-09-04 audit #7).

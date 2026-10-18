@@ -591,3 +591,34 @@ it("#200 missing locale objects block preview and execution with the same writer
   expect(save).not.toHaveBeenCalled(); expect(invalidate).not.toHaveBeenCalled();
   expect(calls.map(c => c.method)).toEqual(["getRefSha", "getTree", "getBlobText", "getBlobText"]);
 });
+
+/** ADD는 수술적 원본 부재 보류의 예외다 — 같은 스냅샷으로 미리보기와 실행을 잰다. */
+it.each([
+  ["yaml-catalog", "yml", "en:\n  hello: old\n"],
+  ["code-dict", "ts", "export default { hello: 'old' };\n"],
+])("%s ADD 미리보기의 보낼 셀과 실행 전달 수가 같다", async (adapterName, ext, original) => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const state: PullState = {
+    project: { ...project, slug: "acme" },
+    surfaces: [{ ...surface, adapterName, pathTemplate: `{locale}.${ext}`, localeCodes: ["en", "fr"],
+      keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "old" }, fr: { value: "Bonjour" } } }],
+      localeChanges: { rows: [{ localeCode: "fr", operation: "ADD", requestedAt: new Date() }], valueCounts: new Map([["fr", 1]]), delivered: [], work: 1 } }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "fr", restoreValue: "" } }],
+  };
+  const { blobSha } = await import("@/lib/githash");
+  const sha = blobSha(original);
+  const tree = [{ path: `en.${ext}`, mode: "100644", sha }];
+  mocks.load.mockResolvedValue(state);
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
+  mocks.client.getTree.mockResolvedValue(tree);
+  mocks.client.getBlobText.mockResolvedValue(original);
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(preview).toMatchObject({ withoutFile: 0, sendable: { total: 1, keys: 1 }, fileChanges: [{ path: `fr.${ext}`, kind: "new" }] });
+  expect(preview.groups[0]).toMatchObject({ path: `fr.${ext}`, rows: [{ before: null, after: "Bonjour" }] });
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs: { [sha]: original } });
+  const result = await runPull({ loadState: async () => state, createClient: async () => client,
+    saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme" });
+  expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, files: preview.fileChanges });
+});

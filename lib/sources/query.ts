@@ -11,6 +11,7 @@ import { hasActiveImport } from "@/lib/import/plan";
 import { hasRepoConnection } from "@/lib/repo-host/target";
 import { sourceRowMeters } from "./meters";
 import { readLocaleStates } from "@/lib/locales/work";
+import { supportsLocaleChanges } from "@/lib/locales/add-plan";
 import { localeRole } from "@/lib/translations/summary";
 
 const sourceSelect = {
@@ -83,7 +84,7 @@ export async function loadSource(prisma: PrismaClient, m: Messages, projectId: s
    */
   const unsent = new Set((localeStates[0]?.work ?? []).map(item => item.localeCode));
   const changeOf = new Map(locales.flatMap(locale => (locale.change === null ? [] : [[locale.code, locale.change] as const])));
-  return { ...sourceView(m, source, role), ...projectView(projectRow, role), pullRequestUrl: lastPrUrl, ...(canPerform(role, "project:settings") && source.declaredBaseLocale ? { workflowLine: baseLocaleLine(source.declaredBaseLocale) } : {}), keys: counts.total, locales: locales.filter(locale => localeRole(locale) === "work").length,
+  return { ...sourceView(m, source, role), ...projectView(projectRow, role), pullRequestUrl: lastPrUrl, languageChangesSupported: supportsLocaleChanges(source.adapterName), ...(canPerform(role, "project:settings") && source.declaredBaseLocale ? { workflowLine: baseLocaleLine(source.declaredBaseLocale) } : {}), keys: counts.total, locales: locales.filter(locale => localeRole(locale) === "work").length,
     languages: localeProgress({ ...counts, locales }).map(row => ({ ...row, change: changeOf.get(row.code) ?? null, unsent: unsent.has(row.code) })),
     localeDelivery: (confirmation?.invalidatedAt ?? null) !== null ? "unconfirmed" as const : "confirmed" as const,
     /**

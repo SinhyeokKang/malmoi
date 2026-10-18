@@ -739,3 +739,76 @@ describe.each(["github", "gitlab"] as const)("미머지 종료 뒤 만료 전 Pu
     expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(1);
   });
 });
+
+/** 실제 추가/복구 → 저장 → 미리보기 → Publish → 화면 판정, 두 수술적 포맷 공통 계약. */
+describe.each([
+  ["yaml-catalog", "yml", "en:\n  hello: Hello\n  bye: Bye\n", "ko:\n  hello: 안녕\n  bye: 잘가\n"],
+  ["code-dict", "ts", "export default { hello: 'Hello', bye: 'Bye' };\n", "export default { hello: '안녕', bye: '잘가' };\n"],
+])("%s 새 언어 전달", (adapterName, ext, en, ko) => {
+  it.each([false, true])("복구=%s — 미리보기와 실행 파일·전달 수가 같고 머지 뒤 관측은 활성이다", async revive => {
+    await prisma.translationSurface.update({ where: { id: "s" }, data: { adapterName, pathTemplate: `i18n/{locale}.${ext}` } });
+    if (revive) await prisma.locale.create({ data: { projectId: "p", surfaceId: "s", code: "fr", name: "fr", orphaned: true } });
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).toMatchObject({ ok: true });
+    await save("hello", "fr", "Bonjour");
+    const files = { [`i18n/en.${ext}`]: en, [`i18n/ko.${ext}`]: ko };
+    fake(files);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview).toMatchObject({ withoutFile: 0, sendable: { total: 1 }, fileChanges: [{ path: `i18n/fr.${ext}`, kind: "new" }] });
+    const made = fake(files);
+    const result = await publish(preview.fingerprint);
+    expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, files: preview.fileChanges });
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
+    const content = snapshot(made)?.changes.find(c => c.path === `i18n/fr.${ext}`)?.content;
+    expect(content).toContain("Bonjour");
+    expect(content).not.toContain("Hello");
+    await ageRuns();
+    const merged = { ...files, [`i18n/fr.${ext}`]: content! };
+    fake(merged);
+    const after = await readPublishPreview(prisma, "p", "fixture");
+    expect(after).toMatchObject({ fileChanges: [], expiringLocales: [{ localeCode: "fr", presence: "active" }] });
+    fake(merged);
+    const settled = await publish(after.fingerprint);
+    expect(settled).toMatchObject({ status: "skipped", reason: "no-edits" });
+    expect(planPublishView(settled)).toBe("no-changes");
+  });
+  it("값 0개 ADD는 파일을 만들지 않고, 제거는 미리보기와 같은 파일 하나를 삭제한다", async () => {
+    await prisma.translationSurface.update({ where: { id: "s" }, data: { adapterName, pathTemplate: `i18n/{locale}.${ext}` } });
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    const files = { [`i18n/en.${ext}`]: en, [`i18n/ko.${ext}`]: ko };
+    fake(files);
+    const empty = await readPublishPreview(prisma, "p", "fixture");
+    expect(empty).toMatchObject({ fileChanges: [], sendable: { total: 0 }, locales: { empty: [{ localeCode: "fr" }] } });
+    const idle = fake(files);
+    const skipped = await publish(empty.fingerprint);
+    expect(skipped).toMatchObject({ status: "skipped" });
+    expect(snapshot(idle)).toBeUndefined();
+    expect(planPublishView(skipped)).toBe("no-changes");
+    await ageRuns();
+    expect(await requestRemoval("ko")).toMatchObject({ ok: true });
+    fake(files);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview.fileChanges).toEqual([{ path: `i18n/ko.${ext}`, kind: "removed" }]);
+    const made = fake(files);
+    const result = await publish(preview.fingerprint);
+    expect(result).toMatchObject({ status: "committed", files: preview.fileChanges });
+    expect(snapshot(made)?.changes).toEqual([{ kind: "delete", path: `i18n/ko.${ext}` }]);
+    expect(planPublishView(result)).toBe("created");
+  });
+
+  it("생성 규약 실패는 미리보기와 실행을 함께 막고 외부 쓰기가 없다", async () => {
+    await prisma.translationSurface.update({ where: { id: "s" }, data: { adapterName, pathTemplate: `i18n/{locale}.${ext}` } });
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    const invalid = adapterName === "yaml-catalog" ? "ko:\n  hello: Hello\n  bye: Bye\n" : "export const en = { hello: 'Hello', bye: 'Bye' };\n";
+    const files = { [`i18n/en.${ext}`]: invalid, [`i18n/ko.${ext}`]: ko };
+    fake(files);
+    await expect(readPublishPreview(prisma, "p", "fixture")).rejects.toMatchObject({ name: "PreviewWriterWarnings" });
+    const made = fake(files);
+    const result = await publish();
+    expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+    expect(planPublishView(result)).toBe("partial");
+  });
+
+});

@@ -124,6 +124,7 @@ const CLIENT_LIB_FILES = [
   "lib/home/state.ts",
   // 헤더 Inbox(attention-inbox)가 Home 카드와 같은 칩·문장·목적지와 읽음 판정을 값으로 읽는다 — 수집(`lib/home/attention.ts`)은 그래프에 없다.
   "lib/home/attention-view.ts",
+  "lib/inbox/filter.ts",
   "lib/inbox/plan.ts",
   "lib/inbox/project-todos.ts",
   // 헤더·사이드바·`/inbox` 읽음 섬이 나눠 쓰는 탭 안 안 읽음 수 store(inbox-page D2) — import는 `react` 하나인 잎이다.
@@ -198,6 +199,7 @@ const CLIENT_LIB_FILES = [
   // `usePublish`가 결과가 재검증 트리를 싣고 오는지 읽는다(`pullRevalidates`, malmoi#103 r1) — import가 타입뿐인 잎이다.
   "lib/pull/message.ts",
   "lib/pull/ref-slug.ts",
+  "lib/query-list.ts",
   "lib/mcp/brand.ts",
   "lib/relative-time.ts",
   // readiness의 연결 증거(`hasRepoConnection`, gitlab-repositories) — import 0인 잎이다. I/O는 형제 `./index`가 들고 여기는 판정뿐이다.
@@ -613,6 +615,7 @@ describe("클라이언트 그래프", () => {
       "lib/date-format.ts",
       "lib/events/filter.ts",
       "lib/events/payload.ts",
+      "lib/query-list.ts",
       "lib/url-token.ts",
     ]);
     expect([...filter.packages].filter((name) => !allowed(name))).toEqual([]);
@@ -671,6 +674,14 @@ describe("클라이언트 그래프", () => {
       "lib/routes.ts", "lib/search/key-href.ts", "lib/translations/query.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("Inbox 필터는 계획을 타입으로만 읽고 쿼리 목록과 실패 톤 잎만 문다", () => {
+    const graph = walk([join(ROOT, "lib/inbox/filter.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/inbox/filter.ts", "lib/projects/import-failure.ts", "lib/query-list.ts",
+    ]);
+    expect([...graph.packages]).toEqual([]);
   });
 
   it("Inbox의 공유 뷰·계획은 조회·어댑터·컴포넌트 그래프를 끌지 않는다", () => {

@@ -1,4 +1,8 @@
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { Search } from "lucide-react";
+
+import { FieldTrigger } from "@/components/ui/field-trigger";
+import { Input } from "@/components/ui/input";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
@@ -18,8 +22,26 @@ export default async function InboxLoading() {
     <>
       <span className="sr-only" role="status">{m.inbox.loading}</span>
       <PanelHeader aria-hidden>
-        <div className="flex items-center">
-          <Skeleton size="lg" className="w-20" />
+        <div className={PANEL_HEAD_ROW}>
+          <div className="relative flex">
+            <h1 className="flex items-center text-lg font-medium invisible">{m.common.nav.inbox}</h1>
+            <Skeleton size="lg" className="absolute left-0 top-1/2 w-20 -translate-y-1/2" />
+          </div>
+        </div>
+        {/* 기본 라벨의 실제 폭으로 감김을 예약한다 — 선택값과 Clear는 라우트 골격이 모른다(#201). */}
+        <div data-skeleton-filter-row className="flex flex-wrap items-center gap-2">
+          <div className="relative flex shrink-0">
+            <FieldTrigger active={false} disabled tabIndex={-1} className="shrink-0 invisible">{m.inbox.filters.all}</FieldTrigger>
+            <Skeleton className="absolute inset-0 rounded-md" />
+          </div>
+          <div className="relative flex shrink-0">
+            <FieldTrigger active={false} disabled tabIndex={-1} className="shrink-0 max-w-60 invisible"><span className="truncate">{m.inbox.filters.anyProject}</span></FieldTrigger>
+            <Skeleton className="absolute inset-0 rounded-md" />
+          </div>
+          <div className="relative ml-auto">
+            <Input type="search" width={320} icon={<Search className="invisible" />} clearable defaultValue="" disabled tabIndex={-1} className="invisible" />
+            <Skeleton className="absolute inset-0 rounded-md" />
+          </div>
         </div>
       </PanelHeader>
       <PanelBody className="space-y-4" aria-hidden>

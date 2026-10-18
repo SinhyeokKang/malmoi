@@ -22,10 +22,14 @@ Code dictionaries with one file per language support `.ts`, `.tsx`, `.js`, and `
 
 ## Preserve file structure {#file-structure}
 
-YAML catalogs and code dictionaries keep comments, blank lines, and key order. JSON catalogs and Chrome extension messages keep their file representation — indentation, one-line containers, escapes, and field order.
+Existing YAML catalogs and code dictionaries keep comments, blank lines, and key order. JSON catalogs and Chrome extension messages keep their file representation — indentation, one-line containers, escapes, and field order.
 
 Values come from Malmoi; the existing file supplies the structure or representation.
 
 ## Add and remove languages {#languages}
 
-Project owners can add and remove a language in Malmoi for JSON catalogs and Chrome extension messages, which keep one file per language. See [Add and remove languages](../setup/languages.md#languages). For the other formats, add or delete the language file in the repository.
+Project owners can add and remove languages in Malmoi for JSON and YAML catalogs, Chrome extension messages, and code dictionaries with one file per language. See [Add and remove languages](../setup/languages.md#languages). A code dictionary containing all languages in one file requires language-object changes in the repository; its card has no new add or remove actions or description.
+
+For new YAML and per-language code files, Malmoi borrows the base file's root convention, flat or nested key structure, export form, and formatting, where applicable. A YAML language root must match the base language code. A named code export keeps its name; a name containing the base language code is refused. Only keys with translations are written. Base-language values, comments, `import` statements, and type declarations aren't copied. Publish stops if it can't create the file safely; cancel the addition or create the file in the repository. Once a file exists, later publishes preserve its structure.
+
+New files can be sparse. If a later translation needs a parent mapping that isn't in the file, Malmoi inserts the remaining path as a dotted literal key, such as `"a.b.c"`. Check that your app's nested lookup can read it, and register new languages in `import` statements or supported-language lists where needed; Malmoi doesn't change that code.

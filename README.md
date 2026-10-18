@@ -122,6 +122,8 @@ collects code references, so each key shows where your code uses it.
   workflow log says `deferred`). Merge or close the pull request and the next
   update goes through. Only a project owner can discard unsent edits (Sync or
   Revert).
+- **Add or remove languages** — project owners can request language files for JSON and YAML catalogs, Chrome messages, and code dictionaries with one file per language. Publish creates or deletes the file in the same pull request; removed translations stay in Malmoi and return when you add the language again. Dictionaries with all languages in one file require repository changes
+  ([details](https://mal-moi.com/docs/setup/languages)).
 - **Removed keys are kept** — bring the code back and its translations return.
 - **Nightly sync** — once a night (18:00 UTC), for active, connected projects
   whose first sync has succeeded: saved changes nobody published go out as a
@@ -159,10 +161,11 @@ collects code references, so each key shows where your code uses it.
 | Code dictionary, one file per language | `src/locales/{locale}.ts` |
 | Code dictionary, all languages in one file | `src/i18n/namespaces/*.ts` |
 
-YAML catalogs and code dictionaries keep comments, blank lines, and key order;
+Existing YAML catalogs and code dictionaries keep comments, blank lines, and key order;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
 sends them in one pull request (one merge request on GitLab).
+New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed.
 [Limits →](https://mal-moi.com/docs/reference/limits)
 
 ## What Malmoi doesn't do

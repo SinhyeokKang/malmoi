@@ -2,7 +2,7 @@
 
 import { RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
+import { useId, useRef, useState, useTransition, type RefObject } from "react";
 
 import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { SearchInput } from "@/components/ui/search-input";
@@ -11,16 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { FormGroup } from "@/components/ui/form-group";
 import {
-  DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { FieldTrigger } from "@/components/ui/field-trigger";
+import { FilterMenu } from "@/components/ui/filter-menu";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
 import { LOG_PRESETS, PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, presetRange, type LogFilter, type LogPreset } from "@/lib/events/filter";
 import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
@@ -153,15 +150,15 @@ export function LogFilters({
       </div>
 
       <div data-log-filter-row className="flex flex-wrap items-center gap-2">
-        <Filter axis={m.logs.filters.axis.kind} label={filter.kind === "all" ? m.logs.kinds.all : m.logs.kinds[filter.kind]} on={filter.kind !== "all"}>
+        <FilterMenu axis={m.logs.filters.axis.kind} label={filter.kind === "all" ? m.logs.kinds.all : m.logs.kinds[filter.kind]} on={filter.kind !== "all"}>
           {LOG_KINDS.map((kind) => (
             <DropdownMenuItem key={kind} selected={filter.kind === kind} onSelect={() => go({ kind })}>
               {m.logs.kinds[kind]}
             </DropdownMenuItem>
           ))}
-        </Filter>
+        </FilterMenu>
 
-        <Filter triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(m, style.uiLocale, filter)} on={filter.from !== null || filter.to !== null}>
+        <FilterMenu triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(m, style.uiLocale, filter)} on={filter.from !== null || filter.to !== null}>
           <DropdownMenuItem selected={filter.from === null && filter.to === null} onSelect={() => go({ from: null, to: null })}>
             {m.logs.filters.anyDate}
           </DropdownMenuItem>
@@ -178,9 +175,9 @@ export function LogFilters({
             Tab은 메뉴를 닫으므로, 안에 둔 `<input>`에는 키보드로 도달할 수 없었다. 항목 하나가 Dialog를 연다.
           */}
           <DropdownMenuItem onSelect={() => { customHandoff.current = true; }}>{m.logs.range.customOpen}</DropdownMenuItem>
-        </Filter>
+        </FilterMenu>
 
-        <Filter axis={m.logs.filters.axis.actor} label={actorLabel(m, filter, actors)} on={filter.actor !== null}>
+        <FilterMenu axis={m.logs.filters.axis.actor} label={actorLabel(m, filter, actors)} on={filter.actor !== null}>
           <DropdownMenuItem selected={filter.actor === null} onSelect={() => go({ actor: null })}>
             {m.logs.filters.anyone}
           </DropdownMenuItem>
@@ -201,9 +198,9 @@ export function LogFilters({
           <DropdownMenuItem selected={filter.actor === "nightly"} onSelect={() => go({ actor: "nightly" })}>
             {m.logs.trigger.cron}
           </DropdownMenuItem>
-        </Filter>
+        </FilterMenu>
 
-        <Filter axis={m.logs.filters.axis.source} label={filter.sources.length === 0 ? m.logs.filters.anySource : filter.sources.map(source => source === PROJECT_WIDE ? m.logs.filters.projectWide : sources.some(row => row.slug === source && row.removed) ? `${source} ${m.logs.filters.removed}` : source).join(", ")} on={filter.sources.length > 0}>
+        <FilterMenu axis={m.logs.filters.axis.source} label={filter.sources.length === 0 ? m.logs.filters.anySource : filter.sources.map(source => source === PROJECT_WIDE ? m.logs.filters.projectWide : sources.some(row => row.slug === source && row.removed) ? `${source} ${m.logs.filters.removed}` : source).join(", ")} on={filter.sources.length > 0}>
           {/* 소스가 없는 사건(멤버 · 설정)을 고른다 — 그 사건에 가짜 소스 값을 넣지 않기 때문이다. */}
           <DropdownMenuCheckboxItem
             checked={filter.sources.includes(PROJECT_WIDE)}
@@ -228,9 +225,9 @@ export function LogFilters({
               <DropdownMenuItem onSelect={() => go({ sources: [] })}>{m.logs.filters.clearSources}</DropdownMenuItem>
             </>
           )}
-        </Filter>
+        </FilterMenu>
 
-        <Filter axis={m.logs.filters.axis.result} label={filter.results.length === 0 ? m.logs.filters.anyResult : filter.results.map((result) => m.logs.status[RESULT_KEY[result]]).join(", ")} on={filter.results.length > 0}>
+        <FilterMenu axis={m.logs.filters.axis.result} label={filter.results.length === 0 ? m.logs.filters.anyResult : filter.results.map((result) => m.logs.status[RESULT_KEY[result]]).join(", ")} on={filter.results.length > 0}>
           {/* 이 축이 **실행에만** 적용된다는 사실을 고르기 전에 말한다. */}
           <p className="text-muted-foreground max-w-54 px-2 py-1.5 text-xs">{m.logs.filters.resultScope}</p>
           {RESULT_GROUPS.map((group) => (
@@ -247,7 +244,7 @@ export function LogFilters({
               ))}
             </div>
           ))}
-        </Filter>
+        </FilterMenu>
 
         {narrowed && (
           <Button
@@ -272,28 +269,6 @@ export function LogFilters({
         />
       </div>
     </div>
-  );
-}
-
-/**
- * 트리거 — **접근 가능한 이름이 축을 포함한다** ("Source: web, emails"). 라벨만으로는 스크린리더가
- * 무엇을 고른 것인지 모른다. 켜짐은 색이 아니라 **테두리·굵기**로도 구별된다.
- */
-/*
-  ⚠️ **트리거에 `id`를 넘기지 않는다** (r1) — Radix는 `context.triggerId`를 트리거의 id로 쓰고 메뉴의 `aria-labelledby`가 그것을
-  가리키는데, `id` prop이 그 값을 덮는다(값이 `undefined`여도 덮인다). 다섯 메뉴가 전부 없는 id를 가리켰다. 포커스 복귀는 ref가 든다.
-*/
-function Filter({ triggerRef, onCloseAutoFocus, axis, label, on, children }: { triggerRef?: RefObject<HTMLButtonElement | null>; onCloseAutoFocus?: (event: Event) => void; axis: string; label: string; on: boolean; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <FieldTrigger ref={triggerRef} aria-label={`${axis}: ${label}`} active={on} className="shrink-0">
-          {label}
-        </FieldTrigger>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-53" onCloseAutoFocus={onCloseAutoFocus}>{children}</DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

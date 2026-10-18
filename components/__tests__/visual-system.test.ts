@@ -297,8 +297,8 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
     expect(SOURCES.filter(({ path, source }) => path !== "components/ui/badge.tsx" && pill.test(source)).map(({ path }) => path)).toEqual([]);
   });
 
-  it("필터 트리거 둘의 hover가 `default` 버튼과 같다", () => {
-    for (const path of ["components/logs/log-filters.tsx", "components/translations/workspace/filter-menu.tsx"]) {
+  it("공통 필터 트리거의 hover가 `default` 버튼과 같다", () => {
+    for (const path of ["components/ui/filter-menu.tsx"]) {
       expect(read(path)).toContain("<DropdownMenuTrigger asChild>");
       expect(read(path)).toContain("<FieldTrigger");
       const trigger = read("components/ui/field-trigger.tsx");
@@ -359,7 +359,7 @@ describe("같은 행동은 같은 variant다 (audit #50)", () => {
    * "다시 하기"·"새로 만들기"가 한 모양이었다. Sync의 [Try again]은 Sync의 글리프(`ArrowDownToLine`)를, 재발급은 MCP Rotate처럼 글리프 없이 선다.
    */
   it("`RotateCcw`를 그리는 자리는 Clear filters뿐이다", () => {
-    const CLEAR = ["app/(edit)/projects/[slug]/logs/page.tsx", "components/logs/log-filters.tsx", "components/projects/empty-projects.tsx", "components/translations/workspace/workspace.tsx"];
+    const CLEAR = ["app/(edit)/inbox/page.tsx", "app/(edit)/projects/[slug]/logs/page.tsx", "components/inbox/inbox-filters.tsx", "components/logs/log-filters.tsx", "components/projects/empty-projects.tsx", "components/translations/workspace/workspace.tsx"];
     const drawn = SOURCES.filter(({ source }) => source.includes("<RotateCcw")).map(({ path }) => path).sort();
     expect(drawn).toEqual(CLEAR);
   });

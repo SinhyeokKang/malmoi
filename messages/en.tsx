@@ -89,6 +89,29 @@ export const en = {
    * (`common.nav.inbox`)과 같다(inbox-page — 옛 값 `Needs your attention`은 Home 카드 제목으로만 남는다. 같은 목적지의 이름이 둘이면 하나가 낡는다).
    */
   inbox: {
+    filters: {
+      all: "All items",
+      anyProject: "Any project",
+      clear: "Clear filters",
+      clearProjects: "Clear projects",
+      axis: { project: "Project" },
+      /** 프로젝트 이름은 사용자 데이터라 번역하지 않는다. 호출부가 전체 이름을 ", "로 잇는다. */
+      selectedProjects: (names: string): string => names,
+      kinds: {
+        publish: "Unsent",
+        review: "Needs review",
+        untranslated: "Untranslated",
+        sync_failed: "Sync failed",
+        partial: "Partially synced",
+        disconnected: "Disconnected",
+        setup: "Setup",
+      },
+    },
+    search: { label: "Search items", placeholder: "Search items…" },
+    noMatch: {
+      title: "No items match these filters",
+      query: (q: string): string => `No items match “${q}”`,
+    },
     label: "Inbox",
     /** 배지는 `9+`로 접어도 이 이름은 실제 수를 읽는다 — 숫자 배지는 `aria-hidden`이다. */
     labelUnread: (n: number): string => `Inbox, ${n.toLocaleString("en-US")} unread`,
@@ -3710,8 +3733,7 @@ export const en = {
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
     statusHelp: "Updated by syncs from your repository.",
     baseHelp: "The base language decides which keys exist in this source.",
-    /** 비지원 포맷(수술적 치환·공유 파일)의 카드 설명이자 꺼진 동작의 사유다. OWNER·지원 포맷과 EDITOR는 아래 둘이다(시안 L1·L4). */
-    languagesHelp: "Languages come from the repository. Add or remove the files there.",
+    /** 지원 포맷의 역할별 카드 설명이다. 비지원 포맷은 설명을 그리지 않는다. */
     languagesHelpOwner: "Add or remove languages here. Publish to update the repository.",
     languagesHelpEditor: "Only project owners can add or remove languages.",
     baseRow: "Source of every key in this file",
@@ -4503,7 +4525,7 @@ export const en = {
        * 그때 화면 키가 생기면 여기를 그 키로 바꾼다(같은 거부에 문구 두 벌 금지). 다음 행동을 함께 말한다 — 모르는 코드로 접히면 에이전트가 같은 호출을 되풀이한다.
        */
       languages: {
-        "unsupported-format": "Languages can be added or removed only for JSON catalog and Chrome extension messages sources.",
+        "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources.",
         "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
         "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
         "already-active": "That language is already in this source.",
@@ -4555,7 +4577,7 @@ export const en = {
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
       detach_source: "Detach a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_detach first and pass its approval. The last source can't be detached.",
       preview_locale_removal: "Preview removing a language from a source, or stopping a language that's being added: how many translations it has, how many unsent edits it has, and whether the change was already sent. Returns an approval to pass to remove_locale.",
-      add_locale: "Add a language to a source. Only JSON catalog and Chrome extension messages sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
+      add_locale: "Add a language to a source. JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
       remove_locale: "Remove a language from a source, or stop adding it. Call preview_locale_removal first and pass its approval. A removal deletes the language's file in the next Publish, and until then its translations can't be edited; its unsent edits go back to the last sent version. The base language can't be removed.",
       cancel_locale_removal: "Cancel a pending language removal. If the removal was already sent, the next Publish puts the file back.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, update the PUSH_TOKEN CI/CD variable.",
@@ -4946,6 +4968,7 @@ export const en = {
     "duplicate-property": "The key is defined twice. Malmoi uses the one it edits and leaves the other as it is.",
     "key-shadowed": "The key's slot is obscured by another key or property, so this value can't be written safely.",
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
+    "write-create-unsupported": "This language file couldn't be created from the base language file.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",
     "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",
     "write-empty-unsupported": "This format doesn't support publishing an empty value. Enter a value before publishing.",

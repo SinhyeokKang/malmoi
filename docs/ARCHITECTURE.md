@@ -411,7 +411,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | write의 입력 | DB 상태 | DB 상태 **+ 원본 파일 내용**(`DetectedFormat.currentFiles`) |
 | 결정성의 근거 | 정렬·재조립 규칙 | **같은 원본+입력 → 같은 바이트**. 무편집 원본 보존·실제 편집 결정성·재적용 고정점·미편집 영역 보존은 별도 검사한다 |
 | `orphaned` 키 | 파일에서 뺀다 | **파일에 남긴다**(값을 안 바꾼다). 지우면 코드가 참조하는 키가 사라진다 |
-| 낼 것 0개 | 원본이 없으면 `null`, 있으면 원본 표현의 `{}`(`emptyCatalog`, §1.1) | 원본 그대로(파일을 지우지 않는다). `null`은 원본이 없을 때만 |
+| 낼 것 0개 | 원본이 없으면 `null`, 있으면 원본 표현의 `{}`(`emptyCatalog`, §1.1) | 원본 그대로(파일을 지우지 않는다). `write`의 `null`은 원본이 없을 때만. ADD create·revive의 새 파일은 별도 `create` 계약(§5.10)을 따른다 |
 | 원본에 **없는** 키 | 그냥 쓴다 | `yaml-catalog`·`code-dict`는 **삽입한다**. `ts-dict`는 무시한다 (아래) |
 | 값의 **표현** | 우리 규칙대로 낸다 | **원본에서 읽는다** — 인용 부호는 그 리터럴이 쓰던 것, YAML 블록 스타일은 그 노드가 쓰던 것 (아래) |
 
@@ -2372,7 +2372,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 
 ## 5.10 언어 추가·제거 (locale-add — 2026-10-14)
 
-OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 파일이 따로인 재생성 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
+OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`**(언어마다 파일이 따로인 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
 웹 Server Action 다섯(`addSourceLocale`·`previewSourceLocaleAdd`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
 `app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다. 호출자는 Sources 상세의 Languages 카드와 Dialog 둘이다(DESIGN §6.66).
 ⚠️ 추가 미리보기 `previewSourceLocaleAdd`는 MCP에 짝이 없다(`add_locale`은 바로 실행하고 거부 코드로 답한다).
@@ -2426,6 +2426,7 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 �
   다른 언어·다른 소스의 같은 코드는 건드리지 않는다(`s-app`의 같은 코드 회귀가 고정한다).
 - **지문**(`localeChangeFingerprint`, 접두 `"locale-change"`)은 변경 행(연산·`requestedAt`) · 그 소스·언어 토큰 전부 · 소스 설정(어댑터·경로·기준·선언된 기준) · 그 소스 확인 행의 `{revision, invalidated}`에 묶인다.
   제거·추가 취소는 **항상** 지문 승인을 요구한다(추가와 제거 취소는 아니다). 대조는 잠금 뒤 다시 계산한 값과 한다.
+- **추가 취소는 언어별 파일 경로를 요구하지 않는다**(#303). `ts-dict`의 다중 언어 glob처럼 경로를 계산할 수 없으면 제거 미리보기의 `path`는 `null`이다. 새 제거 요청의 `unsafe-path` 거부는 유지하고, 추가 취소의 권한·미확정 전달·승인 지문 판정도 그대로다.
 
 ### 5.10.2 만료 — 요청은 영구 소유가 아니다
 
@@ -2501,8 +2502,16 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 - **삭제 경로의 경계**: 소스의 `pathTemplate`로 서버가 계산한 정확한 경로 하나다(Action·MCP는 경로를 받지 않는다). 소유(다른 소스의 경로), 비정규 파일(모드 100644·100755 밖)·링크된 상위 디렉터리는 `renderProject`의 기존 파일 종류 가드(`GitFileKindError`)에 삭제 경로도 태워 거부한다.
   디렉터리·glob 삭제는 없고 Chrome의 같은 디렉터리 다른 파일은 건드리지 않는다. `renderProject` 진입에서 delete·create가 그 소스의 REMOVE·ADD 행 경로와 같은지 단언한다. 계획이 거부되면(`path-conflict`·`duplicate-path`·`unsafe-path`)
   **`locale-plan-refused`** 다 — 결정적이라 재시도 불가(`LocalePlanRefused`, 미리보기는 `refused`). ⚠️ base를 못 읽은 것은 파일 부재가 아니다 — 삭제·`no-changes`를 하지 않는다.
-- **ADD의 새 파일 표현**: 원본이 없으므로 그 소스의 **기준 언어 파일 하나**에서 **표현만**(들여쓰기·CRLF·BOM·이스케이프·한 줄 컨테이너·Chrome 필드 순서) 빌린다 — `DetectedFormat.representationSource`, 재생성 writer가 원본이 없을 때만 본다.
-  **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). Chrome의 `placeholders`·`description`은 복사하지 않는다. 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+- **ADD의 새 파일 표현**: 원본이 없으므로 그 소스의 **기준 언어 파일 하나**를 `DetectedFormat.representationSource`로 전달한다. 재생성 writer는 대상 원본이 없을 때 **표현만**(들여쓰기·CRLF·BOM·이스케이프·한 줄 컨테이너·Chrome 필드 순서) 빌린다. 수술적 `create`의 예외는 아래와 같다.
+  재생성 어댑터는 **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). 예외는 수술적 `yaml-catalog`·`code-dict`의 `Adapter.create?`다:
+  기준 언어 파일에서 루트 로케일 키(기준 코드와 같을 때만)·키 구조(평평/중첩)·code-dict 내보내기 형태(default/같은 이름 named)·표현을 빌린다. **값·주석·import·타입 주석은 빌리지 않는다.**
+  `create(format, input & { baseLocale })`는 ADD create·revive에서 대상 원본이 없을 때만 호출하며 기존 `writeWithErrors`와 `ts-dict`의 원본 부재 계약은 그대로다.
+  새 파일은 값 있는 활성 키만 `compareKeys` 순서로 쓰고 끝 개행은 하나다. 중첩 트리는 `Map`으로 만들어 정수 모양 키·`__proto__`도 순서를 잃지 않으며 접두 충돌은 `key-shadowed` 실패다. 중첩 생성에서 구분자로 시작하는 키(`.x`)는 read가 빈 최상위 이름을 벗겨 키가 달라지므로 `write-create-unsupported`로 막는다(평평한 리터럴 키는 보존).
+  YAML은 기준 코드와 다른 루트·생성 결과의 루트 오인을 거부하고 YAML 1.1 모호 토큰을 인용한다. CRLF·BOM·들여쓰기를 따른다.
+  code-dict는 기준 코드가 든 named export 이름과 `__proto__` 프로퍼티를 거부한다. 값·키 인용과 끝 쉼표를 따르고 BOM은 쓰지 않으며 세미콜론은 고정한다.
+  기준 파일 없음·지원하지 않는 생성 규약은 `write-create-unsupported`, 파싱 실패는 `write-parse-failed`다. **생성 실패는 `content: null`과 blocking 오류를 함께 내며 보류로 낮추지 않는다.** 값 0개만 `null`과 빈 오류를 낸다.
+  Chrome의 `placeholders`·`description`은 복사하지 않는다. 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 같은 DB 입력으로 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  **새 파일은 듬성할 수 있다** — 이후 값이 생긴 키의 부모 맵이 그 파일에 없으면 기존 수술적 삽입은 남은 경로를 점 리터럴 키(`"a.b.c"`)로 넣는다. 중첩 조회 런타임에서 그 키를 읽는지와 새 언어의 import·지원 언어 목록 등록은 대상 리포가 책임진다. PR 본문 안내는 기존 제거 안내를 유지한다.
   미전달 ADD의 경로가 이미 base에 있으면 **그 언어만** `proposal-path-exists`로 보류하고 나머지 편집은 나간다. **값 0개 ADD는 파일을 내지 않고** Publish 작업으로 세지 않는다(미리보기가 `empty`로 알린다).
 - **조기 종료 · 전부 보류**: 셀 편집 0·`maxUpdatedAt = null`이어도 언어 변경 작업이 있으면 실행하고(`at: null`이면 `lastPulledAt`을 쓰지 않는다), **번역이 전부 보류여도 안전한 삭제는 전달한다.**
   판정은 보류 ADD까지 센 `localeWorkOf`가 아니라 **전달 가능한 작업**(`deliverableLocaleWork` — 캡처 ≠ 전달인 소스 수)이 한다. 빈 ADD만 있으면 원격 쓰기가 0이다.
@@ -3560,7 +3569,11 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
 열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
 
 **`/inbox` 페이지** (2026-10-09, inbox-page) — `app/(edit)/inbox/page.tsx`가 `requireUser` → **조회 전** `now` → `loadAttentionInbox` →
-`InboxList`(서버) + 섬 `MarkSeen`이고, 섬이 **마운트 뒤** `markAttentionSeenAction(now.toISOString())`을 한 번 부른다. 목록은 드롭다운과 같은 `InboxPlan`이다.
+`inboxFilterOptions` → `effectiveInboxFilter(parseInboxFilter(searchParams), options)` → `filterInbox` → `InboxList`(서버, 원래 계획이 있는데 결과만 0건이면 `NoMatch`) + 섬 `MarkSeen`이다(2026-10-18, inbox-filter-search).
+목록은 드롭다운과 같은 `InboxPlan`에서 출발한다. **필터는 조회 뒤 페이지 표시만 좁힌다** — `kind`·`project`·`q`는 URL 상태이고 선택지는 원래 계획에서 만든다.
+알 수 없거나 계획에 없는 종류·프로젝트는 실효 필터에서 뺀다. 프로젝트 slug로 DB를 다시 조회하지 않아 멤버십 경계는 그대로다. 헤더 목록·배지에는 필터를 적용하지 않는다.
+섬은 **마운트 뒤와 `at` 변경 뒤** `markAttentionSeenAction(now.toISOString())`을 부른다. 좁힌 화면·빈 결과에도 늘 렌더하므로 읽음은 전체 목록에 적용된다.
+**필터·검색 변경도 새 방문이다** — 서버가 조회 전 `now`를 새로 잡고 갱신된 워터마크로 점을 다시 계산한다. 쓰기는 같은 단조 `updateMany`다.
 ⚠️ **GET 렌더는 아무것도 쓰지 않는다** — 지금은 `loading.tsx`가 있는 동적 라우트의 기본 prefetch가 loading 경계까지만 받지만, `prefetch={true}`·
 `staleTimes`·Cache Components 설정 하나로 본체가 실행되면 보지 않은 목록이 읽음이 된다. 그 보장을 설정에 기대지 않는다(`app/(edit)/inbox/__tests__/page.test.tsx`가 렌더 중 쓰기 0회를 센다).
 드롭다운의 열기 Action을 다시 부르지 않는 것은 서버가 이미 그린 목록을 한 번 더 조회하기 때문이다.
@@ -4004,7 +4017,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라). 버려질 언어 변경은 `languageChanges: [{source, language, change}]`로 나열한다 |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
 | `preview_source_detach` | OWNER (표면) | 없음 | 제거 지문(미전달이 있을 때만) · 미전달 수(그 소스 전체 — orphaned 포함) · 열린 PR `open`·`none`·`unknown`. 판정 거부(`last-source`·`importing`)도 여기서 난다 — §5.9 |
-| `preview_locale_removal` | OWNER (표면) | 없음 | **언어 제거와 추가 취소 둘 다**의 미리보기(`kind: request-removal` \| `cancel-add`) — 대상 파일 경로·값 있는 번역 수·그 언어의 미전달 수·전달 여부(`boolean \| null`, `null` = 확인 안 됨)·서버 지문(`approval`, 항상 발급). 읽기만 한다 — §5.10 |
+| `preview_locale_removal` | OWNER (표면) | 없음 | **언어 제거와 추가 취소 둘 다**의 미리보기(`kind: request-removal` \| `cancel-add`) — 대상 파일 경로(추가 취소에 언어별 경로가 없으면 `null`)·값 있는 번역 수·그 언어의 미전달 수·전달 여부(`boolean \| null`, `null` = 확인 안 됨)·서버 지문(`approval`, 항상 발급). 읽기만 한다 — §5.10 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |

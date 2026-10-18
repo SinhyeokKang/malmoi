@@ -109,7 +109,8 @@ app/
                         ⚠️ 토큰이 토큰을 만들지 않는다 — MCP 도구에 발급·폐기가 없고 여기가 유일한 길이다.
                         ⚠️ 서버 URL은 이 요청의 origin이다 — preview에서 보면 preview 주소여야 조각을 그대로 쓴다
     inbox/              Inbox(`/inbox`, 2026-10-09 inbox-page). 사용자 축 한 장 — requireUser만 지난다(preferences/·mcp/와 같은 형 · layout.tsx가
-                        ContentPanel을 든다 · loading.tsx). page.tsx는 requireUser → 조회 전 now → loadAttentionInbox → InboxList + MarkSeen(now ISO).
+                        ContentPanel을 든다 · loading.tsx). page.tsx는 requireUser → 조회 전 now → loadAttentionInbox → 필터 선택지·실효 필터·filterInbox → InboxList(좁힌 결과, 원래 계획이 있는데 결과만 0건이면 NoMatch) + MarkSeen(now ISO).
+                        searchParams(kind·project·q)를 읽고 InboxFilters를 머리에 둔다. loading은 기본 필터 줄의 감김도 예약한다.
                         ⚠️ 렌더는 아무것도 쓰지 않는다 — 읽음은 마운트 뒤 섬이 Action으로 쓴다(prefetch가 본체를 실행해도 읽음이 되지 않게).
                         ⚠️ actions.ts가 여기 없다 — 공개 셸 헤더도 부르므로 app/inbox/actions.ts(괄호 밖)에 남는다. 두 디렉터리가 같은 세그먼트 /inbox로
                         풀리지만 page.tsx가 이쪽 하나라 충돌하지 않는다. 보호 경로라 isProtectedPath와 robots disallow 두 곳에 등재된다
@@ -326,6 +327,8 @@ components/
                         실제 retry 콜백을 호출하며 404·빈 결과는 alert 없는 EmptyState로 남는다
   ui/select-row.tsx     SelectRow — 선택 행 모양과 radio/checkbox 입력·expand/aside 슬롯을 공유한다.
                         RadioGroup·목록 역할·선택/확장 시점과 비활성 사유 연결은 실제 소비자가 소유한다
+  ui/filter-menu.tsx    FilterMenu — FieldTrigger + DropdownMenu 공통 껍데기. Logs·번역 화면·Inbox 필터 줄이 쓴다. className으로 긴 값의 폭을 제한하면 안쪽 span은 truncate, 접근 이름은 전체 값을 보존한다.
+                        축을 포함한 접근 이름·크기·정렬·disabled·triggerRef·닫힘 포커스를 들며 항목은 children이 소유한다. 트리거를 감싸지 않는다
   ui/field-trigger.tsx  FieldTrigger — 필드형 드롭다운의 md36/sm28·active/disabled·뒤 글리프를 공유한다.
                         Radix 트리거의 asChild 자식으로 조립하며 슬롯·네이티브 속성은 실제 컨트롤에 남는다
   ui/copy-button.tsx    CopyButton — onboarding/에서 이동한 복사 동작과 성공/실패 피드백.
@@ -378,7 +381,7 @@ components/
                         AppWideOnly) — 셋째 소비자가 붙으며 public-shell/nav-drawer에서 옮겼다(#214 Chrome 순서, ARCHITECTURE §6.358)
   translations/workspace/  **번역 작업 화면** (2026-09-23, translation-rework C4 — DESIGN §6.1a). workspace(draft·이동·폭의
                         **한 소유자** — 저장·Revert·Publish 확인이 전부 여기서 갈린다) · tree-panel · key-list · locale-panel ·
-                        filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
+                        filter-menu(OptionsFilterMenu — 공통 ui/FilterMenu 위에서 options·그룹·hint를 조립) · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
                         beforeunload다). ⚠️ 카드 사이 핸들은 react-resizable-panels가 아니다 — px 하한 셋(420·336·208)을
                         % 환산 없이 지키려고 lib/translations/layout.ts가 폭을 계획한다
                         ⚠️ 카드 772 미만은 단일 판이다(2026-10-11 responsive-app) — 판 표시는 CSS(`@container/ws` + data-pane)이고 판 전환은
@@ -515,7 +518,8 @@ components/
   inbox/                Inbox 조각(inbox-page, 2026-10-09). row-slots(attentionRowSlots — 주의 항목 한 줄의 **내용**(칩·문장·점·시각·Owner 안내)을
                         헤더 드롭다운·/inbox·Home 할 일 카드가 나눠 쓴다. 그릇은 각자(DropdownMenuRow · ListRow) · attentionItemKey(행 key — 드롭다운 로빙 포커스).
                         ⚠️ "use client"가 아니다 — 서버 페이지·Home도 쓴다, 그래서 m·uiLocale을 인자로 받는다. 권한을 판정하지 않는다(ownerRetries는 호출부)) ·
-                        inbox-list(서버 — 프로젝트마다 Card + ListRow, 빈 상태 EmptyState card) · mark-seen("use client" 섬 — 마운트 뒤
+                        inbox-list(서버 — 프로젝트마다 Card + ListRow, 빈 상태 EmptyState card) · inbox-filters("use client" — 종류 단일·프로젝트 다중 선택 + 검색,
+                        실효 필터를 URL로 조립한다. 선택지는 원래 계획, FilterMenu·DropdownMenuCheckboxItem·SearchInput 조립) · mark-seen("use client" 섬 — 마운트 뒤
                         markAttentionSeenAction, marked면 notifySeen. 아무것도 그리지 않는다)
   onboarding/new-project.tsx
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
@@ -525,8 +529,8 @@ components/
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         remove-source-dialog · sources-archived · languages-card · add-locale-dialog · remove-locale-dialog 열 컴포넌트 + `.ts` 둘 — language-row.ts(아래) · row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
                         languages-card(locale-add, 2026-10-17)는 상세 모달의 Languages 카드다 — 머리 [Add language] · 행(코드·진행률·상태 배지·동작 하나·[Open]) · Inactive 띠 · 결과 notice · 포커스 예약을 든다.
-                        language-row는 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
-                        add-locale-dialog는 추가 Dialog(json은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
+                        language-row는 카드 설명·Inactive 복구 문장(포맷 > 권한)과 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
+                        add-locale-dialog는 추가 Dialog(json·yaml·언어별 코드 사전은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
                         화면이 템플릿을 채우지 않는다. remove-locale-dialog는 **제거 요청·추가 취소 공용** 확인 창이다(remove-source-dialog와 같은 형 — 지문은 여는 순간 받는다).
                         ⚠️ 두 Dialog는 결과를 호스트(languages-card)로 올리고 닫히며, 포커스는 호스트가 옮긴다.
                         remove-source-dialog는 상세 모달 바닥 왼쪽 [Detach source]의 확인 창이다(Sync 확인 창 형 — 지문은
@@ -654,11 +658,12 @@ lib/
   adapters/             양방향 로케일 어댑터. ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 별개 축이다 —
                         yaml-catalog·code-dict가 per-locale인데 수술적이다. layout으로 가르는 코드가
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
-                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 24) ·
+                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 25) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
-                        __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼)
+                        __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
+                        __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
@@ -789,7 +794,7 @@ lib/
                         나머지는 잎이다 — import는 서로와 잎인 `lib/routes.ts`뿐이다. ⚠️ connection-reason은 그 예외다(lib/home/state ·
                         lib/i18n을 문다 — 판정을 사본으로 두면 Home 배너와 번역 화면의 낱말이 갈린다).
                         키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
-  sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
+  sources/             query(server-only 목록/선택 상세, 역할별 명시 projection — languageChangesSupported boolean은 모든 역할, 어댑터 이름·경로는 OWNER만) ·
                         actions(planSourceActions) · base-language(폼 상태 판정) · add-block(Add sources가 꺼진 갈래별 사유 —
                         malmoi#93) · meters(언어 막대 값 — `LocaleMeterValue` · `meterValue`(두 구간 폭 clamp) · `sourceRowMeters`(행에 설 앞 다섯 +
                         남은 수, 키 0이면 빈 결과). 목록 조회가 소스마다 싣고 상세 Languages 카드가 클라이언트에서 같은 `meterValue`를 부른다 —
@@ -874,6 +879,7 @@ lib/
                         observeLocaleFiles(**base 관측의 유일한 함수** — 정규 파일 100644·100755만, mode를 모르면 unreadable) · observedLocalesOf · deliverableLocaleWork(조기 종료 판정) ·
                         capturedBySurface(확인 tx가 쓸 캡처 목록) · localeFingerprintInput(Publish 지문 입력) · expiryCheckApplies(1층 앞 만료 판정) ·
                         expiringLocalesOf·afterExpiry(미리보기의 읽기 전용 만료 판정·만료 뒤 상태, #267). 순수
+                        __tests__/observe-locale-files.test.ts는 yaml-catalog·code-dict의 파일 관측을 직접 검사하고, __tests__/locale-create.test.ts는 수술적 ADD create·revive 렌더·blocking 실패를 검사한다
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
   repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
@@ -1102,7 +1108,9 @@ lib/
                         검토 · 빈 언어)을 한 함수가 낸다. Inbox와 /projects 행 조립이 둘 다 쓴다 — 2026-10-18 project-row-redesign. 런타임 import는
                         lib/auth/permission 하나라 클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
                         unread-store(탭 안 안 읽음 수 store — 헤더·사이드바 배지가 같은 n을 읽고 /inbox 섬이 읽음 신호를 보낸다. Provider가 아닌 것은
-                        공개 셸 헤더도 같은 AttentionInbox라서다. ⚠️ 서버 스냅샷 0 · 렌더 중 setUnread 금지 — SSR에서 요청 간 공유되는 모듈 인스턴스다)
+                        공개 셸 헤더도 같은 AttentionInbox라서다. ⚠️ 서버 스냅샷 0 · 렌더 중 setUnread 금지 — SSR에서 요청 간 공유되는 모듈 인스턴스다) ·
+                        filter(순수 — parseInboxFilter·inboxQuery·inboxKindOf·inboxFilterOptions·effectiveInboxFilter·hasNarrowing·filterInbox.
+                        페이지 표시만 좁히며 로더·헤더 집계는 부르지 않는다. unsent·language_unsent는 publish 하나, 실패·일부 반영은 나눈다)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 UTF-16 역매핑을 강조·snippet·
@@ -1169,6 +1177,8 @@ lib/
                         cookie(server-only — setColorSchemeCookie, Server Action용 cookies().set. 속성은 device-cookies/spec). 로그인 동기화는 lib/device-cookies/. __tests__/helpers/는 대비 검사 전용
                         순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
                         theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
+  query-list.ts         ⚠️ 잎(import 0). 목록·글자 쿼리 파싱과 encodeList — events/filter·inbox/filter가 공유한다. 반복 파라미터 첫 값,
+                        trim·목록 정렬·중복 제거·50개 상한·글자 200자 상한을 한 벌로 둔다(inbox-filter-search, 2026-10-18)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
   viewport.ts           잎(타입 import 하나). 요청 UA → 루트 viewport(viewportFor) — iOS에만 maximumScale 1. 근거는 ARCHITECTURE §6.358.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)

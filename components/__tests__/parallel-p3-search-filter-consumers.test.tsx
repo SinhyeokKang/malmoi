@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ProjectSearch, useProjectQuery } from "@/components/projects/search-input";
-import { FilterMenu } from "@/components/translations/workspace/filter-menu";
+import { OptionsFilterMenu } from "@/components/translations/workspace/filter-menu";
 import { render, find, key } from "./helpers/dom";
 
 const locationState = vi.hoisted(() => ({ query: "fixture" }));
@@ -48,7 +48,7 @@ it("actual ProjectSearch keeps trimmed URL submission, IME guards and external q
 const options = [{ value: "all", label: "All", group: "State" }, { value: "pending", label: "Pending", group: "State" }];
 it("actual small FilterMenu keeps one slotted trigger, end alignment, keyboard selection and focus return", async () => {
   const select = vi.fn();
-  const { container } = await render(<FilterMenu axis="Completeness" label="Pending" on size="sm" options={options} value="pending" onSelect={select} align="end" hint="Fixture hint" />);
+  const { container } = await render(<OptionsFilterMenu axis="Completeness" label="Pending" on size="sm" options={options} value="pending" onSelect={select} align="end" hint="Fixture hint" />);
   const trigger = find<HTMLButtonElement>(container, 'button[aria-label="Completeness: Pending"]');
   expect(container.querySelectorAll("button")).toHaveLength(1);
   expect(trigger.classList.contains("h-7")).toBe(true);
@@ -69,7 +69,7 @@ it("actual small FilterMenu keeps one slotted trigger, end alignment, keyboard s
 
 it("actual disabled FilterMenu blocks pointer and keyboard opening", async () => {
   const select = vi.fn();
-  const { container } = await render(<FilterMenu axis="Completeness" label="All" on={false} size="md" options={options} value="all" onSelect={select} disabled />);
+  const { container } = await render(<OptionsFilterMenu axis="Completeness" label="All" on={false} size="md" options={options} value="all" onSelect={select} disabled />);
   const trigger = find<HTMLButtonElement>(container, "button");
   expect(trigger.disabled).toBe(true);
   expect(trigger.classList.contains("h-9")).toBe(true);

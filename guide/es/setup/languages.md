@@ -2,11 +2,11 @@
 
 Añade un idioma a una fuente o quita uno desde los detalles de la fuente y publica el cambio en tu repositorio como un archivo.
 
-Los propietarios del proyecto cambian los idiomas de una fuente; los traductores (rol Editor) pueden ver el estado de cada idioma, pero no cambiarlo. Añadir y quitar idiomas funciona en fuentes de **Catálogo JSON** y de **Mensajes de extensión de Chrome**, que guardan un archivo por idioma. En los demás formatos, añade o borra el archivo del idioma en el repositorio y Malmoi recoge el cambio en la siguiente actualización.
+Los propietarios del proyecto cambian los idiomas de una fuente; los traductores (rol Editor) pueden ver el estado de cada idioma, pero no cambiarlo. Añadir y quitar idiomas funciona en fuentes de **Catálogo JSON**, **Catálogo YAML**, **Mensajes de extensión de Chrome** y **Diccionario en código (un archivo por idioma)**. Para un diccionario que contiene todos los idiomas en un archivo, cambia los objetos de idioma en el repositorio; Malmoi lee el cambio en la siguiente actualización.
 
 ## Abre la tarjeta Idiomas {#languages}
 
-Abre **Fuentes**, abre los detalles de la fuente y busca la tarjeta **Idiomas**. Cada fila muestra el progreso de un idioma y una acción. Un idioma que no está en la fuente se añade con **Añadir idioma**, en la parte superior de la tarjeta.
+Abre **Fuentes**, abre los detalles de la fuente y busca la tarjeta **Idiomas**. Cada fila muestra el progreso de un idioma y las acciones disponibles. En los formatos compatibles, un idioma que no está en la fuente se añade con **Añadir idioma**, en la parte superior de la tarjeta.
 
 Una fila puede mostrar:
 
@@ -18,12 +18,14 @@ Una fila puede mostrar:
 
 ![La tarjeta Idiomas de una fuente, con un botón Añadir idioma sobre las filas del idioma base, idiomas normales, uno que se está añadiendo, uno que se está quitando y uno inactivo](/guide/languages-card.webp "Cada fila muestra el estado del idioma y una acción.")
 
-En la fila del idioma base, **Quitar idioma** está desactivado; elige antes otro [idioma base](sources.md#base-language). Para los traductores, y para los formatos que no admiten añadir ni quitar idiomas, los botones también están desactivados, y la descripción de la tarjeta explica por qué.
+En los formatos compatibles, **Quitar idioma** está desactivado en la fila del idioma base; elige antes otro [idioma base](sources.md#base-language). Los traductores ven botones desactivados y una descripción que indica que solo los propietarios pueden cambiar idiomas.
+
+En un diccionario con todos los idiomas en un archivo, la tarjeta no tiene descripción ni acciones para nuevas adiciones o eliminaciones, incluidas las filas del idioma base y de los inactivos. Un propietario aún puede cancelar los cambios de idioma pendientes, salvo si la última publicación no está confirmada y puede haber incluido ese cambio. Para un idioma inactivo, los propietarios ven una indicación de restaurar el archivo en el repositorio y sincronizar; los traductores solo ven que se conservan sus traducciones.
 
 ## Añade un idioma {#add}
 
 1. En la tarjeta **Idiomas**, elige **Añadir idioma**.
-2. En un catálogo JSON, elige un idioma de **Idiomas habituales** o escribe un código en **Código de idioma**: un idioma en minúsculas con una región opcional, como `fr`, `pt-BR` o `zh_TW`. Los idiomas que ya estuvieron en esta fuente aparecen primero, en **Antes en esta fuente**. En los mensajes de extensión de Chrome, elige en **Idioma**; Chrome admite una lista fija de códigos.
+2. En un catálogo JSON o YAML o un diccionario con un archivo por idioma, elige un idioma de **Idiomas habituales** o escribe un código en **Código de idioma**: un idioma en minúsculas con una región opcional, como `fr`, `pt-BR` o `zh_TW`. Los idiomas que ya estuvieron en esta fuente aparecen primero, en **Antes en esta fuente**. En los mensajes de extensión de Chrome, elige en **Idioma**; Chrome admite una lista fija de códigos.
 3. Comprueba **Archivo que se creará**, la ruta que tendrá el archivo. Elige **Añadir idioma** otra vez para confirmar.
 
 ![El diálogo para añadir un idioma sobre los detalles de la fuente, con es elegido como código de idioma e i18n/emails/es.json en Archivo que se creará](/guide/language-add.webp "Elige un idioma y comprueba el archivo que creará Malmoi.")
@@ -31,6 +33,8 @@ En la fila del idioma base, **Quitar idioma** está desactivado; elige antes otr
 Malmoi rechaza un idioma que ya está en la fuente, uno cuya ruta de archivo coincide con la de otro idioma (por ejemplo `pt-BR` y `pt_br`), uno que escribiría en un archivo de otra fuente y uno que se está quitando; en ese caso, cancela la eliminación.
 
 El idioma nuevo aparece como **Añadiendo** y los traductores pueden abrirlo y traducir enseguida. El archivo todavía no existe en tu repositorio: Publicar lo crea, cuando el idioma tiene al menos una traducción. Hasta entonces, la vista previa de Publicar muestra el idioma como **No incluido**.
+
+Los archivos nuevos de YAML y de código por idioma siguen las convenciones del archivo base sobre raíz, estructura de claves, exportación y formato cuando corresponda. Solo contienen claves traducidas, sin los comentarios, sentencias `import` ni declaraciones de tipos del archivo base. Si esas convenciones no se pueden usar con seguridad, Publicar se detiene; cancela la adición o crea el archivo en el repositorio. Consulta [Archivos de idioma nuevos](../reference/formats.md#languages) para ver los límites, incluidas las inserciones posteriores de claves con puntos. Registra el idioma en el código de tu aplicación cuando sea necesario.
 
 Si añades un idioma que ya estuvo en esta fuente, Malmoi recupera sus traducciones guardadas como ediciones sin enviar, así que la siguiente publicación las envía.
 

@@ -9,8 +9,8 @@ import { surfaceOwnership, type SurfacePaths } from "@/lib/surfaces/plan";
  * 경로는 서버가 소스 `pathTemplate`에서 계산한다 — Action·MCP는 파일 경로를 받지 않는다.
  */
 
-/** 개별 파일을 재생성하는 두 포맷만 — 수술적 포맷과 공유 파일(`ts-dict`)의 언어 구성 변경은 범위 밖이다. */
-const SUPPORTED_ADAPTERS: ReadonlySet<string> = new Set(["json-catalog", "chrome-locales"]);
+/** 로케일별 파일을 생성·삭제할 수 있는 포맷만 — 공유 파일(`ts-dict`)의 언어 구성 변경은 범위 밖이다. */
+const SUPPORTED_ADAPTERS: ReadonlySet<string> = new Set(["json-catalog", "chrome-locales", "yaml-catalog", "code-dict"]);
 
 export function supportsLocaleChanges(adapterName: string | null): boolean {
   return adapterName !== null && SUPPORTED_ADAPTERS.has(adapterName);

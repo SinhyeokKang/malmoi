@@ -24,7 +24,7 @@ const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
 const two: SourcesData = { installed: true, repoHost: "github", repository, sources: [emails, web] };
 const one: SourcesData = { installed: true, repoHost: "github", repository, sources: [web] };
 const detail = (over: Partial<SourceDetail> = {}): SourceDetail => ({
-  ...web, installed: true, repoHost: "github", pullRequestUrl: null, importActive: false, localeDelivery: "confirmed",
+  ...web, installed: true, repoHost: "github", pullRequestUrl: null, importActive: false, languageChangesSupported: true, localeDelivery: "confirmed",
   languages: [
     { code: "en", isBase: true, orphaned: false, total: 248, translated: 248, needsReview: 0, untranslated: 0, percent: 100, change: null, unsent: false },
     { code: "ko", isBase: false, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84, change: null, unsent: false },

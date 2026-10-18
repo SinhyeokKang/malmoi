@@ -121,3 +121,19 @@ it("행 막대와 기존 합계는 작업 언어만 세고 검토 분자는 막�
     ], hidden: 0 },
   });
 });
+
+for (const role of ["OWNER", "EDITOR"] as const) {
+  it.each([
+    ["json-catalog", true], ["chrome-locales", true], ["yaml-catalog", true], ["code-dict", true], ["ts-dict", false], [null, false],
+  ])(`상세는 ${role}에게 %s 언어 변경 지원을 서버에서 싣는다`, async (adapterName, supported) => {
+    mocks.translationSurface.findFirst.mockResolvedValue({ ...surface, adapterName });
+    const detail = await loadSource(db, en, "p", "s", role);
+    expect(detail?.languageChangesSupported).toBe(supported);
+    if (role === "EDITOR") {
+      expect(detail).not.toHaveProperty("connection");
+      expect(detail).not.toHaveProperty("repository");
+    }
+    const list = await loadSources(db, en, "p", role);
+    expect(list?.sources[0]).not.toHaveProperty("languageChangesSupported");
+  });
+}
