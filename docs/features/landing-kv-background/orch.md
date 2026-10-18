@@ -41,6 +41,10 @@ A와 B는 쓰기 파일이 겹치지 않는다 → **병렬**. B는 `DotField`�
 
 T0(완료) · T1 A · T2 A · T3 B+B2 · T4 DS · T5 QA · T6 QA · T7 DOC · T8 지휘자 — 0건.
 
+## 다음 런
+
+이 런을 마무리(리포트)하면 같은 세션에서 `/orchestrate docs/features/language-request-todo`를 **직렬로** 잇는다(사용자 2026-10-18).
+
 ## 진행 기록
 
 (통합 커밋 · 리뷰 라운드 · 검증 결과 · 이슈를 여기에 쌓는다)
@@ -53,3 +57,4 @@ T0(완료) · T1 A · T2 A · T3 B+B2 · T4 DS · T5 QA · T6 QA · T7 DOC · T8
 - B fix1 질문 2 — `calc(100svh-96px)` 리터럴은 `visual-system.test.ts` T2_RAW가 막는다(옛 표기가 `--spacing-modal-gutter`로 바뀐 값). **지휘자 판단 — D10을 뒤집는다**: 폴백은 98 그대로 두고 주석만 "보더 없는 kv 패널에선 JS 전 2px 짧다"로 고친다. W1로 정적 흐름도 실제 H를 쓰므로 폴백은 JS 전에만 쓰인다. 새 토큰·DESIGN 변경 없음.
 - 리뷰 A: 🔴 0 · 🟡 4 · ⚪ 5(사본 `handoffs/review-A.md`). 계획과 다른 점 전부 수용(캔버스 rect 좌표가 계획보다 낫다). A fix1(Dispatch `ctx_adac7b076573`): Y1 고무줄 스크롤 때 `scrollTop`을 `[0, max]`로 자르는 순수 함수 · Y2 묶음 fill 알파·`moveTo` 단언 · Y3 루프 중 scroll 재그리기 없음 단언 · N1–N3. **Y4(랜딩 캔버스가 `[data-public-scroller]` 안에 있는지 단언)는 B2로 보낸다.** QA 런타임 항목 추가: Safari 위·아래 고무줄 스크롤에서 점이 콘텐츠에 붙어 있는지, 빠른 플릭에서 한 프레임 지연.
 - A fix1 `worker_done` — 68d0d9d1(test) · 47cd319e(fix): 순수 `clampScrollTop` · 묶음 알파·`moveTo` 단언 · 루프 중 scroll 재그리기 없음 · 주석 N1·N2 · 마우스 테스트 시각 고정. 변이 검사 넷 모두 red. `gate: ok`(첫 실행은 병렬 부하로 무관한 파일 9건 타임아웃, 단독 재실행 green). 지휘자 diff 확인 — 수용. 런타임 목록 7항목은 `handoffs/handoff-A.md` fix1 절.
+- **A 통합(로컬 dev, 미push)** — cherry-pick `fbf4ddbb..87ec1752`(6 커밋), main 체크아웃 `pnpm gate` → `gate: ok`(15891 통과). push는 B·B2·DS 뒤에 한 번에 한다.
