@@ -50,3 +50,9 @@
 - 지휘자 판단 — T1b의 `CLIENT_LIB_FILES` 등재는 실제 클라이언트 소비자가 생기는 D 커밋으로 이관한다. 정확 일치 검사를 완화하지 않는다. A는 독립 잎 그래프 검증을 수행한다. A가 지시 수신·적용을 확인했다.
 - 지휘자 판단 — T2의 parallel-p3-search-filter-consumers 테스트 import/JSX 이름 변경은 호출부 개명에 포함한다. 동작 단언 변경·호환 alias는 없다.
 - 검증 런타임: 시스템 Node26 대신 B가 저장소 밖에 마련한 `/tmp/malmoi-node24/node-v24.15.0-darwin-arm64/bin`을 PATH 선두에 둔다. 의존성·환경 파일 변경 없음.
+- 지휘자 판단 — 병렬 전체 스위트에서 스캐너 시간 초과가 발생해 최종 gate만 공유 flock으로 직렬 실행한다. `.scratch/inbox-filter-search/gate.py`는 Node24의 `pnpm gate --base dev`를 그대로 실행하고 종료 코드를 반환한다. 기준·제한 시간은 변경하지 않는다.
+- C: 새 Kind 축 사본은 가이드 aria 전용 라벨 검사와 겹쳐 제거했다. D는 기존 `m.logs.filters.axis.kind`를 재사용한다.
+- D: 실제 긴 이름 소비자 구현에 필요한 경우 `FilterMenu` 트리거 폭 prop을 최소한으로 추가하는 몫도 D가 소유한다(B 후 직렬). 미사용 확장 prop 선반영은 하지 않는다.
+- B 완료: `44d69dc4`, `12dd365b`; Node24 직렬 gate `ok`, 901 files / 16,004 passed / 2 skipped, build·미러 성공. 독립 리뷰 R1을 배치별 Dispatch로 나누어 B부터 시작한다(A/C는 최종 gate 중).
+- 범위 밖 미추적 `docs/features/locale-change-formats/` 발견: 이번 세션에서 편집·stage하지 않는다.
+- R1-B `ctx_e19c557e8bc3`: Astra medium 독립 리뷰 🔴0/🟡0, DOM 3파일 30건 재검증. B 통합 승인. 런타임 기하/포커스는 Q가 검증한다.
