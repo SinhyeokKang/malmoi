@@ -56,7 +56,7 @@ T4~T6은 한 커밋이다 — T4만 들어가면 Publish가 새 파일을 조용
   검증: `rg -n "고정 상한이 아니다" docs/DESIGN.md` 0건, `rg -n "available-height" docs/DESIGN.md` 히트가 300 상한과 함께.
 - [x] T12-1. `docs: CLAUDE.md` 언어 삭제 절의 "`json-catalog`·`chrome-locales`뿐" 정정 + `pnpm sync:agents`. 코드 주석 `lib/adapters/types.ts`(`representationSource`)·`lib/pull/locales.ts`(관측 주석)는 커밋 1·2에서 함께.
   검증: `pnpm sync:agents:check` green.
-- [ ] T13. `/guide` — `setup/languages.md`(지원 포맷 목록 · "buttons are turned off too, and the card's description says why" 문장 정정)·`reference/formats.md`·
+- [x] T13. `/guide` — `setup/languages.md`(지원 포맷 목록 · "buttons are turned off too, and the card's description says why" 문장 정정)·`reference/formats.md`·
   `faq.md#languages`("keep their comments"에 새 파일 단서 · 새 파일 대가 둘)(en·ko·es 같은 커밋) · `guide/AUTHORING.md` · README에 언어 추가·제거 문장 새로 추가.
   검증: `pnpm test`(가이드 게이트) green. `rg -n "turned off too" guide` 0건. `pnpm guide:check` — `languages-card.webp`는 매핑 소스(`languages-card.tsx`·`language-row.ts`) SHA가 바뀌어
   stale로 뜬다: 지원 포맷 컷이라 화면이 같으면 SHA만 갱신, 다르면 `/guide-shots` 재촬영. `preferences-time-zone.webp`는 매핑에 `ui/select.tsx`가 없어 stale로 안 잡히므로
@@ -67,5 +67,5 @@ T4~T6은 한 커밋이다 — T4만 들어가면 Publish가 새 파일을 조용
 - [x] T14. `/roundtrip` — 폐기용 리포에서 추가 → Publish 미리보기(MCP `preview_publish`)와 실행 비교 → PR의 새 파일 → 머지 → 재적재 diff 0 →
   **둘째 Publish에서 새 파일에 없는 부모 아래 키 추가**(평평한 삽입이 런타임 조회에서 어떻게 보이는지 기록) → 제거 → Publish → 파일 삭제.
   픽스처: yaml Rails형(루트 = base 코드) · 루트 없는 yaml · `no:`/`"yes"` 값이 든 yaml · 중첩 code-dict · 평평한 점 키 code-dict · named export code-dict.
-- [ ] T15. `/runtime-test` — ts-dict 소스(OWNER·EDITOR)에서 버튼·설명 없음, json EDITOR는 꺼진 버튼(클릭해도 안 열림), 비지원 Adding 취소 뒤 포커스가 카드 제목,
+- [x] T15. `/runtime-test` — ts-dict 소스(OWNER·EDITOR)에서 버튼·설명 없음, json EDITOR는 꺼진 버튼(클릭해도 안 열림), 비지원 Adding 취소 뒤 포커스가 카드 제목,
   동작 없는 행과 있는 행의 [Open] 정렬 동일, 설명·동작 없는 카드 헤더 높이, Select 높이 300(Chrome·시간대·온보딩 기준 언어)·짧은 Select 불변.

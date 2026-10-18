@@ -77,3 +77,8 @@
 - P: `dc20343d` 전체 gate 성공(단위 16,155/2 skipped·PG906·build·미러), dev push 완료·[CI39141952319](https://github.com/SinhyeokKang/malmoi/actions/runs/39141952319) success. C 최초 timeout은 단독 재실행에서 재현되지 않았다.
 - Q `ctx_907929d8ade7`: T14 여섯 형식 PR15–19 추가/둘째 Publish/삭제/복원 통과, render/remote blob18개 일치·재적재12/12 diff0. i18next26.5.2는 dotted late.new 조회, Ruby I18n1.14.7은 missing(문서화된 제약). T15 대부분 통과, 실제 ts-dict glob ADD 취소만 [#303](https://github.com/SinhyeokKang/malmoi/issues/303)으로 미완. BugShot 제출. 임시2프로젝트·토큰·브랜치·서버 정리, 기존 행 전부 복구(정상 OAuth 만료 갱신 Account1행 유지). Q release.
 - Bfix1 `ctx_d609501baa67` Astra medium: #303 실제 glob 회귀 red→green, gate 단위16,159/2 skipped·PG909·build·미러 성공. R-Bfix1 `ctx_74a736024522` Astra medium 🔴0·🟡0, 독립300+PG62 통과. `47d21197..bfa96218` 통합. nullable path는 추가 취소만 허용하고 File 행 생략; 새 ADD/REMOVE 비지원·권한/지문/미확정 보호 유지. Q2 실물 재검증 뒤에만 이슈를 닫는다. 두 워커 release.
+
+- Bfix1 통합 `a2e9457d` gate 단위16,160/2 skipped·PG909·build·미러 통과, dev push 및 [CI39144996293](https://github.com/SinhyeokKang/malmoi/actions/runs/39144996293) success.
+- Q2/S `ctx_48b9aed437fc` Sol high: 실제 브라우저 즉시/지연 상세 응답 h2, MCP cancel-add/path:null/승인 취소·값/저자 보존 확인. [#303 검증 댓글](https://github.com/SinhyeokKang/malmoi/issues/303#issuecomment-6252406968) 후 CLOSED. 사용자 포커스 이동 보존은 1차 Q 실측 근거를 유지하며 Q2의 추가 시도를 새 성공으로 세지 않음. T15 완료.
+- S: 시간대1컷 재촬영, JSON Languages/제거2컷은 실물 비교 후 SHA만 갱신. select.tsx 촬영 매핑 추가. 단위16,160/2 skipped·guide stale0. Q2/S 전후25테이블 모든 행·내용 동일, 임시 리소스·서버·TaskSpace 종료, 워커 release. 구현·리뷰 워크트리 전부 정리.
+- F: 정본 PRODUCT/ARCHITECTURE/DESIGN/CLAUDE/README/guide와 POSTMORTEM에 결론 승격 완료. 기능 폴더 정리 뒤 최종 gate·push·정확 SHA CI를 확인한다. 마이그레이션 없음.
