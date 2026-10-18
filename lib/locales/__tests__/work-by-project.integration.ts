@@ -89,6 +89,8 @@ async function seed() {
   await request("p1", "p1-after", "de", "REMOVE", new Date(3_000));
   await request("p1", "p1-after", "fr", "ADD", new Date(500));
   await value("p1", "p1-after", "hello", "fr", "Bonjour");
+  // 제거 요청한 de에도 값이 있다 — p2의 ADD de가 일괄 값 수 raw의 코드에 들어와도 p1의 값 수로 새지 않아야 한다(review-B 🟡1).
+  await value("p1", "p1-after", "hello", "de", "Hallo");
 
   await surface("p1", "p1-again");
   await deliver("p1", "p1-again", [{ localeCode: "ko", effect: "delete" }]);

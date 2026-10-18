@@ -170,7 +170,8 @@ export async function readLocaleStates(db: Db, projectId: string, surfaceId?: st
 
 /**
  * **여러 프로젝트의 상태를 한 번에** (language-request-todo design §2) — 목록·Inbox 로더용. 조회는 `projectId in ids`로 좁힌 둘을 `Promise.all`로
- * 묶고, ADD 행이 있을 때만 값 수 raw 하나를 더한다. 프로젝트 수에 비례해 늘지 않는다. 결과는 프로젝트마다 `readLocaleStates(db, id)`와 같다.
+ * 묶고, ADD 행이 있을 때만 값 수 raw 하나를 더한다. Prisma 호출은 ADD 행이 하나라도 있으면 3, 없으면 2이고 프로젝트 수와 무관하다 — 호출 수를
+ * 프로젝트 1개와 N개에서 견주려면 양쪽의 ADD 유무를 같게 둔다. 결과는 프로젝트마다 `readLocaleStates(db, id)`와 같다.
  * 요청한 id마다 항목이 있다(상태가 없으면 `[]`).
  * ⚠️ 보관 프로젝트를 거르지 않는다 — `readLocaleStates`처럼 받은 id를 읽는다. 쓸 곳이 없는 보관 프로젝트는 호출자가 ids에서 뺀다.
  * ⚠️ Publish 캡처·잠금 안 판정은 이 함수를 쓰지 않는다 — 그 경로의 조회(`readLocaleStates`)를 표시 기능 때문에 바꾸지 않는다.
@@ -185,11 +186,27 @@ export async function readLocaleStatesByProject(db: Db, projectIds: readonly str
     db.deliveryConfirmation.findMany({ where: { projectId: { in: ids }, surface: surfaceWhere }, select: { projectId: true, ...CONFIRMATION_SELECT } }),
   ]);
   const adds = changes.filter(change => change.operation === "ADD");
-  // 소스 id는 전역 PK라 값 수를 소스로만 묶어도 프로젝트끼리 섞이지 않는다.
   const counts = adds.length === 0 ? new Map<string, Map<string, number>>()
     : await readLocaleValueCountsIn(db, ids, [...new Set(adds.map(add => add.surfaceId))], [...new Set(adds.map(add => add.localeCode))]);
   for (const id of ids) {
-    out.set(id, foldLocaleStates(changes.filter(change => change.projectId === id), confirmations.filter(row => row.projectId === id), counts));
+    const projectChanges = changes.filter(change => change.projectId === id);
+    out.set(id, foldLocaleStates(projectChanges, confirmations.filter(row => row.projectId === id), countsFor(counts, projectChanges.filter(change => change.operation === "ADD"))));
+  }
+  return out;
+}
+
+/**
+ * 일괄 값 수를 한 프로젝트의 ADD로 좁힌다 — 프로젝트별 읽기가 넘기는 것과 같은 소스 × 코드다. raw의 코드는 모든 프로젝트 ADD 코드의 합집합이라,
+ * 안 좁히면 다른 프로젝트가 요청한 코드의 수가 이 프로젝트 소스의 `valueCounts`에 섞인다(review-B 🟡1). 소스 id는 전역 PK라 소스끼리는 섞이지 않는다.
+ */
+function countsFor(counts: Map<string, Map<string, number>>, adds: readonly { surfaceId: string; localeCode: string }[]): Map<string, Map<string, number>> {
+  const codes = new Set(adds.map(add => add.localeCode));
+  const out = new Map<string, Map<string, number>>();
+  for (const surfaceId of new Set(adds.map(add => add.surfaceId))) {
+    const all = counts.get(surfaceId);
+    if (all === undefined) continue;
+    const own = new Map([...all].filter(([code]) => codes.has(code)));
+    if (own.size > 0) out.set(surfaceId, own);
   }
   return out;
 }
