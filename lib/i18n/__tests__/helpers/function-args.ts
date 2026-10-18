@@ -175,6 +175,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "projects.resultsFor": ["X"],
   "projects.count": [2],
   "projects.banner.review": [2],
+  "projects.banner.neverFilled": ["X", "X", 2],
   "projects.banner.unsent": [2],
   "projects.banner.prOpen": [2],
   "projects.onGitLab.banner.prOpen": [2],

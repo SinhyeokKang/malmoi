@@ -881,10 +881,12 @@ export const ko = {
     banner: {
       review: (n: number): string =>
         `번역 ${n.toLocaleString("ko-KR")}개를 검토해야 합니다.`,
+      neverFilled: (locale: string, source: string, n: number): string =>
+        `${source}에서 ${locale} 번역이 비어 있습니다 — 번역할 키 ${n.toLocaleString("ko-KR")}개.`,
       unsent: (n: number): string =>
         `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건 — 게시해 리포지토리로 보내세요.`,
       prOpen: (n: number): string => `PR #${n} 열림 — 머지하면 반영됩니다.`,
-      prCheckFailed: "열린 PR을 확인하지 못했습니다.",
+      prCheckFailed: "열린 PR을 확인하지 못했습니다. 다음에 이 페이지를 열 때 다시 확인합니다.",
       repoAhead: (n: number, baseBranch: string): string =>
         `마지막 동기화 뒤에 ${baseBranch} 브랜치에서 번역 파일 ${n.toLocaleString("ko-KR")}개가 바뀌었습니다.`,
       setup: "번역을 시작하려면 설정을 마치세요.",
@@ -922,7 +924,7 @@ export const ko = {
       meter: { note: { setup: "계속하려면 이 프로젝트를 GitLab에 연결하세요." } },
       banner: {
         prOpen: (n: number): string => `MR !${n} 열림 — 머지하면 반영됩니다.`,
-        prCheckFailed: "열린 MR을 확인하지 못했습니다.",
+        prCheckFailed: "열린 MR을 확인하지 못했습니다. 다음에 이 페이지를 열 때 다시 확인합니다.",
         action: { viewPr: "GitLab에서 열기" },
       },
     },

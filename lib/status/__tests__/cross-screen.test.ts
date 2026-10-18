@@ -4,6 +4,7 @@ import { planConnectionHealth, type ConnectionHealth, type ProbeResult } from "@
 import { metaTabs } from "@/lib/home/meta";
 import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { en } from "@/messages/en";
+import { withRepoHost } from "@/lib/i18n/host";
 import { planRepositoryImport, type ImportPlanInput } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
 import { planSurfaceImportStatus } from "@/lib/import/surface-status";
@@ -473,8 +474,13 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
 });
 
 describe("화면 매핑 사본이 낡지 않았다", () => {
+  // 띠의 첫 문장이 Home 배지 낱말 그대로이고, 띠에는 링크가 없어 둘째 문장이 다음 수를 말한다(project-row-redesign 결정 5).
   it("띠와 Home 배지는 목적어가 있는 PR 조회 실패 낱말을 공유한다", () => {
-    expect(en.projects.banner.prCheckFailed).toBe(`${stateLabel(en, "prCheckFailed")}.`);
+    for (const host of ["github", "gitlab"] as const) {
+      const banner = withRepoHost(en, host).projects.banner.prCheckFailed;
+      expect(banner.startsWith(`${stateLabel(en, "prCheckFailed", host)}. `)).toBe(true);
+      expect(banner).not.toBe(`${stateLabel(en, "prCheckFailed", host)}.`);
+    }
   });
 });
 

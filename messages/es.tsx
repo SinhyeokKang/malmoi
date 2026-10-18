@@ -874,10 +874,12 @@ export const es = {
     banner: {
       review: (n: number): string =>
         `${n === 1 ? "Una celda está traducida y espera" : `${n.toLocaleString("es")} celdas están traducidas y esperan`} revisión.`,
+      neverFilled: (locale: string, source: string, n: number): string =>
+        `${locale} no tiene traducciones en ${source} — ${n.toLocaleString("es")} ${n === 1 ? "clave" : "claves"} por traducir.`,
       unsent: (n: number): string =>
         `${n === 1 ? "Una edición sin enviar" : `${n.toLocaleString("es")} ediciones sin enviar`}: publica para ${n === 1 ? "enviarla" : "enviarlas"}.`,
       prOpen: (n: number): string => `La pull request #${n} está abierta: fusiónala para terminar.`,
-      prCheckFailed: "No se pudo comprobar si hay una pull request abierta.",
+      prCheckFailed: "No se pudo comprobar si hay una pull request abierta. Esta página lo comprueba de nuevo cuando la vuelvas a abrir.",
       repoAhead: (n: number, baseBranch: string): string =>
         `${n === 1 ? "Cambió 1 archivo de traducción" : `Cambiaron ${n.toLocaleString("es")} archivos de traducción`} en ${baseBranch} después de tu última sincronización.`,
       setup: "Termina la configuración para empezar a traducir.",
@@ -915,7 +917,7 @@ export const es = {
       meter: { note: { setup: "Conecta este proyecto a GitLab para continuar." } },
       banner: {
         prOpen: (n: number): string => `La merge request !${n} está abierta: fusiónala para terminar.`,
-        prCheckFailed: "No se pudo comprobar si hay una merge request abierta.",
+        prCheckFailed: "No se pudo comprobar si hay una merge request abierta. Esta página lo comprueba de nuevo cuando la vuelvas a abrir.",
         action: { viewPr: "Abrir en GitLab" },
       },
     },

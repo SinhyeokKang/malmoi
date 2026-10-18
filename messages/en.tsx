@@ -1970,15 +1970,22 @@ export const en = {
     banner: {
       review: (n: number): string =>
         `${n.toLocaleString("en-US")} cell${n === 1 ? " is" : "s are"} translated and waiting for review.`,
+      /**
+       * 값이 하나도 없는 작업 언어(project-row-redesign) — Home `neverFilled`의 본문·꼬리에서 `here`만 `in {source}`로 바꾼 형이라 같은
+       * 항목이 두 화면에서 같은 말이다. 언어는 코드가 아니라 `Locale.name`이다. `never`·`yet`은 그 술어가 모르는 과거를 단언한다.
+       */
+      neverFilled: (locale: string, source: string, n: number): string =>
+        `${locale} has no translations in ${source} — ${n.toLocaleString("en-US")} ${n === 1 ? "key" : "keys"} to translate.`,
       unsent: (n: number): string =>
         // ⚠️ 결과를 약속하지 않는다 — Publish가 보류하는 편집(파일·키가 아직 없음)도 같은 술어로 세어진다.
         `${n.toLocaleString("en-US")} unsent edit${n === 1 ? "" : "s"} — publish to send ${n === 1 ? "it" : "them"}.`,
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
       /**
        * 열린 PR 조회가 실패했다(ux-drift-unify Q6) — "없음"이 아니라 모름이다. ⚠️ **목적어를 붙인다** — 홀로 서는 "Couldn't check"는
-       * 연결 확인 실패의 낱말이다(DESIGN §10.1). 게이트가 fail-closed라 그 동안 리포 갱신이 멈춘다.
+       * 연결 확인 실패의 낱말이다(DESIGN §10.1). 앞 문장은 칩 낱말 그대로이고, 뒷문장이 다음 수를 말한다 — 띠에 링크가 없어서다
+       * (project-row-redesign 결정 5). `retry`·`check again`은 쓰지 않는다.
        */
-      prCheckFailed: "Couldn't check for an open pull request.",
+      prCheckFailed: "Couldn't check for an open pull request. This page asks again the next time you open it.",
       /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
       repoAhead: (n: number, baseBranch: string): string =>
         `${n.toLocaleString("en-US")} translation file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last sync.`,
@@ -2049,7 +2056,7 @@ export const en = {
       meter: { note: { setup: "Connect this project to GitLab to continue." } },
       banner: {
         prOpen: (n: number): string => `Merge request !${n} is open — merge it to finish.`,
-        prCheckFailed: "Couldn't check for an open merge request.",
+        prCheckFailed: "Couldn't check for an open merge request. This page asks again the next time you open it.",
         action: { viewPr: "Open on GitLab" },
       },
     },
