@@ -164,7 +164,8 @@ describe("DotField", () => {
 
 /**
  * **랜딩 배경** (landing-kv-background design §3) — 캔버스는 한 화면짜리 sticky이고 `pointer-events: none`이라 내용 아래에 깔린다.
- * 격자는 스크롤러의 `scrollTop`만큼 올라가고(R6), 포인터는 가장 가까운 `[data-public-scroller]`에서 받으며(R7), 반경 밖 점은 한 번에 칠한다(R8).
+ * 격자는 스크롤러의 `scrollTop`만큼 올라가고(R6), 포인터를 받지 않고 자동 순회만 돌며 줄바꿈은 패널 밖에서 한다(R7 — landing-kv-autosweep),
+ * 반경 밖 점은 한 번에 칠한다(R8).
  */
 describe("DotField follow=\"scroller\"", () => {
   afterEach(() => {
@@ -288,10 +289,12 @@ describe("DotField follow=\"scroller\"", () => {
     const { calls } = stubContext();
     sized();
     motion(false);
-    vi.spyOn(performance, "now").mockReturnValue(0);
+    // 마운트 시각 0 → 가상 커서가 패널 한가운데(x = 200)에 오는 시각. 폭 400 + 넘침 360을 320px/s로 — 380px에 1187.5ms다.
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
     const frame = manualFrames();
-    const { scroller } = await mount();
-    await act(async () => { scroller.dispatchEvent(new PointerEvent("pointermove", { pointerType: "mouse", clientX: 208, clientY: 208 })); });
+    await mount();
+    now = 1187.5;
 
     /** 전체 기록에서 i번째 호출 앞의 마지막 알파 — 이번 프레임이 대입하지 않았으면 앞 프레임 값이 나온다(캔버스 상태는 이어진다). */
     const alphaBefore = (index: number) => calls.slice(0, index).reverse().find(([name]) => name === "globalAlpha")?.[1][0];
@@ -319,56 +322,66 @@ describe("DotField follow=\"scroller\"", () => {
     check();
   });
 
-  it("포인터·스크롤 리스너는 캔버스가 아니라 스크롤러에 붙고, 떠나면 모두 떨어진다", async () => {
+  /** R7 — 랜딩은 포인터를 받지 않는다(landing-kv-autosweep 결정 1). 스크롤 리스너만 스크롤러에 붙는다. */
+  it("포인터 리스너는 어디에도 없고, 스크롤 리스너만 스크롤러에 붙었다 떠나면 떨어진다", async () => {
     stubContext();
     sized();
     motion(false);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
     const listeners = spyListeners();
     const { scroller, rerender } = await mount();
-    for (const type of ["pointermove", "pointerleave", "scroll"]) {
-      expect(listeners.added(type).map(({ target }) => target)).toEqual([scroller]);
-    }
+    expect(listeners.added("pointermove")).toEqual([]);
+    expect(listeners.added("pointerleave")).toEqual([]);
+    expect(listeners.added("scroll").map(({ target }) => target)).toEqual([scroller]);
     expect(listeners.added("scroll")[0]?.options).toEqual({ passive: true });
     await rerender(null);
-    for (const type of ["pointermove", "pointerleave", "scroll"]) {
-      expect(listeners.removed(type).map(({ target, listener }) => [target, listener])).toEqual(listeners.added(type).map(({ target, listener }) => [target, listener]));
-    }
+    expect(listeners.removed("scroll").map(({ target, listener }) => [target, listener])).toEqual(listeners.added("scroll").map(({ target, listener }) => [target, listener]));
   });
 
   /**
-   * ⚠️ **마우스만 실제 커서다**(orch D7) — 터치 기기는 자동 순회가 상시 돈다(D3). 탭·드래그가 가상 커서를 탭 자리로 끌면 그 약속이 깨진다.
-   * 시각을 고정해 자동 순회를 원점(0, 0)에 묶는다 — (208, 208)과의 거리가 반경 180보다 멀다. 실제 시각이면 느린 러너에서 가상 커서가
-   * 둘째 줄에 들어와 단언이 흔들린다.
+   * ⚠️ **마우스도 점을 끌지 않는다** — 시각을 고정해 가상 커서를 첫 줄 시작(x = -180, 패널 밖)에 묶는다. 마우스를 (208, 208)에 올려도
+   * 그 점은 기본 크기이고 그리기 전체가 그대로다.
    */
-  it("pointerType이 mouse일 때만 점이 커서를 따라온다 — 터치는 자동 순회 그대로", async () => {
+  it("마우스 pointermove를 쏴도 그리기가 바뀌지 않는다", async () => {
     const { calls } = stubContext();
     sized();
     motion(false);
     vi.spyOn(performance, "now").mockReturnValue(0);
     const frame = manualFrames();
     const { scroller } = await mount();
-    const move = async (type: string, pointerType: string) => {
-      await act(async () => { scroller.dispatchEvent(new PointerEvent(type, { pointerType, clientX: 208, clientY: 208 })); });
-      await frame();
-    };
-
-    await move("pointermove", "touch");
+    await frame();
+    const before = lastDraw(calls);
+    for (const type of ["pointermove", "pointerleave", "pointermove"]) {
+      await act(async () => { scroller.dispatchEvent(new PointerEvent(type, { pointerType: "mouse", clientX: 208, clientY: 208 })); });
+    }
+    await frame();
     expect(arcsAt(lastDraw(calls), 208, 208)).toEqual([2]);
-    await move("pointermove", "mouse");
-    expect(arcsAt(lastDraw(calls), 208, 208)).toEqual([3.5]);
-    await move("pointerleave", "mouse");
-    expect(arcsAt(lastDraw(calls), 208, 208)).toEqual([2]);
+    expect(lastDraw(calls)).toEqual(before);
   });
 
-  it("스크롤러를 못 찾으면 기본처럼 캔버스에서 받는다", async () => {
+  /**
+   * 결정 2 — 가상 커서가 반경만큼 패널 밖에서 시작한다. 넘침이 없으면 시각 0의 커서는 (0, 0)이라 왼쪽 위 점들이 밝아진다.
+   */
+  it("자동 순회는 패널 밖(x = -180)에서 시작한다 — 시각 0엔 반경 안 점이 0이다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(false);
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const frame = manualFrames();
+    await mount();
+    await frame();
+    expect(lastDraw(calls).filter(([name]) => name === "fill").length).toBe(1);
+  });
+
+  it("스크롤러를 못 찾아도 포인터를 받지 않는다", async () => {
     stubContext();
     sized();
     motion(false);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
     const listeners = spyListeners();
-    const { container } = await render(<DotField follow="scroller" />);
-    expect(listeners.added("pointermove").map(({ target }) => target)).toEqual([container.querySelector("canvas")]);
+    await render(<DotField follow="scroller" />);
+    expect(listeners.added("pointermove")).toEqual([]);
+    expect(listeners.added("pointerleave")).toEqual([]);
     expect(listeners.added("scroll")).toEqual([]);
   });
 });

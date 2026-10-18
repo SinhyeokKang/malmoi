@@ -45,9 +45,11 @@ const AUTO_ROWS = 5;
  * - **R6** 격자를 `scrollTop % GAP`만큼 올려 그린다 — 점이 콘텐츠에 박힌 것처럼 올라간다. 캔버스를 콘텐츠 높이로 키우지 않는다(버퍼가 화면 몇 장 × DPR²다).
  *   ⚠️ 이 공식은 **스크롤 0부터 캔버스 윗변 = 스크롤포트 윗변**을 전제한다(스크롤러 안에서 래퍼 앞에 높이를 가진 형제가 없고 스크롤러 padding이 0 — 지금 첫 자식은 높이 0인 JSON-LD `<script>`다). 래퍼 위에
  *   높이를 가진 요소나 padding이 생기면 sticky가 걸리기 전 구간에서 캔버스 이동과 오프셋이 겹쳐 점이 미끄러진다.
- * - **R7** 포인터는 가장 가까운 `[data-public-scroller]`에서 받는다(캔버스는 이벤트를 못 받는다). 스크롤러가 없으면 캔버스에서 받는다.
+ * - **R7** 포인터를 받지 않는다 — 마우스·터치·펜 모두 점에 영향이 없고 항상 자동 순회다(landing-kv-autosweep). 가상 커서는 좌우로
+ *   반경(`CURSOR_RADIUS`)만큼 패널 밖까지 가서 줄을 바꾼다 — 패널 모서리에서 꺾으면 밝은 원이 반쯤 걸린 채 줄을 바꾸는 것이 보인다.
+ *   스크롤러를 못 찾아도 같다(`follow`로 가른다).
  * - **R8** 반경 밖 점(같은 반지름·알파)은 path 하나로 fill 한 번이다 — 2560×1440이면 점이 1만 3천 개다.
- * ⚠️ **로그인 경로를 바꾸지 않는다** — 위 셋은 스크롤러를 찾았을 때만 탄다.
+ * ⚠️ **로그인 경로를 바꾸지 않는다** — R6·R8은 스크롤러를 찾았을 때, R7은 `follow="scroller"`일 때만 탄다.
  */
 export function DotField({ className, follow = "canvas" }: { className?: string; follow?: "canvas" | "scroller" }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -67,8 +69,9 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
     const scroller = follow === "scroller" ? canvas.closest<HTMLElement>("[data-public-scroller]") : null;
     /** 격자 오프셋 — 고무줄 스크롤의 범위 밖 값은 자른다(`clampScrollTop` 주석). 로그인은 0이다. */
     const scrollOffset = () => (scroller === null ? 0 : clampScrollTop(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight));
-    /** 포인터를 받는 요소. 랜딩의 캔버스는 `pointer-events: none`이라 스크롤러가 받는다. */
-    const pointerTarget: HTMLElement = scroller ?? canvas;
+    /** R7 — 랜딩은 포인터를 받지 않고, 가상 커서가 반경만큼 패널 밖에서 줄을 바꾼다. */
+    const landing = follow === "scroller";
+    const overshoot = landing ? CURSOR_RADIUS : 0;
 
     /**
      * ⚠️ **색을 tsx에 hex로 박지 않는다** — 리포에 tsx 내 hex 리터럴이 0건이다(DESIGN §6.2).
@@ -125,7 +128,7 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
     const focus = (): { x: number; y: number } | null => {
       if (pointer !== null) return pointer;
       if (!motionOk) return null;
-      return autoCursor(performance.now() - startedAt, width, height, AUTO_SPEED, AUTO_ROWS);
+      return autoCursor(performance.now() - startedAt, width, height, AUTO_SPEED, AUTO_ROWS, overshoot);
     };
 
     const drawDot = (dot: Dot, spot: Dot | null) => {
@@ -236,12 +239,6 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
      * 단언이 되살아난다 — 실제로 하나만 바꿨더니 에러가 다른 함수로 옮겨 다녔다.
      */
     const onMove = (event: PointerEvent) => {
-      /**
-       * ⚠️ **랜딩은 마우스만 실제 커서다**(orch D7) — 터치 기기는 자동 순회가 상시 돈다(D3). 탭·드래그를 받으면 가상 커서가 탭 자리로
-       * 튀고, `pointerleave`가 올 때까지 거기 머문다. 로그인은 지금 동작 그대로 둔다.
-       */
-      if (scroller !== null && event.pointerType !== "mouse") return;
-      /** 좌표는 캔버스 기준이다 — 랜딩의 캔버스는 스크롤러 윗변에 붙은 sticky라 스크롤해도 같은 자리에 있다. */
       const rect = canvas.getBoundingClientRect();
       pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
       start();
@@ -252,9 +249,9 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
       pointer = null;
     };
 
-    if (motionOk) {
-      pointerTarget.addEventListener("pointermove", onMove);
-      pointerTarget.addEventListener("pointerleave", onLeave);
+    if (motionOk && !landing) {
+      canvas.addEventListener("pointermove", onMove);
+      canvas.addEventListener("pointerleave", onLeave);
     }
 
     /**
@@ -270,8 +267,8 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
       cancelAnimationFrame(frame);
       observer.disconnect();
       scheme.removeEventListener("change", onScheme);
-      pointerTarget.removeEventListener("pointermove", onMove);
-      pointerTarget.removeEventListener("pointerleave", onLeave);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerleave", onLeave);
       scroller?.removeEventListener("scroll", onScroll);
     };
   }, [follow]);
