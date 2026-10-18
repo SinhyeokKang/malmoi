@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSea
 import { ProjectList } from "@/components/projects/project-list";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { en } from "@/messages/en";
-import type { ProjectListRow } from "@/lib/keys/query";
+import { planned, type RowFixture } from "./helpers/project-row";
 import { STATE, stateLabel } from "@/lib/status/canon";
 
 /**
@@ -24,7 +24,7 @@ import { STATE, stateLabel } from "@/lib/status/canon";
  * 두 색이 구별되지 않는데 카드의 읽힘이 그 급 차이에 걸려 있다).
  */
 
-const BASE: ProjectListRow = {
+const BASE: RowFixture = {
   image: null,
   slug: "admin-console",
   name: "admin-console",
@@ -41,7 +41,6 @@ const BASE: ProjectListRow = {
   reviewSurfaceSlug: null,
   unsentSurfaceSlug: null,
   repoAheadFrom: null,
-  meters: [],
   review: 0,
   unsent: 0,
   openPr: null,
@@ -49,15 +48,16 @@ const BASE: ProjectListRow = {
 };
 
 /** `1a`의 셋 — 손볼 것 하나 · 정상 하나 · 보관 하나. */
-const THREE: ProjectListRow[] = [
-  { ...BASE, slug: "chrome-extension", name: "chrome-extension", unsent: 24, unsentSurfaceSlug: "default" },
+const THREE: RowFixture[] = [
+  // 끊김은 Needs attention이다 — 미발송은 이제 All set의 띠다(project-row-redesign 결정 1).
+  { ...BASE, slug: "chrome-extension", name: "chrome-extension", repositoryId: null },
   BASE,
   { ...BASE, slug: "old-landing", name: "old-landing", archivedAt: new Date("2026-09-01T00:00:00Z") },
 ];
 
-const draw = async (props: { all?: ProjectListRow[]; q?: string } = {}) => {
+const draw = async (props: { all?: RowFixture[]; q?: string } = {}) => {
   url.params = new URLSearchParams(props.q === undefined ? {} : { q: props.q });
-  const { container } = await render(<ProjectList all={props.all ?? THREE} />);
+  const { container } = await render(<ProjectList all={(props.all ?? THREE).map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   return container;
 };
 
@@ -97,7 +97,7 @@ describe("`1a` 그룹 카드 — 헤더가 카드 안으로 들어온다", () =>
    * (`border-border`)다 — 헤더 divider가 행 구분선보다 약해야 "헤더 + 행들"로 읽힌다.
    */
   it("헤더↔첫 행과 행↔행의 선이 다른 급이다", async () => {
-    const container = await draw({ all: [THREE[0]!, { ...BASE, unsent: 3 }] });
+    const container = await draw({ all: [THREE[0]!, { ...BASE, slug: "second", name: "second", repositoryId: null }] });
     const rows = [...find(container, "section").querySelectorAll(":scope > ul > li")];
     expect(rows).toHaveLength(2);
     expect(rows[0]!.classList.contains("border-t")).toBe(false);
@@ -232,6 +232,8 @@ describe("보관 행이 한 단계 더 물러난다", () => {
   const nameOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-base");
   // 메타 줄은 GitHub 마크 + 말줄임 글자의 flex 줄이다(2026-09-25) — 색은 그 바깥 줄이 든다.
   const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-xs.min-w-0");
+  // 대표 메타 줄(sources · keys · languages · synced) — 리포 줄과 한 색으로 물러난다(project-row-redesign).
+  const factsOf = (row: HTMLElement) => find<HTMLElement>(row, "[data-row-meta]");
 
   /**
    * ⚠️ **이름·메타가 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
@@ -244,6 +246,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
     const row = archivedRow(await draw());
     expect(nameOf(row).className).toContain("text-gray-dim");
     expect(metaOf(row).className).toContain("text-gray-dim");
+    expect(factsOf(row).className).toContain("text-gray-dim");
     const badge = find<HTMLElement>(row, "span.rounded-full");
     expect(badge.textContent).toBe(stateLabel(en, "archived"));
     expect(badge.className).not.toContain("text-gray-dim");
@@ -258,5 +261,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
     expect(nameOf(row).className).not.toContain("text-muted-foreground");
     expect(metaOf(row).className).toContain("text-muted-foreground");
     expect(metaOf(row).className).not.toContain("text-gray-dim");
+    expect(factsOf(row).className).toContain("text-muted-foreground");
+    expect(factsOf(row).className).not.toContain("text-gray-dim");
   });
 });

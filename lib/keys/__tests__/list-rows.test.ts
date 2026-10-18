@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planProjectRow, projectSyncFailure, rowBanner, rowChip } from "@/lib/projects/list";
+import { projectSyncFailure } from "@/lib/projects/list";
 
 import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMemberRow } from "../query";
 
@@ -43,20 +43,17 @@ describe("assembleProjectListRows — 표면을 평탄화하지 않는다", () =
   it("A 동기화 중 + B 실패 → 칩·띠 모두 실패다", () => {
     const row = assemble(member([surface({ lastImportStartedAt: new Date(0) }), surface({ lastImportError: "parse-failed" })]));
     expect(projectSyncFailure(row.surfaces)).toBe("parse-failed");
-    expect(rowChip(row)).toBe("sync_failed");
-    expect(rowBanner(row)).toEqual({ kind: "import_failed", reason: "parse-failed" });
+    expect(row.plan).toEqual({ chip: "syncFailed", group: "needs_attention", banner: { kind: "import_failed", reason: "parse-failed" } });
   });
 
   it("A partial + B failed → failed(빨강)다 — slug 순의 첫 코드가 아니다", () => {
     const row = assemble(member([surface({ lastImportError: "partial-import" }), surface({ lastImportError: "import-failed" })]));
-    expect(rowChip(row)).toBe("sync_failed");
-    expect(rowBanner(row)).toEqual({ kind: "import_failed", reason: "import-failed" });
+    expect(row.plan).toEqual({ chip: "syncFailed", group: "needs_attention", banner: { kind: "import_failed", reason: "import-failed" } });
   });
 
   it("리포 id가 없으면 실패가 있어도 칩·띠 모두 Disconnected다", () => {
     const row = assemble(member([surface({ lastImportError: "import-failed" })], { repositoryId: null }));
-    expect(rowChip(row)).toBe("needs_reconnect");
-    expect(rowBanner(row)).toEqual({ kind: "needs_reconnect" });
+    expect(row.plan).toEqual({ chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } });
   });
 });
 
@@ -84,7 +81,7 @@ describe("assembleProjectListRows — 열린 PR 삼상태", () => {
   it("모름이면 띠가 Couldn't check다", () => {
     const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", { openPr: undefined, repoAheadFiles: 0 }]]));
     if (row === undefined) throw new Error("no row");
-    expect(rowBanner(row)).toEqual({ kind: "pr_check_failed" });
+    expect(row.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "pr_check_failed" } });
   });
 });
 
@@ -140,8 +137,9 @@ describe("assembleProjectListRows — DB 할 일", () => {
       ...EMPTY, keyTotals: new Map([["s1", 2]]),
       locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false }],
     }, new Map());
-    expect(row?.todos).toEqual([{ kind: "never_filled", at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 2, ownerRetries: false }]);
-    expect(row && planProjectRow(row, row.todos).banner).toMatchObject({ kind: "never_filled", code: "ko" });
+    // 행은 판정 결과만 싣는다(RA 🟢3) — 할 일 목록 전체가 아니라 띠 하나다.
+    expect(row?.plan.banner).toEqual({ kind: "never_filled", surfaceSlug: "web", code: "ko", name: "Korean", keys: 2 });
+    expect(row !== undefined && "todos" in row).toBe(false);
   });
   it("검토의 시각·저자를 만들지 않고 셀 수를 보존한다", () => {
     const [row] = assembleProjectListRows([member([surface({ id: "s1", locales })])], {
@@ -150,16 +148,14 @@ describe("assembleProjectListRows — DB 할 일", () => {
       cells: [{ projectId: "p1", surfaceId: "s1", localeCode: "ko", needsReview: true, count: 2 },
         { projectId: "p1", surfaceId: "s1", localeCode: "es", needsReview: true, count: 9 }],
     }, new Map());
-    expect(row?.todos).toEqual([{ kind: "review", at: null, surfaceSlug: "web", code: "ko", name: "Korean", count: 2, who: null, ownerRetries: false }]);
-    expect(row && planProjectRow(row, row.todos).banner).toEqual({ kind: "review", count: 2 });
+    expect(row?.review).toBe(2);
+    expect(row?.plan.banner).toEqual({ kind: "review", count: 2 });
   });
-  it("EDITOR 실패·재연결 할 일에 실제 실패·만료 시각과 소유자 플래그를 싣는다", () => {
+  // 할 일의 시각·소유자 플래그는 Inbox 몫이다(`project-todos.test.ts`) — 행에는 판정만 남는다.
+  it("만료된 GitLab 토큰은 실패가 있어도 끊김 띠 하나다", () => {
     const row = assemble({ ...member([surface({ lastImportError: "parse-failed", lastImportFailedAt: at })], {
       repoHost: "gitlab", gitlabConnectionId: "c", gitlabConnection: { expiresAt: new Date(0) },
     }), role: "EDITOR" });
-    expect(row.todos).toEqual([
-      { kind: "import_failed", at, surfaceSlug: "web", reason: "parse-failed", ownerRetries: true },
-      { kind: "needs_reconnect", at: new Date(0), ownerRetries: true },
-    ]);
+    expect(row.plan).toEqual({ chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } });
   });
 });

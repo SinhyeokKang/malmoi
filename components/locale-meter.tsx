@@ -7,7 +7,7 @@ import type { LocaleMeterValue } from "@/lib/sources/meters";
  * 목록 행의 **로케일 Meter** (DESIGN §6.63). 시안 `1c`의 Meter 블록이 정본이고,
  * 아래 치수는 그 캔버스의 인라인 스타일에서 그대로 인용했다.
  *
- * ⚠️ **두 목록이 같이 쓴다** — Projects 행(서버 컴포넌트)과 Sources 소스 행(클라이언트 `sources-screen.tsx`). 그래서 상태도
+ * ⚠️ **소비자는 Sources 소스 행 하나다**(클라이언트 `sources-screen.tsx` — project-row-redesign이 Projects 행에서 막대를 걷었다). 상태도
  * 서버 전용 import도 두지 않는다. 값은 서버가 이미 접어서 준다(`LocaleMeterValue` — 폭 clamp는 `meterValue`).
  *
  * ⚠️ **루트가 `<span>`이다** — Sources 행은 버튼 하나라 그 안은 phrasing content만 허용된다. `<div>`를 두면 HTML이 무효다.

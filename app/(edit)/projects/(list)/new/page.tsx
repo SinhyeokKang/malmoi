@@ -24,7 +24,7 @@ export default async function NewProjectPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={view.rows} />
+      <ProjectList all={view.rows} now={new Date()} />
       <NewProjectModal initialError={e} backQuery={{ q }} closeMode="list" />
     </ContentPanel>
   );

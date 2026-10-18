@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
+import { planned, type RowFixture } from "./helpers/project-row";
 
 // 머리의 검색이 `useRouter`를 문다 — 이 스위트가 재는 것은 띠이고 라우터는 그 길목일 뿐이다.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
@@ -13,8 +14,9 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 
 import { HomeActions, HomeTitle } from "@/components/home/actions";
 import { ProjectList } from "@/components/projects/project-list";
-import type { ProjectListRow } from "@/lib/keys/query";
 import { en } from "@/messages/en";
+import { attentionHref } from "@/lib/home/attention-view";
+import { STATE, stateLabel, type StateKey } from "@/lib/status/canon";
 import { isScreenCanonical, screenQuery } from "@/lib/translations/query";
 
 /**
@@ -29,7 +31,7 @@ import { isScreenCanonical, screenQuery } from "@/lib/translations/query";
  * 그대로 돈다 (`filter-interactions.test.tsx`와 같은 계보).
  */
 
-const BASE: ProjectListRow = {
+const BASE: RowFixture = {
   image: null,
   slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s",
   name: "Acme",
@@ -43,15 +45,15 @@ const BASE: ProjectListRow = {
   memberCount: 2,
   baseBranch: "release",
   lastPrUrl: "https://github.com/o/r/pull/142",
-  meters: [],
   review: 0,
   unsent: 0,
   openPr: null,
   repoAheadFiles: 0,
 };
 
-const draw = async (over: Partial<ProjectListRow>) => {
-  const { container } = await render(<ProjectList all={[{ ...BASE, ...over }]} />);
+const NOW = new Date("2026-10-18T03:00:00Z");
+const draw = async (over: Partial<RowFixture>, extra: Parameters<typeof planned>[1] = []) => {
+  const { container } = await render(<ProjectList all={[planned({ ...BASE, ...over }, extra)]} now={NOW} />);
   return container;
 };
 
@@ -211,15 +213,16 @@ it("메타 줄이 리포 앞에 GitHub 마크를 든다 — 호스트 이름은 
 });
 
 /**
- * **PR 조회 실패는 "없음"이 아니라 "모름" 띠다** (ux-drift-unify Q6) — 열린 PR 게이트가 fail-closed라 그 동안 리포 갱신이 멈춘다.
- * warning 톤이고, 갈 곳이 없어 링크가 없다. 실제 BannerLine 루트의 표식과 기존 글자색을 함께 확인한다.
+ * **PR 조회 실패는 "없음"이 아니라 "모름" 띠다** (ux-drift-unify Q6). 건강이 아니라 할 일이라 칩은 `Active`이고 띠는 muted + `CircleHelp`다
+ * (project-row-redesign 결정 1·6). 갈 곳이 없어 링크가 없고, 문장의 둘째 줄이 "다음 방문에 다시 묻는다"를 말한다(결정 5).
  */
-it("열린 PR 조회 실패(openPr undefined)는 warning Couldn't check 띠이고 링크가 없다", async () => {
+it("열린 PR 조회 실패(openPr undefined)는 muted Couldn't check 띠이고 링크가 없다", async () => {
   const container = await draw({ openPr: undefined });
   const band = [...container.querySelectorAll("div")].find((node) => node.textContent === en.projects.banner.prCheckFailed);
   expect(band).toBeDefined();
-  expect(band?.className).toContain("text-warning-soft-foreground");
-  expect(band?.getAttribute("data-tone")).toBe("warning");
+  expect(band?.className).toContain("text-muted-foreground");
+  expect(band?.getAttribute("data-tone")).toBe("muted");
+  expect(band?.querySelector("svg.lucide-circle-question-mark")).not.toBeNull();
   expect(band?.querySelector("a")).toBeNull();
   // 짝: PR 없음(null)이면 그 띠가 없다.
   const quiet = await draw({ openPr: null });
@@ -244,7 +247,7 @@ it.each([
  * **호스트가 섞인 목록** (gitlab-repositories 시안 G4a) — GitLab 행은 글리프·접근 이름·띠 문장·링크가 GitLab이고, 같은 목록의 GitHub 행은 그대로다.
  * 새 열·배지를 늘리지 않는다(행 높이 불변) — 호스트는 보조줄의 글리프 + 접근 이름이 든다.
  */
-const GITLAB: Partial<ProjectListRow> = {
+const GITLAB: Partial<RowFixture> = {
   slug: "gl", name: "GL", repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn", repoOwner: "group/sub", repoName: "web",
   lastPrUrl: "https://gitlab.com/group/sub/web/-/merge_requests/7",
 };
@@ -267,4 +270,158 @@ it("GitLab 행의 저장소 앞섬 띠는 gitlab.com `/-/compare`로 연다", as
 it("GitLab 토큰의 저장 만료일이 지난 행은 Disconnected 띠다 (D24 — 원격 호출 0)", async () => {
   const container = await draw({ ...GITLAB, gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z") });
   expect(container.textContent).toContain(en.settings.repository.disconnected);
+});
+
+// ── project-row-redesign T6 — 한 줄 행 · 메타 · 한 판정 ─────────────────────────────
+
+const S = { archivedAt: null, lastCommitSha: "s", importError: null, importing: false } as const;
+const BLANK = { kind: "never_filled" as const, at: NOW, surfaceSlug: "web", code: "ja", name: "Japanese", keys: 248, ownerRetries: false };
+
+/** design §2 표의 행 a–n — 칩·띠 조합 전부. `extra`는 서버가 할 일로 싣는 것(빈 언어)이다. */
+const STATES: [string, Partial<RowFixture>, Parameters<typeof planned>[1]][] = [
+  ["a 정상", {}, []],
+  ["b 미발송", { unsent: 24 }, []],
+  ["c 열린 PR", { openPr: { number: 142, url: "https://github.com/o/r/pull/142" } }, []],
+  ["d 리포 앞섬", { repoAheadFiles: 3 }, []],
+  ["e 검토", { review: 8 }, []],
+  ["f PR 조회 실패", { openPr: undefined }, []],
+  ["n 빈 언어", {}, [BLANK]],
+  ["g 끊김", { repositoryId: null }, []],
+  ["h 실패", { surfaces: [{ ...S, importError: "parse-failed" }] }, []],
+  ["i 일부 반영", { surfaces: [{ ...S, importError: "partial-import" }] }, []],
+  ["j 연결 전", { installationId: null }, []],
+  ["k 첫 적재 중", { surfaces: [{ ...S, lastCommitSha: null, importing: true }] }, []],
+  ["l 첫 적재 대기", { surfaces: [{ ...S, lastCommitSha: null }] }, []],
+  ["m 보관", { archivedAt: new Date("2026-09-01T00:00:00Z"), unsent: 24 }, []],
+];
+
+const rowLink = (container: HTMLElement) => container.querySelector<HTMLAnchorElement>('ul a[href="/projects/acme"]')!;
+const band = (container: HTMLElement) => container.querySelector<HTMLElement>("ul div[data-tone]");
+const meta = (container: HTMLElement) => container.querySelector<HTMLElement>("[data-row-meta]")!;
+
+describe("상태 표 전 행", () => {
+  it.each(STATES)("%s — 칩 낱말이 띠 문장에 들어가지 않고 메타 줄에 상태 낱말이 없다", async (_label, over, extra) => {
+    const row = planned({ ...BASE, ...over }, extra);
+    const container = await draw(over, extra);
+    const chip = stateLabel(en, row.plan.chip);
+    expect(rowLink(container).textContent).toContain(chip);
+    expect(band(container)?.textContent ?? "").not.toContain(chip);
+    const text = meta(container).textContent ?? "";
+    for (const key of Object.keys(STATE) as StateKey[]) expect(text, key).not.toContain(stateLabel(en, key));
+  });
+
+  it.each(STATES)("%s — 언어 막대가 없고 행은 한 줄(`flex-col`이 아니다)이다", async (_label, over, extra) => {
+    const container = await draw(over, extra);
+    expect(container.querySelector("[data-locale-meter]")).toBeNull();
+    expect(container.querySelector('[role="meter"], [role="progressbar"]')).toBeNull();
+    expect(rowLink(container).classList.contains("flex-col")).toBe(false);
+    expect(rowLink(container).classList).toContain("items-center");
+  });
+
+  /** ⚠️ All set 카드의 할 일 띠는 전부 muted다(결정 6) — warning·danger는 Needs attention 사유(g·h·i)만 든다. */
+  it.each(STATES.filter(([label]) => /^[bcdefn] /.test(label)))("%s — All set 띠는 muted다", async (_label, over, extra) => {
+    const row = planned({ ...BASE, ...over }, extra);
+    expect([row.plan.chip, row.plan.group]).toEqual(["active", "all_set"]);
+    expect(band(await draw(over, extra))?.getAttribute("data-tone")).toBe("muted");
+  });
+
+  it("보관 행은 띠가 없다", async () => {
+    expect(band(await draw({ archivedAt: new Date("2026-09-01T00:00:00Z"), unsent: 24 }))).toBeNull();
+  });
+});
+
+describe("행 링크 계약", () => {
+  it("행이 `<a>`이고 링이 안쪽(`ring-inset`)이며 띠는 링크 밖 형제다", async () => {
+    const container = await draw({ unsent: 3 });
+    const link = rowLink(container);
+    expect(link.tagName).toBe("A");
+    expect(link.classList).toContain("focus-visible:ring-inset");
+    expect(link.contains(band(container))).toBe(false);
+    expect(link.parentElement).toBe(band(container)?.parentElement);
+  });
+});
+
+describe("대표 메타", () => {
+  const cells = (container: HTMLElement) => [...meta(container).children].map((cell) => cell.textContent);
+
+  it("순서가 sources · keys · languages · synced이고 가운뎃점은 앞 칸 끝에 붙는다", async () => {
+    const at = new Date("2026-10-18T00:00:00Z");
+    const container = await draw({ sourceCount: 2, keyCount: 1204, languageCount: 3, lastSync: at.toISOString() });
+    expect(cells(container)).toEqual([
+      `${en.sources.count(2)} ·`, `${en.translations.keys(1204)} ·`, `${en.sources.languageCount(3)} ·`, en.home.cards.synced("3 hours ago"),
+    ]);
+    for (const cell of meta(container).children) expect(cell.classList).toContain("whitespace-nowrap");
+    expect(meta(container).classList).toContain("flex-wrap");
+    // 리포 줄 아래 한 줄이다 — 이름 칸의 셋째 줄.
+    expect(meta(container).previousElementSibling?.textContent).toContain("o/r");
+  });
+
+  it.each([
+    ["언어 0", { languageCount: 0, lastSync: "2026-10-18T00:00:00.000Z" }, 3],
+    ["시각 null", { languageCount: 2, lastSync: null }, 3],
+    ["시각 unrecorded", { languageCount: 2, lastSync: "unrecorded" as const }, 3],
+    ["첫 적재 전 — 소스·키 둘만", { sourceCount: 1, keyCount: 0, languageCount: 0, lastSync: null }, 2],
+    ["연결 전 — 0 sources · 0 keys", { installationId: null, sourceCount: 0, keyCount: 0, languageCount: 0, lastSync: null }, 2],
+  ] as [string, Partial<RowFixture>, number][])("%s이면 그 칸을 뺀다", async (_label, over, n) => {
+    const container = await draw(over);
+    expect(cells(container)).toHaveLength(n);
+    expect(cells(container)[0]).toContain(en.sources.count(over.sourceCount ?? 1));
+    expect(meta(container).textContent).not.toContain(en.sources.languageCount(0));
+    expect(meta(container).textContent).not.toContain(en.home.cards.synced(null));
+    expect(meta(container).querySelector("time") === null).toBe(over.lastSync === null || over.lastSync === "unrecorded");
+  });
+
+  it("동기화 시각은 `<time>`이고 dateTime이 UTC ISO, 접근 이름이 오프셋 라벨을 단 절대 시각이다", async () => {
+    const container = await draw({ lastSync: "2026-10-18T00:00:00.000Z" });
+    const time = meta(container).querySelector("time")!;
+    expect(time.getAttribute("dateTime")).toBe("2026-10-18T00:00:00.000Z");
+    expect(time.getAttribute("aria-label")).toMatch(/^synced .* 00:00 UTC$/);
+    expect(time.getAttribute("title")).toBeNull();
+  });
+
+  it("보관 행은 이름·리포·메타가 gray-dim이다", async () => {
+    const container = await draw({ archivedAt: new Date("2026-09-01T00:00:00Z"), lastSync: "2026-08-01T00:00:00.000Z" });
+    expect(meta(container).classList).toContain("text-gray-dim");
+    expect(meta(container).previousElementSibling?.classList).toContain("text-gray-dim");
+    // 보관 행에서도 시각은 남는다 — "얼마나 오래 멈춰 있었나"라 정보다.
+    expect(meta(container).querySelector("time")).not.toBeNull();
+  });
+});
+
+describe("빈 언어 띠", () => {
+  it("Home Attention과 같은 문장·목적지이고 링크 라벨이 상세 모달의 같은 버튼 이름이다", async () => {
+    const container = await draw({}, [BLANK]);
+    const line = band(container)!;
+    expect(line.textContent).toContain(en.projects.banner.neverFilled("Japanese", "web", 248));
+    // Home 본문 + 꼬리에서 `here`만 `in {source}`로 바꾼 형이다(design §6).
+    expect(en.projects.banner.neverFilled("Japanese", "web", 248))
+      .toBe(`${en.home.attention.neverFilled.body("Japanese").replace(/ here$/, " in web")}${en.home.attention.neverFilled.tail(248)}`);
+    expect(line.querySelector("svg.lucide-languages")).not.toBeNull();
+    const link = line.querySelector("a")!;
+    expect(link.textContent).toBe(en.sources.open);
+    expect(link.getAttribute("href")).toBe(attentionHref("acme", BLANK));
+  });
+
+  it("빈 언어가 여럿이면 첫 하나만 선다", async () => {
+    const container = await draw({}, [BLANK, { ...BLANK, code: "de", name: "German" }]);
+    expect(container.querySelectorAll("ul div[data-tone]")).toHaveLength(1);
+    expect(band(container)?.textContent).toContain("Japanese");
+  });
+});
+
+describe("GitLab 행 전체가 GitLab 문장이다", () => {
+  it.each([
+    ["연결 전", { gitlabConnectionId: null, repositoryId: null }],
+    ["PR 조회 실패", { openPr: undefined }],
+  ])("%s 행에 GitHub·pull request 낱말이 0건이다", async (_label, over) => {
+    const container = await draw({ ...GITLAB, ...over });
+    const card = container.querySelector("ul")!;
+    expect(card.textContent).not.toMatch(/github|pull request/i);
+    expect(card.textContent?.length).toBeGreaterThan(0);
+  });
+
+  it("GitLab PR 조회 실패 띠는 merge request 문장이다", async () => {
+    const container = await draw({ ...GITLAB, openPr: undefined });
+    expect(band(container)?.textContent).toBe(en.projects.onGitLab.banner.prCheckFailed);
+  });
 });

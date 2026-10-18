@@ -870,14 +870,6 @@ export const ko = {
     resultsFor: (q: string): string => `“${q}” 검색 결과`,
     count: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개`,
     clearSearch: "검색어 지우기",
-    meter: {
-      note: {
-        waiting: "아직 동기화 안 됨",
-        importing: "동기화 중…",
-        failed: "동기화 실패",
-        setup: "계속하려면 GitHub App을 연결하세요.",
-      },
-    },
     banner: {
       review: (n: number): string =>
         `번역 ${n.toLocaleString("ko-KR")}개를 검토해야 합니다.`,
@@ -921,7 +913,6 @@ export const ko = {
       ownerRetries: "프로젝트 소유자만 다시 시도할 수 있습니다.",
     },
     onGitLab: {
-      meter: { note: { setup: "계속하려면 이 프로젝트를 GitLab에 연결하세요." } },
       banner: {
         prOpen: (n: number): string => `MR !${n} 열림 — 머지하면 반영됩니다.`,
         prCheckFailed: "열린 MR을 확인하지 못했습니다. 다음에 이 페이지를 열 때 다시 확인합니다.",

@@ -20,17 +20,21 @@ const TILE: Record<InboxItem["kind"], { icon: ComponentType<{ className?: string
 /** 일부 반영은 경고 칸 + `TriangleAlert`다 — 실패 원을 빌리지 않는다(🔴 A2 · §2.4 글리프 열). */
 const PARTIAL_TILE = { icon: TriangleAlert, tone: "warning" } as const;
 
+/**
+ * 비어 있는 작업 언어의 목적지 — `Incomplete` + 상세 언어 그 로케일이다(translation-tree-range — `Untranslated in` 목록 필터가 사라졌다).
+ * 다른 로케일만 빈 키가 섞이는 것은 사용자가 수용한 대가다(spec "잃는 것"). 목록 행의 `never_filled` 띠도 이것을 부른다 — 같은 항목이 두 화면에서 같은 곳으로 간다.
+ */
+export function neverFilledHref(slug: string, surfaceSlug: string, code: string): string {
+  return routes.surfaceTranslations(slug, surfaceSlug, { ns: ALL_NAMESPACES, completion: "incomplete", language: code });
+}
+
 export function attentionHref(slug: string, item: InboxItem): string {
   if (item.kind === "setup") return routes.settings(slug);
   if (item.kind === "unsent") return bannerTranslationsHref(slug, item.surfaceSlug, "unsent");
-  return item.kind === "import_failed"
-      ? routes.sources(slug)
-      : routes.surfaceTranslations(slug, item.surfaceSlug, item.kind === "review"
-          // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
-          ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
-          // 그 로케일이 비어 있는 키 — `Incomplete` + 상세 언어 그 로케일이다(translation-tree-range — `Untranslated in` 목록 필터가 사라졌다).
-          // 다른 로케일만 빈 키가 섞이는 것은 사용자가 수용한 대가다(spec "잃는 것").
-          : { ns: ALL_NAMESPACES, completion: "incomplete", language: item.code });
+  if (item.kind === "import_failed") return routes.sources(slug);
+  // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
+  if (item.kind === "review") return routes.surfaceTranslations(slug, item.surfaceSlug, { ns: ALL_NAMESPACES, state: "review", language: item.code });
+  return neverFilledHref(slug, item.surfaceSlug, item.code);
 }
 
 export function attentionTile(item: InboxItem) {

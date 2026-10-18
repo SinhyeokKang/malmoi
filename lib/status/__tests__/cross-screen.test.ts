@@ -12,7 +12,7 @@ import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMe
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import { importOutcomeFields, isImportFailureCode, type ImportFailureCode } from "@/lib/projects/import-status";
-import { CHIP_STATE, rowBanner, rowChip, worstFailingSurface, type RowBanner } from "@/lib/projects/list";
+import { worstFailingSurface, type RowBanner } from "@/lib/projects/list";
 import { openPrGateApplies, planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
 import { repoTargetOf } from "@/lib/repo-host/target";
@@ -33,14 +33,14 @@ import { STATE, stateLabel, type StateKey } from "../canon";
  * - readiness가 먼저 막는다 — Home(`ProjectNotReady`)·적재 거부(`not-ready`)가 그 판정에 닿지 않는다.
  *
  * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 사본이 남은 것이 있다** — 목록 띠(`project-list.tsx` `ProjectBanner`)는 컴포넌트 안에 있다.
- * 칩(`CHIP_STATE`)·Home 배너 갈래(`homeBannerState`)·Settings 배지와 Home 메타 열 Connection 배지(둘 다 `repositoryConnectionState`, `lib/home/state.ts`)는
+ * 칩(`row.plan.chip`)·Home 배너 갈래(`homeBannerState`)·Settings 배지와 Home 메타 열 Connection 배지(둘 다 `repositoryConnectionState`, `lib/home/state.ts`)는
  * 화면이 쓰는 그 순수 매핑을 그대로 부른다(ux-drift-unify T18·T19·T22 · project-card-tabs fix1).
  */
 
 // ── 판정 묶음 — 카나리아가 한 판정만 바꿔 넣는다 ─────────────────────────────
 
 const REAL = {
-  rowChip, rowBanner, worstFailingSurface,
+  worstFailingSurface,
   planConnectionHealth, connectionProblem, planHomeState, homeBannerState, planActionAvailability, planHoldNotice,
   planSurfaceImportStatus, planRepositoryImport, planProjectReadiness,
 };
@@ -105,7 +105,7 @@ function bannerKey(banner: RowBanner): StateKey | null {
     case "unsent": return "unsent";
     case "pr_open": return "prOpen";
     case "pr_check_failed": return "prCheckFailed";
-    case "repo_ahead": case "review": return null;
+    case "repo_ahead": case "review": case "never_filled": return null;
   }
 }
 
@@ -138,10 +138,12 @@ function observe(f: Fixture, J: Judgments): Observed {
       gitlabConnection: f.gitlabConnectionId === null ? null : { expiresAt: f.gitlabTokenExpiresAt ?? null },
     },
   };
-  const [row] = assembleProjectListRows([member], { ...EMPTY, unsent: new Map([["p1", f.pending]]) }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
+  // ⑤의 수와 소스는 같은 쿼리에서 함께 온다 — 수만 주면 미발송 할 일이 소스 없이 서지 않는다.
+  const unsent = f.pending > 0 ? { unsent: new Map([["p1", f.pending]]), unsentSurfaces: new Map([["p1", f.surfaces[0]?.slug ?? "web"]]) } : {};
+  const [row] = assembleProjectListRows([member], { ...EMPTY, ...unsent }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
   if (row === undefined) throw new Error("no row");
-  // 칩은 화면이 `StatusBadge`에 넘기는 그 맵이다(ux-drift-unify T19 — 전엔 여기 사본이었다).
-  const list = { chip: CHIP_STATE[J.rowChip(row)], banner: bannerKey(J.rowBanner(row)) };
+  // 칩·띠는 조립이 `planProjectRow`로 판정해 싣는 그 값이다 — 화면은 `row.plan.chip`을 `StatusBadge`에 그대로 넘긴다.
+  const list = { chip: row.plan.chip, banner: bannerKey(row.plan.banner) };
 
   // GitHub은 지금처럼 저장값 + probe(`planConnectionHealth`), GitLab은 `loadConnectionHealth`의 경계 판정(ok가 아니면 그 갈래 그대로).
   const health = f.repoHost === "github" ? J.planConnectionHealth({ project, probe: f.probe })

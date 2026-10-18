@@ -98,14 +98,13 @@ export function projectStatus(row: ProjectStatusInput, now: Date = new Date()): 
 }
 
 /**
- * ── 목록 재설계의 판정 여섯 (DESIGN §6.63) ──────────────────────
+ * ── 목록 행의 판정 (DESIGN §6.63) ──────────────────────
  *
  * ⚠️ **전부 이 파일에 둔다.** 오케스트레이션 파일(`lib/keys/query.ts`)에 두면 클라이언트 번들이
  * 그 그래프를 따라온다 (ARCHITECTURE §0 말미 · `client-graph.test.ts`).
  *
- * ⚠️ **캔버스 `1c`의 상태표가 정본이다** (DESIGN §6.63). 옛 union 스케치와 어긋나는
- * 자리가 하나 있고(첫 적재 대기의 띠), **표를 따른다**: 그 상태의 문장은 Meter 자리가 들고 띠는 비운다.
- * 생산자 없는 갈래를 union에 남기지 않는 것이 이 리포의 규칙이기도 하다.
+ * ⚠️ **칩·그룹·띠는 `planProjectRow` 한 표에서 나온다** (project-row-redesign design §2). 생산자 없는 갈래를 union에
+ * 남기지 않는 것이 이 리포의 규칙이다.
  */
 
 /**
@@ -147,7 +146,7 @@ export type RowInput = Omit<ProjectStatusInput, "surfaces"> & ProjectEvents & {
 /**
  * ⚠️ **"지금 돌고 있다"가 "지난번에 실패했다"를 이긴다.** `lastImportStartedAt`이 서 있다는 것은 새
  * 실행이 시작됐다는 뜻이고, 남아 있는 코드는 이전 실행의 것이다 — 끝나면 성공이 비우거나 실패가
- * 덮어쓴다. 이 한 줄이 그룹·띠·Meter 셋에서 같은 뜻으로 쓰인다.
+ * 덮어쓴다. 이 한 줄이 칩·그룹·띠 셋에서 같은 뜻으로 쓰인다.
  */
 export function failing(row: SurfaceImportState): boolean {
   return row.importError !== null && !row.importing;
@@ -155,7 +154,7 @@ export function failing(row: SurfaceImportState): boolean {
 
 /**
  * **표면별로 `failing`을 적용한 뒤 가장 나쁜 표면 하나** (ux-drift-unify §3.2). 급은 `importFailureTone` 순(danger > warning)이고,
- * 같은 급이면 먼저 온 표면이다 — 호출부가 slug 순으로 넘기므로 결정적이다. 목록 칩·띠·Meter와 Home 배너가 이것 하나를 부른다.
+ * 같은 급이면 먼저 온 표면이다 — 호출부가 slug 순으로 넘기므로 결정적이다. 목록 행 판정(`planProjectRow`)과 Home 배너가 이것 하나를 부른다.
  */
 export function worstFailingSurface<T extends SurfaceImportState>(surfaces: readonly T[]): (T & { importError: ImportFailureCode }) | null {
   let worst: (T & { importError: ImportFailureCode }) | null = null;
@@ -172,26 +171,11 @@ export function projectSyncFailure(surfaces: readonly SurfaceImportState[]): Imp
 }
 
 /**
- * 행이 어느 그룹에 서는가 (DESIGN §6.63의 그룹 항).
- *
- * ⚠️ **검토 대기와 열린 PR은 `All set`이다.** 둘 다 "읽고 누르면 되는 것"이고, 여기서 손볼 것으로
- * 올리면 정상 운영 중인 프로젝트가 상시 `Needs attention`에 남아 그 그룹이 의미를 잃는다.
- */
-export function projectGroup(row: RowInput): ProjectGroup {
-  const status = projectStatus(row);
-  if (status === "archived") return "archived";
-  if (status !== "active") return "needs_attention";
-  if (projectSyncFailure(row.surfaces) !== null) return "needs_attention";
-  return row.unsent > 0 || row.repoAheadFiles > 0 ? "needs_attention" : "all_set";
-}
-
-/**
- * 행 아래 띠 — **겹치면 하나만** (DESIGN §6.63의 띠 항).
+ * 행 아래 띠 — **겹치면 하나만** (DESIGN §6.63의 띠 항). 고르는 것은 `planProjectRow`다.
  *
  * ⚠️ **역할을 받지 않는다** (F). 시안의 Editor 갈래(*"…waiting for an owner to send them."*)는 버렸다 —
  * PRODUCT §3이 **EDITOR에게도 Publish를 허용**하므로 그 문구는 화면이 권한을 실제보다 좁혀 말하는 것이다.
- * 링크가 역할로 갈리는 셋(`Reconnect`·`Continue setup`·`View details`)의 판정은 **호출부**가
- * `row.role`로 한다 — 띠를 순수하게 유지하는 것이 이 매트릭스를 반으로 줄인다.
+ * 링크가 역할로 갈리는 둘(`Reconnect`·`Continue setup`)의 판정은 **호출부**가 `row.role`로 한다.
  */
 export type RowBanner =
   | { kind: "needs_reconnect" }
@@ -205,125 +189,54 @@ export type RowBanner =
   /** C′: 키가 아니라 **로케일 파일** 수다. */
   | { kind: "repo_ahead"; files: number }
   | { kind: "review"; count: number }
+  /** 값이 하나도 없는 작업 언어 — Home Attention·Inbox의 같은 항목이다. 여럿이면 attention 정렬의 첫 하나이고 나머지는 Inbox가 든다. */
+  | { kind: "never_filled"; surfaceSlug: string; code: string; name: string; keys: number }
   | null;
 
-export function rowBanner(row: RowInput): RowBanner {
-  const status = projectStatus(row);
-  // 보관은 사건과 무관하다 — 멈춘 프로젝트에 "지금 뭘 하면 되나"는 답할 질문이 아니다.
-  if (status === "archived") return null;
-  // 끊긴 연결은 모든 것을 덮는다 — 그 밑의 사건은 전부 손댈 수 없는 상태다.
-  if (status === "needs_reconnect") return { kind: "needs_reconnect" };
-  const failure = projectSyncFailure(row.surfaces);
-  if (failure !== null) return { kind: "import_failed", reason: failure };
-  if (status === "setup") return { kind: "setup" };
-  // ⚠️ 첫 적재 대기는 띠가 없다 (DESIGN §6.63) — 그 문장은 Meter 자리가 든다.
-  if (status === "awaiting_first_sync") return null;
-  // E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다.
-  if (row.unsent > 0) return { kind: "unsent", count: row.unsent };
-  if (row.openPr === undefined) return { kind: "pr_check_failed" };
-  if (row.openPr !== null) return { kind: "pr_open", number: row.openPr.number, url: row.openPr.url };
-  if (row.repoAheadFiles > 0) return { kind: "repo_ahead", files: row.repoAheadFiles };
-  if (row.review > 0) return { kind: "review", count: row.review };
-  return null;
-}
-
-/** T6에서 RowBanner로 합친다. 기존 화면은 아직 never_filled를 그리지 않는다. */
+/**
+ * 행 하나의 판정 셋 — 칩·그룹·띠가 **한 표에서** 나온다(project-row-redesign design §2). 함수 넷이 각자 우선순위를 갖던 때는
+ * 미발송 행이 칩 `Active`인데 그룹 `Needs attention`이었다.
+ */
 export type ProjectRowPlan = {
+  /** `StatusBadge` 입력 — 낱말·톤은 `STATE`가 든다(DESIGN §2.4). */
   chip: StateKey;
   group: ProjectGroup;
-  banner: RowBanner | Extract<ProjectTodo, { kind: "never_filled" }>;
+  banner: RowBanner;
 };
 
-/** 칩은 건강, 띠는 할 일이다. 정상 프로젝트의 할 일은 그룹을 바꾸지 않는다. */
+/**
+ * **칩은 건강, 띠는 할 일이다.** 그룹은 칩에서 기계적으로 나온다(`active` = `All set`) — 정상 프로젝트의 할 일(미발송·열린 PR·PR 조회 실패·
+ * 리포 앞섬·검토·빈 언어)은 칩과 그룹을 바꾸지 않고 띠에만 선다.
+ *
+ * ⚠️ **PR 조회 실패는 건강이 아니다**(2026-10-15 사용자) — 이번 요청이 PR을 확인하지 못했다는 일시적인 모름이고, 원격 마감을 넘기면 PR 번호를
+ * 가진 행 전부가 한꺼번에 그 상태가 된다.
+ */
 export function planProjectRow(row: RowInput, todos: readonly ProjectTodo[]): ProjectRowPlan {
   const status = projectStatus(row);
+  // 보관은 사건과 무관하다 — 멈춘 프로젝트에 "지금 뭘 하면 되나"는 답할 질문이 아니다.
   if (status === "archived") return { chip: "archived", group: "archived", banner: null };
+  // 끊긴 연결은 모든 것을 덮는다 — 그 밑의 사건은 전부 손댈 수 없는 상태다.
   if (status === "needs_reconnect") return { chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } };
   const failure = projectSyncFailure(row.surfaces);
   if (failure !== null) return { chip: importFailureTone(failure) === "danger" ? "syncFailed" : "partiallySynced",
     group: "needs_attention", banner: { kind: "import_failed", reason: failure } };
   // 설정은 EDITOR의 Inbox에서 빠져도 행에서는 소유자에게 요청할 수 있다.
   if (status === "setup") return { chip: "setup", group: "needs_attention", banner: { kind: "setup" } };
+  // 첫 적재 전은 띠가 없다 — 칩이 상태를 말한다(둘째 줄이 사라졌다).
   if (status === "awaiting_first_sync") return { chip: row.surfaces.some(surface => surface.importing) ? "syncing" : "notSyncedYet",
     group: "needs_attention", banner: null };
   const unsent = todos.find(todo => todo.kind === "unsent");
   const review = todos.filter(todo => todo.kind === "review").reduce((sum, todo) => sum + todo.count, 0);
-  const banner: ProjectRowPlan["banner"] = unsent ? { kind: "unsent", count: unsent.count }
+  const blank = todos.find(todo => todo.kind === "never_filled");
+  // E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다.
+  const banner: RowBanner = unsent ? { kind: "unsent", count: unsent.count }
     : row.openPr === undefined ? { kind: "pr_check_failed" }
-    : row.openPr !== null ? { kind: "pr_open", ...row.openPr }
+    : row.openPr !== null ? { kind: "pr_open", number: row.openPr.number, url: row.openPr.url }
     : row.repoAheadFiles > 0 ? { kind: "repo_ahead", files: row.repoAheadFiles }
     : review > 0 ? { kind: "review", count: review }
-    : todos.find(todo => todo.kind === "never_filled") ?? null;
+    : blank ? { kind: "never_filled", surfaceSlug: blank.surfaceSlug, code: blank.code, name: blank.name, keys: blank.keys }
+    : null;
   return { chip: "active", group: "all_set", banner };
-}
-
-/**
- * 행 우측 칩 — **그 프로젝트의 가장 나쁜 상태 하나** (ux-drift-unify Q2). 순서: 보관 > 끊김 > 동기화 실패 > 일부 반영 > readiness(Not synced yet·Setup) > Active.
- * 띠(`rowBanner`)·Home(`planHomeState`)과 같이 **끊김이 먼저**다 — 공유 우선순위 표는 두지 않고(세 소비자의 어휘가 다르다) 일치는 테스트가 고정한다.
- */
-export type RowChip = ProjectStatus | "sync_failed" | "partially_synced";
-
-/**
- * 칩 → 상태 키 (DESIGN §2.4) — `project-list.tsx`가 `StatusBadge`로 그리고, 교차 테스트가 Home·Settings와 같은 키인지 센다. 배지 variant·낱말은
- * `STATE`가 든다 — 화면이 variant를 고르던 맵(`STATUS_CHIP`)과 실패 삼항이 이것으로 접혔다(ux-drift-unify T19).
- * ⚠️ **맵 + `satisfies`다** — 갈래가 늘면 키가 없어 컴파일 에러다(삼항은 새 갈래를 사유 없이 기본값으로 떨어뜨린다).
- */
-export const CHIP_STATE = {
-  active: "active", setup: "setup", awaiting_first_sync: "notSyncedYet", needs_reconnect: "disconnected", archived: "archived",
-  sync_failed: "syncFailed", partially_synced: "partiallySynced",
-} as const satisfies Record<RowChip, StateKey>;
-
-export function rowChip(row: RowInput): RowChip {
-  const status = projectStatus(row);
-  if (status === "archived" || status === "needs_reconnect") return status;
-  const failure = projectSyncFailure(row.surfaces);
-  if (failure !== null) return importFailureTone(failure) === "danger" ? "sync_failed" : "partially_synced";
-  return status;
-}
-
-/**
- * 한 로케일의 두 구간.
- *
- * ⚠️ **`done`에 검토 대기가 없다** — 바의 두 폭이 겹치면 합이 100%를 넘는다.
- *
- * ⚠️ **`percent`는 그 둘의 합이다** (캔버스 `1c`: `done 84 + review 8 → 92%`). 라벨이 답하는 질문은
- * "이 언어가 얼마나 채워졌나"이고, 검토 대기도 **값이 들어 있는 칸**이다 — 바가 그중 얼마가 아직
- * 검토 전인지를 amber로 말한다. 라벨을 `done`만으로 내면 검토를 기다리는 값이 화면에서 미번역과
- * 구별되지 않는다.
- */
-export type RowLocaleProgress = {
-  surfaceSlug: string;
-  code: string;
-  isBase: boolean;
-  total: number;
-  done: number;
-  review: number;
-  percent: number;
-};
-
-/** Meter 자리에 문장이 서는 갈래 넷 (DESIGN §6.63). */
-export type MeterNote = "setup" | "waiting" | "importing" | "failed";
-
-/**
- * 바를 그릴지 문장을 둘지.
- *
- * ⚠️ **0% 바를 금지하는 것이 계약이다.** 값이 없는 상태에서 빈 바를 그리면 "0% 번역됨"으로 읽히는데,
- * 그 프로젝트는 아직 셀 것이 없는 상태다.
- *
- * ⚠️ **이미 적재된 프로젝트의 실패는 바를 지우지 않는다** — 데이터가 있는데 문장으로 덮으면
- * "번역이 사라졌다"로 읽힌다. 그 사실은 띠가 말한다.
- */
-export function meterSlot(
-  row: RowInput,
-  locales: readonly RowLocaleProgress[],
-): { kind: "meters"; locales: readonly RowLocaleProgress[] } | { kind: "note"; note: MeterNote } {
-  const status = projectStatus(row);
-  if (status === "setup") return { kind: "note", note: "setup" };
-  if (status === "awaiting_first_sync") {
-    if (row.surfaces.some((surface) => surface.importing)) return { kind: "note", note: "importing" };
-    return { kind: "note", note: projectSyncFailure(row.surfaces) === null ? "waiting" : "failed" };
-  }
-  return { kind: "meters", locales };
 }
 
 /** ③의 groupBy 결과 한 줄. */
@@ -360,62 +273,18 @@ function foldCells(
 }
 
 /**
- * 행의 Meter 재료 (DESIGN §6.63).
- *
- * ⚠️ **`localeProgress`(`lib/keys/view.ts`)와 합치지 않는다** — 저쪽은 `untranslated`·orphaned 꼬리까지
- * 드는 화면 계약이고 여기 필요한 것은 두 구간 비율뿐이다. **`percent`의 내림 규칙만 그대로 쓴다**
- * (902/903이 100%로 보이면 안 된다).
- *
- * ⚠️ **`slice(0, 3)`이 여기서 끝난다** — 폭 축소는 CSS가 하고(§6), 59로케일 리포에서 쓰이지 않을
- * 배열을 행마다 직렬화하면 RSC 페이로드에 그대로 실린다. Summary는 이 결과를 **쓰지 않는다**.
+ * 프로젝트별 검토 대기를 **(표면, 로케일) 단위로** — `foldCells` 한 번의 결과다. 행의 `review` 합과 띠의 검토 할 일이 이것 하나를 읽는다:
+ * 호출부가 셀을 손으로 다시 거르면 "살아 있는 로케일만"이라는 규칙이 두 벌이 되고 띠의 수와 `review`가 갈린다(project-row-redesign RA 🟡).
  */
-export function rowLocaleProgress(
-  locales: readonly LiveLocale[],
-  keyTotals: ReadonlyMap<string, number>,
-  cells: readonly LocaleCellCount[],
-): Map<string, RowLocaleProgress[]> {
-  const counted = foldCells(locales, cells);
-  const byProject = new Map<string, RowLocaleProgress[]>();
-  for (const locale of locales) {
-    const total = keyTotals.get(locale.surfaceId) ?? 0;
-    const cell = counted.get(cellKey(locale.projectId, locale.surfaceId, locale.code));
-    const done = cell?.done ?? 0;
-    const review = cell?.review ?? 0;
-    const list = byProject.get(locale.projectId) ?? [];
-    // 분모가 0이면 비율도 0이다 — 0으로 나누지 않는다.
-    list.push({
-      surfaceSlug: locale.surfaceSlug,
-      code: locale.code,
-      isBase: locale.isBase,
-      total,
-      done,
-      review,
-      // ⚠️ **내림이다** — 902/903이 100%로 보이면 안 된다 (`localeProgress`와 같은 규칙).
-      percent: total === 0 ? 0 : Math.floor(((done + review) / total) * 100),
-    });
-    byProject.set(locale.projectId, list);
-  }
-  for (const [projectId, list] of byProject) {
-    // base 먼저 → 코드순. 앞에서부터 자르므로 "하나만 남으면 base"가 공짜로 성립한다 (DESIGN §6.63).
-    list.sort((a, b) => a.surfaceSlug < b.surfaceSlug ? -1 : a.surfaceSlug > b.surfaceSlug ? 1 : a.isBase === b.isBase ? (a.code < b.code ? -1 : a.code > b.code ? 1 : 0) : a.isBase ? -1 : 1);
-    byProject.set(projectId, list.slice(0, 3));
-  }
-  return byProject;
-}
-
-/**
- * 프로젝트별 **검토 대기 셀 수**. `rowLocaleProgress`와 같은 접기를 쓰므로 "살아 있는 로케일만"이라는
- * 규칙이 한 벌로 남는다 — 호출부가 그 필터를 손으로 다시 짜면 구분자까지 두 벌이 된다.
- */
-export function rowReviewCounts(
+export function rowReviewCells(
   locales: readonly LiveLocale[],
   cells: readonly LocaleCellCount[],
-): Map<string, number> {
-  const out = new Map<string, number>();
+): Map<string, { surfaceId: string; code: string; count: number }[]> {
+  const out = new Map<string, { surfaceId: string; code: string; count: number }[]>();
   for (const [key, cell] of foldCells(locales, cells)) {
     if (cell.review === 0) continue;
-    const projectId = key.slice(0, key.indexOf("\u0000"));
-    out.set(projectId, (out.get(projectId) ?? 0) + cell.review);
+    const [projectId = "", surfaceId = "", code = ""] = key.split("\u0000");
+    out.set(projectId, [...(out.get(projectId) ?? []), { surfaceId, code, count: cell.review }]);
   }
   return out;
 }
@@ -423,7 +292,7 @@ export function rowReviewCounts(
 /**
  * 프로젝트별 검토 대기의 **로케일별 분해** (DESIGN §6.64 — 카드 보조 줄 `5 en, 3 ja`).
  *
- * ⚠️ **`rowReviewCounts`와 같은 `foldCells`를 쓴다** — "살아 있는 로케일만"이라는 규칙이 한 벌로
+ * ⚠️ **`rowReviewCells`와 같은 `foldCells`를 쓴다** — "살아 있는 로케일만"이라는 규칙이 한 벌로
  * 남아야 두 수가 갈리지 않는다. 표면은 가로지른다: 카드의 수가 프로젝트 합계라 분해도 같은
  * 모집단이어야 한다.
  *
@@ -469,11 +338,10 @@ export type SummaryQueue = { newFromGithub: number; toTranslate: number; toRevie
  * ── 계정 합계 넷 (DESIGN §6.63의 Summary 항). **검색 전 전체 멤버십 중 보관하지 않은 프로젝트**의 값이고,
  * 검색·그룹에 흔들리지 않는다.
  *
- * ⚠️ **Meter의 셋 제한을 적용하지 않는다** — 59로케일 리포에서 넷째 로케일부터의 미번역이 통째로
- * 사라진다 (`i18n-many-locales`가 그 실물이다). 그래서 `rowLocaleProgress`의 결과를 재사용하지 않고
- * 같은 입력에서 따로 센다.
+ * ⚠️ **로케일을 자르지 않는다** — 59로케일 리포에서 넷째 로케일부터의 미번역이 통째로
+ * 사라지면 안 된다 (`i18n-many-locales`가 그 실물이다). 전부 같은 입력에서 센다.
  *
- * ⚠️ **보관은 네 값 모두에서 빠진다** (2026-09-13 사용자). 행·Meter·제목 총계·그룹 카운트는 남는다 —
+ * ⚠️ **보관은 네 값 모두에서 빠진다** (2026-09-13 사용자). 행·제목 총계·그룹 카운트는 남는다 —
  * 빠지는 것은 "지금 내가 할 일"의 합계뿐이다.
  */
 export function summaryQueue(input: {
@@ -529,14 +397,14 @@ export function summaryQueue(input: {
  *
  * ⚠️ **입력 배열을 건드리지 않는다** — 호출부가 같은 배열로 총계도 센다.
  */
-export function groupProjects<T extends RowInput>(
+export function groupProjects<T extends { plan: ProjectRowPlan }>(
   rows: readonly T[],
   q: string | undefined,
 ): { flat: true; rows: T[] } | { flat: false; groups: [ProjectGroup, T[]][] } {
   if ((q ?? "").trim() !== "") return { flat: true, rows: [...rows] };
   const buckets = new Map<ProjectGroup, T[]>();
   for (const row of rows) {
-    const group = projectGroup(row);
+    const group = row.plan.group;
     const list = buckets.get(group) ?? [];
     list.push(row);
     buckets.set(group, list);
@@ -569,7 +437,7 @@ export type ListBody<T> =
   | { kind: "results"; query: string; rows: T[] }
   | { kind: "no-results"; query: string };
 
-export function listBody<T extends RowInput & { name: string }>(
+export function listBody<T extends { plan: ProjectRowPlan; name: string }>(
   all: readonly T[],
   q: string | undefined,
 ): ListBody<T> {

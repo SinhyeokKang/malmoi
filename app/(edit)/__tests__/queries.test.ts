@@ -436,7 +436,7 @@ describe("loadProjectList", () => {
    * **집계가 행까지 닿는다** (DESIGN §6.63). 조회가 배선됐다는 것과 그 값이 행에 실린다는 것은
    * 다른 사실이고, 후자가 빠지면 화면이 조용히 0을 그린다 — 이 리포가 반복해 밟은 부류다.
    */
-  it("Meter와 사건을 함께 낸다", async () => {
+  it("메타와 사건·판정을 함께 낸다", async () => {
     const base = seed();
     const h = createHarness({
       ...base,
@@ -459,11 +459,10 @@ describe("loadProjectList", () => {
     expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0 });
     // 적재 상태는 **표면마다** 싣는다 — 평탄화하면 한 표면의 동기화 중이 다른 표면의 실패를 가린다(ux-drift-unify §3.2).
     expect(rows[0]?.surfaces.every((surface) => surface.importing === false && surface.importError === null)).toBe(true);
-    // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.
-    expect(rows[0]?.meters.map((m) => m.code)).toEqual(["en", "ko"]);
-    expect(rows[0]?.meters[0]).toMatchObject({ code: "en", total: 2, done: 1, review: 0, percent: 50 });
-    // 두 구간은 겹치지 않고 라벨은 그 합이다 — 검토 대기도 값이 들어 있는 칸이다 (캔버스 `1c`).
-    expect(rows[0]?.meters[1]).toMatchObject({ code: "ko", total: 2, done: 0, review: 1, percent: 50 });
+    // 대표 메타 — 키 둘, 대상 언어는 base(en)를 뺀 ko 하나다(project-row-redesign design §1).
+    expect(rows[0]).toMatchObject({ sourceCount: 1, keyCount: 2, languageCount: 1 });
+    // 판정은 서버가 싣는다 — 이 시드는 리포 id가 없어 끊김이 사건 전부를 덮는다.
+    expect(rows[0]?.plan).toEqual({ chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } });
   });
 
   /**

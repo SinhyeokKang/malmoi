@@ -3,7 +3,7 @@ import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import "server-only";
 
 import { collectAttention, neverFilledLocales } from "@/lib/home/attention";
-import { projectTodos, type ProjectAttention, type ProjectTodo } from "@/lib/inbox/project-todos";
+import { projectTodos, type ProjectAttention } from "@/lib/inbox/project-todos";
 import { repoConnectionPinned } from "@/lib/repo-host/target";
 import { lastSyncTime } from "@/lib/home/sync-time";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -13,14 +13,14 @@ import type { Role } from "@/lib/auth/permission";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { loadRemoteSignals, type RemoteSignals } from "@/lib/projects/remote";
 import {
+  planProjectRow,
   projectStatus,
-  rowLocaleProgress,
-  rowReviewCounts,
+  rowReviewCells,
   type LiveLocale,
   type LocaleCellCount,
   type ProjectEvents,
+  type ProjectRowPlan,
   type RowInput,
-  type RowLocaleProgress,
 } from "@/lib/projects/list";
 import { countPendingBySurface } from "@/lib/protection/where";
 import { planWriteLock } from "@/lib/sync/plan";
@@ -225,8 +225,8 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 */
 export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceCount" | "keyCount" | "surfaces"> &
   /**
-   * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정 셋(`projectStatus`·`rowBanner`·`meterSlot`)이
-   * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 화면이 렌더마다 `{...row, ...row.events}`를
+   * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정(`projectStatus`·`planProjectRow`)이
+   * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 조립이 `{...row, ...row.events}`를
    * 새로 만들어야 하고 그 합성이 판정의 입력이 된다.
    */
   ProjectEvents & {
@@ -244,8 +244,17 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
   baseBranch: string;
   /** `pr_open` 띠의 목적지. 번호는 여기서 파싱한다. */
   lastPrUrl: string | null;
-  /** 행의 Meter — **정렬 후 최대 셋**이다 (DESIGN §6.63). */
-  meters: RowLocaleProgress[];
+  /** 대표 메타 넷(project-row-redesign design §1) — 비보관 소스 수 · 그 소스들의 살아 있는 키 합 · 고유 대상 언어 수 · 마지막 적재. */
+  sourceCount: number;
+  keyCount: number;
+  languageCount: number;
+  /** ISO 문자열 · `"unrecorded"` · `null`(`lastSyncTime`). ⚠️ **`"unrecorded"`를 먼저 견준다** — `new Date("unrecorded")`는 Invalid Date다. */
+  lastSync: string | "unrecorded" | null;
+  /**
+   * 칩·그룹·띠 — **서버가 판정해 결과만 싣는다**(RA 🟢3). 할 일 목록 전체(`projectTodos`)를 실으면 57언어 프로젝트의 행마다 빈 언어 항목이
+   * 수십 개 RSC 페이로드에 오르는데, 행이 쓰는 것은 띠 하나다.
+   */
+  plan: ProjectRowPlan;
   reviewSurfaceSlug: string | null;
   unsentSurfaceSlug: string | null;
   repoAheadFrom: string | null;
@@ -257,9 +266,7 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
  * ⚠️ **2026-09-15에 `summary`가 빠졌다** (projects-panel-rework) — 계정 단위 큐 넷이 화면에서
  * 사라졌고, 그 집계는 `project-home`이 받는다(`summaryQueue`·raw ④는 그대로 있다).
  */
-/** T6이 기존 화면 타입과 합칠 메타. 반환값에서는 지금부터 필수다. */
-export type ProjectListRowMeta = { sourceCount: number; keyCount: number; languageCount: number; lastSync: string | null };
-export type ProjectListView = { rows: (ProjectListRow & ProjectListRowMeta & { todos: ProjectTodo[] })[] };
+export type ProjectListView = { rows: ProjectListRow[] };
 
 /**
  * `/projects` 목록 전용 조회 (8-3 · DESIGN §6.63).
@@ -372,10 +379,8 @@ export function assembleProjectListRows(
   aggregates: ProjectListAggregates,
   remote: ReadonlyMap<string, RemoteSignals>,
 ): ProjectListView["rows"] {
-  const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
-
-  // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCounts`가 Meter와 **같은 접기**로 한다.
-  const review = rowReviewCounts(aggregates.locales, aggregates.cells);
+  // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCells`가 한다. 행의 `review` 합과 띠의 검토 할 일이 이 한 결과를 읽는다.
+  const reviewCells = rowReviewCells(aggregates.locales, aggregates.cells);
 
   return rows.map((r) => {
     const surfaces = r.project.surfaces.filter(surface => surface.archivedAt === null);
@@ -387,15 +392,14 @@ export function assembleProjectListRows(
       importing: surface.lastImportStartedAt !== null,
     }));
     const attention: ProjectAttention[] = collectAttention(importStates, [], neverFilledLocales(surfaces, aggregates), new Map());
-    for (const locale of workLocales) {
-      const count = aggregates.cells.filter(cell => cell.projectId === r.project.id && cell.surfaceId === locale.surfaceId && cell.localeCode === locale.code && cell.needsReview)
-        .reduce((sum, cell) => sum + cell.count, 0);
-      if (count <= 0) continue;
-      const surface = surfaces.find(surface => surface.id === locale.surfaceId);
-      attention.push({ kind: "review", at: null, surfaceSlug: locale.surfaceSlug, code: locale.code,
-        name: surface?.locales.find(item => item.code === locale.code)?.name ?? locale.code, count, who: null });
+    const review = reviewCells.get(r.project.id) ?? [];
+    for (const { surfaceId, code, count } of review) {
+      const surface = surfaces.find(surface => surface.id === surfaceId);
+      if (surface === undefined) continue;
+      attention.push({ kind: "review", at: null, surfaceSlug: surface.slug, code,
+        name: surface.locales.find(item => item.code === code)?.name ?? code, count, who: null });
     }
-    const row: ProjectListRow & ProjectListRowMeta = {
+    const row: Omit<ProjectListRow, "plan"> = {
       sourceCount: surfaces.length,
       keyCount: surfaces.reduce((sum, surface) => sum + (aggregates.keyTotals.get(surface.id) ?? 0), 0),
       languageCount: new Set(workLocales.filter(locale => !locale.isBase).map(locale => locale.code)).size,
@@ -420,11 +424,10 @@ export function assembleProjectListRows(
       memberCount: r.project._count.members,
       baseBranch: r.project.baseBranch,
       lastPrUrl: r.project.lastPrUrl,
-      meters: meters.get(r.project.id) ?? [],
       reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
       unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
       repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
-      review: review.get(r.project.id) ?? 0,
+      review: review.reduce((sum, cell) => sum + cell.count, 0),
       unsent: aggregates.unsent.get(r.project.id) ?? 0,
       /**
        * ⚠️ **`undefined`(확인 못 함)를 보존한다** (ux-drift-unify Q6 ④) — `?? null`로 접으면 원격 조회가 지킨 삼상태가 여기서 "없음"이 되어
@@ -433,12 +436,13 @@ export function assembleProjectListRows(
       openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
       repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
     };
-    return { ...row, todos: projectTodos({
+    const todos = projectTodos({
       status: projectStatus(row), role: row.role, createdAt: r.project.createdAt,
       connectionPinned: repoConnectionPinned(row), gitlabTokenExpiresAt: row.gitlabTokenExpiresAt,
       attention, unsent: row.unsent > 0 && row.unsentSurfaceSlug !== null
         ? { count: row.unsent, surfaceSlug: row.unsentSurfaceSlug, at: aggregates.unsentAt.get(r.project.id) ?? null } : null,
-    }) };
+    });
+    return { ...row, plan: planProjectRow(row, todos) };
   });
 }
 
@@ -532,7 +536,7 @@ export async function loadProjectListAggregates(
      * `@@index([projectId, localeCode, needsReview])`를 탄다.
      *
      * ⚠️ **orphaned 로케일의 번역이 섞여 올 수 있다** — 로케일의 생사는 여기 조건에 없다. 접기에서
-     * ①의 활성 (projectId, code) 집합에 없는 그룹을 버린다 (`rowLocaleProgress`의 `foldCells`).
+     * ①의 활성 (projectId, code) 집합에 없는 그룹을 버린다 (`lib/projects/list.ts`의 `foldCells`).
      */
     prisma.translation.groupBy({
       by: ["projectId", "surfaceId", "localeCode", "needsReview"],

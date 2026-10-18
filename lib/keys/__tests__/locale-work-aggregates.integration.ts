@@ -11,7 +11,6 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { loadAttentionInbox } from "@/lib/inbox/load";
 import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "@/lib/locales/change";
-import { rowLocaleProgress } from "@/lib/projects/list";
 import { hashPushToken } from "@/lib/push/token";
 import { loadSource, loadSources } from "@/lib/sources/query";
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
@@ -94,7 +93,8 @@ async function remove(localeCode: string) {
 /** 화면이 읽는 뷰 모델 — DB 행이 아니라 이 출력이 끝 단언이다. */
 async function views() {
   const aggregates = await loadProjectListAggregates(prisma, ["p"]);
-  const progress = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells).get("p") ?? [];
+  // 목록 집계 ①의 작업 언어 — 진행 막대가 Sources 소스 행으로 옮겨 간 뒤에도 같은 집합이 행 메타·할 일의 재료다.
+  const progress = aggregates.locales.filter(locale => locale.projectId === "p");
   const inbox = await loadAttentionInbox(prisma, "owner");
   const items = inbox.groups.flatMap(group => group.items);
   const list = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "s-web", query: DEFAULT_TRANSLATION_QUERY, pageSize: "all" });

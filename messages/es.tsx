@@ -863,14 +863,6 @@ export const es = {
     resultsFor: (q: string): string => `Resultados para “${q}”`,
     count: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "proyecto" : "proyectos"}`,
     clearSearch: "Borrar búsqueda",
-    meter: {
-      note: {
-        waiting: "Sin sincronizar todavía",
-        importing: "Sincronizando…",
-        failed: "Sincronización fallida",
-        setup: "Conecta la GitHub App para continuar.",
-      },
-    },
     banner: {
       review: (n: number): string =>
         `${n === 1 ? "Una celda está traducida y espera" : `${n.toLocaleString("es")} celdas están traducidas y esperan`} revisión.`,
@@ -914,7 +906,6 @@ export const es = {
       ownerRetries: "Solo los propietarios del proyecto pueden intentarlo de nuevo.",
     },
     onGitLab: {
-      meter: { note: { setup: "Conecta este proyecto a GitLab para continuar." } },
       banner: {
         prOpen: (n: number): string => `La merge request !${n} está abierta: fusiónala para terminar.`,
         prCheckFailed: "No se pudo comprobar si hay una merge request abierta. Esta página lo comprueba de nuevo cuando la vuelvas a abrir.",

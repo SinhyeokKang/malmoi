@@ -18,7 +18,7 @@ import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/c
 import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
 import { loadAttentionInbox } from "@/lib/inbox/load";
 import type { RemoteTarget } from "@/lib/projects/remote";
-import { planProjectRow, reviewByLocale, rowBanner, rowChip, summaryQueue } from "@/lib/projects/list";
+import { reviewByLocale, summaryQueue } from "@/lib/projects/list";
 import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { countPending } from "@/lib/protection/where";
 import { loadPullState } from "@/lib/pull/load";
@@ -526,8 +526,7 @@ it("목록 행이 표면 A 동기화 중 + 표면 B 실패를 실패로 말한�
     { importError: "parse-failed", importing: false },
   ]);
   expect(row).toMatchObject({ sourceCount: 2, keyCount: 3, languageCount: 1, lastSync: null });
-  expect(rowChip(row)).toBe("sync_failed");
-  expect(rowBanner(row)).toEqual({ kind: "import_failed", reason: "parse-failed" });
+  expect(row.plan).toEqual({ chip: "syncFailed", group: "needs_attention", banner: { kind: "import_failed", reason: "parse-failed" } });
 });
 
 /**
@@ -1115,13 +1114,9 @@ it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 
   expect(queries).toBe(6); // 멤버십 하나 + 기존 집계 다섯.
 
   expect(row).toMatchObject({ sourceCount: 3, keyCount: 4, languageCount: 3, lastSync: AFTER.toISOString(), review: 1, unsent: 0 });
-  expect(row.todos.filter(todo => todo.kind === "review")).toEqual([
-    { kind: "review", at: null, surfaceSlug: "second", code: "fr", name: "fr", count: 1, who: null, ownerRetries: false },
-  ]);
-  expect(row.todos.filter(todo => todo.kind === "never_filled")).toEqual([
-    { kind: "never_filled", at: AFTER, surfaceSlug: "default", code: "es", name: "Spanish", keys: 3, ownerRetries: false },
-  ]);
-  expect(planProjectRow(row, row.todos)).toEqual({ chip: "active", group: "all_set", banner: { kind: "review", count: 1 } });
+  // 행의 `review` 합과 띠의 검토 수가 같은 접기에서 나온다(RA 🟡) — 행은 판정 결과만 싣는다(RA 🟢3).
+  expect(row.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "review", count: 1 } });
+  expect("todos" in row).toBe(false);
   const inbox = await loadAttentionInbox(prisma, "owner");
   const inboxItems = inbox.groups.flatMap(group => group.items);
   expect(inboxItems.map(item => item.kind).sort()).toEqual(["never_filled", "review"]);
@@ -1134,5 +1129,5 @@ it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 
   await prisma.translation.updateMany({ where: { projectId: "p1", surfaceId: "second", localeCode: "fr" }, data: { needsReview: false } });
   const { rows: [emptyLanguageRow] } = await load();
   if (emptyLanguageRow === undefined) throw new Error("no row");
-  expect(planProjectRow(emptyLanguageRow, emptyLanguageRow.todos).banner).toMatchObject({ kind: "never_filled", code: "es", name: "Spanish" });
+  expect(emptyLanguageRow.plan.banner).toEqual({ kind: "never_filled", surfaceSlug: "default", code: "es", name: "Spanish", keys: 3 });
 });

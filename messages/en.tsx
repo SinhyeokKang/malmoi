@@ -1945,20 +1945,8 @@ export const en = {
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**
-     * Meter 자리에 **바 대신 서는 문장** (DESIGN §6.63). 값이 없는 상태에서 0% 바를 그리면
-     * "0% 번역됨"으로 읽히는데, 그 프로젝트는 아직 셀 것이 없는 상태다.
-     */
-    meter: {
-      note: {
-        waiting: "Not synced yet",
-        importing: "Syncing…",
-        failed: "Sync failed",
-        setup: "Connect the GitHub App to continue.",
-      },
-    },
-    /**
      * 행 아래 띠 — **다음 한 수**를 말한다 (DESIGN §6.63). 겹치면 하나만 그리고 우선순위는
-     * `rowBanner`가 정한다.
+     * `planProjectRow`가 정한다.
      *
      * ⚠️ **복수형을 함수가 든다** — 시안 문구가 전부 복수형이지만 `1 strings`는 틀렸다
      * (`memberCount`가 같은 이유로 이미 함수다).
@@ -2016,7 +2004,7 @@ export const en = {
     /**
      * 목록 행 우측 배지의 낱말 중 `STATE`가 이 사전에서 읽는 셋 (`lib/status/canon.ts`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
      * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다. 나머지 칩(Not synced yet · Disconnected · 실패 둘)은 `STATE`가 다른 화면과
-     * 같은 사전 키에서 읽는다(ux-drift-unify T19 — 칩이 `CHIP_STATE` 키만 넘긴다).
+     * 같은 사전 키에서 읽는다(ux-drift-unify T19 — 칩이 상태 키만 넘긴다).
      *
      * ⚠️ **내부 이름을 화면에 쓰지 않는다** (PRODUCT §3) — 번역자도 이 목록을 본다.
      */
@@ -2053,7 +2041,6 @@ export const en = {
     },
     /** GitLab 프로젝트 — Home 셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
     onGitLab: {
-      meter: { note: { setup: "Connect this project to GitLab to continue." } },
       banner: {
         prOpen: (n: number): string => `Merge request !${n} is open — merge it to finish.`,
         prCheckFailed: "Couldn't check for an open merge request. This page asks again the next time you open it.",
