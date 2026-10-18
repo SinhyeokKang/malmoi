@@ -118,5 +118,5 @@
   - DIRECTORY: `ui/meter.tsx`·`locale-meter.tsx` 항목의 `LocaleMeter` 소비자 서술(2026-10-18 dev 기준 `:321,556`)
   - 그 뒤 `docs/features/project-row-redesign/`를 지운다.
   - 검증: `/push` 4단계 문서 신선도를 통과한다. **디렉터리를 지운 뒤** `rg -n "meterSlot|rowChip|projectGroup|rowBanner|[rR]owLocaleProgress|meter\.note|onGitLab\.meter" docs lib components app messages`가 0건이다(주석의 옛 이름 포함. 타입 `ProjectGroup`은 남으므로 대소문자를 무시하지 않는다).
-- [ ] **T12 — 가이드 영향** — Inbox 항목 서술(`guide/en/translate/edit.md:43`)이 `needs_reconnect` 추가로 바뀐다. `/guide`로 en·ko·es 세 벌을 같은 커밋에서 고친다. `/projects` 행을 찍은 컷은 2026-10-14 기준 `guide/SHOOTING.md`에 매핑이 없다.
+- [ ] **T12 — 가이드 영향** — ⚠️ **이월 stale 2컷(2026-10-18)**: `/guide/inbox-open.webp`·`/guide/inbox-page.webp`가 Inbox 안 읽음 우선 정렬(`86ce7a67`, `lib/inbox/plan.ts`)로 `pnpm guide:check` stale이다 — 같은 Inbox 컷이라 이 기능의 재촬영에서 함께 찍는다(가이드 문장은 이미 en·ko·es `translate/edit.md#inbox`에 반영됨). `/merge` 전에 stale 0이어야 한다. Inbox 항목 서술(`guide/en/translate/edit.md:43`)이 `needs_reconnect` 추가로 바뀐다. `/guide`로 en·ko·es 세 벌을 같은 커밋에서 고친다. `/projects` 행을 찍은 컷은 2026-10-14 기준 `guide/SHOOTING.md`에 매핑이 없다.
   - 검증: `pnpm test` green(가이드 게이트). `pnpm guide:check`에 이 기능 경로가 걸리면 `/guide-shots`.
