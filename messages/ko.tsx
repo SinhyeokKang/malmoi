@@ -42,6 +42,10 @@ export const ko = {
       body: "이 리포지토리의 연결이 끊어졌습니다",
       tail: " — 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
     },
+    languageRemovalHeld: {
+      body: "미전송 언어 제거가 있습니다",
+      tail: " — 리포지토리 업데이트를 보류합니다.",
+    },
   },
   repositorySync: {
     action: "동기화",
@@ -354,6 +358,7 @@ export const ko = {
       allFilled: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개 번역 완료`,
       nothingPending: "보낼 내용 없음",
       nothingToReview: "검토할 내용 없음",
+      languageChanges: (n: number): string => `게시할 언어 변경 ${n.toLocaleString("ko-KR")}건`,
       lastGoodSync: (when: string | null): string => (when === null ? "아직 동기화하지 않음" : `${when} 동기화됨`),
       asOf: (when: string | null): string => (when === null ? "아직 동기화하지 않음" : `${when} 기준`),
       asOfLastSync: "마지막 동기화 기준",
@@ -363,6 +368,7 @@ export const ko = {
         "open-pr": "PR이 머지되거나 닫힐 때까지 보류",
         "pr-check-failed": "보류 — 열린 PR을 확인하지 못했습니다",
         "publish-raced": "보류 — 동기화 전 확인을 마친 뒤 게시가 완료되었습니다",
+        "locale-change-pending": "보류 — 미전송 언어 제거가 있습니다",
       },
       frozen: "보관 시점에 고정됨",
       neverSent: "전송 이력 없음",
@@ -881,6 +887,8 @@ export const ko = {
         `${source}에서 ${locale} 번역이 비어 있습니다 — 번역할 키 ${n.toLocaleString("ko-KR")}개.`,
       unsent: (n: number): string =>
         `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건 — 게시해 리포지토리로 보내세요.`,
+      languageChanges: (n: number): string => `게시할 언어 변경이 ${n.toLocaleString("ko-KR")}건 있습니다.`,
+      languageRemovalHeld: "미전송 언어 제거가 있습니다 — 리포지토리 업데이트를 보류합니다.",
       prOpen: (n: number): string => `PR #${n} 열림 — 머지하면 반영됩니다.`,
       prCheckFailed: "열린 PR을 확인하지 못했습니다. 다음에 이 페이지를 열 때 다시 확인합니다.",
       repoAhead: (n: number, baseBranch: string): string =>

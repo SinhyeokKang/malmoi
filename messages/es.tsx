@@ -39,6 +39,10 @@ export const es = {
       body: "Este repositorio está desconectado",
       tail: ": las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
     },
+    languageRemovalHeld: {
+      body: "Hay una eliminación de idioma sin enviar",
+      tail: ": las actualizaciones del repositorio están retenidas.",
+    },
   },
   repositorySync: {
     action: "Sincronizar",
@@ -349,6 +353,8 @@ export const es = {
       allFilled: (n: number): string => `${n.toLocaleString("es")} claves, todas completas`,
       nothingPending: "nada para enviar",
       nothingToReview: "nada para revisar",
+      languageChanges: (n: number): string =>
+        `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} de idioma por publicar`,
       lastGoodSync: (when: string | null): string => (when === null ? "aún sin sincronizar" : `sincronizado ${when}`),
       asOf: (when: string | null): string => (when === null ? "aún sin sincronizar" : `a fecha de ${when}`),
       asOfLastSync: "a fecha de la última sincronización",
@@ -358,6 +364,7 @@ export const es = {
         "open-pr": "retenido hasta que se fusione o se cierre la pull request",
         "pr-check-failed": "retenido — no se pudo comprobar si hay una pull request abierta",
         "publish-raced": "retenido — Publish terminó después de las comprobaciones de sincronización",
+        "locale-change-pending": "retenido — hay una eliminación de idioma sin enviar",
       },
       frozen: "congelado al archivar",
       neverSent: "nunca enviado",
@@ -874,6 +881,9 @@ export const es = {
         `${locale} no tiene traducciones en ${source} — ${n.toLocaleString("es")} ${n === 1 ? "clave" : "claves"} por traducir.`,
       unsent: (n: number): string =>
         `${n === 1 ? "Una edición sin enviar" : `${n.toLocaleString("es")} ediciones sin enviar`}: publica para ${n === 1 ? "enviarla" : "enviarlas"}.`,
+      languageChanges: (n: number): string =>
+        `${n.toLocaleString("es")} ${n === 1 ? "cambio" : "cambios"} de idioma por publicar.`,
+      languageRemovalHeld: "Hay una eliminación de idioma sin enviar: las actualizaciones del repositorio están retenidas.",
       prOpen: (n: number): string => `La pull request #${n} está abierta: fusiónala para terminar.`,
       prCheckFailed: "No se pudo comprobar si hay una pull request abierta. Esta página lo comprueba de nuevo cuando la vuelvas a abrir.",
       repoAhead: (n: number, baseBranch: string): string =>

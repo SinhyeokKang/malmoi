@@ -256,6 +256,9 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   "mcp.summary.synced": ["held"],
   // 열린 PR 동안 그 언어만 보류된다(`proposal-path-exists` — locale-add 시안 P1 ③). 같은 보류 개념의 파일 머리 낱말이다.
   "translations.publish.language.label.held": ["held"],
+  // 전달 전 언어 제거가 CI 적재를 보류한다(language-request-todo — `locale-change-pending`). 목록 띠와 그 띠를 나눈 Inbox 항목이다.
+  "projects.banner.languageRemovalHeld": ["held"],
+  "inbox.languageRemovalHeld.*": ["held"],
   // ── Publish 일부 보류(Held back) — 결과 모달·Logs의 Publish 결과만.
   "translations.publish.*": ["held back"],
   "logs.status.notSent": ["held back"],

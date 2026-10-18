@@ -107,6 +107,14 @@ export const en = {
       body: "This repository is disconnected",
       tail: " — syncs and publishes stop until it's reconnected.",
     },
+    /**
+     * 전달 전 언어 제거(language-request-todo) — 목록 띠 `projects.banner.languageRemovalHeld`를 `—`에서 나눈 두 조각이다(`needsReconnect`와
+     * 같은 형). 보류 아닌 언어 변경 항목은 띠 문장 `projects.banner.languageChanges`를 통째로 쓴다.
+     */
+    languageRemovalHeld: {
+      body: "A language removal isn't published yet",
+      tail: " — repository updates are held.",
+    },
   },
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
@@ -1112,6 +1120,11 @@ export const en = {
       nothingPending: "nothing to send",
       nothingToReview: "nothing to review",
       /**
+       * 셀 편집 0 · 언어 변경만 남았다(language-request-todo) — `nothingPending`이 서면 [Publish]가 켜져 있는데 "보낼 게 없다"고 거짓으로
+       * 읽힌다(POSTMORTEM 2026-09-27과 같은 부류). 목록 띠 `projects.banner.languageChanges`와 같은 낱말이다.
+       */
+      languageChanges: (n: number): string => `${n.toLocaleString("en-US")} language change${n === 1 ? "" : "s"} to publish`,
+      /**
        * `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다.
        * ⚠️ 정상 줄(`synced`)과 같은 낱말이다(2026-09-30 사용자 — `last good sync`가 혼자 길어 카드가 한 줄 높았다). 과거형 `synced`가 성공을
        * 말하고, 실패는 주의 카드가 든다. `last sync`로 줄이지 않는다 — 그러면 방금 실패한 시도를 가리킨다.
@@ -1134,6 +1147,8 @@ export const en = {
         "open-pr": "held until the pull request is merged or closed",
         "pr-check-failed": "held — couldn't check for an open pull request",
         "publish-raced": "held — Publish finished after the sync checks",
+        /** 전달 전 언어 제거 — 게이트 순서(`/api/push`)대로 미전달 편집 다음, 열린 PR 앞이다. 목록 띠 `languageRemovalHeld`와 같은 사실이다. */
+        "locale-change-pending": "held — a language removal isn't published yet",
       },
       frozen: "frozen at archive",
       neverSent: "never sent",
@@ -1975,6 +1990,17 @@ export const en = {
       unsent: (n: number): string =>
         // ⚠️ 결과를 약속하지 않는다 — Publish가 보류하는 편집(파일·키가 아직 없음)도 같은 술어로 세어진다.
         `${n.toLocaleString("en-US")} unsent edit${n === 1 ? "" : "s"} — publish to send ${n === 1 ? "it" : "them"}.`,
+      /**
+       * 언어 변경만 아직 Publish되지 않았다(language-request-todo) — 낱말은 [Publish] 힌트 `translations.publish.language.ready`와 같은
+       * `to publish`다. ⚠️ `pending`을 쓰지 않는다(코드 이름이다). 상태 낱말 `Adding`·`Removing`은 Languages 카드의 것이다.
+       */
+      languageChanges: (n: number): string =>
+        `${n.toLocaleString("en-US")} language change${n === 1 ? "" : "s"} to publish.`,
+      /**
+       * 전달 전 제거가 CI 적재를 보류한다(`locale-change-pending`). ⚠️ **수를 말하지 않는다** — 제거가 여럿이어도 보류는 하나다.
+       * 언제 풀리는지 약속하지 않는다 — Publish 뒤에도 열린 PR 보류가 이어받는다(ARCHITECTURE §5.10.3).
+       */
+      languageRemovalHeld: "A language removal isn't published yet — repository updates are held.",
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
       /**
        * 열린 PR 조회가 실패했다(ux-drift-unify Q6) — "없음"이 아니라 모름이다. ⚠️ **목적어를 붙인다** — 홀로 서는 "Couldn't check"는
