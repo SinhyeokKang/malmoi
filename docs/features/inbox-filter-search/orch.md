@@ -28,7 +28,7 @@
 | D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 완료·dev 통합 |
 | R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 통과 |
 | E | T6 정본 및 가이드 본문 | PRODUCT, DESIGN, DIRECTORY, guide/en·ko·es/translate/edit.md | D 통합 | gpt-6.1-sol/medium | guide 규칙·문서별 커밋·신선도 | 완료·dev 통합 |
-| Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·로컬 gate (push 보류 중에도 진행) | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 대기 |
+| Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·로컬 gate (push 보류 중에도 진행) | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 착수 |
 | S | T6 inbox-page.webp 재촬영 | public/guide, guide/SHOOTING.md | Q 완료 | gpt-6.1-sol/medium | guide-shots·guide:check stale 0 | 대기 |
 | F | T6 계획 정리·최종 push | 기능 폴더 삭제, 최종 신선도 문서 | 전 항목·수정·재검증 완료 | 지휘자 | pnpm gate, dev CI green, 워크트리 정리 | 대기 |
 
@@ -76,3 +76,13 @@
 - R2 완료: 🔴0/🟡0, 독립 11파일·353 tests passed. D를 aaedc482, ae28b514로 dev 통합했다. E 정본·가이드 본문을 시작하며 Q의 실제 전환/기하 실측은 미완이다. #290은 이전 v1.4.4 PR #300에서 충족됨을 코드와 305회귀 테스트로 확인하고 사용자 지시에 따라 완료로 닫았다.
 
 - E 완료: c29d8bdd/d10e80ee/78109690/a635fb04/0fe96f23/2204e2b0 → dev 4ee8f068/e0666d27/839b5ccd/7b5ad454/ea13bd5e/554818fb. 정본 4개·AUTHORING 사실 대조 표·가이드 3언어를 갱신했다. README는 모순 없어 유지. gate ok, 16,082 passed / 2 skipped, build·미러 성공. guide stale 7이미지/9관계는 S 소유.
+
+- 통합 gate: d6df61b3 상태에서 pnpm gate exit0, 일반 16,082 passed / 2 skipped, 격리 PG 898 passed, build·미러 성공. 97ea8678..d6df61b3 dev push 완료. CI https://github.com/SinhyeokKang/malmoi/actions/runs/39131039555 감시 중. Q task_1fb03b0f1715 / ctx_bff7ed3986ad, main 체크아웃 Sol high 착수. QA 중 main 코드 통합·build 금지.
+
+- d6df61b3 CI 결론 success 확인(39131039555). Q 중간: 종류·publish 결합, 점 7→0, 단일/다중 메뉴·Esc·검색 Enter·Clear busy 포커스 통과. 18조합 기하 측정 진행 중으로 아직 Q 완료는 아니다.
+
+- Q 결함 #301: 375px에서 긴 프로젝트 메뉴 width448/right456, 81px 잘림. D fix1 소유: 공통 FilterMenu/DropdownMenu 최소 폭 제약·회귀 테스트·해당 DESIGN/POSTMORTEM. Q는 나머지를 계속하며 main 통합은 Q 종료 뒤다.
+
+- Q 결함 #302: 375px에서 공백 없는 q 200자의 NoMatch 제목이 카드 밖으로 잘림. D fix1 완료 뒤 새 Dispatch fix2로 EmptyState/NoMatch 최소 폭·줄바꿈/회귀·DESIGN/POSTMORTEM을 배정한다.
+
+- Q 브라우저 검증 종료: 제품 실패 #301·#302 외 통과, 서버·TaskSpace 종료. fixture DB 원복 대조 일치. 한계: 첫 Inbox 진입 전 attentionSeenAt을 저장하지 못해 첫 방문 직후 2026-10-18T13:20:32.350Z까지만 원복했다. 최초 진입 전 읽음 시각은 복구 불가이며 최종 보고에 남긴다.
