@@ -90,6 +90,8 @@ function planProjectRow(row: RowInput, todos: readonly ProjectTodo[]): ProjectRo
 - **갈 곳이 없다** — `BannerAction`이 `null`이다(`project-list.tsx:436-438`, "다음 방문에서 다시 확인").
 - **금지어** — `retry`·`check again` 등은 `BANNED`이고, `Couldn't check` 단독도 쓸 수 없다(§10.1). 남을 가리키는 문구는 그 화면에 실제로 있는 컨트롤만 가리킨다(§10.1).
 
+**확정(T0, 2026-10-18 사용자)**: `Couldn't check for an open pull request. This page asks again the next time you open it.` — GitLab은 `Couldn't check for an open merge request. …`(`onGitLab.banner.prCheckFailed`). 앞 문장은 DESIGN §10.1(:2476)의 정본 낱말 그대로이고, 시안의 `GitHub didn't say …`는 쓰지 않는다(같은 개념의 다른 낱말이 되고, 우리 쪽 마감·토큰 실패까지 호스트 탓으로 단정한다). 뒷문장은 시안 제안이다. 칩 낱말 + `.` 일치는 깨지므로 `cross-screen.test.ts:477`·`project-row.test.tsx:217`이 같이 움직인다(T5).
+
 ## 3. 호스트 문장
 
 **행 전체가 `withRepoHost(useMessages(), row.repoHost)`를 지난다.** 지금은 `ProjectBanner`(`:347`)·`BannerAction`(`:409`)만 덮는다. `withRepoHost`는 WeakMap memo(`lib/i18n/host.ts:25`)라 행마다 불러도 비용이 없다.
@@ -111,7 +113,7 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 
 | 할 일 | 행 띠 | Inbox | 역할 |
 |---|---|---|---|
-| `needs_reconnect` | ✅ | ✅ **새로** | 모두 — EDITOR는 "소유자에게 요청" 문장(`import_failed`의 `ownerRetries`와 같은 형) |
+| `needs_reconnect` | ✅ | ✅ **새로** | 모두 — EDITOR는 "소유자에게 요청" 문장(`import_failed`의 `ownerRetries`와 같은 형). Inbox 목적지는 OWNER Settings · **EDITOR 프로젝트 Home**(T0 확정 — §6) |
 | `import_failed` | ✅ | ✅ | 모두(`ownerRetries` 그대로) |
 | `setup` | ✅ | ✅ | Inbox는 **OWNER만**(지금 규칙 그대로 — EDITOR가 할 수 있는 일이 없다). 띠는 EDITOR에게 문장 |
 | `unsent` | ✅ | ✅ | 모두 |
@@ -154,7 +156,8 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 - 글리프(14): `unsent` GitPullRequestArrow · `pr_open` GitPullRequest · `repo_ahead` GitMerge · `review` Eye · **`pr_check_failed` CircleHelp**(지금 TriangleAlert — muted 띠에 경고 삼각이 서면 톤과 모양이 어긋난다) · **`never_filled` Languages**(Inbox `TILE.never_filled`와 같다) · `needs_reconnect` Unplug · `import_failed` CircleX/TriangleAlert · `setup` CircleDashed. `CircleHelp`는 리포에서 이미 쓴다(`components/shell/user-menu.tsx:3`).
 - 링크 형은 지금 그대로다 — 앱 안은 muted + chevron 12, 새 탭 외부(`Open on GitHub`·`Review changes`)는 파랑, EDITOR 갈래(g·j)는 링크 대신 평문(`ownerOnly`), h는 EDITOR도 `View details` + `ownerRetries`.
 - 그릇 640 이상은 띠 문장이 한 줄 말줄임, 미만은 감긴다(`BannerLine` 지금 그대로).
-- `never_filled` 띠는 **하나만** 선다 — 빈 언어가 여럿이면 attention 정렬의 첫 항목이고 나머지는 Inbox가 든다. 링크는 Home Attention의 같은 항목과 같은 목적지(`attentionHref`의 `never_filled` — 그 소스·그 언어의 `Incomplete`)이고 라벨은 기존 `sources.open`(`Open translations` · es `Abrir traducciones`)이다. ⚠️ 시안은 언어를 코드(`ja`)로 그렸지만 Home 본문은 `Locale.name`을 쓴다(`attention-view.ts` `body`) — 행도 `name`을 쓴다.
+- `never_filled` 띠는 **하나만** 선다 — 빈 언어가 여럿이면 attention 정렬의 첫 항목이고 나머지는 Inbox가 든다. 링크는 Home Attention의 같은 항목과 같은 목적지(`attentionHref`의 `never_filled` — 그 소스·그 언어의 `Incomplete`)이고 라벨은 기존 `sources.open`(`Open translations` · es `Abrir traducciones`)이다.
+- **`never_filled` 띠 문안 확정(T0, 2026-10-18 사용자)**: `{name} has no translations in {source} — N keys to translate.`(N이 1이면 `key`). Home `neverFilled`의 본문(`… has no translations here`) + 꼬리(` — N keys to translate.`)에서 `here`만 `in {source}`로 바꾼 형이다. ⚠️ 시안은 언어를 코드(`ja`)로 그렸지만 **`Locale.name`을 쓴다** — Home 본문이 `name`이라(`attention-view.ts` `body`) 같은 항목이 두 화면에서 같은 말이어야 한다. `{source}`는 표면 slug다. `never`·`yet`을 쓰지 않는다.
 
 **폭** — 1280(+LNB) = 카드 920 · 768 = 704 · 375 = 325(`@max-form`).
 - 640 이상이면 메타가 한 줄에 든다(가장 긴 예가 약 300).
@@ -172,6 +175,7 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 - 보조줄(표면·로케일)이 없다 — `title()`이 `setup`처럼 `""`다.
 - EDITOR는 `askOwner.reconnect`를 둘째 줄에 둔다(`ownerRetries`와 같은 형 — 플래그는 `planInbox`가 정하고 `row-slots`는 판정하지 않는다).
 - 시각: GitLab 토큰 만료면 `gitlabTokenExpiresAt`, 연결 고정 누락이면 `null`이라 칸이 비고 그룹 안 맨 뒤로 간다(§4).
+- **목적지(T0 확정, 2026-10-18 사용자)**: OWNER는 Settings(행 띠 `Reconnect`와 같은 곳), **EDITOR는 프로젝트 Home**이다 — Settings는 `project:settings` 뒤라 EDITOR는 눌러서 거절당하고, Home에는 연결 끊김 Alert와 EDITOR 문장이 이미 선다. `attentionHref`가 지금 역할을 받지 않으므로 호출부가 정한 값을 넘기도록 바뀐다(T8).
 
 ## 순수 함수 (`/tdd` 진입점)
 
@@ -208,7 +212,7 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 2. **대표 메타는 소스 수 · 키 수 · 언어 수 · 마지막 동기화(상대 시각)다.** 순서는 이대로이고 소스 수는 늘 선다(2026-10-15). 0개인 언어 칸과 시각이 없는 동기화 칸은 생략한다. 역할·멤버 수는 넣지 않는다.
 3. ~~언어 막대는 덜 된 언어 먼저다~~ → **2026-10-15: 프로젝트 행에서 언어 막대를 뺀다.** (소스, 로케일) 단위 데이터라 `source-row-locale-meter`가 소스 행으로 가져간다.
 4. **둘째 줄은 없다**(막대가 빠졌다). 첫 적재 전 행(j·k·l)은 칩이 상태를 말한다.
-5. **열린 PR 조회 실패의 띠는 다음 할 일을 말한다.** 칩과 같은 문장을 쓰지 않는다. 문구는 시안이 제안하고 T0 수령 때 확정한다(§2 사실 셋).
+5. **열린 PR 조회 실패의 띠는 다음 할 일을 말한다.** 칩과 같은 문장을 쓰지 않는다. → **2026-10-18 T0 확정**: `Couldn't check for an open pull request. This page asks again the next time you open it.`(§2). 같은 날 `never_filled` 띠 문안(§6)과 Inbox `needs_reconnect`의 EDITOR 목적지 = Home(§6)도 정했다.
 6. **All set 카드의 할 일 띠는 전부 muted다**(2026-10-15).
 7. **Inbox 항목과 행의 띠는 같은 DB 할 일 판정에서 나온다.** 원격 신호 셋은 행 띠 전용이다. `never_filled`는 띠에 들어가고 `needs_reconnect`는 Inbox에 들어간다(2026-10-15).
 8. **마지막 동기화는 `lastSyncTime`을 재사용하고 그 뜻을 명시한다**(2026-10-15) — 보류 행이 보이는 오래된 시각은 띠가 설명한다.

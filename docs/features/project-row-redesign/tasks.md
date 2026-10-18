@@ -7,10 +7,10 @@
 > 자동 검증(`pnpm test`·`typecheck`·`test:projects:postgres`)과 **수동 확인**(브라우저 실측 — e2e 없음)을 줄마다 구분한다.
 
 ## 0. 시안
-- [ ] **T0 — Claude Design 시안 수령.** `design-brief.md`를 넘기고 핸드오프를 받는다.
+- [x] **T0 — Claude Design 시안 수령.** `design-brief.md`를 넘기고 핸드오프를 받는다.
   - 검증(수동): `DesignSync list_files`에 핸드오프가 있고, 브리프 프레임 표의 번호마다 프레임이 그려져 있다.
   - 시안이 design.md의 판정(상태 표·메타 넷·띠 톤)과 다르면 **코드 전에 어느 쪽을 고칠지** 사용자에게 묻는다. 결정 5(PR 조회 실패 띠 문안)를 여기서 확정한다.
-  - 2026-10-18 수령: [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html) — 프레임 1–14가 다 있다. 시안이 정한 사실은 design §6에 옮겼다. 남은 확인: f 띠 문안 · n 띠 문안 · Inbox `needs_reconnect`의 EDITOR 목적지.
+  - 2026-10-18 수령: [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html) — 프레임 1–14가 다 있다. 시안이 정한 사실은 design §6에 옮겼다. 확인 셋을 같은 날 사용자가 정했다 — f 띠 문안 · n 띠 문안 · Inbox `needs_reconnect`의 EDITOR 목적지 = Home(design §2·§6 · 결정 5).
 
 ──
 
@@ -53,7 +53,7 @@
 ## 3. 목록 UI — 교체·삭제 (`/implement`, 시안 기준)
 - [ ] **T5 — 사전(목록)** (`/translate` 모드 ①). T6보다 먼저 한다.
   - 기존 키를 재사용한다: `sources.count`·`translations.keys`·`sources.languageCount`·`home.cards.synced`.
-  - 새 en 키를 세 사전에 같은 커밋으로 넣는다: `never_filled` 띠 문장, PR 조회 실패 띠 문장(결정 5). `never_filled` 띠 링크 라벨은 새 키가 아니라 기존 `sources.open`이다(design §6).
+  - 새 en 키를 세 사전에 같은 커밋으로 넣는다: `never_filled` 띠 문장(design §6 확정 문안), PR 조회 실패 띠 문장(결정 5 — design §2 확정 문안, GitLab 짝 포함). `never_filled` 띠 링크 라벨은 새 키가 아니라 기존 `sources.open`이다(design §6).
   - 소비자를 잃은 `projects.meter.note.*`·`onGitLab.meter`를 **세 사전에서 동시에** 지운다.
   - 새 낱말은 DESIGN §10.1 표와 대조한다.
   - 검증: `dictionary-consistency`·`host.test`(`:78-89,113-118`)·`terminology`·`gitlab-scope-sweep`가 green이다. `projects.banner.prCheckFailed`를 바꾸면 `cross-screen.test.ts:477`(칩 낱말 + "." 일치)과 `project-row.test.tsx:217`을 같이 고친다.
@@ -94,6 +94,7 @@
 - [ ] **T8 — Inbox를 `projectTodos`로** (`lib/inbox/load.ts` · Inbox 항목 렌더 · 사전).
   - `needs_reconnect` 항목의 문장과 링크(OWNER는 재연결 화면, EDITOR는 소유자에게 요청하라는 문장)를 세 사전에 넣는다. 배지 경로가 호스트 API를 부르지 않는다.
   - 형은 design §6 "Inbox `needs_reconnect`" — 본문·꼬리는 `projects.banner.needsReconnect`를 `—`에서 나눈 두 조각, `IconTile` warning + Unplug, 보조줄 없음.
+  - 목적지는 OWNER Settings · EDITOR 프로젝트 Home이다(T0 확정). `attentionHref`가 역할(또는 호출부가 정한 목적지)을 받도록 바꾸고, 세 소비자(드롭다운 · `/inbox` · Home 카드)가 같은 값을 넘기는지 테스트한다.
   - 검증: `lib/inbox/__tests__/*`와 Inbox DOM 테스트가 green이다. `needs_reconnect` 항목이 OWNER·EDITOR 둘 다에게 서고 문장이 갈린다. 원격 신호 종류가 Inbox 항목에 0이다. `loadAttentionBadgeAction` 경로에 `loadRemoteSignals` import가 0이다(소스 단언).
   - 같은 프로젝트 fixture에서 행 띠의 DB 할 일 종류가 Inbox 항목에 있다(spec 완료 조건 6 — 표 테스트).
 
