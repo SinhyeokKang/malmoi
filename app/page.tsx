@@ -68,7 +68,7 @@ export default async function Root() {
         {/*
           점 격자(R3) — 스크롤러 한 화면짜리 sticky 캔버스이고, 같은 높이의 음수 margin으로 흐름에서 자리를 차지하지 않는다. 높이는 스테이지가
           스크롤러에 쓰는 `--landing-stage-h`다(98 폴백은 JS 전뿐 — `stage.tsx` 주석). ⚠️ 스크롤러 안이어야 `follow="scroller"`가 탄다 — 밖이면
-          조용히 로그인 경로로 떨어진다. ⚠️ 격자 오프셋은 래퍼가 스크롤러의 첫 자식이라는 전제다(`dot-field.tsx` R6).
+          조용히 로그인 경로로 떨어진다. ⚠️ 격자 오프셋은 스크롤러 안에서 래퍼 앞에 높이를 가진 형제가 없다는 전제다(위 JSON-LD `<script>`는 높이 0 — `dot-field.tsx` R6).
         */}
         <DotField
           follow="scroller"
