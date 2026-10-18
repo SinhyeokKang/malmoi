@@ -25,6 +25,7 @@
 | D13 | T11의 `rg` 0건을 예외 없이 지킨다 — `list.test.ts` 이관 주석에서 옛 이름을 걷고, `projects-screen.test.ts`의 옛 함수 이름 부정 단언은 지우거나 이름 없는 꼴로 바꾼다(export가 사라져 typecheck가 이미 막는다) | 지휘자 판단 — RB 🟢2 추천 |
 | D14 | #297: 메타 칸은 통째로 다음 줄로 가고, 칸 하나가 이름 칸보다 넓을 때만 그 칸 안에서 낱말 사이로 감긴다 — 말줄임·넘침 없음, 가운뎃점은 앞 칸에 붙은 채 | 지휘자 판단 — PRODUCT §4.1 "감기고 숨지 않는다"를 지키는 유일한 형이고, 시안은 이 경우를 그리지 않았다(DS 지적) |
 | D15 | #298: 좁은 그릇 골격의 메타 막대는 메타 상자 하나 안에서 줄 사이 gap 없이 쌓이고, 막대 수는 #297 수정 뒤 325에서 가장 흔한 메타 줄 수다(en 실측으로는 셋이 흔하다) | 지휘자 판단 — srlm D16과 같은 원칙(실제 그릇 · 가장 흔한 모양) |
+| D16 | #299: 좁은 그릇(`@max-form`)에서만 메타 줄을 이름 칸 밖으로 빼 행 전체 폭(이름 칸 왼쪽 끝 ~ 행 끝, 칩 묶음 아래)에 둔다. 넓은 그릇은 그대로. D14 칸 규칙 유지, 골격도 따라간다 | 2026-10-18 사용자(추천안 선택) — es 긴 칩에서 이름 칸이 57px까지 줄어 메타 8줄·낱말 넘침이 났다 |
 | D9 | G(T12)는 이월 stale 2컷(`inbox-open`·`inbox-page`)과 그 시점 `pnpm guide:check`의 stale 전부를 찍는다 | 지휘자 판단 — `/merge` 전 stale 0 원칙(인수 브리프 · 메모리 guide-shots-before-merge) |
 
 ## 배치
@@ -35,8 +36,8 @@
 | RA | A 리뷰 | Claude Opus high · 리포트 전용 | — | A | 🔴 0 | APPROVE 🔴0·🟡1·🟢5 → B로 이월 |
 | B | T5–T8 | Claude Opus high · 워크트리 `prr-b` | `messages/{en,ko,es}.tsx` · `components/projects/project-list.tsx` · `app/(edit)/projects/(list)/{page,loading}.tsx` · `components/inbox/*` · `lib/home/attention-view.ts` · `lib/inbox/{plan,load}.ts` · 옛 함수 삭제(`lib/projects/list.ts` · `lib/keys/query.ts` `meters`) · 주석(`lib/shell/switcher.ts` · `components/locale-meter.tsx`) · tasks T5–T8이 이름 댄 테스트 전부 | A가 dev에 | `pnpm gate --base dev` | 완료 `95160239`·`3d858b73`·`cf07a722` |
 | RB | B 리뷰 | Claude Opus high · 리포트 전용 | — | B | 🔴 0 | APPROVE 🔴0·🟡1·🟢6 → B fix1 |
-| DS | T9 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 프레임 실측 일치 · 지적 0 | 진행 — #297 → B fix2 · #298 → B fix3(fix2 뒤) |
-| B2 | T11(디렉터리 삭제 제외) | B 워커 후속 Task | `docs/DESIGN.md` · `docs/ARCHITECTURE.md` · `docs/PRODUCT.md` · `docs/DIRECTORY.md` | DS 끝 | `pnpm gate` · T11 `rg`(features 디렉터리 제외) 0 | 대기 |
+| DS | T9 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 프레임 실측 일치 · 지적 0 | #298 닫힘 · #297·#299 → B fix4(D16) 뒤 재측정 |
+| B2 | T11(디렉터리 삭제 제외) | B 워커 후속 Task | `docs/DESIGN.md` · `docs/ARCHITECTURE.md` · `docs/PRODUCT.md` · `docs/DIRECTORY.md` | DS 끝 | `pnpm gate` · T11 `rg`(features 디렉터리 제외) 0 | 완료 — D16 문구는 fix4가 덧붙인다 |
 | QA | T10 + 인계 (b) 목록 + T7 골격 높이 수동 | Claude Opus high · main 체크아웃 · 단일 워커 · BugShot | — | B·B2 push 뒤 | (b) 전부 확인 | 대기 |
 | G | T12 | Claude Opus high · main 체크아웃(`/guide` + `/guide-shots`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | QA 끝(ego 세션 공유) | `pnpm test` · `pnpm guide:check` stale 0 | 대기 |
 
@@ -57,3 +58,5 @@
 - B 통합 `1a2d0296`..`c6a5a8e7` → main `gate: ok`. push는 DS 뒤.
 - DS(`ds-report.md`): 프레임 1–14 일치, 불일치 #297·#298. 받아들인 이탈 — 행 높이 87.16(타입 스케일 행간, 시안 88) · `<time aria-label>` = `synced <절대 시각>`(T11에서 design·DESIGN을 이 형으로). 못 잰 것: c `pr_open`(열린 PR 없음) · GitLab d·하위 그룹 · GitLab 만료 재연결 시각. dev DB 임시 쓰기 전부 복구(diff 0).
 - B fix2 `bd8b4c21`(#297, D14 — 325 넘침 0, 대신 es `Pendiente de configurar` 행은 메타 9줄 225.8) · fix3 `0efb75fe`(#298, D15 — 좁은 골격 막대 셋, 325 en 16행 중 13행이 세 줄 · 골격 121.81 = 실물 121.81).
+- DS 재측정: #298 닫힘(값 댓글) · #297 칸 상자 넘침 0이나 es 긴 낱말(`sincronizado`)이 57px 이름 칸 밖으로 +21.2 → #299 → D16 → B fix4.
+- B2(T11) `e32ae193`(DESIGN)·`05da0c4e`(ARCHITECTURE)·`882b62c6`(PRODUCT)·`59f84a72`(DIRECTORY)·`264a7295`(locale-meter 주석) — T11 `rg` 0. 바꾸지 않은 것: ARCHITECTURE §6.36의 기존 `highlightName` 서술(이 기능 밖 stale), §10.1 새 행의 금지어 칸 비움, README 행 사실 없음.
