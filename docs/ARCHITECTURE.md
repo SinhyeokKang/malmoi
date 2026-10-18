@@ -2505,7 +2505,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   재생성 어댑터는 **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). 예외는 수술적 `yaml-catalog`·`code-dict`의 `Adapter.create?`다:
   기준 언어 파일에서 루트 로케일 키(기준 코드와 같을 때만)·키 구조(평평/중첩)·code-dict 내보내기 형태(default/같은 이름 named)·표현을 빌린다. **값·주석·import·타입 주석은 빌리지 않는다.**
   `create(format, input & { baseLocale })`는 ADD create·revive에서 대상 원본이 없을 때만 호출하며 기존 `writeWithErrors`와 `ts-dict`의 원본 부재 계약은 그대로다.
-  새 파일은 값 있는 활성 키만 `compareKeys` 순서로 쓰고 끝 개행은 하나다. 중첩 트리는 `Map`으로 만들어 정수 모양 키·`__proto__`도 순서를 잃지 않으며 접두 충돌은 `key-shadowed` 실패다.
+  새 파일은 값 있는 활성 키만 `compareKeys` 순서로 쓰고 끝 개행은 하나다. 중첩 트리는 `Map`으로 만들어 정수 모양 키·`__proto__`도 순서를 잃지 않으며 접두 충돌은 `key-shadowed` 실패다. 중첩 생성에서 구분자로 시작하는 키(`.x`)는 read가 빈 최상위 이름을 벗겨 키가 달라지므로 `write-create-unsupported`로 막는다(평평한 리터럴 키는 보존).
   YAML은 기준 코드와 다른 루트·생성 결과의 루트 오인을 거부하고 YAML 1.1 모호 토큰을 인용한다. CRLF·BOM·들여쓰기를 따른다.
   code-dict는 기준 코드가 든 named export 이름과 `__proto__` 프로퍼티를 거부한다. 값·키 인용과 끝 쉼표를 따르고 BOM은 쓰지 않으며 세미콜론은 고정한다.
   기준 파일 없음·지원하지 않는 생성 규약은 `write-create-unsupported`, 파싱 실패는 `write-parse-failed`다. **생성 실패는 `content: null`과 blocking 오류를 함께 내며 보류로 낮추지 않는다.** 값 0개만 `null`과 빈 오류를 낸다.
