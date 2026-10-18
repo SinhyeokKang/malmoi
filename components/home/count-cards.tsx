@@ -41,7 +41,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
   now: Date;
   /**
    * 열린 PR 조회에 달린 보류 사유 (ux-drift-unify Q6) — **`To send` 보조 줄만 늦게 도착한다**, 본문은 기다리지 않는다(malmoi#107이 줄인 착지 병목).
-   * 도착 전에는 `nothing to send`(편집 0이라 참이다)가 선다. ⚠️ 받는 것은 클라이언트 섬(`HoldLater`)이다 — `use()`로 받으면 전환이 조회를 기다린다(U7 r1).
+   * 도착 전에는 서버가 정한 기본 줄(`nothing to send`, 언어 변경만 남았으면 그 수)이 선다. ⚠️ 받는 것은 클라이언트 섬(`HoldLater`)이다 — `use()`로 받으면 전환이 조회를 기다린다(U7 r1).
    */
   heldLater?: Promise<HoldReason | null>;
   uiLocale: UiLocale;

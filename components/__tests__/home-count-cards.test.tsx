@@ -10,7 +10,7 @@ import { render } from "./helpers/dom";
 
 /**
  * **`To send` 보조 줄의 보류 사유** (ux-drift-unify Q6 · T18) — 사유 셋이 각자 문장이고, PR 조회에 달린 사유는 **Suspense 뒤에서 늦게 도착한다**.
- * 도착 전에는 카드가 든 줄(`nothing to send` — 편집 0이라 참이다)이 서고, 나머지 카드·수치는 기다리지 않는다(malmoi#107이 줄인 착지 병목).
+ * 도착 전에는 카드가 든 기본 줄(`nothing to send`, 언어 변경만 남았으면 그 수)이 서고, 나머지 카드·수치는 기다리지 않는다(malmoi#107이 줄인 착지 병목).
  */
 const now = new Date("2026-09-20T12:00:00Z");
 const input = (hold: HoldReason | null, toSend = 0, languageChanges = 0) => countCards({

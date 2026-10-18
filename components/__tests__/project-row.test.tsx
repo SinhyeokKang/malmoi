@@ -446,3 +446,58 @@ describe("GitLab 행 전체가 GitLab 문장이다", () => {
     expect(band(container)?.textContent).toBe(en.projects.onGitLab.banner.prCheckFailed);
   });
 });
+
+/**
+ * **언어 변경 띠** (language-request-todo T7 · 시안 프레임 1–3) — 칩은 `Active`, 그룹은 `All set` 그대로이고 띠만 할 일을 말한다(칩은 건강, 띠는 할 일).
+ * 미발송 다음 · 열린 PR 앞이다. 목적지는 [Publish]가 있는 프로젝트 Home이다(번역 화면의 셀 목록에는 언어 변경이 없다 — Q1).
+ */
+describe("언어 변경 띠", () => {
+  const language = (count: number, held: boolean) => [{ kind: "language_unsent" as const, at: NOW, count, surfaceSlug: "web", held, ownerRetries: false }];
+
+  it.each([
+    ["① 보류 아님", 3, false, en.projects.banner.languageChanges(3)],
+    ["① 단수", 1, false, "1 language change to publish."],
+    ["② 전달 전 제거 — 수를 말하지 않는다", 2, true, en.projects.banner.languageRemovalHeld],
+  ] as const)("%s", async (_label, count, held, sentence) => {
+    const container = await draw({}, language(count, held));
+    expect(band(container)?.textContent).toContain(sentence);
+    expect(band(container)?.getAttribute("data-tone")).toBe("muted");
+    expect(band(container)?.querySelector("svg.lucide-git-pull-request-arrow")).not.toBeNull();
+    expect(rowLink(container).textContent).toContain(stateLabel(en, "active"));
+    const link = [...band(container)!.querySelectorAll("a")];
+    expect(link.map((a) => [a.textContent?.trim(), a.getAttribute("href")])).toEqual([[en.projects.banner.action.send, "/projects/acme"]]);
+  });
+
+  it("미발송과 함께면 미발송 띠 하나다", async () => {
+    const container = await draw({ unsent: 24 }, language(2, true));
+    expect(container.querySelectorAll("ul div[data-tone]")).toHaveLength(1);
+    expect(band(container)?.textContent).toContain(en.projects.banner.unsent(24));
+    expect(band(container)?.textContent).not.toContain(en.projects.banner.languageRemovalHeld);
+  });
+
+  it("열린 PR보다 앞이다 — PR 문장이 서지 않는다", async () => {
+    const container = await draw({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" } }, language(1, false));
+    expect(band(container)?.textContent).toContain(en.projects.banner.languageChanges(1));
+    expect(container.textContent).not.toContain(en.projects.banner.prOpen(142));
+  });
+
+  it("EDITOR에게도 같은 띠와 링크가 선다", async () => {
+    const container = await draw({ role: "EDITOR" }, language(3, false));
+    expect(links(container).find((a) => a.text === en.projects.banner.action.send)?.href).toBe("/projects/acme");
+  });
+
+  it("끊기면 재연결 띠가 이긴다", async () => {
+    const container = await draw({ repositoryId: null }, language(3, true));
+    expect(band(container)?.textContent).toContain(en.projects.banner.needsReconnect);
+    expect(container.textContent).not.toContain(en.projects.banner.languageRemovalHeld);
+  });
+
+  it.each(["ko", "es"] as const)("%s 화면 언어의 문장이다", async (uiLocale) => {
+    const m = uiLocale === "ko" ? (await import("@/messages/ko")).ko : (await import("@/messages/es")).es;
+    for (const [held, sentence] of [[false, m.projects.banner.languageChanges(3)], [true, m.projects.banner.languageRemovalHeld]] as const) {
+      const { container } = await render(<ProjectList all={[planned(BASE, language(3, held))]} now={NOW} />, { uiLocale });
+      expect(band(container)?.textContent).toContain(sentence);
+      expect(links(container).find((a) => a.text === m.projects.banner.action.send)?.href).toBe("/projects/acme");
+    }
+  });
+});

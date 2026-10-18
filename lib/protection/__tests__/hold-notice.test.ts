@@ -9,6 +9,7 @@ import { planHoldNotice, planOpenPrGate, planProtectedImport } from "../plan";
  * **화면이 말하는 보류 = 게이트가 실제로 하는 보류** (ux-drift-unify Q6 · 6-Y9 · 6-Y10). 입력은 게이트와 같다 — 미전달 수(`pendingWhere`로 센 값)와
  * 열린 PR 삼상태. 게이트 둘(`planProtectedImport`·`planOpenPrGate`)은 합치지 않고 그 위에 화면용 판정 하나를 얹는다.
  * ⚠️ 리포 값을 보지 않는다(불변식 2) — 표시일 뿐 게이트를 대신하지 않는다.
+ * ⚠️ 아래 기대값의 순서(미전달 편집 → 언어 게이트 → 열린 PR)는 `/api/push`가 게이트를 거는 순서를 손으로 옮긴 것이다 — route 순서를 바꾸면 이 표도 함께 고친다.
  */
 const base = { pending: 0, localeHeld: false, openPr: null, gateApplies: true, archived: false, disconnected: false } as const;
 const PR = "https://github.com/o/r/pull/7";

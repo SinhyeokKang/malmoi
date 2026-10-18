@@ -134,9 +134,58 @@ it("세 소비자가 같은 함수에서 재연결 목적지를 얻는다", () =
 
 /** 배지 Action이 매 헤더에서 부르는 경로는 원격 신호(호스트 API)를 import하지 않는다 — 원격 셋은 목록 띠 전용이다. */
 it("Inbox·배지 경로에 원격 신호 import가 0이다", () => {
-  for (const rel of ["app/inbox/actions.ts", "lib/inbox/load.ts", "lib/inbox/plan.ts", "lib/inbox/project-todos.ts"]) {
+  // 언어 변경 일괄 읽기(language-request-todo)도 배지 경로다 — DB만 읽는다.
+  for (const rel of ["app/inbox/actions.ts", "lib/inbox/load.ts", "lib/inbox/plan.ts", "lib/inbox/project-todos.ts", "lib/locales/todo.ts", "lib/locales/work.ts"]) {
     const text = readFileSync(join(process.cwd(), rel), "utf8");
     expect(text, rel).not.toContain("loadRemoteSignals");
     expect(text, rel).not.toContain("@/lib/projects/remote");
   }
+});
+
+// ── 언어 변경 항목 (language-request-todo T7 · 시안 프레임 4·5·5b) ─────────────────────
+
+const languageOpen: Input = { kind: "language_unsent", at: ago(120), count: 3, surfaceSlug: "web", held: false, ownerRetries: false };
+const languageHeld: Input = { kind: "language_unsent", at: null, count: 2, surfaceSlug: "docs", held: true, ownerRetries: false };
+
+it("언어 변경 항목은 muted IconTile + GitPullRequestArrow이고 보조줄은 대표 소스 slug다", async () => {
+  for (const [item, slug] of [[languageOpen, "web"], [languageHeld, "docs"]] as const) {
+    const { container } = await row(item);
+    expect(container.querySelector("svg.lucide-git-pull-request-arrow")).not.toBeNull();
+    expect(container.querySelector("[data-tone='muted']")).not.toBeNull();
+    expect(attentionRowSlots(en, "en", "acme", item, now, { time: "long", reconnect: "settings" }).description).toBeDefined();
+    expect(container.textContent).toContain(slug);
+  }
+});
+
+it("① 보류 아님 — 띠 문장을 통째로 굵게 쓰고 꼬리가 없다", async () => {
+  const { container } = await row(languageOpen);
+  expect(container.querySelector(".font-medium")!.textContent).toBe(en.projects.banner.languageChanges(3));
+  expect(tail(en, languageOpen)).toBe("");
+});
+
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s ② 보류 — 굵은 사실 + 꼬리이고 둘을 이으면 목록 띠 문장이다", async (_ui, m) => {
+  expect(`${body(m, languageHeld)}${tail(m, languageHeld)}`).toBe(m.projects.banner.languageRemovalHeld);
+  expect(body(m, languageHeld)).toBe(m.inbox.languageRemovalHeld.body);
+  // 보류는 수를 말하지 않는다 — 제거가 여럿이어도 보류는 하나다.
+  expect(body(m, languageHeld)).not.toMatch(/\d/);
+});
+
+it("② 항목의 굵은 조각은 본문이고 꼬리는 그 뒤에 이어진다", async () => {
+  const { container } = await row(languageHeld);
+  expect(container.querySelector(".font-medium")!.textContent).toBe(en.inbox.languageRemovalHeld.body);
+  expect(container.textContent).toContain(en.projects.banner.languageRemovalHeld);
+});
+
+it("거둘 것만 남아 시각이 없는 항목은 시각 칸이 비고, 읽음이면 점이 없다(D11)", async () => {
+  expect(attentionRowSlots(en, "en", "acme", languageHeld, now, { time: "long", reconnect: "settings" }).aside).toBeUndefined();
+  expect((await row({ ...languageHeld, unread: false })).container.querySelector("[data-unread-dot]")).toBeNull();
+});
+
+it("목적지는 두 역할 모두 프로젝트 Home이다 — 소유자 안내 줄이 없다", async () => {
+  for (const reconnect of ["settings", "home"] as const) {
+    expect(attentionRowSlots(en, "en", "acme", languageOpen, now, { time: "long", reconnect }).href).toBe("/projects/acme");
+  }
+  const text = (await row(languageOpen)).container.textContent;
+  expect(text).not.toContain(en.projects.banner.askOwner.reconnect);
+  expect(text).not.toContain(en.projects.importFailure.ownerRetries);
 });

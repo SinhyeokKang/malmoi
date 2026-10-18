@@ -88,7 +88,7 @@ export function countCards(input: {
   reviewByLocale: readonly { code: string; count: number }[];
   /**
    * 지금의 보류 사유 — `planHomeHold`의 결론이다(게이트와 같은 입력, ux-drift-unify Q6). ⚠️ **PR 조회를 기다리는 동안은 `null`이다** — 그 갈래는
-   * 편집 0이라 `nothing to send`가 참이고, 사유는 Suspense로 늦게 도착해 이 줄을 바꾼다(`CountCards`의 `heldLater`).
+   * 편집 0이라 기본 줄(`nothing to send`, 언어 변경만 남았으면 그 수 — `sendFallback`)이 서고, 사유는 늦게 도착해 이 줄을 바꾼다(`CountCards`의 `heldLater`).
    */
   hold: HoldReason | null;
   /** 언어 변경 작업 수(`countLocaleWork`) — 셀 편집이 0이고 보류가 없을 때 `To send` 보조 줄이 말한다. 수치는 셀 수 그대로다(Q4). */
