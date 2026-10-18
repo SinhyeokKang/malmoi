@@ -495,14 +495,21 @@ describe("Projects 행 — 한 줄 · 메타 감김", () => {
     expect(skeleton).not.toContain('<Skeleton className="h-9 w-64" />');
   });
 
-  it("골격도 한 줄이다 — 유동 이름 칸 세 줄 · 좁은 그릇 메타 두 줄 · chevron 자리", () => {
+  it("골격도 한 줄이다 — 유동 이름 칸 세 줄 · 좁은 그릇 메타 세 줄 · chevron 자리", () => {
     const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
     expect(skeleton).not.toContain("w-[420px]");
     expect(skeleton).not.toContain("flex flex-col gap-2.5");
     expect(skeleton).not.toContain("pl-11");
     expect(skeleton).toContain('className="flex min-w-0 flex-1 flex-col gap-0.5"');
-    expect(skeleton).toContain("@max-form:w-[70%]");
-    expect(skeleton).toContain('<div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>');
+    /*
+      메타 막대는 **상자 하나 안의 줄**이다(#298) — 실물 메타 줄은 한 flex-wrap 상자 안이라 사이 gap이 없다. 막대를 이름 칸의 형제 줄로 두면
+      줄마다 `gap-0.5`(2)를 더 받아 골격이 그만큼 높았다. 좁은 그릇(325)은 실물에 가장 흔한 세 줄이다(en 실측 16행 중 13).
+    */
+    expect(skeleton).toContain(`<div>
+                    <Skeleton size="xs" className="h-3 w-70 max-w-full @max-form:w-[70%]" />
+                    <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[55%]" /></div>
+                    <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>
+                  </div>`);
     expect(skeleton).toContain('<Skeleton className="size-4 shrink-0" />');
     expect(skeleton).toContain("@container border-border");
     expect(skeleton).not.toContain("rounded-[4px]");
