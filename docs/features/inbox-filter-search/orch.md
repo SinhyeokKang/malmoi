@@ -28,8 +28,8 @@
 | D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 완료·dev 통합 |
 | R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 통과 |
 | E | T6 정본 및 가이드 본문 | PRODUCT, DESIGN, DIRECTORY, guide/en·ko·es/translate/edit.md | D 통합 | gpt-6.1-sol/medium | guide 규칙·문서별 커밋·신선도 | 완료·dev 통합 |
-| Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·로컬 gate (push 보류 중에도 진행) | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 착수 |
-| S | T6 inbox-page.webp 재촬영 | public/guide, guide/SHOOTING.md | Q 완료 | gpt-6.1-sol/medium | guide-shots·guide:check stale 0 | 대기 |
+| Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·로컬 gate (push 보류 중에도 진행) | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | Q/Q2 완료 |
+| S | T6 inbox-page.webp 재촬영 | public/guide, guide/SHOOTING.md | Q 완료 | gpt-6.1-sol/medium | guide-shots·guide:check stale 0 | 착수 |
 | F | T6 계획 정리·최종 push | 기능 폴더 삭제, 최종 신선도 문서 | 전 항목·수정·재검증 완료 | 지휘자 | pnpm gate, dev CI green, 워크트리 정리 | 대기 |
 
 ## 겹침과 순서
@@ -88,3 +88,7 @@
 - Q 브라우저 검증 종료: 제품 실패 #301·#302 외 통과, 서버·TaskSpace 종료. fixture DB 원복 대조 일치. 한계: 첫 Inbox 진입 전 attentionSeenAt을 저장하지 못해 첫 방문 직후 2026-10-18T13:20:32.350Z까지만 원복했다. 최초 진입 전 읽음 시각은 복구 불가이며 최종 보고에 남긴다.
 
 - D fix1/fix2 완료: 95b360b3/8df08653/79cfa90e/148e9acd/900fb0ac/8a0c43c1/775dddf7/78e6a4f5. 결합 gate ok (16,092 passed / 2 skipped), build·미러 성공. R3 task_e1db1cc14c98 / ctx_fc9afa13f82a를 새 Astra medium 워커에 배정했다.
+
+- R3 통과: 🔴0/🟡0, 독립 41 tests passed·POSTMORTEM append-only 확인. 두 수정을 dd9329d9..00c78ce0로 dev 통합했다. 구현 워커/워크트리와 R3 정리. Q2 task_840b2eac96c7 / ctx_0e8c82a6ba30, Sol high 단일 브라우저 재검증 착수.
+
+- Q2 완료(00c78ce0): #301 모바일 x8/w359/right367·데스크톱448 유지, #302 24조합 카드 내부 표시, 기본 골격12조합 delta0, 공용 소비자/키보드 회귀 통과. 첫 탐색 전 기준의 계정·fixture 정확 원복. QA2 워커 정리, S 실제 Inbox 촬영·stale 해소 착수.
