@@ -23,7 +23,7 @@
 | A | T1,T2,T3; T11 계약 선기록 | lib/adapters/**, lib/survey/one.ts·__tests__/classify.test.ts, messages/{en,ko,es}.tsx(writer 경고만), docs/ARCHITECTURE.md | 인테이크 | Codex gpt-6-astra/high — 생성 결정성·루트·AST 계약 | 차단. red→green, 계약 매트릭스, pnpm gate --base dev, 독립 리뷰 | dev 통합·리뷰 통과 |
 | B | T4,T5,T6 | lib/locales/**, lib/pull/**, lib/publish/**, lib/import 테스트, lib/mcp 테스트, source-languages.test.tsx 비지원 fixture, messages/en.tsx MCP | A 통합 | Codex gpt-6-astra/medium — 미리보기·실행·관측 정합성 | 차단. T4–T6 원자 커밋, preview==execution, 격리 postgres 포함 gate, 독립 리뷰 | dev 통합·리뷰 통과 |
 | C | T7,T8,T9 | components/sources/**, components/ui/select.tsx, lib/sources/query.ts, 관련 DOM/순수 테스트·SourceDetail fixture, messages/{en,ko,es}.tsx languagesHelp 삭제 | B 통합 | Codex gpt-6.1-sol/high — 기존 UI·판정 변경 | 차단. 동작·포커스·300px 테스트, gate, 독립 리뷰 | dev 통합·리뷰 통과 |
-| D | T10,T11 최종 대조,T12,T12-1,T13 본문 | PRODUCT, ARCHITECTURE, DESIGN, CLAUDE/AGENTS 미러, guide en/ko/es, AUTHORING, README, DIRECTORY 영향 | C 통합 | Codex gpt-6.1-sol/high — 사실·번역 대조 | 차단. 문서별 커밋, guide 스킬, test·미러·문서 신선도 | 대기 |
+| D | T10,T11 최종 대조,T12,T12-1,T13 본문 | PRODUCT, ARCHITECTURE, DESIGN, CLAUDE/AGENTS 미러, guide en/ko/es, AUTHORING, README, DIRECTORY 영향 | C 통합 | Codex gpt-6.1-sol/high — 사실·번역 대조 | 차단. 문서별 커밋, guide 스킬, test·미러·문서 신선도 | 구현 완료·리뷰 중 |
 | R | 각 A/B/C/D 독립 리뷰 | 리포트만; 해당 diff·인계·POSTMORTEM | 각 배치 완료 | Codex gpt-6-astra: A 리뷰 high, 나머지 medium — 독립 불변식 검증 | 차단. 🔴 0, 🟡 수정/판정 기록; 시나리오/런타임 분류 확인 | 대기 |
 | P | 통합 검증·dev push | 지휘자 dev | D·R 완료 | 지휘자 | pnpm gate, /push 나머지 게이트, 정확 SHA CI success | 대기 |
 | Q | T14,T15 | main checkout 읽기·QA 픽스처·BugShot 이슈; 제품 코드 수정 없음 | P | Codex gpt-6.1-sol/high — 실리포 왕복·전체 레이아웃 | 차단. roundtrip 6종·둘째 Publish, runtime-test 전 범위; 1280/1440/1890·극단 데이터 DOM 실측; DB 사전/사후 복구 표 | 대기 |
@@ -65,3 +65,6 @@
 - B 통합 dev gate 성공(`gate-B.log`), B 워크트리 clean·git cherry +0 후 정리. C `ctx_24f6383ece47`: 5963c7f1·aa54a4e2 완료, gate 단위 16,155/2 skipped·PostgreSQL 906·build·미러 성공. 추가 강제 DTO fixture 및 지연 재조회 포커스 보강은 C 범위에 포함, 미출시 결함이라 POSTMORTEM 추가 없음. R-C 독립 검증에 인계.
 
 - R-C `ctx_aa82b6b004ca` Astra medium: 🔴0·🟡0, 독립 208 tests + 포커스 probe 3 통과. C dev 통합 `7a71501c`·`7ed216e6`. 구현·리뷰 워커 release. 브라우저 실측은 Q가 맡는다.
+
+- D `ctx_80167f7820d7`: 문서별 8커밋 `fe8527f2..df4516b2`, 전체 단위 16,155/2 skipped·typecheck·미러 통과. R-D `ctx_45b21e99972e` Astra medium 진행. 가이드 stale 1컷(2개 소스), S에서 시간대 컷도 육안 판단.
+- C root gate 실패: PostgreSQL 905 passed, translation-list-performance의 busy statistics 1건 30초 timeout. G1 `ctx_001e687e83ca` Sol high가 별도 체크아웃에서 공식 격리 테스트 재현을 진단한다. 제품 코드·timeout 변경 없이 먼저 재현 여부를 확인하고, 통합 게이트 성공 전 push하지 않는다.
