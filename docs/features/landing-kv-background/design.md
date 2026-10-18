@@ -9,6 +9,7 @@
 | 격자 판정(순수) | `lib/signin/dot-field.ts` | 스크롤 오프셋을 받는 격자 함수(아래 §3). 잎 모듈(import 0) 그대로 |
 | 캔버스 배선 | `components/signin/dot-field.tsx` | `follow` prop 하나 — `"canvas"`(기본, 지금 동작) · `"scroller"`(랜딩). 복제하지 않는다 |
 | 랜딩 구조 | `app/page.tsx` | 히어로 `section`과 `<Stage>`를 `[data-landing-kv]` 래퍼로 감싼다. 히어로에 `relative` |
+| 공개 셸 | `components/public-shell/public-shell.tsx` | `kv` prop 하나(기본 `false`) — 켜면 `<main>`의 `border border-border-subtle` · `shadow-low` · `bg-background`만 뺀다(§2 R13). 기본 클래스 문자열은 고치지 않는다 |
 | 스테이지 | `components/landing/stage.tsx` | `--landing-stage-h`를 쓰는 자리를 `[data-landing-root]`에서 래퍼(또는 스크롤러)로 한 칸 올린다(§2 R3) |
 
 ## 1. 값 — 새 토큰 없음
@@ -25,7 +26,7 @@
 ## 2. 구조
 
 ```
-<PublicShell>                                    // 스크롤러 = 패널 안 유일한 세로 스크롤러(PublicScroller)
+<PublicShell kv>                                 // R13 랜딩만 — <main> 보더·그림자·바탕색 없음. 스크롤러 = 패널 안 유일한 세로 스크롤러(PublicScroller)
   <div data-landing-kv className="relative">     // R1 래퍼 — 콘텐츠 높이 전체
     <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-auth-hero-from to-auth-hero-to" />  // R2
     <DotField follow="scroller" className="pointer-events-none sticky top-0 block w-full
@@ -42,6 +43,11 @@
 - **R4** 내용 섹션은 `relative`다 — 위치 지정된 sticky 캔버스보다 나중에 그려져야 점이 버튼·문구 위에 오지 않는다. 히어로 `section`에 `relative`를 더한다(스테이지 트랙 `stage.tsx:305`·CTA는 확인 후 필요하면 더한다).
 - **R5** 목업 프레임은 불투명 그대로다.
 - **R12** `/docs`·`/privacy`·`/changelog`에는 없다 — 래퍼는 `app/page.tsx`에만 있다.
+- **R13** 랜딩 패널은 보더·그림자가 없다(사용자 2026-10-18, `lg` 미만 시안 K1 주석). 로그인 KV 패널(`auth-layout.tsx` `Decoration` — `rounded-xl` · 그라디언트 · 보더·그림자 없음)과 같은 그릇으로 맞춘다.
+  - `PublicShell`의 `kv`(기본 `false`)가 켜질 때만 `<main>`에서 `border`·`border-border-subtle`·`shadow-low`·`bg-background`를 뺀다. radius · `relative flex min-h-0 flex-1 overflow-hidden`은 그대로다.
+  - `bg-background`까지 빼는 이유는 고무줄 스크롤이다(사용자 2026-10-18). 스크롤러가 `overscroll-contain`이라 Safari·iOS에서 그 안쪽은 여전히 튕기고, 그라디언트는 콘텐츠 래퍼에 있으니 튕긴 자리에는 `<main>` 바탕이 드러난다. 바탕이 없으면 캔버스 색이 보이고, 위 끝은 `--auth-hero-from`과 같아 이음매가 없다. 아래 끝은 캔버스 색 띠가 남는다 — 받아들인다. 로그인 KV 패널도 바탕색 없이 그라디언트만 있다. 넘기는 곳은 `app/page.tsx` 하나다.
+  - ⚠️ **기본 갈래의 클래스 문자열을 재배열·재작성하지 않는다** — `/docs`(`bare`)·`/privacy`·`/changelog`는 지금과 바이트 단위로 같아야 한다. 테스트가 그 문자열을 고정한다.
+  - 그라디언트 위 끝이 캔버스 색과 같다(Light `#f5f6f7` · Dark `#0a0a0a`). 그래서 스크롤 0에서는 패널 윗변이 캔버스에 녹는다. 로그인 KV와 같은 모습이라 보정하지 않는다.
 
 ## 3. `DotField` `follow="scroller"` — 판정은 순수 함수로
 
@@ -50,7 +56,7 @@
 | 항목 | 로그인(지금) | 랜딩 `follow="scroller"` |
 |---|---|---|
 | R6 격자 위치 | 캔버스 좌표 고정(`dotGrid(width, height, GAP)`) | 행을 `-(scrollTop % GAP)`에서 시작해 `h + GAP`까지 — 점이 콘텐츠에 박힌 것처럼 올라간다. 스크롤러 `scroll`(passive)에서 다시 그린다 |
-| R7 포인터 | 캔버스의 `pointermove`·`pointerleave` | 캔버스는 `pointer-events-none`(내용 아래). **스크롤러**(`[data-public-scroller]` — `closest`로 찾는다)에서 받아 스크롤러 rect 기준 좌표로 쓴다. 실제 커서가 자동 순회를 이기는 규칙은 같다 |
+| R7 포인터 | 캔버스의 `pointermove`·`pointerleave` | 캔버스는 `pointer-events-none`(내용 아래). **스크롤러**(`[data-public-scroller]` — `closest`로 찾는다)에서 받아 스크롤러 rect 기준 좌표로 쓴다. 실제 커서가 자동 순회를 이기는 규칙은 같다. 단 `pointerType === "mouse"`만 실제 커서로 친다 — 터치 탭·드래그가 가상 커서를 탭 자리로 튀게 하지 않도록(터치는 자동 순회 상시 — §4) |
 | R8 그리기 | 점마다 `beginPath · arc · fill`(≈ 4천 개) | 2560×1440 패널에서 ≈ 1만 3천 개. 반경 180 밖의 점(같은 반지름·알파)은 **한 path에 모아 fill 한 번**, 안쪽만 개별로 칠한다. 결과 픽셀은 같다 |
 | 그대로 | DPR 버퍼 · 폭 0이면 루프 정지 · 계산된 `color`로 칠하기 · OS 테마 변경 시 다시 읽기 · 모션 감소면 정적 한 장 · `aria-hidden` | 같음. 모션 감소에서도 R6 스크롤 오프셋은 유지한다(스크롤마다 한 번 다시 그림 — rAF 루프가 아니다) |
 
