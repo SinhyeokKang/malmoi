@@ -3560,7 +3560,11 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
 열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
 
 **`/inbox` 페이지** (2026-10-09, inbox-page) — `app/(edit)/inbox/page.tsx`가 `requireUser` → **조회 전** `now` → `loadAttentionInbox` →
-`InboxList`(서버) + 섬 `MarkSeen`이고, 섬이 **마운트 뒤** `markAttentionSeenAction(now.toISOString())`을 한 번 부른다. 목록은 드롭다운과 같은 `InboxPlan`이다.
+`inboxFilterOptions` → `effectiveInboxFilter(parseInboxFilter(searchParams), options)` → `filterInbox` → `InboxList`(서버, 원래 계획이 있는데 결과만 0건이면 `NoMatch`) + 섬 `MarkSeen`이다(2026-10-18, inbox-filter-search).
+목록은 드롭다운과 같은 `InboxPlan`에서 출발한다. **필터는 조회 뒤 페이지 표시만 좁힌다** — `kind`·`project`·`q`는 URL 상태이고 선택지는 원래 계획에서 만든다.
+알 수 없거나 계획에 없는 종류·프로젝트는 실효 필터에서 뺀다. 프로젝트 slug로 DB를 다시 조회하지 않아 멤버십 경계는 그대로다. 헤더 목록·배지에는 필터를 적용하지 않는다.
+섬은 **마운트 뒤와 `at` 변경 뒤** `markAttentionSeenAction(now.toISOString())`을 부른다. 좁힌 화면·빈 결과에도 늘 렌더하므로 읽음은 전체 목록에 적용된다.
+**필터·검색 변경도 새 방문이다** — 서버가 조회 전 `now`를 새로 잡고 갱신된 워터마크로 점을 다시 계산한다. 쓰기는 같은 단조 `updateMany`다.
 ⚠️ **GET 렌더는 아무것도 쓰지 않는다** — 지금은 `loading.tsx`가 있는 동적 라우트의 기본 prefetch가 loading 경계까지만 받지만, `prefetch={true}`·
 `staleTimes`·Cache Components 설정 하나로 본체가 실행되면 보지 않은 목록이 읽음이 된다. 그 보장을 설정에 기대지 않는다(`app/(edit)/inbox/__tests__/page.test.tsx`가 렌더 중 쓰기 0회를 센다).
 드롭다운의 열기 Action을 다시 부르지 않는 것은 서버가 이미 그린 목록을 한 번 더 조회하기 때문이다.
