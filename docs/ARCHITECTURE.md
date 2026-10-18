@@ -2426,6 +2426,7 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`·`yaml-catalog`�
   다른 언어·다른 소스의 같은 코드는 건드리지 않는다(`s-app`의 같은 코드 회귀가 고정한다).
 - **지문**(`localeChangeFingerprint`, 접두 `"locale-change"`)은 변경 행(연산·`requestedAt`) · 그 소스·언어 토큰 전부 · 소스 설정(어댑터·경로·기준·선언된 기준) · 그 소스 확인 행의 `{revision, invalidated}`에 묶인다.
   제거·추가 취소는 **항상** 지문 승인을 요구한다(추가와 제거 취소는 아니다). 대조는 잠금 뒤 다시 계산한 값과 한다.
+- **추가 취소는 언어별 파일 경로를 요구하지 않는다**(#303). `ts-dict`의 다중 언어 glob처럼 경로를 계산할 수 없으면 제거 미리보기의 `path`는 `null`이다. 새 제거 요청의 `unsafe-path` 거부는 유지하고, 추가 취소의 권한·미확정 전달·승인 지문 판정도 그대로다.
 
 ### 5.10.2 만료 — 요청은 영구 소유가 아니다
 
@@ -4016,7 +4017,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라). 버려질 언어 변경은 `languageChanges: [{source, language, change}]`로 나열한다 |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
 | `preview_source_detach` | OWNER (표면) | 없음 | 제거 지문(미전달이 있을 때만) · 미전달 수(그 소스 전체 — orphaned 포함) · 열린 PR `open`·`none`·`unknown`. 판정 거부(`last-source`·`importing`)도 여기서 난다 — §5.9 |
-| `preview_locale_removal` | OWNER (표면) | 없음 | **언어 제거와 추가 취소 둘 다**의 미리보기(`kind: request-removal` \| `cancel-add`) — 대상 파일 경로·값 있는 번역 수·그 언어의 미전달 수·전달 여부(`boolean \| null`, `null` = 확인 안 됨)·서버 지문(`approval`, 항상 발급). 읽기만 한다 — §5.10 |
+| `preview_locale_removal` | OWNER (표면) | 없음 | **언어 제거와 추가 취소 둘 다**의 미리보기(`kind: request-removal` \| `cancel-add`) — 대상 파일 경로(추가 취소에 언어별 경로가 없으면 `null`)·값 있는 번역 수·그 언어의 미전달 수·전달 여부(`boolean \| null`, `null` = 확인 안 됨)·서버 지문(`approval`, 항상 발급). 읽기만 한다 — §5.10 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
