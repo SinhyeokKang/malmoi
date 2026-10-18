@@ -33,14 +33,14 @@ T4~T6은 한 커밋이다 — T4만 들어가면 Publish가 새 파일을 조용
 
 ## 커밋 3 — `feat(sources): hide language actions for formats that can't change languages`
 
-- [ ] T7. `planLanguageRow` `action: … | null` · `"format"` 블록 제거 · 비지원 base 행 `null` · Inactive 복구 문장·카드 설명 선택 함수(포맷 > 권한) (design §2.7).
+- [x] T7. `planLanguageRow` `action: … | null` · `"format"` 블록 제거 · 비지원 base 행 `null` · Inactive 복구 문장·카드 설명 선택 함수(포맷 > 권한) (design §2.7).
   검증: `pnpm exec vitest run components/__tests__/source-languages.test.tsx` + `language-row` 순수 함수 테스트 — 비지원 × OWNER/EDITOR에서 새 추가·제거(base 행 포함) `null`,
   남은 Adding·Removing 취소는 켜짐, 띠·설명 선택 표 전수.
-- [ ] T8. `SourceDetail.languageChangesSupported`(`loadSource`, 모든 역할) + 픽스처 6곳 · `languages-card.tsx` — `supported` 출처 일원화, 비지원이면 머리·행 동작 미렌더,
+- [x] T8. `SourceDetail.languageChangesSupported`(`loadSource`, 모든 역할) + 픽스처 6곳 · `languages-card.tsx` — `supported` 출처 일원화, 비지원이면 머리·행 동작 미렌더,
   EDITOR·지원은 `aria-disabled` 유지, `Card titleId`로 제목 포커스 착지 · 비지원이면 카드 설명 미렌더 + `languagesHelp` 키 세 사전에서 삭제 (design §3).
   검증: DOM 테스트 — ① ts-dict 소스에서 `[data-language-add]`·행 Remove·Inactive Add·카드 설명이 0개 ② json EDITOR의 머리·행 버튼, OWNER의 base·unconfirmed 차단 행은
   클릭·Enter 뒤 `[role=dialog]` 없음·Action 미호출(속성만 세지 않는다 — POSTMORTEM 2026-09-19) ③ ts-dict + Adding 취소 뒤 `document.activeElement`가 카드 제목 h2. `pnpm gate` green.
-- [ ] T9. `SelectContent` 높이 상한 300 (design §3).
+- [x] T9. `SelectContent` 높이 상한 300 (design §3).
   검증(자동): `components/__tests__/select-contract.test.tsx`에 `max-h-[min(300px,…)]` 클래스 단언 green(`combobox.test.tsx`의 선례).
   검증(수동 — T15에서): Chrome 소스 추가 Dialog의 Select·시간대 Select·온보딩 기준 언어 Select가 300에서 스크롤, 짧은 Select 높이 불변(computed style).
 
