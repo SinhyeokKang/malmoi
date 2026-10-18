@@ -3464,11 +3464,25 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 
 - ⚠️ **좁히는 축은 검색(`?q=`) 하나다.** 상태 필터 탭 여섯과 그것이 쓰던 `parseProjectFilter`·`filterProjects`는
   **2026-09-13에 사라졌다** — 탭은 "무엇을 숨길까"를 사용자에게 물었고 그 답이 대개 "아무것도"였다. 상태는 이제
-  **그룹**(`projectGroup`·`groupProjects`)이 말한다. `components/__tests__/projects-screen.test.ts`가 그 두 이름의
+  **그룹**(`groupProjects` — 행의 `plan.group`을 읽는다)이 말한다. `components/__tests__/projects-screen.test.ts`가 옛 필터 함수 두 이름의
   **부재를 `not.toContain`으로 고정한다** — 읽는 코드가 목록 경로에 하나도 없어야 "옛 `?filter=`는 조용히 무시된다"가
   성립하기 때문이다. 되돌아올 조건은 정해져 있다: `Archived`가 쌓이면 `All / Archived` **둘로만**이고 상태 다섯을
-  되살리지 않는다. 이 모듈의 판정 목록은 그 파일의 export가 정본이다(상태 `projectStatus` · 그룹 `projectGroup`·`groupProjects` ·
-  검색 `searchProjects`·`highlightName` 등).
+  되살리지 않는다. 이 모듈의 판정 목록은 그 파일의 export가 정본이다(상태 `projectStatus` · 행 판정 `planProjectRow` ·
+  그룹 나누기 `groupProjects`·`listBody` · 검토 셀 `rowReviewCells` · 검색 `searchProjects` 등).
+- ⚠️ **칩·그룹·띠는 한 표에서 나온다** (2026-10-18 project-row-redesign) — `planProjectRow(row, todos)`가 `{ chip, group, banner }`를 함께 낸다.
+  전엔 판정 넷(칩·그룹·띠·막대 자리)이 각자 우선순위를 가져 미발송 행이 칩 `Active`인데 그룹 `Needs attention`이었고, PR 조회 실패 행은 띠가
+  warning인데 그룹이 `All set`이었다. 모델은 **칩은 건강, 띠는 할 일**이고 그룹은 칩에서 기계적으로 나온다(DESIGN §6.63 그룹 항 — 표 8행은
+  `lib/projects/__tests__/list.test.ts`가 입력 축 2,880조합 전수로 센다). `projectStatus`는 그 표의 입력 판정으로 남는다(Inbox 로더도 부른다).
+  - **서버가 판정해 결과만 싣는다** — `assembleProjectListRows`(`lib/keys/query.ts`)가 DB 할 일(`projectTodos`, §6.365)을 만들어 `planProjectRow`를
+    돌리고 행에는 `plan`만 싣는다. 할 일 목록을 그대로 싣으면 57언어 프로젝트의 행마다 빈 언어 항목 수십 개가 RSC 페이로드에 오르는데 행이 쓰는
+    것은 띠 하나다. 화면(`project-list.tsx`)·`groupProjects`·`listBody`는 `row.plan`만 읽고 다시 판정하지 않는다. 판정 시각(GitLab 저장 만료)도 서버 시각 하나다.
+  - **행의 `review` 합과 띠의 검토 할 일·링크 소스가 한 접기에서 나온다** — `rowReviewCells`(`foldCells` 한 번 → 프로젝트별 (표면, 로케일, 수))를
+    조립이 한 번 읽어 셋을 만든다. 호출부가 셀을 다시 거르면 "살아 있는 로케일만" 규칙이 두 벌이 되어 띠의 수와 목적지가 갈린다.
+  - **메타 넷**(`sourceCount` · `keyCount` · `languageCount` · `lastSync`)도 같은 조립 층이 만든다 — 소스 수는 첫 적재 전을 포함한 비보관 소스 수,
+    키 수는 `keyTotals`를 비보관 표면 id로 합산(로케일 수만큼 중복되지 않게), 언어 수는 작업 언어(`workLocaleWhere`) 중 소스를 가로지른 고유 대상(비-base)
+    코드 수, `lastSync`는 Home 카드와 같은 `lastSyncTime`(ISO · `"unrecorded"` · `null` — `"unrecorded"`를 `new Date` 전에 거른다). 새 왕복은 없다
+    (멤버십 1 + 집계 5 — `list-aggregates.integration.ts`가 센다). 사이드바 `keyCount`와 행 `keyCount`가 같은 fixture에서 같다는 교차 단언은
+    `source-remove-consumers.integration.ts`에 있다.
 - ⚠️ **"남이 정한 문자열을 객체 키로 쓰지 않는다"는 규칙은 살아 있고, 자리만 옮겼다.** 이 리포는 그것을 두 번 밟았다
   (POSTMORTEM 2026-09-08 조회 · 2026-09-09 대입). §1.1의 "키 대입" 규칙과 같은 계보인데 그쪽은 어댑터 축에만
   적혀 있어 여기 다시 적는다. **지금 그 규칙이 서 있는 자리는 둘이다**:
@@ -3502,8 +3516,23 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 
 `lib/inbox/plan.ts`가 현재 상태를 프로젝트별로 정렬하고 배지 수를 센다. Home은 `collectAttention` 위에 보관·배너 제외·상한 5를
 얹으며, Inbox는 상한 없이 그대로 쓴다. 빈 로케일은 `neverFilledLocales`, 링크·타일·문장은 `lib/home/attention-view.ts`, 목록 띠 링크는
-`lib/routes.ts`의 `bannerTranslationsHref`가 공유한다. 동시각은 프로젝트 항목(setup → unsent) → 표면 slug → 로케일 순이고,
+`lib/routes.ts`의 `bannerTranslationsHref`가 공유한다. 동시각은 프로젝트 항목(끊김·setup → unsent) → 표면 slug → 로케일 순이고,
 묶음은 안 읽은 항목이 있는 묶음 먼저(2026-10-18 — 최신 항목이 늘 읽음인 검토라 안 읽은 실패보다 위에 서던 순서를 고쳤다) → 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다. 열린 목록의 읽음 처리(`readAll`)는 표시만 내리고 순서는 다음 열기까지 그대로다.
+
+**항목은 목록 행의 띠와 같은 DB 할 일 판정에서 나온다** (2026-10-18 project-row-redesign) — `projectTodos`(`lib/inbox/project-todos.ts`)가
+`needs_reconnect` · `import_failed` · `setup` · `unsent` · `review` · `never_filled`를 내고, `planInbox`와 목록 조립(§6.36)이 둘 다 그 결과를 쓴다.
+역할 예외는 `setup` 하나다(Inbox는 OWNER만 — EDITOR가 할 수 있는 일이 없다. 행 띠는 EDITOR에게 소유자 요청 문장). 원격 신호 셋(열린 PR · PR 조회 실패 ·
+리포 앞섬)은 **목록 띠 전용**이다 — 배지 Action이 매 헤더에서 불리므로 호스트 API를 부르면 헤더마다 비용이 든다. 행 띠가 DB 할 일이면 그 종류가 같은 프로젝트의
+Inbox 항목에 있다는 것을 `lib/inbox/__tests__/project-todos.test.ts`가 표로 세고, 배지 경로에 `loadRemoteSignals` import가 0인 것을
+`components/__tests__/inbox-row-slots.test.tsx`가 소스로 센다. 작업 언어 술어는 호출부가 집행한다(입력이 거른 `attention`이다).
+- **연결 끊김 항목**(`needs_reconnect`) — 두 역할 모두에게 선다. 문장은 목록 띠 `needsReconnect`를 `—`에서 나눈 두 조각(`inbox.needsReconnect.body`·`tail`),
+  타일은 warning + `Unplug`, 보조줄은 없다. EDITOR는 둘째 줄에 `askOwner.reconnect`(플래그 `ownerRetries`는 `projectTodos`가 정하고 행 조각은 문장만 고른다).
+  `at`은 GitLab 토큰 만료면 저장 만료일, 연결 고정이 빠진 행(`repoConnectionPinned` 거짓)은 `null`이다 — `null`은 그룹 안 맨 뒤이고 `seenAt`이 있으면 안 읽음으로
+  세지 않는다. ⚠️ **만료일이 마지막 열람보다 이르면 처음부터 읽음이다** — 배지 수가 늘지 않는다(`at` 정의의 귀결, `plan.test.ts`).
+- **목적지는 호출부가 정한다** — OWNER Settings · EDITOR 프로젝트 Home(Settings는 `project:settings` 뒤라 EDITOR가 거절당한다). 정하는 함수는
+  `reconnectDestination(role)` 하나(`lib/home/attention-view.ts`)이고 `attentionHref(slug, item, reconnect)`가 셋째 인자로 받는다. `planInbox`가 그룹마다
+  `project.reconnect`를 싣고(드롭다운·`/inbox`가 그 값을 넘긴다), Home 카드는 같은 함수를 자기 역할로 부른다 — 소비자마다 역할을 다시 판정하면 같은 항목이
+  화면마다 다른 곳으로 간다. 빈 언어 목적지는 `neverFilledHref`로 목록 띠와 공유한다.
 
 **데이터 경로**: 입력 없는 `loadAttentionBadgeAction`·`openAttentionInboxAction`(`app/inbox/actions.ts` — 편집 셸 헤더와 **로그인한 공개 셸 헤더**가 같이 부르므로 `(edit)` 밖이다, 2026-10-05 · `app/search/actions.ts`와 같은 자리) → `readSession` → `loadAttentionInbox(prisma, userId)`.
 공개 셸 헤더는 세션을 읽지 않고 페이지가 넘긴 `publicAccount`가 값일 때만 Inbox를 마운트한다 — 비로그인 방문자에게는 Action 호출이 0이다.
