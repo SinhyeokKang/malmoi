@@ -8,7 +8,8 @@
 
 ```
 app/
-  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(account = null, current 없음) + 히어로 + Stage + 마무리 CTA.
+  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(account = null, current 없음, kv) + 히어로 + Stage + 마무리 CTA.
+                        히어로·Stage를 [data-landing-kv] 래퍼 하나가 감싸고 그 첫 자식이 그라디언트, 둘째가 DotField follow="scroller"다(DESIGN §6.615 "KV 배경").
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
   signin/page.tsx       로그인(GitHub·GitLab·Google). Auth.js의 pages.signIn·pages.error가 여기다.
                         ⚠️ 보호 경로(isProtectedPath)에 넣으면 로그인이 통째로 죽는다 — 목적지를 안 보므로
@@ -402,6 +403,9 @@ components/
   oauth/                `/oauth/authorize` 조각(mcp-oauth) — app-card(앱 이름 + clientId 식별 줄, 말줄임 없음 · 칩 IconTile lg — 서버·클라이언트 공용) ·
                         consent-panel(계정·앱·권한 폼·행동 줄 — 결과 셋: 명시 거부 Alert · 결과 미확인 → Check request · 성공은 Action redirect).
                         ⚠️ 로고·제목·스크롤 영역은 페이지가 든다 — 정적 SVG import가 클라이언트 그래프에 들어오지 않게(client-graph)
+  signin/dot-field.tsx  커서를 따르는 점 격자 Canvas("use client") — 소비자 둘: 로그인 KV(signin/auth-layout, follow 기본 "canvas")와
+                        랜딩 배경(app/page.tsx, follow="scroller" — 가장 가까운 [data-public-scroller]에서 스크롤 위상·마우스 포인터를 받는다.
+                        스크롤러 밖이면 로그인 경로로 떨어진다). 판정은 잎 lib/signin/dot-field.ts가 든다. signin/에 있는 것은 로그인 KV가 먼저 썼기 때문이다
   signin/brand-icons.tsx 공급자 글리프 대응표 한 벌 — ProviderIcon(버튼) · BrandGlyph(칸·병합 배지).
                         GitLab 3색과 인라인 단색을 가른다. __tests__/brand-glyph-tone.test.tsx가 상태색 비상속을 센다.
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
@@ -409,10 +413,10 @@ components/
                         입력 상태만 든다
   analytics.tsx         Vercel Web Analytics 래퍼("use client") — 루트 레이아웃이 서버 컴포넌트라 beforeSend(함수)를 못 넘겨서 선다.
                         ⚠️ 개발 서버에서는 null(dev 디버그 스크립트를 CSP가 막는다 — CSP를 넓히지 않는다)
-  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 44 · 패널 ·
+  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ account, current, bare, kv }) · header · footer · scroller. kv는 랜딩만 — <main>의 보더·그림자·바탕색을 뺀다(기본 클래스 문자열은 고정). 헤더 44 · 패널 ·
                         푸터 40, 루트 h-svh overflow-hidden(최소 폭 없음 — 2026-10-10 responsive-public). ⚠️ "use client"는 scroller · nav-drawer 둘이다
                         (scroller는 lib/를 물지 않고, nav-drawer는 lib/ 중 shell/breakpoint · links · routes · utils만 문다) — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
-                        data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
+                        data-public-scroller가 랜딩 스테이지·랜딩 배경 DotField·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
                         가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
                         않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
                         footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다.
@@ -923,6 +927,8 @@ lib/
                         그 호스트로 덮는다 — 컴포넌트가 낱말마다 호스트를 고르지 않는다, ARCHITECTURE §6.355) · adapter-errors(어댑터 오류·pull 경고 코드 → 문장, 사전을 인자로 받는다 · withWarningLines는 외부 계약용)
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ cli/
                         (onboarding/files-layout — Files 단계 두 판·순차 판 판정, 입력은 잰 본문 폭이고 608 미만이 순차 판. 2026-10-11 responsive-app)
+                        (signin/dot-field — 점 격자 판정 잎(import 0): dotGrid(스크롤 위상 offsetY) · clampScrollTop(고무줄 범위 밖 scrollTop 자르기) ·
+                        partitionDots(반경 밖 점 묶음 그리기) · dotScale · autoCursor. 소비자는 components/signin/dot-field.tsx 하나 — 로그인 KV와 랜딩 배경이 같이 쓴다)
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
                         cli/gitlab-ci-input — GitLab CI 변수 → push-local 입력·열린 MR 사전 안내의 순수 판정. ⚠️ 러너에는 prisma generate가 없어
                         .gitlab/malmoi-i18n-push/run.ts가 node 내장과 이 모듈만 문다 ·
