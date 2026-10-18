@@ -403,9 +403,10 @@ components/
   oauth/                `/oauth/authorize` 조각(mcp-oauth) — app-card(앱 이름 + clientId 식별 줄, 말줄임 없음 · 칩 IconTile lg — 서버·클라이언트 공용) ·
                         consent-panel(계정·앱·권한 폼·행동 줄 — 결과 셋: 명시 거부 Alert · 결과 미확인 → Check request · 성공은 Action redirect).
                         ⚠️ 로고·제목·스크롤 영역은 페이지가 든다 — 정적 SVG import가 클라이언트 그래프에 들어오지 않게(client-graph)
-  signin/dot-field.tsx  커서를 따르는 점 격자 Canvas("use client") — 소비자 둘: 로그인 KV(signin/auth-layout, follow 기본 "canvas")와
-                        랜딩 배경(app/page.tsx, follow="scroller" — 가장 가까운 [data-public-scroller]에서 스크롤 위상·마우스 포인터를 받는다.
-                        스크롤러 밖이면 로그인 경로로 떨어진다). 판정은 잎 lib/signin/dot-field.ts가 든다. signin/에 있는 것은 로그인 KV가 먼저 썼기 때문이다
+  signin/dot-field.tsx  점 격자 Canvas("use client") — 소비자 둘: 로그인 KV(signin/auth-layout, follow 기본 "canvas" — 커서를 따른다)와
+                        랜딩 배경(app/page.tsx, follow="scroller" — 포인터를 받지 않고 자동 순회만 돈다. 가장 가까운 [data-public-scroller]에서
+                        스크롤 위상만 받고, 스크롤러 밖이면 위상·묶음 그리기가 로그인 경로로 떨어진다). 판정은 잎 lib/signin/dot-field.ts가 든다.
+                        signin/에 있는 것은 로그인 KV가 먼저 썼기 때문이다
   signin/brand-icons.tsx 공급자 글리프 대응표 한 벌 — ProviderIcon(버튼) · BrandGlyph(칸·병합 배지).
                         GitLab 3색과 인라인 단색을 가른다. __tests__/brand-glyph-tone.test.tsx가 상태색 비상속을 센다.
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
