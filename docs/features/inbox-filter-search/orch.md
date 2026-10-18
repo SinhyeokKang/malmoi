@@ -28,7 +28,7 @@
 | D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 착수 |
 | R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 대기 |
 | E | T6 정본 및 가이드 본문 | PRODUCT, DESIGN, DIRECTORY, guide/en·ko·es/translate/edit.md | D 통합 | gpt-6.1-sol/medium | guide 규칙·문서별 커밋·신선도 | 대기 |
-| Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·gate·push | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 대기 |
+| Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·로컬 gate (push 보류 중에도 진행) | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 대기 |
 | S | T6 inbox-page.webp 재촬영 | public/guide, guide/SHOOTING.md | Q 완료 | gpt-6.1-sol/medium | guide-shots·guide:check stale 0 | 대기 |
 | F | T6 계획 정리·최종 push | 기능 폴더 삭제, 최종 신선도 문서 | 전 항목·수정·재검증 완료 | 지휘자 | pnpm gate, dev CI green, 워크트리 정리 | 대기 |
 
@@ -66,3 +66,5 @@
 - A 최종 완료: `718e2754`, `e4008157`, `5c3553ac`. 단위/DOM 16,061 passed, 격리 PostgreSQL 898 passed, build·미러 gate ok. EOF는 A가 마지막 정리 커밋으로 제거했고 대상 163건 재검증. 지휘자가 마지막 whitespace-only diff 확인, D의 EOF 정리 몫은 해소됐다.
 
 - A 통합: fb80f919, 8eff5540, f4e30a78. D 시작 기준 f4e30a78 이후 계획 갱신 커밋. A/B/C 잔여 구현 소유권과 사전 보정은 D로 이관한다.
+
+- D 소유권 추가: 새 Inbox Clear filters의 RotateCcw 실제 소비자 두 경로를 visual-system.test.ts의 CLEAR 정확 명부에 등재한다. 검사 완화는 없다. 사용자 push 보류 동안 Q는 로컬 gate 뒤 진행할 수 있다.
