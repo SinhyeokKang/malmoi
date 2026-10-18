@@ -9,15 +9,18 @@ import type { HoldReason } from "@/lib/protection/plan";
  * 탭 껍데기(`meta-tabs.tsx`)가 같은 promise의 결론(`homeLate`)을 따로 받는다 — 패널이 탭 전환마다 다시 마운트되어 이 섬을 쓸 수 없다.
  * 본문은 이 조회를 기다리지 않는다(malmoi#107). ⚠️ **`use()`로 받지 않는다** — `useArrived` 주석(전환이 GitHub 조회를 기다렸다).
  *
- * 도착 전: 보조 줄은 `nothing to send`(이 갈래는 편집 0이라 참이다). 도착 뒤에는 다음 재렌더의 새 조회가 끝날 때까지 그 값을 든다.
+ * 도착 전·결론 `null`: 서버가 정한 기본 줄(`fallback` — `nothing to send`, 언어 변경만 남았으면 그 줄 — language-request-todo R1). 도착 뒤에는
+ * 다음 재렌더의 새 조회가 끝날 때까지 그 값을 든다.
  * ⚠️ 보조 줄 낱말은 `countCards`의 `holdSubline`과 같은 사전 키다(`count-cards.tsx`의 `repositoryUpdatesPaused` 갈래).
  */
-export function HoldLater({ hold, identity }: {
+export function HoldLater({ hold, identity, fallback }: {
   hold: Promise<HoldReason | null>;
+  /** 결론 전·`null`의 보조 줄 — 카드가 `holdSubline(null, …)`으로 낸 문장이다. */
+  fallback: string;
   /** 그 사유가 속한 프로젝트(slug) — 바뀌면 옛 프로젝트의 사유를 곧바로 버린다(`useArrived`, U7 r2). */
   identity: string;
 }) {
   const m = useMessages();
   const reason = useArrived(hold, identity) ?? null;
-  return reason === null ? m.home.cards.nothingPending : m.home.cards.held[reason];
+  return reason === null ? fallback : m.home.cards.held[reason];
 }

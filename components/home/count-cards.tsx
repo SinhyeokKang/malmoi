@@ -125,7 +125,8 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
                   <span className="text-muted-foreground text-xs">
                     {m.home.cards.unit[card.unit]} ·{" "}
                     {card.key === "toSend" && heldLater !== undefined
-                      ? <HoldLater hold={heldLater} identity={slug} />
+                      // 결론 전·`null`의 줄은 서버가 정한 기본 줄이다 — 언어 변경만 남았으면 `nothing to send`가 아니다(language-request-todo R1).
+                      ? <HoldLater hold={heldLater} identity={slug} fallback={sublineText(m, uiLocale, card.subline, now)} />
                       : sublineText(m, uiLocale, card.subline, now)}
                   </span>
                 </span>
@@ -164,6 +165,8 @@ function sublineText(m: Messages, uiLocale: UiLocale, subline: CardSubline, now:
       return m.home.cards.allFilled(subline.keys);
     case "nothingPending":
       return m.home.cards.nothingPending;
+    case "languageChanges":
+      return m.home.cards.languageChanges(subline.count);
     case "nothingToReview":
       return m.home.cards.nothingToReview;
     case "lastGoodSync":

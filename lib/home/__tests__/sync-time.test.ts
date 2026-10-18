@@ -32,7 +32,7 @@ describe("lastSyncTime", () => {
 
 describe("시각이 기록되지 않은 Sync", () => {
   it("카드는 'not synced yet'이 아니라 시각 없는 문장이다", () => {
-    const cards = countCards({ state: "default", counts: { newFromGithub: 1, toTranslate: 0, toReview: 0, toSend: 0 }, surfaces: 1, keys: 1, lastSyncAt: "unrecorded", reviewByLocale: [], hold: null });
+    const cards = countCards({ state: "default", counts: { newFromGithub: 1, toTranslate: 0, toReview: 0, toSend: 0 }, surfaces: 1, keys: 1, lastSyncAt: "unrecorded", reviewByLocale: [], hold: null, languageChanges: 0 });
     expect(cards.find((c) => c.key === "newFromGithub")?.subline).toEqual({ kind: "asOfLastSync" });
   });
 });

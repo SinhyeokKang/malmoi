@@ -261,7 +261,8 @@ export default async function ProjectHomePage({
     return undefined;
   });
   const hold = planHomeHold(
-    { pending: counts.toSend, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
+    // language-request-todo O2 — 언어 보류(`localeHeld`)의 실제 배선은 T6(배치 C)이 `readLocaleWork`를 넓혀 한다.
+    { pending: counts.toSend, localeHeld: false, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
     lookupOpenPr,
   );
   const heldNow = hold instanceof Promise ? null : hold;
@@ -372,6 +373,8 @@ export default async function ProjectHomePage({
                 lastSyncAt,
                 reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
                 hold: heldNow,
+                // language-request-todo O2 — 언어 변경 보조 줄의 실제 배선은 T6(배치 C)이 한다.
+                languageChanges: 0,
               })}
               slug={slug}
               // 카드마다 그 수가 있는 첫 소스로 — 번역 화면의 범위가 트리 위치라 기본 소스로 가면 0건일 수 있다(translation-tree-range §5).

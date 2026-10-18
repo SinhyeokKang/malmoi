@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { summaryQueue } from "@/lib/projects/list";
 
-import { cardLandings, countCards, firstSurfaceWith, planHomeHold, surfaceQueues } from "../cards";
+import { cardLandings, countCards, firstSurfaceWith, holdSubline, planHomeHold, surfaceQueues } from "../cards";
 
 /**
  * 카운트 카드 넷 (캔버스 `2a`). **수와 문구는 이미 있는 것을 쓴다** — 값은 `summaryQueue`,
@@ -23,6 +23,8 @@ const base = {
   reviewByLocale: [{ code: "en", count: 5 }, { code: "ja", count: 3 }],
   // 보류 결론 — 호출부가 `planHomeHold`로 낸다(ux-drift-unify Q6). 편집 24건이라 pending-edits다.
   hold: "pending-edits" as const,
+  // 언어 변경 작업 수(`countLocaleWork`) — 셀 0일 때만 보조 줄이 말한다.
+  languageChanges: 0,
 };
 
 const card = (input: Parameters<typeof countCards>[0], key: string) =>
@@ -91,6 +93,32 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
    */
   it.each(["open-pr", "pr-check-failed"] as const)("편집 0 + %s", (reason) => {
     expect(card({ ...base, counts: { ...counts, toSend: 0 }, hold: reason }, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason });
+  });
+
+  /**
+   * **셀 0 · 언어 변경 > 0이면 `nothing to send`가 아니다** (language-request-todo design §5 · POSTMORTEM 2026-09-27과 같은 부류). [Publish]가 켜져 있는데
+   * "보낼 게 없다"고 말하면 거짓이다. 수치는 셀 수 그대로다(Q4). 보류 결론이 있으면 사유가 이긴다 — 열린 PR이면 PR 사유다(D10).
+   */
+  it("셀 0 + 언어 변경 → languageChanges, 보류가 있으면 사유가 이긴다", () => {
+    const zero = { ...base, counts: { ...counts, toSend: 0 }, hold: null, languageChanges: 3 };
+    expect(card(zero, "toSend")).toMatchObject({ value: 0, muted: true, subline: { kind: "languageChanges", count: 3 } });
+    expect(card({ ...zero, hold: "locale-change-pending" }, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason: "locale-change-pending" });
+    expect(card({ ...zero, hold: "open-pr" }, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason: "open-pr" });
+    expect(card({ ...zero, languageChanges: 0 }, "toSend")?.subline).toEqual({ kind: "nothingPending" });
+  });
+
+  it("끊김·보관에서는 언어 변경도 보조 줄을 바꾸지 않는다", () => {
+    const zero = { ...base, counts: { ...counts, toSend: 0 }, hold: null, languageChanges: 3 };
+    expect(card({ ...zero, state: "not_connected" }, "toSend")?.subline).toEqual({ kind: "pausedCannotSend" });
+    expect(card({ ...zero, state: "archived" }, "toSend")?.subline).toEqual({ kind: "neverSent" });
+  });
+
+  /** 늦은 갈래(`HoldLater`)와 같은 함수다 — 결론 `null`이면 서버가 정한 기본 줄을, 사유가 있으면 사유를 낸다. */
+  it("holdSubline — 결론 null이면 기본 줄, 사유가 있으면 사유", () => {
+    const language = { kind: "languageChanges", count: 2 } as const;
+    expect(holdSubline(null, language)).toEqual(language);
+    expect(holdSubline(null, { kind: "nothingPending" })).toEqual({ kind: "nothingPending" });
+    expect(holdSubline("open-pr", language)).toEqual({ kind: "repositoryUpdatesPaused", reason: "open-pr" });
   });
 
   /** 상태가 보류를 이긴다 — 끊김·보관에서는 보낼 수 없다는 말이 먼저다(게이트도 그 상태에선 보류를 말하지 않는다). */
@@ -206,7 +234,7 @@ describe("세 셀 구간의 겹침 0 — summaryQueue가 같은 셀을 두 번 �
  * (malmoi#107이 줄인 착지 병목을 되살리지 않는다). 조회가 필요할 때만 promise가 나오고, 조회 실패·거부는 Held(게이트가 fail-closed)다.
  */
 describe("planHomeHold", () => {
-  const input = { pending: 0, gateApplies: true, archived: false, disconnected: false };
+  const input = { pending: 0, localeHeld: false, gateApplies: true, archived: false, disconnected: false };
   const lookup = (value: string | null | undefined) => vi.fn(() => Promise.resolve(value));
 
   it.each([
@@ -215,6 +243,11 @@ describe("planHomeHold", () => {
     ["끊김", { disconnected: true }, null],
     ["게이트가 서지 않는 프로젝트", { gateApplies: false }, null],
     ["게이트가 없어도 편집 > 0", { gateApplies: false, pending: 2 }, "pending-edits"],
+    // 언어 보류는 PR 조회 앞이다 — 그래서 PR을 조회하지 않고, 메타 열 PR state는 `absent`다(design D12 — 미전달 편집 보류와 같다).
+    ["전달 전 언어 제거", { localeHeld: true }, "locale-change-pending"],
+    ["전달 전 언어 제거 + 게이트 없음", { localeHeld: true, gateApplies: false }, "locale-change-pending"],
+    ["편집 > 0이 언어 제거보다 먼저다", { localeHeld: true, pending: 1 }, "pending-edits"],
+    ["보관이면 언어 제거도 말하지 않는다", { localeHeld: true, archived: true }, null],
   ] as const)("%s → 조회 없이 결론이다", (_label, over, expected) => {
     const find = lookup("https://github.com/acme/web/pull/7");
     expect(planHomeHold({ ...input, ...over }, find)).toBe(expected);

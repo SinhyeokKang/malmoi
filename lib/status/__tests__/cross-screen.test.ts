@@ -162,7 +162,8 @@ function observe(f: Fixture, J: Judgments): Observed {
     // 배너 갈래는 `HomeNotices`가 부르는 그 함수다(ux-drift-unify T18 — 전엔 여기 사본이었다).
     const banner = J.homeBannerState({ state, problem, failure: worst === null ? null : worst.importError });
     const hold = J.planHoldNotice({
-      pending: f.pending, openPr: f.openPr === undefined ? undefined : f.openPr?.url ?? null,
+      // 언어 변경 상태는 이 행렬의 입력이 아니다 — 그 갈래의 게이트 일치는 `hold-notice.test.ts`가 전수로 센다.
+      pending: f.pending, localeHeld: false, openPr: f.openPr === undefined ? undefined : f.openPr?.url ?? null,
       gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected",
     });
     // 메타 열 Connection 배지 — Settings와 같은 함수를 `metaTabs`에 넣고 그 행을 읽는다(project-card-tabs fix1 — 사본이 판정과 갈렸다).

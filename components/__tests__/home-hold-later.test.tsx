@@ -15,8 +15,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const mounted: (() => void)[] = [];
 afterEach(() => { for (const unmount of mounted.splice(0)) act(() => unmount()); });
 
-function Host({ label, hold, project = "acme" }: { label: string; hold: Promise<HoldReason | null>; project?: string }) {
-  return <div><span data-label>{label}</span><HoldLater hold={hold} identity={project} /></div>;
+function Host({ label, hold, project = "acme", fallback = en.home.cards.nothingPending }: { label: string; hold: Promise<HoldReason | null>; project?: string; fallback?: string }) {
+  return <div><span data-label>{label}</span><HoldLater hold={hold} identity={project} fallback={fallback} /></div>;
 }
 
 async function mount(ui: React.ReactNode) {
@@ -43,6 +43,16 @@ describe("HoldLater", () => {
     expect(line.container.textContent).toContain(en.home.cards.nothingPending);
     await line.transition(<Host label="B" hold={Promise.resolve("pr-check-failed")} />);
     expect(line.container.textContent).toContain(en.home.cards.held["pr-check-failed"]);
+  });
+
+  /** 기본 줄은 서버가 정한다(language-request-todo design §5 R1) — 언어 변경만 남았으면 도착 전·결론 `null`에도 그 줄이다. */
+  it("도착 전과 결론 null은 받은 기본 줄이다", async () => {
+    const fallback = en.home.cards.languageChanges(2);
+    const view = await mount(<Host label="A" hold={new Promise(() => {})} fallback={fallback} />);
+    expect(view.container.textContent).toContain(fallback);
+    await view.transition(<Host label="B" hold={Promise.resolve(null)} fallback={fallback} />);
+    expect(view.container.textContent).toContain(fallback);
+    expect(view.container.textContent).not.toContain(en.home.cards.nothingPending);
   });
 
   it("늦게 풀린 옛 promise가 새 값을 덮지 않는다", async () => {

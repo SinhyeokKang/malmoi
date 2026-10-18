@@ -48,7 +48,7 @@ describe.each(cases)("화면 수량 %s", (uiLocale, m, expected) => {
   });
 
   it("Home 카드의 + 접두와 0을 유지하고 메타 수치도 같은 UI locale로 표시한다", async () => {
-    const cards = countCards({ state: "default", counts: { newFromGithub: 10000, toTranslate: 10000, toReview: 10000, toSend: 0 }, surfaces: 1, keys: 10000, lastSyncAt: null, reviewByLocale: [], hold: null });
+    const cards = countCards({ state: "default", counts: { newFromGithub: 10000, toTranslate: 10000, toReview: 10000, toSend: 0 }, surfaces: 1, keys: 10000, lastSyncAt: null, reviewByLocale: [], hold: null, languageChanges: 0 });
     const cardView = await render(<CountCards cards={cards} slug="acme" surfaceSlugs={{ newFromGithub: "web", toTranslate: "web", toReview: "web", toSend: "web" }} now={now} uiLocale={uiLocale} m={m} />);
     expect([...cardView.container.querySelectorAll(".text-2xl")].map(node => node.textContent)).toEqual([`+${expected}`, expected, expected, "0"]);
     const tabs = metaTabs({ repository: { owner: "o", name: "r", branch: "main", connection: "connected" }, ciConfigured: true, surfaceCount: 10000, keys: 10000, members: 10000, pendingInvites: 10000, createdAt: now, archivedAt: null, lastSync: null, lastPublish: null, held: null, prState: "absent" });
