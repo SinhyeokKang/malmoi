@@ -49,4 +49,7 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 
 - 2026-10-18 Run `run_a8efa5c8272a`. A = 워크트리 `lrt-a` · Dispatch `ctx_41d443eb1de7` · `term_ddaf926f`. B = 워크트리 `lrt-b` · Dispatch `ctx_4616264251f2` · `term_b24799fd`. 브리프는 main 체크아웃 `.scratch/orch-language-request-todo/brief-{A,B}.md`.
 - K(곁 배치) 시작 — 워크트리 `lkv-auto` · Dispatch `ctx_60eb88e004d9` · `term_2fcfec0f`. 스펙 커밋 `395d4373`. DESIGN은 §6.62·§6.615 행만 고친다(A는 §10.1) — 겹침 없음.
+- K `worker_done` — 4c0d06ed · 816961f6 · 41eafdbb · 0d2ac987. 워커 게이트는 병렬 부하(load 17–170)로 test 단계 5s 타임아웃만 red(단언 실패 0, 실패 파일 단독 green). 지휘자 diff 확인 — `overshoot = 0`이면 로그인 출력 동일(`0 - overshoot`로 -0 회피). **K 통합(로컬, 미push)** `b859c058..524a2358` + 기능 폴더 삭제 `7f01aa3a`. main 게이트는 부하가 내려간 뒤 돌린다. K4 런타임 확인은 QA 브리프에 얹는다. K release + `lkv-auto` 삭제.
+- A `worker_done` — 0b290236..0ac0461d(5 커밋), `gate: ok`(15958 + 격리 PG 894, 앞 두 번은 B와 겹친 부하로 5s 타임아웃). O2 호출부: `lib/keys/query.ts`·`lib/inbox/load.ts` `language: null`, Home `page.tsx` `localeHeld: false`·`languageChanges: 0` — 화면에는 C(T6) 전까지 아무것도 안 보인다. 계획과 다른 점 7(`HoldLater` 기본 줄은 문자열 prop · `holdSubline(hold, fallback)` · `countCards`는 수만 · slug 모르는 소스만이면 `null` 등). 인계 사본 `handoffs/handoff-A.md`. 리뷰 Dispatch `ctx_24ddf535f670`(Opus high).
+- B `worker_done` — bd6681a1(`foldLocaleStates` 분리 + `readLocaleStatesByProject` + 격리 PG 등가 스위트), `gate: ok`(셋째 실행 — 앞 둘은 병렬 부하 타임아웃). 변이(`archivedAt` 제거) red 확인. 인계 사본 `handoffs/handoff-B.md`. 리뷰 Dispatch `ctx_d08e20d2573a`(Opus high).
 
