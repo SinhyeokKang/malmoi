@@ -411,7 +411,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | write의 입력 | DB 상태 | DB 상태 **+ 원본 파일 내용**(`DetectedFormat.currentFiles`) |
 | 결정성의 근거 | 정렬·재조립 규칙 | **같은 원본+입력 → 같은 바이트**. 무편집 원본 보존·실제 편집 결정성·재적용 고정점·미편집 영역 보존은 별도 검사한다 |
 | `orphaned` 키 | 파일에서 뺀다 | **파일에 남긴다**(값을 안 바꾼다). 지우면 코드가 참조하는 키가 사라진다 |
-| 낼 것 0개 | 원본이 없으면 `null`, 있으면 원본 표현의 `{}`(`emptyCatalog`, §1.1) | 원본 그대로(파일을 지우지 않는다). `null`은 원본이 없을 때만 |
+| 낼 것 0개 | 원본이 없으면 `null`, 있으면 원본 표현의 `{}`(`emptyCatalog`, §1.1) | 원본 그대로(파일을 지우지 않는다). `write`의 `null`은 원본이 없을 때만. ADD create·revive의 새 파일은 별도 `create` 계약(§5.10)을 따른다 |
 | 원본에 **없는** 키 | 그냥 쓴다 | `yaml-catalog`·`code-dict`는 **삽입한다**. `ts-dict`는 무시한다 (아래) |
 | 값의 **표현** | 우리 규칙대로 낸다 | **원본에서 읽는다** — 인용 부호는 그 리터럴이 쓰던 것, YAML 블록 스타일은 그 노드가 쓰던 것 (아래) |
 
@@ -2372,7 +2372,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 
 ## 5.10 언어 추가·제거 (locale-add — 2026-10-14)
 
-OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 파일이 따로인 재생성 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
+OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`**(언어마다 파일이 따로인 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
 웹 Server Action 다섯(`addSourceLocale`·`previewSourceLocaleAdd`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
 `app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다. 호출자는 Sources 상세의 Languages 카드와 Dialog 둘이다(DESIGN §6.66).
 ⚠️ 추가 미리보기 `previewSourceLocaleAdd`는 MCP에 짝이 없다(`add_locale`은 바로 실행하고 거부 코드로 답한다).
@@ -2502,7 +2502,14 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   디렉터리·glob 삭제는 없고 Chrome의 같은 디렉터리 다른 파일은 건드리지 않는다. `renderProject` 진입에서 delete·create가 그 소스의 REMOVE·ADD 행 경로와 같은지 단언한다. 계획이 거부되면(`path-conflict`·`duplicate-path`·`unsafe-path`)
   **`locale-plan-refused`** 다 — 결정적이라 재시도 불가(`LocalePlanRefused`, 미리보기는 `refused`). ⚠️ base를 못 읽은 것은 파일 부재가 아니다 — 삭제·`no-changes`를 하지 않는다.
 - **ADD의 새 파일 표현**: 원본이 없으므로 그 소스의 **기준 언어 파일 하나**에서 **표현만**(들여쓰기·CRLF·BOM·이스케이프·한 줄 컨테이너·Chrome 필드 순서) 빌린다 — `DetectedFormat.representationSource`, 재생성 writer가 원본이 없을 때만 본다.
-  **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). Chrome의 `placeholders`·`description`은 복사하지 않는다. 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  재생성 어댑터는 **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). 예외는 수술적 `yaml-catalog`·`code-dict`의 `Adapter.create?`다:
+  기준 언어 파일에서 루트 로케일 키(기준 코드와 같을 때만)·키 구조(평평/중첩)·code-dict 내보내기 형태(default/같은 이름 named)·표현을 빌린다. **값·주석·import·타입 주석은 빌리지 않는다.**
+  `create(format, input & { baseLocale })`는 ADD create·revive에서 대상 원본이 없을 때만 호출하며 기존 `writeWithErrors`와 `ts-dict`의 원본 부재 계약은 그대로다.
+  새 파일은 값 있는 활성 키만 `compareKeys` 순서로 쓰고 끝 개행은 하나다. 중첩 트리는 `Map`으로 만들어 정수 모양 키·`__proto__`도 순서를 잃지 않으며 접두 충돌은 `key-shadowed` 실패다.
+  YAML은 기준 코드와 다른 루트·생성 결과의 루트 오인을 거부하고 YAML 1.1 모호 토큰을 인용한다. CRLF·BOM·들여쓰기를 따른다.
+  code-dict는 기준 코드가 든 named export 이름과 `__proto__` 프로퍼티를 거부한다. 값·키 인용과 끝 쉼표를 따르고 BOM은 쓰지 않으며 세미콜론은 고정한다.
+  기준 파일 없음·지원하지 않는 생성 규약은 `write-create-unsupported`, 파싱 실패는 `write-parse-failed`다. **생성 실패는 `content: null`과 blocking 오류를 함께 내며 보류로 낮추지 않는다.** 값 0개만 `null`과 빈 오류를 낸다.
+  Chrome의 `placeholders`·`description`은 복사하지 않는다. 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
   미전달 ADD의 경로가 이미 base에 있으면 **그 언어만** `proposal-path-exists`로 보류하고 나머지 편집은 나간다. **값 0개 ADD는 파일을 내지 않고** Publish 작업으로 세지 않는다(미리보기가 `empty`로 알린다).
 - **조기 종료 · 전부 보류**: 셀 편집 0·`maxUpdatedAt = null`이어도 언어 변경 작업이 있으면 실행하고(`at: null`이면 `lastPulledAt`을 쓰지 않는다), **번역이 전부 보류여도 안전한 삭제는 전달한다.**
   판정은 보류 ADD까지 센 `localeWorkOf`가 아니라 **전달 가능한 작업**(`deliverableLocaleWork` — 캡처 ≠ 전달인 소스 수)이 한다. 빈 ADD만 있으면 원격 쓰기가 0이다.
