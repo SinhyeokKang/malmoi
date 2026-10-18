@@ -3495,7 +3495,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 `lib/inbox/plan.ts`가 현재 상태를 프로젝트별로 정렬하고 배지 수를 센다. Home은 `collectAttention` 위에 보관·배너 제외·상한 5를
 얹으며, Inbox는 상한 없이 그대로 쓴다. 빈 로케일은 `neverFilledLocales`, 링크·타일·문장은 `lib/home/attention-view.ts`, 목록 띠 링크는
 `lib/routes.ts`의 `bannerTranslationsHref`가 공유한다. 동시각은 프로젝트 항목(setup → unsent) → 표면 slug → 로케일 순이고,
-묶음은 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다.
+묶음은 안 읽은 항목이 있는 묶음 먼저(2026-10-18 — 최신 항목이 늘 읽음인 검토라 안 읽은 실패보다 위에 서던 순서를 고쳤다) → 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다. 열린 목록의 읽음 처리(`readAll`)는 표시만 내리고 순서는 다음 열기까지 그대로다.
 
 **데이터 경로**: 입력 없는 `loadAttentionBadgeAction`·`openAttentionInboxAction`(`app/inbox/actions.ts` — 편집 셸 헤더와 **로그인한 공개 셸 헤더**가 같이 부르므로 `(edit)` 밖이다, 2026-10-05 · `app/search/actions.ts`와 같은 자리) → `readSession` → `loadAttentionInbox(prisma, userId)`.
 공개 셸 헤더는 세션을 읽지 않고 페이지가 넘긴 `publicAccount`가 값일 때만 Inbox를 마운트한다 — 비로그인 방문자에게는 Action 호출이 0이다.
