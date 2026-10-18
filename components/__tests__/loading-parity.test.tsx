@@ -8,9 +8,11 @@ import InboxLoading from "@/app/(edit)/inbox/loading";
 import LogsLoading from "@/app/(edit)/projects/[slug]/logs/loading";
 import MembersLoading from "@/app/(edit)/projects/[slug]/members/loading";
 import ProjectsLoading from "@/app/(edit)/projects/(list)/loading";
+import { InboxFilters } from "@/components/inbox/inbox-filters";
+import { parseInboxFilter, inboxFilterOptions } from "@/lib/inbox/filter";
 import { EventRow } from "@/components/logs/event-row";
 import { LogFilters } from "@/components/logs/log-filters";
-import { PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelHeader } from "@/components/shell/content-panel";
 import { LocalePanel, LocalePanelSkeleton } from "@/components/translations/workspace/locale-panel";
 import type { EventRow as Row } from "@/lib/events/query";
 import { en } from "@/messages/en";
@@ -305,4 +307,50 @@ it("Home 골격의 로그 카드 행은 실물 EventRow 칸이다 — 목록 여
     expect(stack.children).toHaveLength(2);
     expect(stack.children[1]!.classList.contains("h-5"), stack.children[1]!.className).toBe(true);
   });
+});
+
+
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("Inbox %s 골격은 기본 필터 둘·검색320·제목의 실물 줄바꿈 입력을 예약한다", async (uiLocale, m) => {
+  vi.mocked(getMessages).mockResolvedValue(m);
+  const { container: real } = await render(<PanelHeader>
+    <div className={PANEL_HEAD_ROW}><h1 className="flex items-center text-lg font-medium">{m.common.nav.inbox}</h1></div>
+    <InboxFilters filter={parseInboxFilter({})} options={inboxFilterOptions({ groups: [], unread: 0 })} />
+  </PanelHeader>, { uiLocale });
+  const { container: skeleton } = await render(InboxLoading());
+  const realRow = find(real, "[data-inbox-filter-row]");
+  const loadingRow = find(skeleton, "[data-skeleton-filter-row]");
+  expect(loadingRow.className).toBe(realRow.className);
+  const controls = [...realRow.querySelectorAll<HTMLButtonElement>(":scope > button")];
+  expect(controls.map(node => node.textContent)).toEqual([m.inbox.filters.all, m.inbox.filters.anyProject]);
+  const slots = [...loadingRow.children];
+  expect(slots).toHaveLength(3);
+  controls.forEach((control, i) => {
+    const slot = slots[i]!;
+    const sizer = find<HTMLButtonElement>(slot, "button");
+    expect(sizer.textContent).toBe(control.textContent);
+    expect(sizer.className.replace(" invisible", "")).toBe(control.className);
+    expect(sizer.classList.contains("h-9")).toBe(true);
+    expect(slot.classList.contains("shrink-0")).toBe(true);
+    expect(slot.classList.contains("flex")).toBe(true);
+    expect(slot.className).not.toMatch(/\bw-\S+/);
+    expect(sizer.disabled).toBe(true);
+    expect(sizer.tabIndex).toBe(-1);
+    expect(slot.querySelector(".absolute.inset-0")).not.toBeNull();
+  });
+  const search = find<HTMLInputElement>(realRow, 'input[type="search"]');
+  const sizer = find<HTMLInputElement>(slots[2]!, 'input[type="search"]');
+  expect(search.classList.contains("w-80")).toBe(true);
+  expect(sizer.className.replace(" invisible", "")).toBe(search.className);
+  expect(slots[2]!.className).toBe(search.parentElement!.parentElement!.className);
+  expect(sizer.disabled).toBe(true);
+  expect(sizer.tabIndex).toBe(-1);
+  expect(sizer.parentElement!.querySelector("svg")!.classList.contains("invisible")).toBe(true);
+  const title = find(skeleton, "h1");
+  expect(title.textContent).toBe(m.common.nav.inbox);
+  expect(title.className.replace(" invisible", "")).toBe(find(real, "h1").className);
+  expect(title.parentElement!.querySelector(".absolute.left-0")).not.toBeNull();
+  expect(loadingRow.previousElementSibling!.className).toBe(realRow.previousElementSibling!.className);
+  expect(loadingRow.parentElement!.classList.contains("[&>:first-child]:min-h-9")).toBe(true);
+  expect(loadingRow.closest('[aria-hidden="true"]')).not.toBeNull();
+  expect(skeleton.querySelector('[role="status"]')?.textContent).toBe(m.inbox.loading);
 });
