@@ -1,5 +1,5 @@
 /**
- * 로그인 우측 장식의 판정 둘 (8-1b). **잎이다 — import 0.**
+ * 로그인 우측 장식(8-1b)과 랜딩 배경(landing-kv-background)의 판정. **잎이다 — import 0.**
  *
  * ⚠️ **왜 Canvas인가**: 시안은 커서 주변 도트가 스케일하는데, `background-image: radial-gradient`는
  * **개별 도트가 요소가 아니라** 스케일 대상이 없다. DOM으로 그리면 948×1064 / 16px ≈ **4,000개
@@ -19,14 +19,42 @@ export type Dot = { x: number; y: number };
  *
  * ⚠️ **gap이 0 이하면 빈 배열이다.** 이 함수는 `ResizeObserver` 콜백에서 불리므로 무한 루프
  * 한 번이 탭을 얼린다.
+ *
+ * `offsetY`는 랜딩의 스크롤 격자다(landing-kv-background R6) — 한 화면짜리 sticky 캔버스에서 행을 `-(offsetY % gap)`부터
+ * 그려 점이 콘텐츠에 박힌 것처럼 올라간다. 그때는 아래 끝 행이 높이 이상까지 간다(행이 위로 밀린 만큼 아래가 비지 않게).
+ * ⚠️ **0이면 지금 출력과 바이트 단위로 같다** — 로그인은 이 인자를 넘기지 않는다. ⚠️ Safari 고무줄 스크롤은 `scrollTop`을
+ * 음수로 주므로 나머지를 양수로 접는다. 유한하지 않으면 0으로 읽는다(`NaN` 좌표가 캔버스에 가면 그 프레임이 빈다).
  */
-export function dotGrid(width: number, height: number, gap: number): Dot[] {
+export function dotGrid(width: number, height: number, gap: number, offsetY = 0): Dot[] {
   if (gap <= 0 || width < 0 || height < 0) return [];
+  const shift = Number.isFinite(offsetY) ? ((offsetY % gap) + gap) % gap : 0;
+  const rows: number[] = [];
+  if (shift === 0) {
+    for (let y = 0; y <= height; y += gap) rows.push(y);
+  } else {
+    for (let y = -shift; y < height + gap; y += gap) rows.push(y);
+  }
   const dots: Dot[] = [];
-  for (let y = 0; y <= height; y += gap) {
+  for (const y of rows) {
     for (let x = 0; x <= width; x += gap) dots.push({ x, y });
   }
   return dots;
+}
+
+/**
+ * 커서 반경 안/밖으로 가른다 — 랜딩의 묶음 그리기 입력(landing-kv-background R8). 밖의 점은 반지름·알파가 모두 기본값이라
+ * path 하나에 모아 fill 한 번으로 칠한다(2560×1440 ≈ 1만 3천 개).
+ *
+ * ⚠️ **경계는 `dotScale`과 같다** — 거리가 `radius` 이상이면 밖이다. 둘이 갈리면 묶음 그리기가 점마다 그리기와 다른 픽셀을 낸다.
+ */
+export function partitionDots(dots: Dot[], spot: Dot | null, radius: number): { near: Dot[]; far: Dot[] } {
+  if (spot === null || radius <= 0) return { near: [], far: dots };
+  const near: Dot[] = [];
+  const far: Dot[] = [];
+  for (const dot of dots) {
+    (Math.hypot(dot.x - spot.x, dot.y - spot.y) < radius ? near : far).push(dot);
+  }
+  return { near, far };
 }
 
 /**
