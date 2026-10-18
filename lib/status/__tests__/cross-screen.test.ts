@@ -133,7 +133,7 @@ function observe(f: Fixture, J: Judgments): Observed {
     role: "OWNER",
     project: {
       id: "p1", slug: "acme", name: "Acme", image: null, repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
-      repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces,
+      repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces.map(surface => ({ ...surface, id: surface.slug, lastCommitAt: null })),
       gitlabConnection: f.gitlabConnectionId === null ? null : { expiresAt: f.gitlabTokenExpiresAt ?? null },
     },
   };

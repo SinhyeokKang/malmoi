@@ -74,7 +74,7 @@ it("미전달·빈 로케일과 워터마크가 실제 plan으로 이어진다",
   const { db, prisma } = database([row]);
   db.stringKey.groupBy.mockResolvedValue([{ projectId: "p1", surfaceId: "s-p1", _count: { _all: 2 } }]);
   db.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([{ projectId: "p1", surfaceId: "s-p1", surfaceSlug: "web", n: 1, at }]).mockResolvedValueOnce([]);
-  expect(await loadAttentionInbox(prisma, "user")).toEqual(planInbox({ projects: [{ slug: "p1", name: "p1", image: null, role: "OWNER", status: "active", createdAt: at,
+  expect(await loadAttentionInbox(prisma, "user")).toEqual(planInbox({ projects: [{ connectionPinned: true, gitlabTokenExpiresAt: null, slug: "p1", name: "p1", image: null, role: "OWNER", status: "active", createdAt: at,
     attention: [{ kind: "never_filled", at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 2 }], unsent: { count: 1, surfaceSlug: "web", at } }], seenAt: null }));
 });
 it.each(["aggregate", "review", "actors"])("하위 %s 실패는 전체 실패다", async source => {

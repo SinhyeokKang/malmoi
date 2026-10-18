@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { stateLabel } from "@/lib/status/canon";
+import { projectTodos } from "@/lib/inbox/project-todos";
 import { en } from "@/messages/en";
 
 import {
   CHIP_STATE,
+  planProjectRow,
   groupProjects,
   listBody,
   meterSlot,
@@ -717,5 +719,78 @@ describe("listBody — 아트보드 넷과 1:1", () => {
     const original = [...all];
     listBody(all, "chrome");
     expect(all).toEqual(original);
+  });
+});
+
+describe("planProjectRow — 건강과 할 일", () => {
+  const at = new Date("2026-10-01T00:00:00Z");
+  const blank = { kind: "never_filled" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 5, ownerRetries: false };
+  const todos = (input: ReturnType<typeof row>, neverFilled = false) => projectTodos({
+    status: projectStatus(input), role: "OWNER", createdAt: at,
+    connectionPinned: input.repositoryId !== null && (input.repoHost === "gitlab" ? input.gitlabConnectionId !== null : input.installationId !== null),
+    gitlabTokenExpiresAt: input.gitlabTokenExpiresAt,
+    attention: [
+      ...input.surfaces.flatMap(s => s.importError !== null && !s.importing ? [{ kind: "import_failed" as const, at, surfaceSlug: "web", reason: s.importError }] : []),
+      ...(input.review > 0 ? [{ kind: "review" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", count: input.review, who: null }] : []),
+      ...(neverFilled ? [blank] : []),
+    ],
+    unsent: input.unsent > 0 ? { count: input.unsent, surfaceSlug: "web", at } : null,
+  });
+
+  it.each([
+    ["보관", { archivedAt: at }, "archived", "archived", null],
+    ["연결 끊김", { repositoryId: null }, "disconnected", "needs_attention", "needs_reconnect"],
+    ["실패", failed("parse-failed"), "syncFailed", "needs_attention", "import_failed"],
+    ["일부 반영", failed("partial-import"), "partiallySynced", "needs_attention", "import_failed"],
+    ["연결 전", { installationId: null }, "setup", "needs_attention", "setup"],
+    ["첫 적재 중", { surfaces: [{ ...FIRST, importing: true }] }, "syncing", "needs_attention", null],
+    ["첫 적재 대기", { surfaces: [FIRST] }, "notSyncedYet", "needs_attention", null],
+    ["정상", {}, "active", "all_set", null],
+  ] as const)("상태표: %s", (_label, over, chip, group, banner) => {
+    const input = row(over);
+    const plan = planProjectRow(input, todos(input));
+    expect(plan).toMatchObject({ chip, group });
+    expect(plan.banner?.kind ?? null).toBe(banner);
+  });
+
+  it("미발송이 PR 조회 실패보다 먼저다", () => {
+    const input = row({ unsent: 3, openPr: undefined });
+    expect(planProjectRow(input, todos(input))).toEqual({ chip: "active", group: "all_set", banner: { kind: "unsent", count: 3 } });
+  });
+
+  it.each(["github", "gitlab"])("%s EDITOR의 연결·설정과 빈 언어도 같은 판정이다", repoHost => {
+    const input = row({ repoHost, gitlabConnectionId: "connection" });
+    const todo = projectTodos({ status: "active", role: "EDITOR", createdAt: at, connectionPinned: true,
+      gitlabTokenExpiresAt: null, attention: [blank], unsent: null });
+    expect(planProjectRow(input, todo)).toEqual({ chip: "active", group: "all_set", banner: blank });
+    const setup = row({ repoHost, installationId: null, repositoryId: null, gitlabConnectionId: null, surfaces: [] });
+    expect(planProjectRow(setup, [])).toMatchObject({ chip: "setup", banner: { kind: "setup" } });
+  });
+
+  it("입력 축 2,880조합에서 불변식 넷과 띠 우선순위를 센다", () => {
+    let cases = 0;
+    for (const archived of [false, true])
+    for (const status of ["active", "setup", "awaiting_first_sync", "needs_reconnect", "archived"] as const)
+    for (const failure of [null, "parse-failed", "partial-import"] as const)
+    for (const importing of [false, true])
+    for (const openPr of [null, undefined, { number: 1, url: "https://example.com/1" }])
+    for (const unsent of [0, 2])
+    for (const repoAheadFiles of [0, 2])
+    for (const review of [0, 2])
+    for (const neverFilled of [false, true]) {
+      const input = row({ archivedAt: archived || status === "archived" ? at : null,
+        installationId: status === "setup" ? null : "i", repositoryId: status === "needs_reconnect" ? null : "r",
+        surfaces: [{ ...S, lastCommitSha: status === "awaiting_first_sync" ? null : "s", importError: failure, importing }],
+        openPr, unsent, repoAheadFiles, review });
+      const plan = planProjectRow(input, todos(input, neverFilled));
+      const kind = plan.banner?.kind;
+      if (kind && ["needs_reconnect", "import_failed", "setup"].includes(kind)) expect(plan.group).toBe("needs_attention");
+      if (kind && ["unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"].includes(kind)) expect([plan.chip, plan.group]).toEqual(["active", "all_set"]);
+      expect(plan.chip === "active").toBe(plan.group === "all_set");
+      if (input.archivedAt !== null) expect(plan.banner).toBeNull();
+      if (plan.chip === "active") expect(kind ?? null).toBe(unsent ? "unsent" : openPr === undefined ? "pr_check_failed" : openPr ? "pr_open" : repoAheadFiles ? "repo_ahead" : review ? "review" : neverFilled ? "never_filled" : null);
+      cases++;
+    }
+    expect(cases).toBe(2880);
   });
 });

@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { collectAttention, neverFilledLocales } from "@/lib/home/attention";
 import { loadActors, loadProjectListAggregates, loadReviewAttention } from "@/lib/keys/query";
 import { isImportFailureCode } from "@/lib/projects/import-failure";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
 import { projectStatus } from "@/lib/projects/list";
 import { planInbox, type InboxPlan } from "./plan";
 
@@ -52,6 +53,7 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
     const count = aggregates.unsent.get(project.id) ?? 0;
     const surfaceSlug = aggregates.unsentSurfaces.get(project.id);
     return {
+      connectionPinned: repoConnectionPinned(project), gitlabTokenExpiresAt: project.gitlabConnection?.expiresAt ?? null,
       slug: project.slug, name: project.name, image: project.image, role: row.role,
       status: projectStatus({ ...project, gitlabTokenExpiresAt: project.gitlabConnection?.expiresAt ?? null }), createdAt: project.createdAt, attention,
       unsent: count > 0 && surfaceSlug !== undefined ? { count, surfaceSlug, at: aggregates.unsentAt.get(project.id) ?? null } : null,

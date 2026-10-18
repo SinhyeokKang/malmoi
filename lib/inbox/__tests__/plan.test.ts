@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { badgeLabel, clampSeenAt, isUnread, planInbox, type InboxProject } from "../plan";
 const at = new Date("2026-10-01T00:00:00Z");
 const failed = { kind: "import_failed" as const, at, surfaceSlug: "web", reason: "parse-failed" as const };
-const project: InboxProject = { slug: "demo", name: "Demo", image: null, role: "OWNER", status: "active", createdAt: at, attention: [failed], unsent: null };
+const project: InboxProject = { connectionPinned: true, gitlabTokenExpiresAt: null, slug: "demo", name: "Demo", image: null, role: "OWNER", status: "active", createdAt: at, attention: [failed], unsent: null };
 it.each([null, new Date(at.getTime() - 1), at, new Date(at.getTime() + 1)])("읽음 경계와 검토 제외: %s", seenAt => {
   expect(isUnread("import_failed", at, seenAt)).toBe(seenAt === null || at > seenAt);
   expect(isUnread("import_failed", null, seenAt)).toBe(seenAt === null);

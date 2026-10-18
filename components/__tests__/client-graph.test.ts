@@ -125,6 +125,7 @@ const CLIENT_LIB_FILES = [
   // 헤더 Inbox(attention-inbox)가 Home 카드와 같은 칩·문장·목적지와 읽음 판정을 값으로 읽는다 — 수집(`lib/home/attention.ts`)은 그래프에 없다.
   "lib/home/attention-view.ts",
   "lib/inbox/plan.ts",
+  "lib/inbox/project-todos.ts",
   // 헤더·사이드바·`/inbox` 읽음 섬이 나눠 쓰는 탭 안 안 읽음 수 store(inbox-page D2) — import는 `react` 하나인 잎이다.
   "lib/inbox/unread-store.ts",
   "lib/i18n/adapter-errors.ts",
@@ -675,7 +676,7 @@ describe("클라이언트 그래프", () => {
   it("Inbox의 공유 뷰·계획은 조회·어댑터·컴포넌트 그래프를 끌지 않는다", () => {
     const graph = walk([join(ROOT, "lib/inbox/plan.ts"), join(ROOT, "lib/home/attention-view.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
-      "lib/auth/permission.ts", "lib/home/attention-view.ts", "lib/inbox/plan.ts", "lib/projects/import-failure.ts", "lib/routes.ts",
+      "lib/auth/permission.ts", "lib/home/attention-view.ts", "lib/inbox/plan.ts", "lib/inbox/project-todos.ts", "lib/projects/import-failure.ts", "lib/routes.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });

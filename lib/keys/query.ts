@@ -2,6 +2,7 @@ import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import "server-only";
 
+import { lastSyncTime } from "@/lib/home/sync-time";
 import type { PrismaClient } from "@/generated/prisma/client";
 // ⚠️ `Role`은 **생성물이 아니라 도메인 층**에서 온다 — 그 파일이 "Prisma의 `enum Role`과 두 벌인 것은
 // 의도"라고 못박아 두고 `canPerform`이 그 union을 든다. 사이드바가 이 값을 그쪽으로 넘긴다.
@@ -252,7 +253,9 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
  * ⚠️ **2026-09-15에 `summary`가 빠졌다** (projects-panel-rework) — 계정 단위 큐 넷이 화면에서
  * 사라졌고, 그 집계는 `project-home`이 받는다(`summaryQueue`·raw ④는 그대로 있다).
  */
-export type ProjectListView = { rows: ProjectListRow[] };
+/** T6이 기존 화면 타입과 합칠 메타. 반환값에서는 지금부터 필수다. */
+export type ProjectListRowMeta = { sourceCount: number; keyCount: number; languageCount: number; lastSync: string | null };
+export type ProjectListView = { rows: (ProjectListRow & ProjectListRowMeta)[] };
 
 /**
  * `/projects` 목록 전용 조회 (8-3 · DESIGN §6.63).
@@ -344,7 +347,7 @@ export type ProjectListMemberRow = {
   project: {
     id: string; slug: string; name: string; image: string | null; repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
     archivedAt: Date | null; repoOwner: string; repoName: string; repositoryId: string | null; baseBranch: string; lastPrUrl: string | null;
-    surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
+    surfaces: readonly { id: string; slug: string; lastImportedAt: Date | null; lastCommitAt: Date | null; archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
     _count: { members: number };
     gitlabConnection?: { expiresAt: Date | null } | null;
   };
@@ -361,46 +364,55 @@ export function assembleProjectListRows(
   rows: readonly ProjectListMemberRow[],
   aggregates: ProjectListAggregates,
   remote: ReadonlyMap<string, RemoteSignals>,
-): ProjectListRow[] {
+): (ProjectListRow & ProjectListRowMeta)[] {
   const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
 
   // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCounts`가 Meter와 **같은 접기**로 한다.
   const review = rowReviewCounts(aggregates.locales, aggregates.cells);
 
-  return rows.map((r) => ({
-    slug: r.project.slug,
-    name: r.project.name,
-    image: r.project.image,
-    role: r.role,
-    repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
-    gitlabTokenExpiresAt: r.project.gitlabConnection?.expiresAt ?? null,
-    surfaces: r.project.surfaces.map(s => ({
-      archivedAt: s.archivedAt,
-      lastCommitSha: s.lastCommitSha,
-      // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
-      importError: isImportFailureCode(s.lastImportError) ? s.lastImportError : null,
-      importing: s.lastImportStartedAt !== null,
-    })),
-    archivedAt: r.project.archivedAt,
-    repoOwner: r.project.repoOwner,
-    repoName: r.project.repoName,
-    repositoryId: r.project.repositoryId,
-    memberCount: r.project._count.members,
-    baseBranch: r.project.baseBranch,
-    lastPrUrl: r.project.lastPrUrl,
-    meters: meters.get(r.project.id) ?? [],
-    reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
-    unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
-    repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
-    review: review.get(r.project.id) ?? 0,
-    unsent: aggregates.unsent.get(r.project.id) ?? 0,
-    /**
-     * ⚠️ **`undefined`(확인 못 함)를 보존한다** (ux-drift-unify Q6 ④) — `?? null`로 접으면 원격 조회가 지킨 삼상태가 여기서 "없음"이 되어
-     * "Couldn't check" 띠가 사라진다. 원격 결과에 행이 없을 때만 없음이다.
-     */
-    openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
-    repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
-  }));
+  return rows.map((r) => {
+    const surfaces = r.project.surfaces.filter(surface => surface.archivedAt === null);
+    const surfaceIds = new Set(surfaces.map(surface => surface.id));
+    const lastSync = lastSyncTime(surfaces);
+    return {
+      sourceCount: surfaces.length,
+      keyCount: surfaces.reduce((sum, surface) => sum + (aggregates.keyTotals.get(surface.id) ?? 0), 0),
+      languageCount: new Set(aggregates.locales.filter(locale => locale.projectId === r.project.id && surfaceIds.has(locale.surfaceId) && !locale.isBase).map(locale => locale.code)).size,
+      lastSync: lastSync instanceof Date ? lastSync.toISOString() : lastSync,
+      slug: r.project.slug,
+      name: r.project.name,
+      image: r.project.image,
+      role: r.role,
+      repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
+      gitlabTokenExpiresAt: r.project.gitlabConnection?.expiresAt ?? null,
+      surfaces: r.project.surfaces.map(s => ({
+        archivedAt: s.archivedAt,
+        lastCommitSha: s.lastCommitSha,
+        // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
+        importError: isImportFailureCode(s.lastImportError) ? s.lastImportError : null,
+        importing: s.lastImportStartedAt !== null,
+      })),
+      archivedAt: r.project.archivedAt,
+      repoOwner: r.project.repoOwner,
+      repoName: r.project.repoName,
+      repositoryId: r.project.repositoryId,
+      memberCount: r.project._count.members,
+      baseBranch: r.project.baseBranch,
+      lastPrUrl: r.project.lastPrUrl,
+      meters: meters.get(r.project.id) ?? [],
+      reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
+      unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
+      repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
+      review: review.get(r.project.id) ?? 0,
+      unsent: aggregates.unsent.get(r.project.id) ?? 0,
+      /**
+       * ⚠️ **`undefined`(확인 못 함)를 보존한다** (ux-drift-unify Q6 ④) — `?? null`로 접으면 원격 조회가 지킨 삼상태가 여기서 "없음"이 되어
+       * "Couldn't check" 띠가 사라진다. 원격 결과에 행이 없을 때만 없음이다.
+       */
+      openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
+      repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
+    };
+  });
 }
 
 /**

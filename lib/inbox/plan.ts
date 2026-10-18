@@ -1,6 +1,7 @@
 import type { AttentionItem } from "@/lib/home/attention";
 import { compare } from "@/lib/home/attention-view";
-import { canPerform, type Role } from "@/lib/auth/permission";
+import type { Role } from "@/lib/auth/permission";
+import { projectTodos } from "./project-todos";
 import type { ProjectStatus } from "@/lib/projects/list";
 
 export type InboxItem = AttentionItem
@@ -8,6 +9,7 @@ export type InboxItem = AttentionItem
   | { kind: "unsent"; at: Date | null; count: number; surfaceSlug: string };
 export type InboxProject = {
   slug: string; name: string; image: string | null; role: Role; status: ProjectStatus;
+  connectionPinned: boolean; gitlabTokenExpiresAt: Date | null;
   createdAt: Date; attention: readonly AttentionItem[];
   unsent: { count: number; surfaceSlug: string; at: Date | null } | null;
 };
@@ -48,16 +50,15 @@ function compareItems(a: InboxItem, b: InboxItem): number {
 export function planInbox(input: { projects: readonly InboxProject[]; seenAt: Date | null }): InboxPlan {
   let unread = 0;
   const groups: InboxPlan["groups"] = input.projects.flatMap(project => {
-    const items: InboxItem[] = [...project.attention];
-    if (project.status === "setup" && canPerform(project.role, "project:settings")) items.push({ kind: "setup", at: project.createdAt });
-    if (project.unsent !== null && project.unsent.count > 0) items.push({ kind: "unsent", ...project.unsent });
+    // D5: T8이 렌더·사전·목적지를 함께 붙일 때 이 필터를 없앤다.
+    const items = projectTodos(project).filter(item => item.kind !== "needs_reconnect");
     if (items.length === 0) return [];
     return [{
       project: { slug: project.slug, name: project.name, image: project.image },
       items: items.sort(compareItems).map(item => {
         const fresh = isUnread(item.kind, item.at, input.seenAt);
         if (fresh) unread++;
-        return { ...item, unread: fresh, ownerRetries: item.kind === "import_failed" && !canPerform(project.role, "project:settings") };
+        return { ...item, unread: fresh };
       }),
     }];
   });

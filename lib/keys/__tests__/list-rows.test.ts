@@ -12,7 +12,7 @@ import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMe
 
 const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 const surface = (over: Partial<ProjectListMemberRow["project"]["surfaces"][number]> = {}) =>
-  ({ archivedAt: null, lastCommitSha: "sha", lastImportError: null, lastImportStartedAt: null, ...over });
+  ({ id: "s1", slug: "web", lastImportedAt: null, lastCommitAt: null, archivedAt: null, lastCommitSha: "sha", lastImportError: null, lastImportStartedAt: null, ...over });
 const member = (surfaces: ProjectListMemberRow["project"]["surfaces"], over: Partial<ProjectListMemberRow["project"]> = {}): ProjectListMemberRow => ({
   role: "OWNER",
   project: {
@@ -85,5 +85,46 @@ describe("assembleProjectListRows — 열린 PR 삼상태", () => {
     const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", { openPr: undefined, repoAheadFiles: 0 }]]));
     if (row === undefined) throw new Error("no row");
     expect(rowBanner(row)).toEqual({ kind: "pr_check_failed" });
+  });
+});
+
+describe("assembleProjectListRows — 대표 메타", () => {
+  it("첫 적재 전 소스도 세고 키는 로케일 수와 무관하게 표면별로 한 번 센다", () => {
+    const surfaces = [surface({ id: "s1", slug: "web" }), surface({ id: "s2", slug: "app", lastCommitSha: null }),
+      surface({ id: "old", slug: "old", archivedAt: new Date(0) })];
+    const aggregates = { ...EMPTY,
+      keyTotals: new Map([["s1", 4], ["s2", 2], ["old", 100], ["other-project", 200]]),
+      locales: [
+        { projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "en", isBase: true },
+        { projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false },
+        { projectId: "p1", surfaceId: "s2", surfaceSlug: "app", code: "ko", isBase: true },
+        { projectId: "p1", surfaceId: "s2", surfaceSlug: "app", code: "en", isBase: false },
+        { projectId: "p1", surfaceId: "s2", surfaceSlug: "app", code: "es", isBase: false },
+        { projectId: "p1", surfaceId: "old", surfaceSlug: "old", code: "de", isBase: false },
+        { projectId: "p2", surfaceId: "other-project", surfaceSlug: "else", code: "fr", isBase: false },
+      ],
+    };
+    const [row] = assembleProjectListRows([member(surfaces)], aggregates, new Map());
+    expect(row).toMatchObject({ sourceCount: 2, keyCount: 6, languageCount: 3 });
+  });
+
+  it.each([
+    ["미적재", [surface({ lastCommitSha: null })], null],
+    ["시각 기록 이전 적재", [surface({ lastCommitAt: new Date(0) })], "unrecorded"],
+    ["마지막 성공 시각", [surface({ lastImportedAt: new Date("2026-10-01T00:00:00Z") }),
+      surface({ lastImportedAt: new Date("2026-10-02T00:00:00Z") }),
+      surface({ archivedAt: new Date(0), lastImportedAt: new Date("2026-10-03T00:00:00Z") })], "2026-10-02T00:00:00.000Z"],
+  ])("동기화: %s", (_label, surfaces, expected) => {
+    expect(assemble(member(surfaces)).lastSync).toBe(expected);
+  });
+
+  it("작업 로케일 집합에 없는 orphaned·REMOVE는 빼고 ADD는 센다", () => {
+    // 집계 ①이 workLocaleWhere로 고른 집합이다. DB 술어는 통합 테스트가 함께 검증한다.
+    const [row] = assembleProjectListRows([member([surface({ id: "s1" })])], {
+      ...EMPTY, keyTotals: new Map([["s1", 2]]),
+      locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "added", isBase: false }],
+      cells: [{ projectId: "p1", surfaceId: "s1", localeCode: "orphaned", needsReview: true, count: 9 }],
+    }, new Map());
+    expect(row).toMatchObject({ keyCount: 2, languageCount: 1, review: 0 });
   });
 });

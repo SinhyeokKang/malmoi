@@ -4,6 +4,7 @@ import { tokenExpiryState } from "@/lib/status/token-expiry";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { matchesAllTokens, searchTokens } from "@/lib/search/match";
+import type { ProjectTodo } from "@/lib/inbox/project-todos";
 import type { StateKey } from "@/lib/status/canon";
 
 /**
@@ -224,6 +225,36 @@ export function rowBanner(row: RowInput): RowBanner {
   if (row.repoAheadFiles > 0) return { kind: "repo_ahead", files: row.repoAheadFiles };
   if (row.review > 0) return { kind: "review", count: row.review };
   return null;
+}
+
+/** T6에서 RowBanner로 합친다. 기존 화면은 아직 never_filled를 그리지 않는다. */
+export type ProjectRowPlan = {
+  chip: StateKey;
+  group: ProjectGroup;
+  banner: RowBanner | Extract<ProjectTodo, { kind: "never_filled" }>;
+};
+
+/** 칩은 건강, 띠는 할 일이다. 정상 프로젝트의 할 일은 그룹을 바꾸지 않는다. */
+export function planProjectRow(row: RowInput, todos: readonly ProjectTodo[]): ProjectRowPlan {
+  const status = projectStatus(row);
+  if (status === "archived") return { chip: "archived", group: "archived", banner: null };
+  if (status === "needs_reconnect") return { chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } };
+  const failure = projectSyncFailure(row.surfaces);
+  if (failure !== null) return { chip: importFailureTone(failure) === "danger" ? "syncFailed" : "partiallySynced",
+    group: "needs_attention", banner: { kind: "import_failed", reason: failure } };
+  // 설정은 EDITOR의 Inbox에서 빠져도 행에서는 소유자에게 요청할 수 있다.
+  if (status === "setup") return { chip: "setup", group: "needs_attention", banner: { kind: "setup" } };
+  if (status === "awaiting_first_sync") return { chip: row.surfaces.some(surface => surface.importing) ? "syncing" : "notSyncedYet",
+    group: "needs_attention", banner: null };
+  const unsent = todos.find(todo => todo.kind === "unsent");
+  const review = todos.filter(todo => todo.kind === "review").reduce((sum, todo) => sum + todo.count, 0);
+  const banner: ProjectRowPlan["banner"] = unsent ? { kind: "unsent", count: unsent.count }
+    : row.openPr === undefined ? { kind: "pr_check_failed" }
+    : row.openPr !== null ? { kind: "pr_open", ...row.openPr }
+    : row.repoAheadFiles > 0 ? { kind: "repo_ahead", files: row.repoAheadFiles }
+    : review > 0 ? { kind: "review", count: review }
+    : todos.find(todo => todo.kind === "never_filled") ?? null;
+  return { chip: "active", group: "all_set", banner };
 }
 
 /**
