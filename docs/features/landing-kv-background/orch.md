@@ -60,3 +60,7 @@ T0(완료) · T1 A · T2 A · T3 B+B2 · T4 DS · T5 QA · T6 QA · T7 DOC · T8
 - **A 통합(로컬 dev, 미push)** — cherry-pick `fbf4ddbb..87ec1752`(6 커밋), main 체크아웃 `pnpm gate` → `gate: ok`(15891 통과). push는 B·B2·DS 뒤에 한 번에 한다.
 - B fix1 `worker_done` — f1156e14 · 76e472aa(W1 정적 흐름도 H를 쓴다 · Y2 순서 단언, `</div>` 이동으로 red 확인 · Y1 98 유지 + 주석). 지휘자 diff 확인 — 정적 흐름은 트랙이 `data-[static]:h-auto`라 변수 쓰기가 높이에 닿지 않는다. 수용.
 - **B 통합(로컬 dev, 미push)** — cherry-pick `2fe7b234..dbc7a2e5`(5 커밋), `gate: ok`(15900 통과). B2 Dispatch `ctx_6618c86a48ac`(B 터미널, rebase dev 후 `DotField` 삽입 + Y4 단언). 사용자 확인용으로 main 체크아웃 `pnpm dev`를 띄웠다 — B2 통합 전에 내린다.
+- B2 `worker_done` — a53c7810(`DotField` 삽입 · Y4 스크롤러 안 단언 · `/signin` 불변 단언). 지휘자 diff 확인 — 수용. **B2 통합(로컬, 미push)** `bcb623cf`, `gate: ok`(15904 통과). 병합 런타임 목록 11항목은 `handoffs/handoff-B.md` B2 절.
+- DS 시작 — main 체크아웃 QA 워커 `term_e553cb70` · Dispatch `ctx_78c09cfecba4`(Opus medium). 브리프 `brief-DS.md`. 이 동안 main 체크아웃에서 cherry-pick·build 금지.
+- DS `worker_done` — **불일치 0 · BugShot 0**(1280·1440·1920·2560·768·375·568×320, L/D, 사본 `handoffs/handoff-DS.md`). 측정 못 한 것: Safari·iOS 고무줄 스크롤, JS 전 폴백 한 프레임, 실제 터치 기기 → QA(T5·T6)로 넘긴다. ⚪ T7 몫: `dot-field.tsx` R6 주석의 "래퍼가 스크롤러의 첫 자식"을 "래퍼 앞에 높이 있는 형제가 없다"로(첫째는 높이 0인 JSON-LD `<script>`).
+- T8 — `pnpm guide:check --json` → `stale: []`. 재촬영 대상 없음(D8 확인).
