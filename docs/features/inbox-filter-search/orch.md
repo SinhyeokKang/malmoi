@@ -86,3 +86,5 @@
 - Q 결함 #302: 375px에서 공백 없는 q 200자의 NoMatch 제목이 카드 밖으로 잘림. D fix1 완료 뒤 새 Dispatch fix2로 EmptyState/NoMatch 최소 폭·줄바꿈/회귀·DESIGN/POSTMORTEM을 배정한다.
 
 - Q 브라우저 검증 종료: 제품 실패 #301·#302 외 통과, 서버·TaskSpace 종료. fixture DB 원복 대조 일치. 한계: 첫 Inbox 진입 전 attentionSeenAt을 저장하지 못해 첫 방문 직후 2026-10-18T13:20:32.350Z까지만 원복했다. 최초 진입 전 읽음 시각은 복구 불가이며 최종 보고에 남긴다.
+
+- D fix1/fix2 완료: 95b360b3/8df08653/79cfa90e/148e9acd/900fb0ac/8a0c43c1/775dddf7/78e6a4f5. 결합 gate ok (16,092 passed / 2 skipped), build·미러 성공. R3 task_e1db1cc14c98 / ctx_fc9afa13f82a를 새 Astra medium 워커에 배정했다.
