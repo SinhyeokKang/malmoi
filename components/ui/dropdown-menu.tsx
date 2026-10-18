@@ -22,6 +22,8 @@ export const DropdownMenuTrigger = Primitive.Trigger;
  * ⚠️ **뷰포트에서 8px 안쪽에 둔다**(`collisionPadding`, 2026-10-02 — 번역 값 패널의 언어 메뉴가 오른쪽 화면 밖으로 일부 열렸다). Radix는 기본으로
  * 충돌을 피하지만 여백이 0이라 화면 끝에 딱 붙거나, 정렬이 트리거 폭보다 넓은 메뉴를 끝 쪽으로 밀어냈다. 높이 상한
  * (`--radix-dropdown-menu-content-available-height`)도 이 여백을 뺀 값이라 긴 목록이 아래 끝에 붙지 않는다.
+ * ⚠️ **충돌 회피는 폭을 줄이지 않는다** — 긴 이름 메뉴가 375px 화면에서 448px로 잘렸다(#301).
+ * 기존 md 상한과 Radix 가용 폭 중 작은 값으로 제한해야 8px 여백 안에 들어온다.
  * ⚠️ **오른쪽 끝에 선 트리거는 호출부가 `align="end"`를 준다** — 시작 정렬이면 트리거보다 넓은 메뉴가 화면 끝 쪽으로 자란다.
  */
 export function DropdownMenuContent({
@@ -40,7 +42,7 @@ export function DropdownMenuContent({
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
-        className={cn("bg-popover border-border z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-60 max-w-md overflow-x-hidden overflow-y-auto rounded-lg border py-1 shadow-md", className)}
+        className={cn("bg-popover border-border z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-60 max-w-[min(var(--container-md),var(--radix-dropdown-menu-content-available-width))] overflow-x-hidden overflow-y-auto rounded-lg border py-1 shadow-md", className)}
         {...props}
         onCompositionStart={ime.onCompositionStart}
         onCompositionEnd={ime.onCompositionEnd}
