@@ -3365,7 +3365,7 @@ green이 된다. 자식 이름이 `gitlab`이 아닌 것은 GitLab 전용 절(`e
   page(Theme 카드의 초기값 prop). 둘 다 같은 요청 캐시라 값이 갈리지 않는다. 루트 레이아웃은 이미 CSP nonce·`getUiLocale()`로 동적이라 새로 동적이 된 페이지도,
   추가 쿼리도 없다.
 - ⚠️ **클라이언트 훅·provider가 없다** — §6.355가 "소비자마다 묻는다"를 택한 것은 페이지가 문구를 직접 읽어야 해서였고, 테마는 CSS가 `<html>` 속성 하나로
-  읽으므로 컴포넌트가 물을 일이 없다. 예외 둘도 DOM에서 읽는다: 로그인 Canvas 점(`dot-field.tsx` — 계산된 `color`를 읽고 System이면 `prefers-color-scheme`
+  읽으므로 컴포넌트가 물을 일이 없다. 예외 둘도 DOM에서 읽는다: Canvas 점(`dot-field.tsx` — 로그인 KV와 랜딩 배경이 같이 쓴다. 계산된 `color`를 읽고 System이면 `prefers-color-scheme`
   변화에 다시 읽는다) · Theme 카드와 공개 푸터 테마 스위처(같은 `applyColorScheme` — Action보다 먼저 `document.documentElement.dataset.theme`을 쓰고 `ok`가
   아니면 되돌린다, 한 줄 DOM 쓰기다). 스위처는 현재 값도 prop이 아니라 그 속성에서 얻는다 — 라벨은 CSS 변형(`[[data-theme=x]_&]`)이 고르고 메뉴 체크는
   열 때 읽는다(2026-10-10). 그래서 푸터를 그리는 셸 둘이 테마를 실어 나르지 않는다.
