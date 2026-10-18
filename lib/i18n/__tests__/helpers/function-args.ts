@@ -27,6 +27,8 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "search.noResults": ["X"],
   "search.results": [2],
   "inbox.labelUnread": [12],
+  "inbox.filters.selectedProjects": ["X"],
+  "inbox.noMatch.query": ["X"],
   "repositorySync.title": ["X"],
   "repositorySync.body": ["X"],
   "repositorySync.unsentCount": [2],
