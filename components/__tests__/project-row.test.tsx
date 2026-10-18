@@ -399,7 +399,7 @@ describe("빈 언어 띠", () => {
     expect(line.querySelector("svg.lucide-languages")).not.toBeNull();
     const link = line.querySelector("a")!;
     expect(link.textContent).toBe(en.sources.open);
-    expect(link.getAttribute("href")).toBe(attentionHref("acme", BLANK));
+    expect(link.getAttribute("href")).toBe(attentionHref("acme", BLANK, "settings"));
   });
 
   it("빈 언어가 여럿이면 첫 하나만 선다", async () => {

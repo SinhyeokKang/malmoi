@@ -38,6 +38,10 @@ export const ko = {
     emptyDescription: "어느 프로젝트에도 확인할 항목이 없습니다.",
     failed: "목록을 불러오지 못했습니다.",
     loading: "항목을 불러오는 중…",
+    needsReconnect: {
+      body: "이 리포지토리의 연결이 끊어졌습니다",
+      tail: " — 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+    },
   },
   repositorySync: {
     action: "동기화",

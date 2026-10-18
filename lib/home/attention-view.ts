@@ -1,5 +1,6 @@
-import { CircleX, Eye, Languages, TriangleAlert, CircleDashed, GitPullRequestArrow } from "lucide-react";
+import { CircleX, Eye, Languages, TriangleAlert, CircleDashed, GitPullRequestArrow, Unplug } from "lucide-react";
 import type { ComponentType } from "react";
+import { canPerform, type Role } from "@/lib/auth/permission";
 import type { Messages } from "@/lib/i18n";
 import type { AttentionItem } from "./attention";
 import type { InboxItem } from "@/lib/inbox/plan";
@@ -13,6 +14,8 @@ const TILE: Record<InboxItem["kind"], { icon: ComponentType<{ className?: string
   // 검토 대기는 호박 + `Eye`다 — 같은 Home의 카운트 카드·목록 띠와 같은 글리프(5-Y5).
   review: { icon: Eye, tone: "warning" },
   never_filled: { icon: Languages, tone: "muted" },
+  // 끊김은 Home Alert·목록 띠와 같은 호박 + `Unplug`다.
+  needs_reconnect: { icon: Unplug, tone: "warning" },
   setup: { icon: CircleDashed, tone: "muted" },
   unsent: { icon: GitPullRequestArrow, tone: "muted" },
 };
@@ -28,7 +31,19 @@ export function neverFilledHref(slug: string, surfaceSlug: string, code: string)
   return routes.surfaceTranslations(slug, surfaceSlug, { ns: ALL_NAMESPACES, completion: "incomplete", language: code });
 }
 
-export function attentionHref(slug: string, item: InboxItem): string {
+/**
+ * 재연결 항목의 목적지 — OWNER는 Settings(목록 띠 `Reconnect`와 같은 곳), **EDITOR는 프로젝트 Home**이다(project-row-redesign T0). Settings는
+ * `project:settings` 뒤라 EDITOR가 눌러서 거절당하고, Home에는 끊김 Alert와 EDITOR 문장이 이미 선다.
+ * ⚠️ **호출부가 이것으로 정해 `attentionHref`에 넘긴다** — 행 조각은 역할을 모르고(inbox-page D3), 세 소비자(드롭다운 · `/inbox` · Home 카드)가
+ * 같은 함수에서 값을 얻어야 같은 항목이 화면마다 다른 곳으로 가지 않는다.
+ */
+export type ReconnectDestination = "settings" | "home";
+export function reconnectDestination(role: Role): ReconnectDestination {
+  return canPerform(role, "project:settings") ? "settings" : "home";
+}
+
+export function attentionHref(slug: string, item: InboxItem, reconnect: ReconnectDestination): string {
+  if (item.kind === "needs_reconnect") return reconnect === "settings" ? routes.settings(slug) : routes.project(slug);
   if (item.kind === "setup") return routes.settings(slug);
   if (item.kind === "unsent") return bannerTranslationsHref(slug, item.surfaceSlug, "unsent");
   if (item.kind === "import_failed") return routes.sources(slug);
@@ -42,7 +57,8 @@ export function attentionTile(item: InboxItem) {
 }
 
 export function title(m: Messages, item: InboxItem): string {
-  if (item.kind === "setup") return "";
+  // 프로젝트 단위 항목은 보조줄(표면 · 로케일)이 없다 — 그룹 머리가 이미 프로젝트 이름이다.
+  if (item.kind === "setup" || item.kind === "needs_reconnect") return "";
   if (item.kind === "unsent") return item.surfaceSlug;
   if (item.kind === "import_failed") return m.home.attention.importFailed.title(item.surfaceSlug);
   const label = item.kind === "review" ? m.home.attention.review : m.home.attention.neverFilled;
@@ -50,6 +66,7 @@ export function title(m: Messages, item: InboxItem): string {
 }
 
 export function body(m: Messages, item: InboxItem): string {
+  if (item.kind === "needs_reconnect") return m.inbox.needsReconnect.body;
   if (item.kind === "setup") return m.projects.banner.setup;
   if (item.kind === "unsent") return m.projects.banner.unsent(item.count);
   // 일부만 반영된 표면은 실패 문장을 빌리지 않는다(DESIGN §2.4 — 데이터는 들어갔다).
@@ -64,6 +81,7 @@ export function body(m: Messages, item: InboxItem): string {
  * `actorLabel`이 아니라 **`actors` 맵의 키 존재**에서 왔다.
  */
 export function tail(m: Messages, item: InboxItem): string {
+  if (item.kind === "needs_reconnect") return m.inbox.needsReconnect.tail;
   if (item.kind === "setup" || item.kind === "unsent") return "";
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.tail : m.home.attention.importFailed.tail;
   if (item.kind === "review") return item.who === null ? "." : m.home.attention.review.tail(item.who);

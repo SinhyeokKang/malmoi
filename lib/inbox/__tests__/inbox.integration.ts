@@ -72,7 +72,7 @@ it("Action에서 모든 종류를 읽고 닫기 뒤 다음 배지는 0, 새 일�
   expect(items.map(item => item.kind).sort()).toEqual(["import_failed", "never_filled", "review", "setup", "unsent"]);
   expect(items.find(item => item.kind === "review")?.unread).toBe(false);
   const unsent = items.find(item => item.kind === "unsent")!;
-  expect(attentionHref("p", unsent)).toBe("/projects/p/surfaces/web/translations?ns=*&state=unsent");
+  expect(attentionHref("p", unsent, "settings")).toBe("/projects/p/surfaces/web/translations?ns=*&state=unsent");
   expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 0 });
   await prisma.translation.updateMany({ where: { projectId: "p", pendingEditToken: { not: null } }, data: { updatedAt: future } });
   const next = await openAttentionInboxAction();

@@ -16,11 +16,11 @@ const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000);
 const PLAN: InboxPlan = {
   unread: 2,
   groups: [
-    { project: { slug: "storefront", name: "Storefront", image: null }, items: [
+    { project: { slug: "storefront", name: "Storefront", image: null, reconnect: "settings" }, items: [
       { kind: "import_failed", at: ago(12), surfaceSlug: "web", reason: "parse-failed", unread: true, ownerRetries: false },
       { kind: "review", at: ago(180), surfaceSlug: "web", code: "ko", name: "Korean", count: 8, who: "Kim", unread: false, ownerRetries: false },
     ] },
-    { project: { slug: "mobile", name: "Mobile app", image: null }, items: [
+    { project: { slug: "mobile", name: "Mobile app", image: null, reconnect: "home" }, items: [
       { kind: "import_failed", at: ago(20), surfaceSlug: "app", reason: "partial-import", unread: true, ownerRetries: true },
       { kind: "unsent", at: null, count: 3, surfaceSlug: "app", unread: false, ownerRetries: false },
     ] },
@@ -33,7 +33,7 @@ it("카드·행 순서가 계획 그대로이고 카드 머리는 썸네일 + �
   expect(cards.map(card => card.querySelector("h2")?.textContent)).toEqual(["Storefront", "Mobile app"]);
   for (const card of cards) expect(card.querySelector("h2 .size-4.rounded")).not.toBeNull();
   const links = cards.map(card => [...card.querySelectorAll("a")].map(a => a.getAttribute("href")));
-  expect(links).toEqual(PLAN.groups.map(group => group.items.map(item => attentionHref(group.project.slug, item))));
+  expect(links).toEqual(PLAN.groups.map(group => group.items.map(item => attentionHref(group.project.slug, item, group.project.reconnect))));
 });
 
 it("행은 긴 시각 형 · 안 읽음 점과 sr 낱말 · EDITOR 실패 안내 · 시각 없는 항목은 aside 없음", async () => {
@@ -57,4 +57,14 @@ it("빈 목록이면 카드 없이 빈 상태 하나 — Home 제목과 Inbox �
   expect(container.textContent).toContain(en.inbox.emptyDescription);
   // `placement="card"` — 테두리 있는 카드 형이다(드롭다운의 `inset`과 다르다).
   expect(container.querySelector(".rounded-lg.border.py-12")).not.toBeNull();
+});
+
+it("재연결 항목의 목적지는 그룹 값이다 — EDITOR 그룹은 프로젝트 Home", async () => {
+  const plan: InboxPlan = { unread: 1, groups: [{ project: { slug: "mobile", name: "Mobile app", image: null, reconnect: "home" }, items: [
+    { kind: "needs_reconnect", at: null, unread: true, ownerRetries: true },
+  ] }] };
+  const { container } = await render(<InboxList plan={plan} now={now} m={en} uiLocale="en" />);
+  expect(container.querySelector("a")?.getAttribute("href")).toBe("/projects/mobile");
+  expect(container.textContent).toContain(en.inbox.needsReconnect.body);
+  expect(container.textContent).toContain(en.projects.banner.askOwner.reconnect);
 });

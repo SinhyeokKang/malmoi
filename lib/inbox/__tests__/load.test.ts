@@ -2,8 +2,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadAttentionInbox } from "../load";
 import { planInbox } from "../plan";
-const mocks = vi.hoisted(() => ({ actors: vi.fn() }));
+const mocks = vi.hoisted(() => ({ actors: vi.fn(), remote: vi.fn() }));
 vi.mock("@/lib/keys/query", async importOriginal => ({ ...await importOriginal<typeof import("@/lib/keys/query")>(), loadActors: mocks.actors }));
+// 배지 Action이 매 헤더에서 이 로더를 부른다 — 호스트 API(원격 신호)를 부르면 헤더마다 비용이 든다(project-row-redesign 비목표).
+vi.mock("@/lib/projects/remote", async importOriginal => ({ ...await importOriginal<typeof import("@/lib/projects/remote")>(), loadRemoteSignals: mocks.remote }));
 const at = new Date("2026-10-01T00:00:00Z");
 const locale = { code: "ko", name: "Korean", orphaned: false, createdAt: at };
 function member(id: string, overrides = {}) {
@@ -83,4 +85,12 @@ it.each(["aggregate", "review", "actors"])("하위 %s 실패는 전체 실패다
   if (source === "review") db.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockRejectedValueOnce(new Error("broken"));
   if (source === "actors") mocks.actors.mockRejectedValue(new Error("broken"));
   await expect(loadAttentionInbox(prisma, "user")).rejects.toThrow("broken");
+});
+it("끊긴 프로젝트가 재연결 항목이 되고 원격 신호는 한 번도 부르지 않는다", async () => {
+  const { prisma } = database([member("gone", { repositoryId: null }), member("p1")]);
+  const plan = await loadAttentionInbox(prisma, "user");
+  expect(plan.groups.map(group => [group.project.slug, group.project.reconnect, group.items.map(item => item.kind)])).toEqual([
+    ["gone", "settings", ["needs_reconnect"]],
+  ]);
+  expect(mocks.remote).not.toHaveBeenCalled();
 });

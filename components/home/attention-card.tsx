@@ -8,6 +8,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
 import { attentionRowSlots } from "@/components/inbox/row-slots";
+import { reconnectDestination } from "@/lib/home/attention-view";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
 
@@ -104,7 +105,8 @@ function AttentionRow({ item, slug, role, now, uiLocale, m }: { item: AttentionI
 }) {
   // ⚠️ 권한 판정은 이 호출부의 몫이다 — 공유 슬롯은 `ownerRetries`만 받고 다시 판정하지 않는다(inbox-page D3). Home 항목에는 `unread`가 없어 점도 안 선다.
   const ownerRetries = item.kind === "import_failed" && !canPerform(role, "project:settings");
-  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, { ...item, ownerRetries }, now, { time: "long" });
+  // 재연결 목적지는 Inbox와 같은 함수로 정한다 — Home 카드에 끊김 항목은 없지만 같은 항목이 화면마다 다른 곳으로 가지 않게 한 출처다.
+  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, { ...item, ownerRetries }, now, { time: "long", reconnect: reconnectDestination(role) });
 
   return <ListRow chevron href={href} className="border-border border-t text-base" {...slots} />;
 }

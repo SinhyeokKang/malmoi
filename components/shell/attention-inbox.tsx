@@ -17,6 +17,7 @@ import { ListGroup } from "@/components/ui/list-group";
 import { ListRow } from "@/components/ui/list-row";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ReconnectDestination } from "@/lib/home/attention-view";
 import { badgeLabel, type InboxPlan } from "@/lib/inbox/plan";
 import { onSeen, setUnread, useInboxUnread } from "@/lib/inbox/unread-store";
 import { WIDE_QUERY } from "@/lib/shell/breakpoint";
@@ -231,7 +232,7 @@ function InboxBody({ list, loading, onRetry, sheet, onNavigate }: {
         : list.plan.groups.map(group => (
           <ListGroup key={group.project.slug} heading={group.project.name}
             icon={<ProjectThumbnail size="xs" name={group.project.name} src={group.project.image} />}>
-            {group.items.map(item => <Row key={attentionItemKey(group.project.slug, item)} slug={group.project.slug} item={item} now={list.loadedAt} sheet={sheet} onNavigate={onNavigate} />)}
+            {group.items.map(item => <Row key={attentionItemKey(group.project.slug, item)} slug={group.project.slug} reconnect={group.project.reconnect} item={item} now={list.loadedAt} sheet={sheet} onNavigate={onNavigate} />)}
           </ListGroup>
         )))}
     </div>
@@ -242,10 +243,10 @@ function InboxBody({ list, loading, onRetry, sheet, onNavigate }: {
  * 항목 하나 — 내용은 Home 카드·`/inbox` 페이지와 같은 조각(`attentionRowSlots`)이고 그릇만 메뉴 행(메뉴) 또는 링크 행(시트)이다.
  * ⚠️ 시각은 짧은 형(`12m ago`)이다 — 360 메뉴의 문장 칸(226)을 지킨다(#190). 시트(375)의 문장 칸도 약 240이라 같은 형이다. 점이 `absolute`라 행에 `relative`를 준다.
  */
-function Row({ slug, item, now, sheet, onNavigate }: { slug: string; item: Item; now: Date; sheet: boolean; onNavigate: () => void }) {
+function Row({ slug, reconnect, item, now, sheet, onNavigate }: { slug: string; reconnect: ReconnectDestination; item: Item; now: Date; sheet: boolean; onNavigate: () => void }) {
   const m = useMessages();
   const uiLocale = useUiLocale();
-  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, item, now, { time: "narrow" });
+  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, item, now, { time: "narrow", reconnect });
   return sheet
     ? <ListRow href={href} ringInset className={cn(DROPDOWN_MENU_ROW, "relative")} onClick={onNavigate} {...slots} />
     : <DropdownMenuRow href={href} className="relative" {...slots} />;

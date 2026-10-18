@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { IconTile } from "@/components/ui/icon-tile";
-import { attentionHref, attentionTile, body, tail, title } from "@/lib/home/attention-view";
+import { attentionHref, attentionTile, body, tail, title, type ReconnectDestination } from "@/lib/home/attention-view";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { InboxItem } from "@/lib/inbox/plan";
@@ -24,13 +24,14 @@ export function attentionRowSlots(
   slug: string,
   item: AttentionRowItem,
   now: Date,
-  { time }: { time: "narrow" | "long" },
+  /** `reconnect`는 호출부가 `reconnectDestination`으로 정한 재연결 목적지다 — 여기서 역할을 판정하지 않는다. */
+  { time, reconnect }: { time: "narrow" | "long"; reconnect: ReconnectDestination },
 ): { href: string; icon: ReactNode; title: ReactNode; description: ReactNode; aside: ReactNode } {
   const tile = attentionTile(item);
   const Tile = tile.icon;
   const sub = title(m, item);
   return {
-    href: attentionHref(slug, item),
+    href: attentionHref(slug, item, reconnect),
     icon: <>
       {item.unread && <>
         <span className="sr-only">{m.inbox.unread}</span>
@@ -43,7 +44,8 @@ export function attentionRowSlots(
     // 보조줄(표면 · 로케일)은 본문 **아래**고 한 줄로 자른다 — 이름이 길어져 행 높이가 흔들리지 않게. EDITOR 실패 안내는 따로 한 줄이다.
     description: sub === "" && !item.ownerRetries ? undefined : <>
       {sub !== "" && <span className="block truncate">{sub}</span>}
-      {item.ownerRetries && <span className="mt-copy-gap block">{m.projects.importFailure.ownerRetries}</span>}
+      {/* 안내 문장은 종류가 고른다 — 끊김은 목록 띠의 EDITOR 갈래와 같은 `askOwner.reconnect`, 나머지는 재시도 안내다. 띄울지는 `ownerRetries`(호출부)가 정한다. */}
+      {item.ownerRetries && <span className="mt-copy-gap block">{item.kind === "needs_reconnect" ? m.projects.banner.askOwner.reconnect : m.projects.importFailure.ownerRetries}</span>}
     </>,
     // 시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `gray-dim`은 2.5:1이라 읽기 어려웠다).
     // 시각이 없으면 칸을 비운다 — 실패 시각이 기록되지 않은 항목에 "Never"를 적으면 거짓이다. `narrow`는 360 메뉴의 문장 칸(226)을 지킨다(#190).

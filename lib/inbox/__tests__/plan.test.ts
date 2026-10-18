@@ -76,3 +76,22 @@ it.each([
 ])("clampSeenAt: %s → null", (_, input) => {
   expect(clampSeenAt(input, serverNow)).toBeNull();
 });
+
+/**
+ * 재연결 항목의 시각 (project-row-redesign design §4) — GitLab 토큰 만료면 만료일, 연결 고정이 빠진 행은 `null`이라 그룹 안 맨 뒤로 가고
+ * `seenAt`이 있으면 안 읽음으로 세지 않는다. ⚠️ **만료일이 마지막 열람보다 이르면 처음부터 읽음이다**(RA 🟢4) — 배지 수가 늘지 않는다.
+ */
+it.each([
+  ["만료일이 열람 뒤", new Date(at.getTime() + 1), at, true],
+  ["만료일이 열람 전 — 읽음으로 태어난다", new Date(at.getTime() - 1), at, false],
+  ["시각 없음 + 열람 기록 있음", null, at, false],
+  ["시각 없음 + 열람 기록 없음", null, null, true],
+] as const)("재연결 읽음: %s", (_label, expiresAt, seenAt, unread) => {
+  const result = planInbox({ projects: [{ ...project, attention: [], status: "needs_reconnect", gitlabTokenExpiresAt: expiresAt, connectionPinned: expiresAt !== null }], seenAt });
+  expect(result.groups[0]?.items).toEqual([{ kind: "needs_reconnect", at: expiresAt, ownerRetries: false, unread }]);
+  expect(result.unread).toBe(unread ? 1 : 0);
+});
+it("시각 없는 재연결은 그룹 안 맨 뒤다 — 시각 있는 항목이 앞선다", () => {
+  const result = planInbox({ projects: [{ ...project, status: "needs_reconnect", connectionPinned: false, attention: [failed] }], seenAt: null });
+  expect(result.groups[0]?.items.map(item => item.kind)).toEqual(["import_failed", "needs_reconnect"]);
+});

@@ -99,6 +99,14 @@ export const en = {
     failed: "Couldn't load this list.",
     /** 골격은 `aria-hidden`이라 이 sr 문장이 "불러오는 중"을 말한다. */
     loading: "Loading items…",
+    /**
+     * 연결이 끊긴 프로젝트 항목(project-row-redesign) — 목록 띠 `projects.banner.needsReconnect`를 `—`에서 나눈 두 조각이다. 굵은 사실 + 근거 꼬리라
+     * 다른 항목과 같은 형이고, 새 문장이 아니라 같은 말이다(`inbox-row-slots.test.tsx`가 둘을 이어 띠 문장과 견준다).
+     */
+    needsReconnect: {
+      body: "This repository is disconnected",
+      tail: " — syncs and publishes stop until it's reconnected.",
+    },
   },
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.

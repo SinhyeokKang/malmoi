@@ -35,6 +35,10 @@ export const es = {
     emptyDescription: "Nada requiere tu atención en tus proyectos.",
     failed: "No pudimos cargar esta lista.",
     loading: "Cargando elementos…",
+    needsReconnect: {
+      body: "Este repositorio está desconectado",
+      tail: ": las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
+    },
   },
   repositorySync: {
     action: "Sincronizar",
