@@ -96,9 +96,12 @@ export default async function ProjectsLoading() {
                   <Skeleton size="xs" className="h-3 w-70 max-w-full @max-form:w-[70%]" />
                   <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>
                 </div>
-                <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
-                {/* chevron 자리 16 — 실물 행 오른쪽 끝의 `ChevronRight`다. 없으면 칩 자리가 16+12만큼 오른쪽에 선다. */}
-                <Skeleton className="size-4 shrink-0" />
+                {/* 칩 + chevron은 실물처럼 한 묶음(사이 12)이다 — 행의 형제로 두면 그 사이가 행 gap 16이 된다. */}
+                <span className="flex shrink-0 items-center gap-3">
+                  <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+                  {/* chevron 자리 16 — 실물 행 오른쪽 끝의 `ChevronRight`다. 없으면 칩 자리가 16+12만큼 오른쪽에 선다. */}
+                  <Skeleton className="size-4 shrink-0" />
+                </span>
               </li>
             ))}
           </ul>

@@ -424,7 +424,8 @@ export function assembleProjectListRows(
       memberCount: r.project._count.members,
       baseBranch: r.project.baseBranch,
       lastPrUrl: r.project.lastPrUrl,
-      reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
+      // 검토 띠의 목적지 — 띠의 수와 같은 `rowReviewCells` 결과에서 고른다(검토가 있는 가장 작은 slug). 따로 거르면 수와 목적지가 갈린다.
+      reviewSurfaceSlug: review.flatMap(cell => surfaces.find(surface => surface.id === cell.surfaceId)?.slug ?? []).sort()[0] ?? null,
       unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
       repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
       review: review.reduce((sum, cell) => sum + cell.count, 0),

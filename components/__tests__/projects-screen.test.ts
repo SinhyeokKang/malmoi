@@ -342,7 +342,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
 
   it("띠 갈래를 `planProjectRow`가 정한다 — 화면이 상태를 다시 판정하지 않는다", () => {
     expect(BODY).toContain("const { chip, banner } = row.plan;");
-    expect(BODY).not.toMatch(/\b(rowBanner|rowChip|meterSlot|projectGroup)\(/);
+    // 화면이 목록 판정 모듈에서 받는 것은 본문 갈래(`listBody`)와 타입 둘뿐이다 — 판정 함수를 import하지 않는다.
+    expect(BODY).toContain('import { listBody, type ProjectGroup, type RowBanner } from "@/lib/projects/list";');
     expect(BODY).toContain("listBody(all, q)");
   });
 
@@ -393,6 +394,8 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     // 실물 `ProjectThumbnail`과 같은 8이다(POSTMORTEM 2026-09-17 — 옛 골격만 4였다).
     ["행 썸네일 radius 8", '<Skeleton className="size-7 shrink-0 rounded-sm" />'],
     ["행 gap 16", "gap-4"],
+    // 칩 + chevron이 실물처럼 한 묶음이다 — 따로 서면 행 gap 16이 그 사이에 들어 칩이 4만큼 왼쪽에 선다.
+    ["우측 묶음 gap 12", "flex shrink-0 items-center gap-3"],
   ])("%s가 실물과 같다", (_label, literal) => {
     expect(SKELETON).toContain(literal);
   });

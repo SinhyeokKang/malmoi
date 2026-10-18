@@ -284,7 +284,9 @@ export function rowReviewCells(
   for (const [key, cell] of foldCells(locales, cells)) {
     if (cell.review === 0) continue;
     const [projectId = "", surfaceId = "", code = ""] = key.split("\u0000");
-    out.set(projectId, [...(out.get(projectId) ?? []), { surfaceId, code, count: cell.review }]);
+    const list = out.get(projectId) ?? [];
+    list.push({ surfaceId, code, count: cell.review });
+    out.set(projectId, list);
   }
   return out;
 }

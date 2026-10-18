@@ -413,7 +413,9 @@ describe("GitLab 행 전체가 GitLab 문장이다", () => {
   it.each([
     ["연결 전", { gitlabConnectionId: null, repositoryId: null }],
     ["PR 조회 실패", { openPr: undefined }],
-  ])("%s 행에 GitHub·pull request 낱말이 0건이다", async (_label, over) => {
+  ] as [string, Partial<RowFixture>][])("%s 행에 GitHub·pull request 낱말이 0건이다", async (label, over) => {
+    // 픽스처가 정말 그 상태에 닿는다 — 칩이 바뀌면 이 단언은 공허하게 통과한다.
+    expect(planned({ ...BASE, ...GITLAB, ...over }).plan.chip).toBe(label === "연결 전" ? "setup" : "active");
     const container = await draw({ ...GITLAB, ...over });
     const card = container.querySelector("ul")!;
     expect(card.textContent).not.toMatch(/github|pull request/i);

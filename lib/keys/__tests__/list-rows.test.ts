@@ -159,3 +159,32 @@ describe("assembleProjectListRows — DB 할 일", () => {
     expect(row.plan).toEqual({ chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } });
   });
 });
+
+/**
+ * **검토 띠의 수와 링크 목적지가 한 집합에서 나온다** (RB 🟢1). `reviewSurfaceSlug`는 `rowReviewCells`가 낸 (표면, 로케일) 가운데 검토가 있는
+ * 가장 작은 slug다 — 따로 셀을 거르면 띠는 "N개 검토"인데 링크는 그 셀이 없는 소스로 갈 수 있다.
+ */
+describe("assembleProjectListRows — 검토 띠의 목적지", () => {
+  it("검토가 있는 작업 언어의 소스 중 가장 작은 slug이고, 작업 언어 밖의 셀은 목적지를 만들지 않는다", () => {
+    const [row] = assembleProjectListRows([member([surface({ id: "s1", slug: "web" }), surface({ id: "s2", slug: "app" }), surface({ id: "s3", slug: "admin" })])], {
+      ...EMPTY,
+      locales: [
+        { projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false },
+        { projectId: "p1", surfaceId: "s2", surfaceSlug: "app", code: "ko", isBase: false },
+      ],
+      cells: [
+        { projectId: "p1", surfaceId: "s1", localeCode: "ko", needsReview: true, count: 2 },
+        { projectId: "p1", surfaceId: "s2", localeCode: "ko", needsReview: false, count: 5 },
+        // `admin`의 `ja`는 작업 언어가 아니다(orphaned·제거 예정) — 수에도 목적지에도 들지 않는다.
+        { projectId: "p1", surfaceId: "s3", localeCode: "ja", needsReview: true, count: 9 },
+      ],
+    }, new Map());
+    expect(row).toMatchObject({ review: 2, reviewSurfaceSlug: "web" });
+    expect(row?.plan.banner).toEqual({ kind: "review", count: 2 });
+  });
+
+  it("검토가 없으면 목적지도 없다", () => {
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map());
+    expect(row?.reviewSurfaceSlug).toBeNull();
+  });
+});
