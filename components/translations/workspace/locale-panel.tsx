@@ -17,7 +17,7 @@ import { MISSING_LANGUAGES } from "@/lib/translations/query";
 import { detailFill } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
-import { FilterMenu } from "./filter-menu";
+import { OptionsFilterMenu } from "./filter-menu";
 
 /**
  * 선택 키의 로케일 상세 (핸드오프 `2a` · `2d` · `2j`). **고정 블록**(키 이름 · N of M · 설명 · 코드 위치)과 저장 푸터는 스크롤하지 않고,
@@ -75,7 +75,7 @@ export function LanguageMenu({ detail, language, locked = false, onLanguage }: {
   const w = m.translations.workspace.detail;
   const languageLabel = language === undefined ? w.allLanguages : language === MISSING_LANGUAGES ? w.missingOnly : language;
   return (
-    <FilterMenu
+    <OptionsFilterMenu
       axis={w.languagesGroup}
       label={languageLabel}
       on={language !== undefined}

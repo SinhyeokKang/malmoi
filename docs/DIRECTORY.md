@@ -326,6 +326,8 @@ components/
                         실제 retry 콜백을 호출하며 404·빈 결과는 alert 없는 EmptyState로 남는다
   ui/select-row.tsx     SelectRow — 선택 행 모양과 radio/checkbox 입력·expand/aside 슬롯을 공유한다.
                         RadioGroup·목록 역할·선택/확장 시점과 비활성 사유 연결은 실제 소비자가 소유한다
+  ui/filter-menu.tsx    FilterMenu — FieldTrigger + DropdownMenu 공통 껍데기. Logs·번역 화면이 쓰고 Inbox 필터 줄도 같은 형을 쓴다.
+                        축을 포함한 접근 이름·크기·정렬·disabled·triggerRef·닫힘 포커스를 들며 항목은 children이 소유한다. 트리거를 감싸지 않는다
   ui/field-trigger.tsx  FieldTrigger — 필드형 드롭다운의 md36/sm28·active/disabled·뒤 글리프를 공유한다.
                         Radix 트리거의 asChild 자식으로 조립하며 슬롯·네이티브 속성은 실제 컨트롤에 남는다
   ui/copy-button.tsx    CopyButton — onboarding/에서 이동한 복사 동작과 성공/실패 피드백.
@@ -378,7 +380,7 @@ components/
                         AppWideOnly) — 셋째 소비자가 붙으며 public-shell/nav-drawer에서 옮겼다(#214 Chrome 순서, ARCHITECTURE §6.358)
   translations/workspace/  **번역 작업 화면** (2026-09-23, translation-rework C4 — DESIGN §6.1a). workspace(draft·이동·폭의
                         **한 소유자** — 저장·Revert·Publish 확인이 전부 여기서 갈린다) · tree-panel · key-list · locale-panel ·
-                        filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
+                        filter-menu(OptionsFilterMenu — 공통 ui/FilterMenu 위에서 options·그룹·hint를 조립) · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
                         beforeunload다). ⚠️ 카드 사이 핸들은 react-resizable-panels가 아니다 — px 하한 셋(420·336·208)을
                         % 환산 없이 지키려고 lib/translations/layout.ts가 폭을 계획한다
                         ⚠️ 카드 772 미만은 단일 판이다(2026-10-11 responsive-app) — 판 표시는 CSS(`@container/ws` + data-pane)이고 판 전환은
