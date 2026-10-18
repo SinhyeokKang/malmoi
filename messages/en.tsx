@@ -89,6 +89,29 @@ export const en = {
    * (`common.nav.inbox`)과 같다(inbox-page — 옛 값 `Needs your attention`은 Home 카드 제목으로만 남는다. 같은 목적지의 이름이 둘이면 하나가 낡는다).
    */
   inbox: {
+    filters: {
+      all: "All items",
+      anyProject: "Any project",
+      clear: "Clear filters",
+      clearProjects: "Clear projects",
+      axis: { project: "Project" },
+      /** 프로젝트 이름은 사용자 데이터라 번역하지 않는다. 호출부가 전체 이름을 ", "로 잇는다. */
+      selectedProjects: (names: string): string => names,
+      kinds: {
+        publish: "Unsent",
+        review: "Needs review",
+        untranslated: "Untranslated",
+        sync_failed: "Sync failed",
+        partial: "Partially synced",
+        disconnected: "Disconnected",
+        setup: "Setup",
+      },
+    },
+    search: { label: "Search items", placeholder: "Search items…" },
+    noMatch: {
+      title: "No items match these filters",
+      query: (q: string): string => `No items match “${q}”`,
+    },
     label: "Inbox",
     /** 배지는 `9+`로 접어도 이 이름은 실제 수를 읽는다 — 숫자 배지는 `aria-hidden`이다. */
     labelUnread: (n: number): string => `Inbox, ${n.toLocaleString("en-US")} unread`,

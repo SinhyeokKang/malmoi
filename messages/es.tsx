@@ -29,6 +29,28 @@ export const es = {
     results: (count: number): string => `${count.toLocaleString("es")} ${count === 1 ? "resultado" : "resultados"}`,
   },
   inbox: {
+    filters: {
+      all: "Todos los elementos",
+      anyProject: "Cualquier proyecto",
+      clear: "Borrar filtros",
+      clearProjects: "Borrar proyectos",
+      axis: { project: "Proyecto" },
+      selectedProjects: (names: string): string => names,
+      kinds: {
+        publish: "Sin enviar",
+        review: "Por revisar",
+        untranslated: "Sin traducir",
+        sync_failed: "Sincronización fallida",
+        partial: "Sincronizado en parte",
+        disconnected: "Desconectado",
+        setup: "Pendiente de configurar",
+      },
+    },
+    search: { label: "Buscar elementos", placeholder: "Buscar elementos…" },
+    noMatch: {
+      title: "Ningún elemento coincide con estos filtros",
+      query: (q: string): string => `Ningún elemento coincide con “${q}”`,
+    },
     label: "Bandeja de entrada",
     labelUnread: (n: number): string => `Bandeja de entrada, ${n.toLocaleString("es")} sin leer`,
     unread: "Sin leer",

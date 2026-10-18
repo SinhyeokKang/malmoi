@@ -32,6 +32,28 @@ export const ko = {
     results: (count: number): string => `결과 ${count.toLocaleString("ko-KR")}건`,
   },
   inbox: {
+    filters: {
+      all: "모든 항목",
+      anyProject: "모든 프로젝트",
+      clear: "필터 지우기",
+      clearProjects: "프로젝트 필터 해제",
+      axis: { project: "프로젝트" },
+      selectedProjects: (names: string): string => names,
+      kinds: {
+        publish: "미전송",
+        review: "검토 필요",
+        untranslated: "미번역",
+        sync_failed: "동기화 실패",
+        partial: "일부 동기화됨",
+        disconnected: "연결 끊김",
+        setup: "설정",
+      },
+    },
+    search: { label: "항목 검색", placeholder: "항목 검색…" },
+    noMatch: {
+      title: "필터에 맞는 항목 없음",
+      query: (q: string): string => `“${q}”에 해당하는 항목 없음`,
+    },
     label: "받은편지함",
     labelUnread: (n: number): string => `받은편지함, 읽지 않은 항목 ${n.toLocaleString("ko-KR")}개`,
     unread: "읽지 않음",

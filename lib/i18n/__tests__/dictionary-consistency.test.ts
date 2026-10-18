@@ -73,6 +73,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
   // 랜딩 목업의 가짜 리포 데이터(파일명·키·커밋 수)는 일부러 en 그대로다(W2 요청 — 2026-10-04).
   ko: [
     "landing.mockup",
+    // 사용자 프로젝트 이름 목록 — 번역할 낱말이 없다(inbox-filter-search).
+    "inbox.filters.selectedProjects",
     // 고유명사·기호 — 번역하지 않는 이름(`Malmoi`·`GitHub`·`Google`·`CI`·`404`·`—`·키 기호)
     "common.appName",
     "common.keys",
@@ -118,6 +120,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
   ],
   es: [
     "landing.mockup",
+    // 사용자 프로젝트 이름 목록 — 번역할 낱말이 없다(inbox-filter-search).
+    "inbox.filters.selectedProjects",
     // 코드와 소스 이름을 괄호로 잇는 기호 틀이다(`fr (web)`) — 번역할 낱말이 없다(locale-add 시안 P4).
     "repositorySync.languageInSource",
     "translations.publish.language.inSource",
