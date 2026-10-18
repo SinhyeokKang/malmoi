@@ -178,7 +178,9 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
       `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`,
     );
     const root = find<HTMLElement>(container, "[data-landing-root]");
-    expect(root.style.getPropertyValue("--landing-stage-h")).toBe(`${H}px`);
+    // 스테이지 높이는 한 칸 위(스크롤러)에 쓴다 — 랜딩 배경 캔버스가 스테이지 밖에서 같은 값을 읽는다(landing-kv-background R3).
+    expect(find<HTMLElement>(container, "[data-public-scroller]").style.getPropertyValue("--landing-stage-h")).toBe(`${H}px`);
+    expect(root.style.getPropertyValue("--landing-stage-h")).toBe("");
     expect(root.style.getPropertyValue("--landing-track-h")).toBe(`${trackHeight(H)}px`);
   });
 
@@ -395,7 +397,7 @@ describe("Stage — 크기 변화", () => {
     expect(find<HTMLElement>(container, "[data-landing-frame]").style.transform).toBe(
       `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`,
     );
-    expect(find<HTMLElement>(container, "[data-landing-root]").style.getPropertyValue("--landing-stage-h")).toBe("1342px");
+    expect(scroller.style.getPropertyValue("--landing-stage-h")).toBe("1342px");
     expect(find<HTMLElement>(container, "[data-landing-root]").style.getPropertyValue("--landing-track-h")).toBe(`${trackHeight(1342)}px`);
   });
 

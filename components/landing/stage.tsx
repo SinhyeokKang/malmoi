@@ -116,7 +116,7 @@ export function Stage({
     let lastH = 0;
     let lastStageTop = 0;
     let lastScrollTop = 0;
-    /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
+    /** 같은 값을 다시 쓰지 않는다 — 루트·스크롤러의 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
     let written = { stageH: "", width: "", height: "", transform: "", chromeTransform: "", caption: -1, typed: "", chromeW: -1, staticScale: -1, staticCanvas: "" };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
@@ -125,7 +125,9 @@ export function Stage({
     const setStageH = (H: number) => {
       const value = `${H}px`;
       if (value === written.stageH) return;
-      root.style.setProperty("--landing-stage-h", value);
+      // 스테이지 높이만 스크롤러에 쓴다 — 랜딩 배경 캔버스(`app/page.tsx`의 `[data-landing-kv]` 래퍼)가 스테이지 밖에서 같은 값을 읽는다
+      // (landing-kv-background R3). 스크롤러는 페이지마다 다시 마운트되므로 다른 공개 화면에 남지 않는다.
+      scroller.style.setProperty("--landing-stage-h", value);
       root.style.setProperty("--landing-track-h", `${trackHeight(H)}px`);
       written = { ...written, stageH: value };
     };
