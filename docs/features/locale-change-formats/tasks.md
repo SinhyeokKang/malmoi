@@ -64,7 +64,7 @@ T4~T6은 한 커밋이다 — T4만 들어가면 Publish가 새 파일을 조용
 
 ## 실물 검증
 
-- [ ] T14. `/roundtrip` — 폐기용 리포에서 추가 → Publish 미리보기(MCP `preview_publish`)와 실행 비교 → PR의 새 파일 → 머지 → 재적재 diff 0 →
+- [x] T14. `/roundtrip` — 폐기용 리포에서 추가 → Publish 미리보기(MCP `preview_publish`)와 실행 비교 → PR의 새 파일 → 머지 → 재적재 diff 0 →
   **둘째 Publish에서 새 파일에 없는 부모 아래 키 추가**(평평한 삽입이 런타임 조회에서 어떻게 보이는지 기록) → 제거 → Publish → 파일 삭제.
   픽스처: yaml Rails형(루트 = base 코드) · 루트 없는 yaml · `no:`/`"yes"` 값이 든 yaml · 중첩 code-dict · 평평한 점 키 code-dict · named export code-dict.
 - [ ] T15. `/runtime-test` — ts-dict 소스(OWNER·EDITOR)에서 버튼·설명 없음, json EDITOR는 꺼진 버튼(클릭해도 안 열림), 비지원 Adding 취소 뒤 포커스가 카드 제목,

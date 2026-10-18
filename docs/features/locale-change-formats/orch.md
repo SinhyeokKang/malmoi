@@ -73,3 +73,7 @@
 - 지휘자 판단 — /push 4d 실측 재측정은 이번 런에서 생략한다. 새 ADD create 출력은 바뀌지만 survey는 ADD 계획 없이 기존 파일 render만 호출(`lib/survey/one.ts:400`)하므로 새 경로를 실행하지 않는다. 기존 detect/write/정렬 출력은 변경하지 않았고 A/B 독립 리뷰와 고정점 테스트로 대조했다. 새 생성 경로의 실측은 T14 여섯 형식의 실제 PR 왕복이 맡는다. 코퍼스 수치는 재측정했다고 주장하거나 갱신하지 않는다.
 
 - G1: 기존 코드·설정 동일, 공식 PG 파일 필터 3/3 통과(busy 16.593초, timeout 30초 유지). 동시 실행 경합 가능성은 있으나 원인 확정 아님. 코드 수정 없이 다른 테스트 종료 후 문서 통합본 전체 gate를 단독 재실행한다. G1 release·clean/+0 워크트리 정리 완료.
+
+- P: `dc20343d` 전체 gate 성공(단위 16,155/2 skipped·PG906·build·미러), dev push 완료·[CI39141952319](https://github.com/SinhyeokKang/malmoi/actions/runs/39141952319) success. C 최초 timeout은 단독 재실행에서 재현되지 않았다.
+- Q `ctx_907929d8ade7`: T14 여섯 형식 PR15–19 추가/둘째 Publish/삭제/복원 통과, render/remote blob18개 일치·재적재12/12 diff0. i18next26.5.2는 dotted late.new 조회, Ruby I18n1.14.7은 missing(문서화된 제약). T15 대부분 통과, 실제 ts-dict glob ADD 취소만 [#303](https://github.com/SinhyeokKang/malmoi/issues/303)으로 미완. BugShot 제출. 임시2프로젝트·토큰·브랜치·서버 정리, 기존 행 전부 복구(정상 OAuth 만료 갱신 Account1행 유지). Q release.
+- Bfix1 `ctx_d609501baa67` Astra medium: #303 실제 glob 회귀 red→green, gate 단위16,159/2 skipped·PG909·build·미러 성공. R-Bfix1 `ctx_74a736024522` Astra medium 🔴0·🟡0, 독립300+PG62 통과. `47d21197..bfa96218` 통합. nullable path는 추가 취소만 허용하고 File 행 생략; 새 ADD/REMOVE 비지원·권한/지문/미확정 보호 유지. Q2 실물 재검증 뒤에만 이슈를 닫는다. 두 워커 release.
