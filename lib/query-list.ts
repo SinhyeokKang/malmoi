@@ -36,4 +36,3 @@ export function text(value: string | string[] | undefined): string | null {
   const trimmed = first.trim();
   return trimmed === "" ? null : trimmed.slice(0, MAX_TEXT);
 }
-
