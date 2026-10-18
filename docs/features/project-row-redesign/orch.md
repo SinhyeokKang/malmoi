@@ -23,6 +23,8 @@
 | D11 | 행과 Inbox의 DB 할 일은 둘 다 `projectTodos` 하나에서 나온다. 목록 경로의 `review`는 시각 재료가 없으므로 `at: null`을 허용하는 `ProjectTodo` 갈래를 둔다(기존 `AttentionItem` 타입과 분리). 시각을 꾸미지 않고 새 왕복을 만들지 않는다 — 같은 쿼리의 select에 더할 수 있는 재료(`Project.createdAt` 등)는 더한다. Inbox 경로는 실제 시각을 넘기므로 출력·정렬이 그대로다 | 지휘자 판단 — spec 완료 조건 6("순수 함수 하나가 내고 행 띠와 Inbox가 둘 다 쓴다")을 문자 그대로 지키는 쪽(A 질문 msg_e1c1e319e94e) |
 | D12 | B가 `guide/ko/setup/sources.md:9` 굵은 라벨 하나를 실제 Sources 칩 낱말(`아직 동기화되지 않음`)로 고친다 — 지운 `meter.note.waiting`에만 있던 값이라 가이드 게이트가 red가 된다 | 지휘자 판단 — 커밋 경계 green 우선, 원고가 원래 틀렸다(B 질문 msg_1a7df93460bf) |
 | D13 | T11의 `rg` 0건을 예외 없이 지킨다 — `list.test.ts` 이관 주석에서 옛 이름을 걷고, `projects-screen.test.ts`의 옛 함수 이름 부정 단언은 지우거나 이름 없는 꼴로 바꾼다(export가 사라져 typecheck가 이미 막는다) | 지휘자 판단 — RB 🟢2 추천 |
+| D14 | #297: 메타 칸은 통째로 다음 줄로 가고, 칸 하나가 이름 칸보다 넓을 때만 그 칸 안에서 낱말 사이로 감긴다 — 말줄임·넘침 없음, 가운뎃점은 앞 칸에 붙은 채 | 지휘자 판단 — PRODUCT §4.1 "감기고 숨지 않는다"를 지키는 유일한 형이고, 시안은 이 경우를 그리지 않았다(DS 지적) |
+| D15 | #298: 좁은 그릇 골격의 메타 막대는 메타 상자 하나 안에서 줄 사이 gap 없이 쌓이고, 막대 수는 #297 수정 뒤 325에서 가장 흔한 메타 줄 수다(en 실측으로는 셋이 흔하다) | 지휘자 판단 — srlm D16과 같은 원칙(실제 그릇 · 가장 흔한 모양) |
 | D9 | G(T12)는 이월 stale 2컷(`inbox-open`·`inbox-page`)과 그 시점 `pnpm guide:check`의 stale 전부를 찍는다 | 지휘자 판단 — `/merge` 전 stale 0 원칙(인수 브리프 · 메모리 guide-shots-before-merge) |
 
 ## 배치
@@ -33,7 +35,7 @@
 | RA | A 리뷰 | Claude Opus high · 리포트 전용 | — | A | 🔴 0 | APPROVE 🔴0·🟡1·🟢5 → B로 이월 |
 | B | T5–T8 | Claude Opus high · 워크트리 `prr-b` | `messages/{en,ko,es}.tsx` · `components/projects/project-list.tsx` · `app/(edit)/projects/(list)/{page,loading}.tsx` · `components/inbox/*` · `lib/home/attention-view.ts` · `lib/inbox/{plan,load}.ts` · 옛 함수 삭제(`lib/projects/list.ts` · `lib/keys/query.ts` `meters`) · 주석(`lib/shell/switcher.ts` · `components/locale-meter.tsx`) · tasks T5–T8이 이름 댄 테스트 전부 | A가 dev에 | `pnpm gate --base dev` | 완료 `95160239`·`3d858b73`·`cf07a722` |
 | RB | B 리뷰 | Claude Opus high · 리포트 전용 | — | B | 🔴 0 | APPROVE 🔴0·🟡1·🟢6 → B fix1 |
-| DS | T9 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 프레임 실측 일치 · 지적 0 | 대기 |
+| DS | T9 | Claude Opus high · main 체크아웃 · 리포트 + BugShot | — (불일치는 B가 고친다) | B 통합 뒤 · **push 전** | 프레임 실측 일치 · 지적 0 | 진행 — #297 → B fix2 · #298 → B fix3(fix2 뒤) |
 | B2 | T11(디렉터리 삭제 제외) | B 워커 후속 Task | `docs/DESIGN.md` · `docs/ARCHITECTURE.md` · `docs/PRODUCT.md` · `docs/DIRECTORY.md` | DS 끝 | `pnpm gate` · T11 `rg`(features 디렉터리 제외) 0 | 대기 |
 | QA | T10 + 인계 (b) 목록 + T7 골격 높이 수동 | Claude Opus high · main 체크아웃 · 단일 워커 · BugShot | — | B·B2 push 뒤 | (b) 전부 확인 | 대기 |
 | G | T12 | Claude Opus high · main 체크아웃(`/guide` + `/guide-shots`) | `guide/**` · `public/guide/**` · `guide/SHOOTING.md` | QA 끝(ego 세션 공유) | `pnpm test` · `pnpm guide:check` stale 0 | 대기 |
@@ -52,3 +54,6 @@
 - B: `95160239`(T5)·`3d858b73`(T6+T7, RA 이월 포함)·`cf07a722`(T8), 최종 `gate: ok`(단위 15,843 · 격리 PG 894). 계획과 다른 점 10(주요: 행은 `row.plan`만 싣는다 · `<time aria-label>` = `synced <절대 시각>` · `attentionHref(slug, item, reconnect)` + `reconnectDestination(role)`). 런타임 (b) 4. 인계 사본 `handoffs/handoff-B.md`.
 - RB: APPROVE(`review-B.md`). 🟡1(골격 칩·chevron 간격 16 vs 실물 12) · 🟢1·2·4·6 → B fix1. 🟢5(`locale-meter.tsx:7` 머리 §6.63) → B2. 🟢3(실물 메타 한 줄 행 ≈87.17, 시안 88) → DS가 잰다.
 - B fix1 `3e411fe1`, `gate: ok`(단위 15,846 · 격리 PG 894). 옛 이름 `rg` 0.
+- B 통합 `1a2d0296`..`c6a5a8e7` → main `gate: ok`. push는 DS 뒤.
+- DS(`ds-report.md`): 프레임 1–14 일치, 불일치 #297·#298. 받아들인 이탈 — 행 높이 87.16(타입 스케일 행간, 시안 88) · `<time aria-label>` = `synced <절대 시각>`(T11에서 design·DESIGN을 이 형으로). 못 잰 것: c `pr_open`(열린 PR 없음) · GitLab d·하위 그룹 · GitLab 만료 재연결 시각. dev DB 임시 쓰기 전부 복구(diff 0).
+- B fix2 `bd8b4c21`(#297, D14 — 325 넘침 0, 대신 es `Pendiente de configurar` 행은 메타 9줄 225.8) · fix3 `0efb75fe`(#298, D15 — 좁은 골격 막대 셋, 325 en 16행 중 13행이 세 줄 · 골격 121.81 = 실물 121.81).
