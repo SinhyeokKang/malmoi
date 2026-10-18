@@ -59,3 +59,8 @@
 - B 통합: `a6ec73f9`, `bc89b69c`. 추적 미커밋 0·git cherry +0 확인 후 워커 해제·워크트리 삭제. 인계는 main .scratch/inbox-filter-search에 복사. 후속 결함은 D 소유.
 - C 완료: `c8a06059`, `8723284f`; Node24 직렬 gate ok, 16,000 tests passed / 2 skipped, build·미러 성공. R1-C 시작. 한국어는 translate 스킬의 "gate green이면 통합하고 사용자가 /merge 전에 모아서 본다"에 따라 초안 검수표를 인계에 보존하며 dev 통합을 차단하지 않는다.
 - R1-C `ctx_51333267628f`: Astra medium 🔴0/🟡0, 독립 테스트 98 passed / 1 skipped 및 계약 34 assertions. C 통합 승인.
+- 사용자 지시(2026-10-18): `docs/features/locale-change-formats`가 커밋될 때까지 push 보류. 구현·리뷰·로컬 검증은 계속하며 해당 문서는 수정·stage·커밋하지 않는다. 원격 push 직전 이 경로의 커밋 완료 여부를 확인한다.
+- C 통합: `372ed639`, `0ea7df8b`. 추적 미커밋 0·git cherry +0 확인 후 워커/워크트리 정리. 인계·ko 표는 main scratch에 보존. 이후 사전 수정은 D에 이관한다.
+- A: `718e2754`, `e4008157` 구현 커밋 확정. 단독 재시도 901파일·16,061 tests passed / 2 skipped, 격리 PG 단계 진행 중. 확정 diff로 R1-A를 병행하며 gate 완료 전 통합하지 않는다.
+- R1-A `ctx_0c77b2240ec1`: 🔴0/🟡0, 독립 163 tests passed 및 추출 본문 동일성 확인. 참고 1건: query-list.ts 끝 빈 줄(diff --check exit2)은 D에서 제거한다. 최종 gate는 별도 대기.
+- A 최종 완료: `718e2754`, `e4008157`, `5c3553ac`. 단위/DOM 16,061 passed, 격리 PostgreSQL 898 passed, build·미러 gate ok. EOF는 A가 마지막 정리 커밋으로 제거했고 대상 163건 재검증. 지휘자가 마지막 whitespace-only diff 확인, D의 EOF 정리 몫은 해소됐다.
