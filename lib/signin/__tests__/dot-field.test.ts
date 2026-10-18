@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { autoCursor, dotGrid, dotScale } from "@/lib/signin/dot-field";
+import { autoCursor, dotGrid, dotScale, partitionDots } from "@/lib/signin/dot-field";
 
 /**
  * 로그인 우측 장식의 판정 둘 (8-1b).
@@ -63,6 +63,99 @@ describe("dotGrid — 캔버스 크기 → 도트 좌표", () => {
 
   it("결정적이다 — 같은 입력이 같은 배열을 낸다", () => {
     expect(dotGrid(64, 48, 16)).toEqual(dotGrid(64, 48, 16));
+  });
+});
+
+/**
+ * **랜딩의 스크롤 격자** (landing-kv-background design §3 R6). 캔버스는 한 화면짜리 sticky이고, 격자만 `scrollTop % gap`만큼
+ * 올려 그려 점이 콘텐츠에 박힌 것처럼 올라간다. ⚠️ **`offsetY = 0`은 로그인 출력과 같아야 한다** — 로그인은 이 인자를 안 넘긴다.
+ */
+describe("dotGrid — 세로 오프셋", () => {
+  it("offsetY 0(기본값)은 지금 출력과 같다 — 로그인 불변", () => {
+    for (const [w, h] of [[48, 32], [40, 40], [0, 0], [100, 37]] as const) {
+      expect(dotGrid(w, h, 16, 0)).toEqual(dotGrid(w, h, 16));
+    }
+  });
+
+  it("첫 행은 -offsetY에서 시작하고 마지막 행은 높이 이상이다 — 아래에 빈 띠가 없다", () => {
+    const grid = dotGrid(32, 40, 16, 4);
+    const rows = [...new Set(grid.map((d) => d.y))];
+    expect(rows).toEqual([-4, 12, 28, 44]);
+    expect(Math.max(...rows)).toBeGreaterThanOrEqual(40);
+    // 열은 오프셋과 무관하다.
+    expect([...new Set(grid.map((d) => d.x))]).toEqual([0, 16, 32]);
+  });
+
+  it("높이가 gap의 배수여도 마지막 행이 높이 이상이다", () => {
+    const rows = [...new Set(dotGrid(16, 32, 16, 1).map((d) => d.y))];
+    expect(rows[0]).toBe(-1);
+    expect(Math.max(...rows)).toBeGreaterThanOrEqual(32);
+  });
+
+  it("offsetY가 gap의 배수면 원위치와 같다 — 16px 스크롤마다 한 칸", () => {
+    expect(dotGrid(48, 40, 16, 16)).toEqual(dotGrid(48, 40, 16));
+    expect(dotGrid(48, 40, 16, 32)).toEqual(dotGrid(48, 40, 16));
+    expect(dotGrid(48, 40, 16, 16 + 5)).toEqual(dotGrid(48, 40, 16, 5));
+  });
+
+  /** ⚠️ Safari 고무줄 스크롤은 `scrollTop`을 음수로 준다 — 나머지가 음수여도 같은 격자 위상이어야 한다. */
+  it("음수 오프셋은 같은 위상의 양수로 접는다", () => {
+    expect(dotGrid(48, 40, 16, -4)).toEqual(dotGrid(48, 40, 16, 12));
+  });
+
+  it("유한하지 않은 오프셋은 0으로 읽는다 — NaN 좌표를 캔버스에 보내지 않는다", () => {
+    expect(dotGrid(48, 40, 16, Number.NaN)).toEqual(dotGrid(48, 40, 16));
+    expect(dotGrid(48, 40, 16, Number.POSITIVE_INFINITY)).toEqual(dotGrid(48, 40, 16));
+  });
+
+  it("퇴화 입력은 오프셋이 있어도 빈 배열이다", () => {
+    expect(dotGrid(48, 32, 0, 4)).toEqual([]);
+    expect(dotGrid(-10, -10, 16, 4)).toEqual([]);
+  });
+});
+
+/**
+ * **묶음 그리기의 입력** (design §3 R8). 2560×1440이면 점이 1만 3천 개라, 커서 반경 밖(모두 같은 반지름·알파)은 path 하나로 모아 fill 한 번이다.
+ * ⚠️ **`far`의 점은 `dotScale`이 기본값을 내야 한다** — 아니면 묶음 그리기가 점마다 그리기와 다른 픽셀을 낸다.
+ */
+describe("partitionDots — 커서 반경 안/밖", () => {
+  const RADIUS = 20;
+  const dots = dotGrid(64, 64, 16);
+
+  it("near ∪ far = dots이고 교집합이 없다", () => {
+    const { near, far } = partitionDots(dots, { x: 30, y: 30 }, RADIUS);
+    expect(near.length + far.length).toBe(dots.length);
+    expect(new Set([...near, ...far])).toEqual(new Set(dots));
+    expect(near.filter((d) => far.includes(d))).toEqual([]);
+  });
+
+  it("far의 모든 점은 dotScale이 기본값이고 near는 아니다 — 반지름·알파 모두", () => {
+    const spot = { x: 30, y: 30 };
+    const { near, far } = partitionDots(dots, spot, RADIUS);
+    expect(near.length).toBeGreaterThan(0);
+    for (const d of far) {
+      const distance = Math.hypot(d.x - spot.x, d.y - spot.y);
+      expect(dotScale(distance, RADIUS, 2, 3.5)).toBe(2);
+      expect(dotScale(distance, RADIUS, 0.08, 0.3)).toBe(0.08);
+    }
+    for (const d of near) {
+      expect(dotScale(Math.hypot(d.x - spot.x, d.y - spot.y), RADIUS, 2, 3.5)).toBeGreaterThan(2);
+    }
+  });
+
+  it("반경 경계(거리 = radius)는 far다 — dotScale이 거기서 기본값이다", () => {
+    const { near, far } = partitionDots([{ x: 20, y: 0 }], { x: 0, y: 0 }, RADIUS);
+    expect(near).toEqual([]);
+    expect(far).toEqual([{ x: 20, y: 0 }]);
+  });
+
+  it("spot이 null이면 전부 far다", () => {
+    expect(partitionDots(dots, null, RADIUS)).toEqual({ near: [], far: dots });
+  });
+
+  it("반경 0 이하면 전부 far다 — dotScale이 기본값으로 접는 것과 같다", () => {
+    expect(partitionDots(dots, { x: 0, y: 0 }, 0).near).toEqual([]);
+    expect(partitionDots(dots, { x: 0, y: 0 }, -5).near).toEqual([]);
   });
 });
 
