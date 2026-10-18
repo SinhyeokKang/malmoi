@@ -223,6 +223,22 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const fmt = formatFor(adapter);
   const locale = adapter.layout === "multi-locale" ? "ko" : "en";
   const surgical = adapter.writeStrategy === "surgical";
+  const creates = surgical && adapter.layout === "per-locale";
+  if ((adapter.create !== undefined) !== creates) bad.push("create는 per-locale 수술적 어댑터만 갖는다");
+  if (creates && adapter.create) {
+    const source = adapter.name === "yaml-catalog" ? "en:\n    donor: BASE_ONLY\n" : "export default {\n    donor: 'BASE_ONLY',\n};\n";
+    const fresh = { ...fmt, currentFiles: undefined, representationSource: source };
+    const input = { locale: "fr", baseLocale: "en", entries: entriesFor(CONTRACT_KEYS) };
+    const created = adapter.create(fresh, input);
+    if (created.content === null || created.errors.length > 0) bad.push("create가 새 언어 파일을 만들지 못했다");
+    else {
+      if (adapter.create(fresh, { ...input, entries: [...input.entries].reverse() }).content !== created.content) bad.push("create가 입력 순서에 의존한다");
+      if (created.content.includes("BASE_ONLY")) bad.push("create가 기준 언어 값을 복사했다");
+      const currentFiles = [{ path: fmt.pathTemplate.replaceAll("{locale}", "fr"), content: created.content }];
+      if (adapter.write({ ...fresh, currentFiles }, input) !== created.content) bad.push("create 다음 write가 고정점이 아니다");
+    }
+  }
+
   const write = (entries: readonly LocaleEntry[], f: DetectedFormat = fmt) =>
     adapter.write(f, { locale, entries });
 
