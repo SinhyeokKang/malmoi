@@ -78,6 +78,20 @@ describe("새 파일 공유 계약", () => {
       const flat = adapter === yamlCatalog ? '".x": BASE_ONLY\n' : 'export default { ".x": "BASE_ONLY" };';
       roundtrip(adapter, flat, [{ key: ".x", message: "Value" }]);
     });
+    it(`${adapter.name}: 다음 write의 새 부모 경로는 기존 점 리터럴 삽입 계약을 따른다`, () => {
+      const source = adapter === yamlCatalog ? "en:\n  common:\n    ok: BASE_ONLY\n" : "export default { common: { ok: 'BASE_ONLY' } };";
+      const first = [{ key: "common.ok", message: "Done" }];
+      const content = roundtrip(adapter, source, first);
+      const fmt = format(adapter, source);
+      const path = fmt.pathTemplate.replaceAll("{locale}", "fr");
+      const entries = [...first, { key: "missingParent.child", message: "New" }];
+      const next = adapter.writeWithErrors!({ ...fmt, currentFiles: [{ path, content }] }, { locale: "fr", entries });
+      expect(next.errors).toEqual([]);
+      expect(next.content).toContain("missingParent.child");
+      const currentFiles = [{ path, content: next.content! }];
+      expect(adapter.read(fmt, currentFiles).locales[0]?.entries).toEqual(entries);
+      expect(adapter.writeWithErrors!({ ...fmt, currentFiles }, { locale: "fr", entries })).toEqual(next);
+    });
     it(`${adapter.name}: 값 0개는 의도된 빈 결과다`, () => {
       expect(create(adapter, undefined, entries.slice(2))).toEqual({ content: null, errors: [] });
     });

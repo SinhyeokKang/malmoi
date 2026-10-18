@@ -18,6 +18,8 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  * | orphaned | 출력에서 뺀다 | **원본 값이 남는다** (지우면 코드가 참조하는 키가 사라진다) |
  * | 빈 값 | 어댑터가 뺀다 — **`writeEmpty` 표시가 있으면 `""`로 쓴다** (L4.10) | **호출부 계약** — 표시가 있어도 원본 값이 남는다 |
  * | **배열 위치가 아니라 `order`에만** 의존·재실행 동일 | 검사 | 검사 |
+ * | ADD 새 파일 → 다음 write diff 0 | 원본 없는 write로 검사 | per-locale create로 검사(ts-dict 제외) |
+ * | create 보유 | 없음 | per-locale만 보유 |
  * | orphaned의 **DB 값**이 출력에 안 나온다 | 검사 | 검사 |
  *
  * 마지막 줄이 두 방식을 잇는 유일한 공통 서술이다 — "뺀다"가 아니라 "DB 값이 새지 않는다"로
