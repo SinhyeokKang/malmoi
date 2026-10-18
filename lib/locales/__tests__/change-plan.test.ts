@@ -178,3 +178,18 @@ describe("planBaseLocaleCandidate", () => {
     expect(planBaseLocaleCandidate(code, { locales, changes })).toEqual(expected);
   });
 });
+
+// #303: ts-dict stores multiple locales in each namespace file, not {locale}.json.
+describe("legacy ts-dict ADD cancellation", () => {
+  const state: State = { locales: [...initial.locales, { code: "es", orphaned: false }], changes: [{ localeCode: "es", operation: "ADD" }] };
+  const legacy = { ...surface, adapterName: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts" };
+  it("does not require a per-locale file", () => {
+    expect(planLocaleChange(input({ kind: "remove", code: "es" }, state, { surface: legacy }))).toEqual({
+      ok: true, transition: { kind: "cancel-add", code: "es", path: null, discardPending: true },
+    });
+  });
+  it.each(["missing", "stale"] as const)("still requires %s approval", approval => {
+    expect(planLocaleChange(input({ kind: "remove", code: "es" }, state, { surface: legacy, approval })))
+      .toEqual({ ok: false, error: approval === "missing" ? "approval-required" : "stale-approval" });
+  });
+});

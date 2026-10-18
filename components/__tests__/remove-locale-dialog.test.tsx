@@ -277,3 +277,20 @@ describe("cancelAddDone — 보존 번역 수 0·1·2, 세 사전(#288)", () => 
     });
   }
 });
+
+// #303: a shared namespace glob is not a file that cancellation will delete.
+it("legacy ts-dict cancellation omits an unavailable file and returns focus to Languages", async () => {
+  const unsupported = { languageChangesSupported: false, connection: { adapterName: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts", format: "TypeScript dictionary" } };
+  mocks.preview.mockResolvedValue(ready({ kind: "cancel-add", path: null, translations: 9, pendingCount: 1, delivered: false }));
+  mocks.remove.mockResolvedValue({ ok: true, kind: "cancel-add", discarded: 1 });
+  await open(detail([row("es", { change: add, translated: 9, unsent: true })], unsupported));
+  await openRemove("es");
+  expect(facts()).not.toHaveProperty(en.sources.locale.factFile);
+  expect(facts()[en.sources.locale.factTranslations]).toBe(en.sources.locale.keptInMalmoi(9));
+  expect(dialog()!.querySelector("[data-alert='neutral']")!.textContent).toContain(en.repositorySync.unsentCount(1));
+  mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: 9 })], unsupported) });
+  await act(async () => { await user().click(inDialog(en.sources.locale.removeLanguage)!); });
+  expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ slug: "p", surfaceSlug: "web", localeCode: "es", approval: "fp-1" });
+  expect(card().querySelector("[data-card-notice]")!.textContent).toBe(en.sources.locale.cancelAddDone("es", 9));
+  await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
+});

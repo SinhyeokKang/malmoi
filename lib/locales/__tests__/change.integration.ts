@@ -16,6 +16,8 @@ import { eventMeta, eventSentence } from "@/lib/events/view";
 import { applyKeySave } from "@/lib/keys/save-key";
 import { previewKeyRevert } from "@/lib/keys/revert";
 import { hashPushToken } from "@/lib/push/token";
+import { previewSourceLocaleRemoval, removeSourceLocale } from "@/app/(edit)/projects/[slug]/sources/actions";
+import { loadSource } from "@/lib/sources/query";
 import { declareBaseLocale } from "@/lib/sources/base-locale";
 import { deliveryContextFingerprint } from "@/lib/translations/context";
 import { en } from "@/messages/en";
@@ -35,6 +37,7 @@ import { waitForLockWait } from "./lock-wait";
 
 const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => db.prisma }));
+vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "ok", userId: "owner" }) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-locale-change-"));
@@ -650,5 +653,59 @@ describe("잠금 순서 — Project → TranslationSurface (CI 적재·Publish �
       await client.query("ROLLBACK").catch(() => {});
       client.release();
     }
+  });
+});
+
+describe("#303 legacy ts-dict ADD with a real namespace glob", () => {
+  beforeEach(async () => {
+    await prisma.translationSurface.update({ where: { id: "s-web" }, data: { adapterName: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts" } });
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "es", name: "es" } });
+    await prisma.localeChange.create({ data: { projectId: "p", surfaceId: "s-web", localeCode: "es", operation: "ADD" } });
+  });
+
+  it.each([false, true])("preview -> approved cancel -> Sources and Logs preserves saved values (pending=%s)", async pending => {
+    if (pending) await save("s-web", "hello", "es", "Hola");
+    else await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "es", value: "Hola", updatedBy: "editor" } });
+    await save("s-web", "hello", "ko", "안녕");
+    const other = await cells("s-web", "ko");
+    const before = await state();
+    const preview = await previewSourceLocaleRemoval({ ...WEB, localeCode: "es" });
+    expect(preview).toMatchObject({ ok: true, kind: "cancel-add", path: null, translations: 1, pendingCount: pending ? 1 : 0, delivered: false });
+    expect(await state()).toEqual(before);
+    if (!preview.ok) throw new Error("preview failed");
+    expect(await removeSourceLocale({ ...WEB, localeCode: "es", approval: null })).toEqual({ ok: false, error: "approval-required" });
+    expect(await removeSourceLocale({ ...WEB, localeCode: "es", approval: preview.approval })).toEqual({ ok: true, kind: "cancel-add", discarded: pending ? 1 : 0 });
+    expect(await cells("s-web", "es")).toMatchObject([{ value: "Hola", updatedBy: "editor", pendingEditToken: null }]);
+    expect(await cells("s-web", "ko")).toEqual(other);
+    expect(await prisma.localeChange.count()).toBe(0);
+    const view = await loadSource(prisma, en, "p", "s-web", "OWNER");
+    expect(view).toMatchObject({ languageChangesSupported: false });
+    expect(view!.languages.find(row => row.code === "es")).toMatchObject({ orphaned: true, translated: 1, change: null, unsent: false });
+    expect((await logLines()).find(row => row.subtype === "surface.localeChangeCancelled")?.meta).toContain("es");
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "es" })).toEqual({ ok: false, error: "unsupported-format" });
+    expect(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: false, error: "unsupported-format" });
+  });
+
+  it("keeps permission, stale approval and unconfirmed-delivery barriers", async () => {
+    await save("s-web", "hello", "es", "Hola");
+    const before = await state();
+    expect(await previewLocaleRemoval(prisma, EDITOR, { ...WEB, localeCode: "es" })).toEqual({ ok: false, error: "forbidden" });
+    expect(await removeLocale(prisma, EDITOR, { ...WEB, localeCode: "es", approval: null })).toEqual({ ok: false, error: "forbidden" });
+    expect(await state()).toEqual(before);
+    const preview = await previewSourceLocaleRemoval({ ...WEB, localeCode: "es" });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) throw new Error("preview failed");
+    await save("s-web", "hello", "es", "Hola de nuevo");
+    let snapshot = await state();
+    expect(await removeSourceLocale({ ...WEB, localeCode: "es", approval: preview.approval })).toEqual({ ok: false, error: "stale-approval" });
+    expect(await state()).toEqual(snapshot);
+    await confirm("s-web");
+    await invalidate("s-web");
+    snapshot = await state();
+    expect(await previewSourceLocaleRemoval({ ...WEB, localeCode: "es" })).toEqual({ ok: false, error: "publish-unsettled" });
+    expect(await removeSourceLocale({ ...WEB, localeCode: "es", approval: preview.approval })).toEqual({ ok: false, error: "publish-unsettled" });
+    expect(await state()).toEqual(snapshot);
+    expect((await loadSource(prisma, en, "p", "s-web", "OWNER"))!.languages.find(row => row.code === "es"))
+      .toMatchObject({ orphaned: false, change: { operation: "ADD" }, unsent: true });
   });
 });
