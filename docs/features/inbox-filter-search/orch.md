@@ -25,8 +25,8 @@
 | B | T2와 모든 하위 검증·동일 커밋 문서 | components/ui/filter-menu.tsx, Logs 필터, translations/workspace 필터 및 호출부, visual-system/hand-copies 테스트, CLAUDE.md와 생성 미러, DESIGN §6.4, DIRECTORY | 없음 | gpt-6.1-sol/high | 기존 소비자 회귀·직속 버튼·미러 및 gate | 완료·dev 통합 |
 | C | T3와 모든 하위 검증 | messages/en·ko·es.tsx, i18n function-args 및 동일 값 허용 목록 | 없음 | gpt-6.1-sol/medium | translate 모드 ①, 사전·용어 및 gate | 완료·dev 통합 |
 | R1 | A/B/C 독립 리뷰 | 리포트만 | A/B/C 완료 | gpt-6-astra/medium | 인계 주장·diff·POSTMORTEM·시나리오 분류 | A/B/C 모두 통과 |
-| D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | 착수 |
-| R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 대기 |
+| D | T4와 모든 하위 검증 | inbox-filters, inbox page/loading/list, lib/routes.ts, page/scenario/loading-parity/entry-points 및 새 DOM 테스트 | A/B/C dev 통합 | gpt-6.1-sol/high | DOM·읽음·헤더 불변·골격 3언어 및 gate | gate 통과·R2 중 |
+| R2 | D 독립 리뷰 | 리포트만 | D 완료 | gpt-6-astra/medium | 인계·포커스·라우팅·경계 검토 | 착수 |
 | E | T6 정본 및 가이드 본문 | PRODUCT, DESIGN, DIRECTORY, guide/en·ko·es/translate/edit.md | D 통합 | gpt-6.1-sol/medium | guide 규칙·문서별 커밋·신선도 | 대기 |
 | Q | T5 전체 + 공통 레이아웃 QA | 코드 수정 없음, main 체크아웃, DB fixture 원복표 | D/E 통합·로컬 gate (push 보류 중에도 진행) | gpt-6.1-sol/high | 축/조합/탐색/키보드·375/1280/1440/1890·3언어×2테마·높이 0px, BugShot 즉시 제출 | 대기 |
 | S | T6 inbox-page.webp 재촬영 | public/guide, guide/SHOOTING.md | Q 완료 | gpt-6.1-sol/medium | guide-shots·guide:check stale 0 | 대기 |
@@ -70,3 +70,5 @@
 - D 소유권 추가: 새 Inbox Clear filters의 RotateCcw 실제 소비자 두 경로를 visual-system.test.ts의 CLEAR 정확 명부에 등재한다. 검사 완화는 없다. 사용자 push 보류 동안 Q는 로컬 gate 뒤 진행할 수 있다.
 
 - 사용자 push 보류 해제: locale-change-formats 문서가 0dbb94fa로 커밋됐고 작업 트리가 깨끗함을 확인했다. 최종 gate 후 dev push를 진행한다.
+
+- D 완료: 67a3762c, 1d6dda04; Node24 gate ok (16,082 passed / 2 skipped), build·미러 성공, diff --check·작업 트리 깨끗함. R2 task_3d6349c98f0e / ctx_f1583cfc934c를 기존 Astra medium 리뷰 터미널에서 시작했다.
