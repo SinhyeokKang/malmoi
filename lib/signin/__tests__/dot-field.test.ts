@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { autoCursor, dotGrid, dotScale, partitionDots } from "@/lib/signin/dot-field";
+import { autoCursor, clampScrollTop, dotGrid, dotScale, partitionDots } from "@/lib/signin/dot-field";
 
 /**
  * 로그인 우측 장식의 판정 둘 (8-1b).
@@ -111,6 +111,37 @@ describe("dotGrid — 세로 오프셋", () => {
   it("퇴화 입력은 오프셋이 있어도 빈 배열이다", () => {
     expect(dotGrid(48, 32, 0, 4)).toEqual([]);
     expect(dotGrid(-10, -10, 16, 4)).toEqual([]);
+  });
+});
+
+/**
+ * **격자 위상에 넘길 스크롤 위치** (landing-kv-background R6). 고무줄 스크롤에서는 `scrollTop`이 `[0, 최대]` 밖으로 나가는데,
+ * 그동안 sticky 캔버스는 콘텐츠와 함께 움직인다 — 위 끝에선 같이 내려가고 아래 끝에선 래퍼 바닥에 걸려 같이 올라간다.
+ * 그래서 맞는 오프셋은 범위로 자른 값이다. 자르지 않으면 점이 콘텐츠의 두 배 속도로 미끄러진다.
+ */
+describe("clampScrollTop — 고무줄 스크롤을 범위로 자른다", () => {
+  it("범위 안은 그대로다", () => {
+    expect(clampScrollTop(0, 2000, 400)).toBe(0);
+    expect(clampScrollTop(21, 2000, 400)).toBe(21);
+    expect(clampScrollTop(1600, 2000, 400)).toBe(1600);
+  });
+
+  it("위 끝 튕김(음수)은 0이다", () => {
+    expect(clampScrollTop(-5, 2000, 400)).toBe(0);
+  });
+
+  it("아래 끝 튕김(최대 초과)은 최대값이다", () => {
+    expect(clampScrollTop(1612, 2000, 400)).toBe(1600);
+  });
+
+  it("콘텐츠가 스크롤포트보다 짧으면(최대가 음수) 0이다", () => {
+    expect(clampScrollTop(10, 300, 400)).toBe(0);
+  });
+
+  it("유한하지 않은 입력은 0으로 읽는다 — NaN을 격자에 보내지 않는다", () => {
+    expect(clampScrollTop(Number.NaN, 2000, 400)).toBe(0);
+    expect(clampScrollTop(10, Number.NaN, 400)).toBe(0);
+    expect(clampScrollTop(10, 2000, Number.POSITIVE_INFINITY)).toBe(0);
   });
 });
 
