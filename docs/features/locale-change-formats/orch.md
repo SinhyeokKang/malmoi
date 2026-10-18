@@ -42,3 +42,5 @@
 ## 완료 증거
 
 각 배치의 커밋·gate·리뷰·수정 라운드·실측 결과·push SHA를 완료 때 적는다. `.scratch/locale-change-formats/` 인계는 정본으로 승격할 결론을 추출한 뒤 정리한다.
+
+- Run `run_53e84a84963b`; A Task `task_7bd4435fb133`, Dispatch `ctx_8b8d45c6ad76`, branch `SinhyeokKang/locale-formats-a`. 실제 launch Astra/high 및 activity working 확인.
