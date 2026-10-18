@@ -529,8 +529,8 @@ components/
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         remove-source-dialog · sources-archived · languages-card · add-locale-dialog · remove-locale-dialog 열 컴포넌트 + `.ts` 둘 — language-row.ts(아래) · row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
                         languages-card(locale-add, 2026-10-17)는 상세 모달의 Languages 카드다 — 머리 [Add language] · 행(코드·진행률·상태 배지·동작 하나·[Open]) · Inactive 띠 · 결과 notice · 포커스 예약을 든다.
-                        language-row는 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
-                        add-locale-dialog는 추가 Dialog(json은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
+                        language-row는 카드 설명·Inactive 복구 문장(포맷 > 권한)과 **한 행의 판정**(`planLanguageRow` — 배지·Unsent·PR 링크·확인 안 됨·보조 줄·동작과 꺼짐 이유)만 하는 순수 함수라 DOM 없이 표로 센다.
+                        add-locale-dialog는 추가 Dialog(json·yaml·언어별 코드 사전은 Combobox, Chrome은 지원 목록 Select, Inactive 행에서는 입력 없이 그 코드)이고 경로·되살릴 수·필드 판정은 서버 미리보기가 준다 —
                         화면이 템플릿을 채우지 않는다. remove-locale-dialog는 **제거 요청·추가 취소 공용** 확인 창이다(remove-source-dialog와 같은 형 — 지문은 여는 순간 받는다).
                         ⚠️ 두 Dialog는 결과를 호스트(languages-card)로 올리고 닫히며, 포커스는 호스트가 옮긴다.
                         remove-source-dialog는 상세 모달 바닥 왼쪽 [Detach source]의 확인 창이다(Sync 확인 창 형 — 지문은
@@ -658,11 +658,12 @@ lib/
   adapters/             양방향 로케일 어댑터. ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 별개 축이다 —
                         yaml-catalog·code-dict가 per-locale인데 수술적이다. layout으로 가르는 코드가
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
-                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 24) ·
+                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 25) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
-                        __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼)
+                        __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
+                        __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
@@ -793,7 +794,7 @@ lib/
                         나머지는 잎이다 — import는 서로와 잎인 `lib/routes.ts`뿐이다. ⚠️ connection-reason은 그 예외다(lib/home/state ·
                         lib/i18n을 문다 — 판정을 사본으로 두면 Home 배너와 번역 화면의 낱말이 갈린다).
                         키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
-  sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
+  sources/             query(server-only 목록/선택 상세, 역할별 명시 projection — languageChangesSupported boolean은 모든 역할, 어댑터 이름·경로는 OWNER만) ·
                         actions(planSourceActions) · base-language(폼 상태 판정) · add-block(Add sources가 꺼진 갈래별 사유 —
                         malmoi#93) · meters(언어 막대 값 — `LocaleMeterValue` · `meterValue`(두 구간 폭 clamp) · `sourceRowMeters`(행에 설 앞 다섯 +
                         남은 수, 키 0이면 빈 결과). 목록 조회가 소스마다 싣고 상세 Languages 카드가 클라이언트에서 같은 `meterValue`를 부른다 —
@@ -878,6 +879,7 @@ lib/
                         observeLocaleFiles(**base 관측의 유일한 함수** — 정규 파일 100644·100755만, mode를 모르면 unreadable) · observedLocalesOf · deliverableLocaleWork(조기 종료 판정) ·
                         capturedBySurface(확인 tx가 쓸 캡처 목록) · localeFingerprintInput(Publish 지문 입력) · expiryCheckApplies(1층 앞 만료 판정) ·
                         expiringLocalesOf·afterExpiry(미리보기의 읽기 전용 만료 판정·만료 뒤 상태, #267). 순수
+                        __tests__/observe-locale-files.test.ts는 yaml-catalog·code-dict의 파일 관측을 직접 검사하고, __tests__/locale-create.test.ts는 수술적 ADD create·revive 렌더·blocking 실패를 검사한다
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
   repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
