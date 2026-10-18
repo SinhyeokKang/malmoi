@@ -41,6 +41,7 @@ app/
                         ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > system)이고 같은 값을 <Toaster theme>에 넘긴다.
                         인라인 스크립트가 없다(color-scheme 2026-10-05, ARCHITECTURE §6.357) — lib/color-scheme/__tests__/theme-surfaces가 고정한다
                         ⚠️ viewport의 interactiveWidget: "resizes-content"가 소프트 키보드에 레이아웃 뷰포트(dvh)를 줄이게 한다(Android만 — ARCHITECTURE §6.358)
+                        ⚠️ viewport는 generateViewport — 요청 UA를 lib/viewport의 viewportFor에 넘겨 iOS에만 maximumScale 1(포커스 자동 확대 방지)
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
@@ -1162,6 +1163,7 @@ lib/
                         순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
                         theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
+  viewport.ts           잎(타입 import 하나). 요청 UA → 루트 viewport(viewportFor) — iOS에만 maximumScale 1. 근거는 ARCHITECTURE §6.358.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
