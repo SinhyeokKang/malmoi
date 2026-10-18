@@ -4,6 +4,16 @@
 > 그릇(그룹 카드 셋·검색·빈 상태·머리)은 이번 범위가 아니다(DESIGN §6.63 그대로).
 > 짝 기능: `source-row-locale-meter`가 로케일 진행 막대(`LocaleMeter`)를 Sources 화면의 소스 행으로 가져간다. 이 스펙은 프로젝트 행에서 막대를 빼는 쪽만 맡는다(조율은 design.md §5).
 
+## 시안 — ✅ 수령(2026-10-18)
+
+| 항목 | 내용 |
+|---|---|
+| 핸드오프 | [`Project Row Redesign.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html) — Claude Design 프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 프레임 1–14 |
+| 브리프 | `design-brief.md` |
+| 시안이 정한 사실 | design §6(행·띠·폭·골격·Inbox `needs_reconnect`) |
+| T0 확정(사용자) | PR 조회 실패 띠 문안(design §2 · 결정 5) · 빈 언어 띠 문안(design §6) · Inbox `needs_reconnect`의 EDITOR 목적지 = 프로젝트 Home(design §6) |
+| 지위 | 구현이 dev에 들어가기 전까지만 SoT다. 그 뒤로는 코드 + DESIGN §6.63이 정본이고, 새 시안은 변경 요청이다 |
+
 ## 사전 조건 — ✅ 충족(2026-10-18)
 
 **`source-row-locale-meter`가 dev에 먼저 들어가 있어야 착수한다**(2026-10-15 사용자). → 2026-10-18 충족: 그 기능의 데이터 층(`312df1d2`·`c0108513`)과 화면(`c3757f49` — `LocaleMeter`가 `LocaleMeterValue`를 받는다, 후속 `cad6746a`·`9ecfc167`)이 dev에 있다. 아래는 이 조건을 둔 이유로 남긴다.
@@ -66,7 +76,7 @@ Inbox 항목(`lib/inbox/plan.ts`)과 행 띠(`rowBanner`)가 따로 판정한다
 6. **Inbox 항목과 행의 띠가 같은 판정에서 나온다** — DB에서 정해지는 할 일(`needs_reconnect`·`import_failed`·`setup`·`unsent`·`review`·`never_filled`)을 순수 함수 하나가 내고, 행의 띠와 Inbox가 둘 다 그 결과를 쓴다. 표 테스트가 다음을 센다.
    - 행 띠가 DB 할 일이면 그 종류가 같은 프로젝트의 Inbox 항목에 있다. 역할 예외는 design.md §4의 표를 따른다.
    - 원격 신호 셋(`pr_open`·`pr_check_failed`·`repo_ahead`)은 행 띠 전용이다. Inbox·배지 경로는 호스트 API를 부르지 않는다.
-7. **Claude Design 시안이 있고 구현이 그것과 같다** — `/design-sync` 실측이 일치하고 리뷰 지적이 0건이다. 시안: [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html)(2026-10-18 수령 — 시안이 정한 사실은 design §6).
+7. **Claude Design 시안이 있고 구현이 그것과 같다** — `/design-sync` 실측이 일치하고 리뷰 지적이 0건이다. 기준 시안은 위 "시안" 절의 핸드오프다.
 8. **기존 계약을 유지한다** — 각각 DOM 단언으로 확인한다.
    - 보관 행은 띠가 없고 이름·메타(새 메타 포함)가 `gray-dim`이다.
    - 행 전체가 링크이고, 띠는 링크 밖의 형제다.
