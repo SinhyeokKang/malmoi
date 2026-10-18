@@ -237,6 +237,8 @@ export function Stage({
       const chromeHeight = CHROME_GAP + chrome.getBoundingClientRect().height;
       const fit = fitScale({ W, H, chromeHeight, device });
       if (!fit.pinnable) {
+        // 정적 흐름에서도 H는 쓴다 — 랜딩 배경 캔버스가 이 값으로 스크롤러 높이를 맞춘다. 고정 → 정적 리사이즈가 옛 H를 남기면 캔버스가 더 길다.
+        setStageH(H);
         // 정적 흐름은 폭이 정한 배율이다 — 세로로 줄이지 않는다(장마다 자기 높이를 갖는다).
         enterStatic(fit.chromeW / STATE_CANVAS_W[device], device);
         lastH = 0;
@@ -311,7 +313,7 @@ export function Stage({
             <li key={text}>{text}</li>
           ))}
         </ol>
-        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx` — 2026-10-04 D8 뒤에도 합은 같다) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. 정적 흐름에서는 흐름 밖(`absolute`)에서 `invisible`로 남아 캡션 높이를 계속 잰다. */}
+        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx`). ⚠️ 랜딩 패널은 `kv` 갈래라 테두리가 없어(landing-kv-background R13) 실제 스크롤러보다 2px 짧다 — JS 전에만 쓰이고 준비 뒤엔 정적 흐름까지 잰 H로 덮인다. 96으로 맞추지 않는 것은 `calc(100svh-96px)`가 `--spacing-modal-gutter`로 대체된 옛 철자라 `visual-system.test.ts`가 막기 때문이다. 셸 치수가 바뀌면 트랙과 함께 고친다. 정적 흐름에서는 흐름 밖(`absolute`)에서 `invisible`로 남아 캡션 높이를 계속 잰다. */}
         <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))] group-data-[static]/track:absolute group-data-[static]/track:inset-x-0">
           <div
             ref={frameRef}
