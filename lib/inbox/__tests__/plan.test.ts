@@ -40,6 +40,17 @@ it("묶음은 최신 시각·slug 순, 빈 프로젝트는 빠진다", () => {
   expect(result.groups.map(g => g.project.slug)).toEqual(["new", "a", "z", "old"]);
   expect(result.unread).toBe(1);
 });
+it("안 읽은 항목이 있는 묶음이 먼저다 — 그 안팎은 최신 시각 순", () => {
+  const later = new Date(at.getTime() + 60_000);
+  const review = { kind: "review" as const, at: later, surfaceSlug: "a", code: "ko", name: "Korean", count: 1, who: null };
+  const result = planInbox({ projects: [
+    { ...project, slug: "fresh-review", attention: [review] },
+    { ...project, slug: "unread-old", attention: [{ ...failed, at: new Date(at.getTime() + 1) }] },
+    { ...project, slug: "unread-new", attention: [{ ...failed, at: new Date(at.getTime() + 2) }] },
+    { ...project, slug: "read", attention: [{ ...failed, at }] },
+  ], seenAt: at });
+  expect(result.groups.map(g => g.project.slug)).toEqual(["unread-new", "unread-old", "fresh-review", "read"]);
+});
 const serverNow = new Date("2026-10-09T12:00:00.000Z");
 it.each([
   ["과거 ISO는 그대로", "2026-10-09T11:59:59.999Z", new Date("2026-10-09T11:59:59.999Z")],
