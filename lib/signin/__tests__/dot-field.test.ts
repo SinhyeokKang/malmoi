@@ -293,3 +293,64 @@ describe("autoCursor — 커서가 없을 때의 자동 순회", () => {
     expect(autoCursor(0, W, H, SPEED, 1).y).toBe(H / 2);
   });
 });
+
+/**
+ * **넘침 폭** (landing-kv-autosweep) — 랜딩은 가상 커서가 패널 좌우 밖 `overshoot`까지 가서 줄을 바꾼다. 반경만큼 넘치면 줄바꿈 동안
+ * 밝은 원이 패널에서 완전히 빠진다. ⚠️ 로그인은 이 인자를 넘기지 않는다 — 0이면 지금 출력과 바이트 단위로 같아야 한다.
+ */
+describe("autoCursor — overshoot", () => {
+  const W = 600;
+  const H = 400;
+  const SPEED = 300;
+  const ROWS = 3;
+  const O = 180;
+  const SPAN = W + 2 * O;
+  const ACROSS = (SPAN / SPEED) * 1000;
+  const STEP = H / (ROWS - 1);
+  const DOWN = (STEP / SPEED) * 1000;
+  const CYCLE = ROWS * ACROSS + (ROWS - 1) * DOWN;
+
+  it("0이면 인자를 생략한 것과 비트 단위로 같다 — 로그인 불변", () => {
+    const plainCycle = ROWS * ((W / SPEED) * 1000) + (ROWS - 1) * DOWN;
+    for (let t = 0; t <= plainCycle; t += 7) {
+      const plain = autoCursor(t, W, H, SPEED, ROWS);
+      const zero = autoCursor(t, W, H, SPEED, ROWS, 0);
+      expect(Object.is(plain.x, zero.x) && Object.is(plain.y, zero.y)).toBe(true);
+    }
+    // 둘째 줄바꿈(왼쪽 끝)의 x는 +0이다 — `-o`로 쓰면 -0이 되어 기존 출력과 갈린다.
+    const plainAcross = (W / SPEED) * 1000;
+    expect(Object.is(autoCursor(2 * plainAcross + DOWN * 1.5, W, H, SPEED, ROWS, 0).x, 0)).toBe(true);
+  });
+
+  it("첫 줄은 x = -o에서 시작해 width + o에서 끝난다", () => {
+    expect(autoCursor(0, W, H, SPEED, ROWS, O)).toEqual({ x: -O, y: 0 });
+    expect(autoCursor(ACROSS / 2, W, H, SPEED, ROWS, O).x).toBeCloseTo(W / 2);
+    expect(autoCursor(ACROSS, W, H, SPEED, ROWS, O).x).toBeCloseTo(W + O);
+    // 둘째 줄은 반대로 — width + o에서 -o로.
+    expect(autoCursor(ACROSS + DOWN, W, H, SPEED, ROWS, O).x).toBeCloseTo(W + O);
+    expect(autoCursor(2 * ACROSS + DOWN, W, H, SPEED, ROWS, O).x).toBeCloseTo(-O);
+  });
+
+  it("줄바꿈 구간의 x는 [0, width] 밖이다", () => {
+    for (const [from, to] of [[ACROSS, ACROSS + DOWN], [2 * ACROSS + DOWN, 2 * ACROSS + 2 * DOWN]] as const) {
+      for (let t = from + 1; t < to; t += 10) {
+        const { x } = autoCursor(t, W, H, SPEED, ROWS, O);
+        expect(x < 0 || x > W).toBe(true);
+      }
+    }
+  });
+
+  it("한 주기 = rows·(width + 2o)/speed + (rows−1)·step/speed — 주기 끝은 시작으로 돌아온다", () => {
+    expect(autoCursor(CYCLE, W, H, SPEED, ROWS, O)).toEqual(autoCursor(0, W, H, SPEED, ROWS, O));
+    expect(autoCursor(CYCLE - 1, W, H, SPEED, ROWS, O).y).toBeCloseTo(H);
+  });
+
+  it("줄바꿈 동안 반경 안에 드는 점이 0이다 (o = 반경 180)", () => {
+    const dots = dotGrid(W, H, 16);
+    for (let t = ACROSS + 1; t < ACROSS + DOWN; t += 10) {
+      expect(partitionDots(dots, autoCursor(t, W, H, SPEED, ROWS, O), O).near).toEqual([]);
+    }
+    // 대조 — 줄 한가운데에서는 반경 안 점이 있다.
+    expect(partitionDots(dots, autoCursor(ACROSS / 2, W, H, SPEED, ROWS, O), O).near.length).toBeGreaterThan(0);
+  });
+});

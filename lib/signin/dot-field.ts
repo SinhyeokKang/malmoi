@@ -105,6 +105,8 @@ export function dotScale(distance: number, radius: number, base: number, max: nu
  * @param height  순회할 높이
  * @param speed   px/초 — 가로·세로 같은 속도로 움직여야 코너에서 속도가 안 튄다
  * @param rows    세로로 몇 줄을 훑는가
+ * @param overshoot 좌우로 폭 밖까지 더 가는 거리(landing-kv-autosweep) — 랜딩은 커서 반경만큼 넘쳐 줄바꿈이 패널 밖에서 일어난다.
+ *                  ⚠️ **0이면 지금 출력과 바이트 단위로 같다** — 로그인은 이 인자를 넘기지 않는다.
  */
 export function autoCursor(
   elapsed: number,
@@ -112,13 +114,14 @@ export function autoCursor(
   height: number,
   speed: number,
   rows: number,
+  overshoot = 0,
 ): Dot {
   if (width <= 0 || height <= 0 || speed <= 0 || rows <= 0) return { x: 0, y: 0 };
-  if (rows === 1) return { x: legWithin(elapsed, width, speed, 0), y: height / 2 };
+  if (rows === 1) return { x: legWithin(elapsed, width, speed, 0, overshoot), y: height / 2 };
 
   /** 줄 간격 — 세로 전환 구간의 길이이기도 하다. */
   const step = height / (rows - 1);
-  const acrossMs = (width / speed) * 1000;
+  const acrossMs = ((width + 2 * overshoot) / speed) * 1000;
   const downMs = (step / speed) * 1000;
 
   /** 한 줄(가로) + 한 번의 줄바꿈(세로)이 한 묶음이고, 마지막 줄 뒤에는 줄바꿈이 없다. */
@@ -128,21 +131,26 @@ export function autoCursor(
   let remaining = t;
   for (let row = 0; row < rows; row++) {
     if (remaining < acrossMs) {
-      return { x: legWithin(remaining, width, speed, row), y: row * step };
+      return { x: legWithin(remaining, width, speed, row, overshoot), y: row * step };
     }
     remaining -= acrossMs;
     if (row === rows - 1) break;
     if (remaining < downMs) {
       // 세로 전환 — x는 방금 끝난 줄의 끝에 머문다(그래야 코너가 직각으로 이어진다).
-      return { x: row % 2 === 0 ? width : 0, y: row * step + (remaining / downMs) * step };
+      return { x: row % 2 === 0 ? width + overshoot : 0 - overshoot, y: row * step + (remaining / downMs) * step };
     }
     remaining -= downMs;
   }
-  return { x: (rows - 1) % 2 === 0 ? width : 0, y: height };
+  return { x: (rows - 1) % 2 === 0 ? width + overshoot : 0 - overshoot, y: height };
 }
 
-/** 한 줄 안에서의 가로 위치. 홀수 줄은 오른쪽에서 왼쪽으로 — 그것이 ㄹ자를 만든다. */
-function legWithin(elapsed: number, width: number, speed: number, row: number): number {
-  const progress = Math.min(1, (elapsed / 1000) * speed / width);
-  return row % 2 === 0 ? progress * width : width - progress * width;
+/**
+ * 한 줄 안에서의 가로 위치. 홀수 줄은 오른쪽에서 왼쪽으로 — 그것이 ㄹ자를 만든다.
+ *
+ * ⚠️ **`0 - overshoot`로 쓴다** — `-overshoot`는 0에서 -0이 되어 로그인 출력이 기존과 비트 단위로 갈린다. `x - 0`은 x 그대로다.
+ */
+function legWithin(elapsed: number, width: number, speed: number, row: number, overshoot: number): number {
+  const span = width + 2 * overshoot;
+  const progress = Math.min(1, (elapsed / 1000) * speed / span);
+  return row % 2 === 0 ? progress * span - overshoot : span - progress * span - overshoot;
 }
