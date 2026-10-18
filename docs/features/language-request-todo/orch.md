@@ -55,4 +55,5 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 - 리뷰 A: 🔴 0 · 🟡 3 · ⚪ 5(사본 `handoffs/review-A.md`). 계획과 다른 점 1–7 수용. Y1–Y3(O2 중립값 셋 — Home `languageChanges`는 이미 있는 `languageWork`, `localeHeld`는 `planLocaleImportGate(states)` 직접, 두 로더 모두 배선·테스트) · W1 낡은 주석 셋 → C 브리프. **지휘자 판단** W2(en `isn't published yet` vs Logs `still unsent`) — 사용자가 승인한 시안·design D2·D3 문자열 그대로 유지. W3(시안 프레임 4 노트의 `unsent` 목적지 오기)는 DS 브리프에 적는다.
 - 리뷰 B: 🔴 0 · 🟡 2(사본 `handoffs/review-B.md`). Y1 일괄 값 수가 프로젝트 사이 ADD 코드를 섞는다 → B fix1(Dispatch `ctx_14a7f47f46f8`). Y2 호출 수는 ADD 유무로 2/3 → C 브리프.
 - **A 통합(로컬, 미push)** `fda8ddfc..b371e8a8`. 게이트는 B fix1 통합 뒤 K·A·B를 한 번에 돈다.
+- B fix1 `worker_done` — 626d1631(프로젝트별 ADD 표면×코드로 값 수를 좁힘, 시드 줄로 red 확인), `gate: ok`. **B 통합(로컬)** `d0c27b29..88de295d`. B release + `lrt-b` 삭제. main 게이트(K·A·B) 실행. C Dispatch `ctx_3b6dd8f93c4b`(A 터미널, 브리프 `brief-C.md`).
 
