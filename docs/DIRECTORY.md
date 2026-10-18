@@ -318,7 +318,7 @@ components/
   ui/popover.tsx        Popover — Radix Root/Anchor/Portal/Content, 외부 트리거 ref로 연다. 번역 트리 오버레이가 실제 소비자다.
                         z50·충돌 여백과 기존 폭/높이를 유지한다. 현재 항목 우선 포커스·Escape 트리거 복귀·바깥 클릭 포커스 보존은 여기서 처리한다.
                         트리 검색·키보드·범위 선택은 소비자가 소유한다
-  ui/meter.tsx          Meter — 장식용 완료/검토 막대. LocaleMeter와 Sources 상세 언어 행이 폭 데이터와 dimmed만 넘긴다.
+  ui/meter.tsx          Meter — 장식용 완료/검토 막대. LocaleMeter(Sources 소스 행)와 Sources 상세 언어 행이 폭 데이터와 dimmed만 넘긴다.
                         0분모/비율·표시 percent·Sources clamp 판정은 각 기존 호출부에 남는다
   ui/error-state.tsx    ErrorState — 편집 셸/Logs 오류 경계의 실패 글리프·문구·primary Retry와 role=alert 하나.
                         실제 retry 콜백을 호출하며 404·빈 결과는 alert 없는 EmptyState로 남는다
@@ -554,7 +554,8 @@ components/
                         설치된 next 소스에 따로 고정한다
                         ButtonLink가 onNavigate와 busy를 전달하고 진행 중 앞 장식 교체를 소유한다
   locale-meter.tsx      LocaleMeter — 로케일 국기/코드·표시 percent·완료/검토 비율을 조립하는 래퍼. 입력은 `LocaleMeterValue`(lib/sources/meters).
-                        소비자는 /projects 행(서버)과 Sources 소스 행(클라이언트)이라 상태도 서버 전용 import도 없다. 루트가 `<span>`이다(행 버튼 안).
+                        소비자는 Sources 소스 행(클라이언트) 하나다(2026-10-18 project-row-redesign — /projects 행의 막대를 걷었다). 상태도 서버 전용 import도
+                        없다. 루트가 `<span>`이다(행 버튼 안).
                         0분모는 0으로 처리하고 표시 percent는 입력값을 그대로 쓴다. 막대의 스타일·장식 의미는 ui/Meter가 소유한다.
                         Sources 상세 Languages 카드도 같은 Meter를 쓴다 — 두 구간 폭의 clamp는 lib/sources/meters의 meterValue가,
                         표시 percent(완료 + 검토 대기)는 lib/keys/view의 localeProgress가 소유한다
@@ -576,6 +577,8 @@ components/
                         ⚠️ 본문의 갈래 넷은 lib/projects/list.ts의 listBody가 정한다 — 전엔
                         hasProjects·질의·건수가 JSX 안에서 섞여 판정됐다. 그릇은 카드이고 그룹
                         헤더가 그 안에 산다(DESIGN §6.63)
+                        ⚠️ 행은 판정하지 않는다 — 칩·그룹·띠는 서버 조립이 싣는 row.plan(planProjectRow)을 그대로 그린다. 행 전체가
+                        withRepoHost를 지나고, 메타 줄(RowMeta — sources · keys · languages · synced)의 상대 시각 기준 now는 페이지가 prop으로 넘긴다
   commit-wait.ts        useCommitWait — Action이 풀린 뒤 재검증 트리가 커밋될 때까지 교차 잠금을 잇는다(malmoi#103,
                         ARCHITECTURE §3). ⚠️ 서버 prop의 **식별자**를 본다 — 값은 재검증 뒤에도 같을 수 있다
                         ⚠️ 상한 10 s. 소비자는 Home Sync · 번역 화면 Sync·Revert · usePublish · Reconnect · Add sources다
@@ -633,7 +636,8 @@ components/
                         ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
                         · source-languages · add-locale-dialog · remove-locale-dialog · combobox · publish-language · translation-workspace-frozen — 2026-10-17 locale-add
                         (Languages 카드 행 판정 표 · 추가·제거 Dialog 상태 전이 · 프리미티브 키보드·IME · Publish 모달 언어 갈래 · 얼린 칸. 접힘·Popover 위치·실 IME는 jsdom 밖이라 런타임 몫이다)
-                        helpers/(dom · result-alert · workspace-props · layer — 테스트 전용 공유 조각. ⚠️ layer의 `waitForLayer`는 상세 모달·중첩 Dialog·Combobox 목록을 연 **직후**
+                        helpers/(dom · result-alert · workspace-props · layer · project-row — 테스트 전용 공유 조각. project-row의 `planned`는 목록 행 픽스처에
+                        서버 조립처럼 판정(`row.plan`)을 싣는다 — 픽스처가 판정을 손으로 적으면 테스트가 화면이 아니라 픽스처를 잰다. ⚠️ layer의 `waitForLayer`는 상세 모달·중첩 Dialog·Combobox 목록을 연 **직후**
                         클릭 전에 그 Content의 `pointer-events`가 열릴 때까지 기다린다 — Radix는 DOM을 먼저 붙이고 다음 렌더에서야 여는데, 그 사이에 누르면 CI에서만 깨진다, POSTMORTEM 2026-10-08)
 ```
 
@@ -752,7 +756,8 @@ lib/
                         ⚠️ **`buildSearchText`를 안 지나면 그 종류가 조용히 검색에서 빠진다**
                         `__tests__/locked-access.integration.ts` — 잠금 재판정의 경합 재현(`pg_stat_activity`로 실제 잠금 대기를 관측)
   keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
-                        loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
+                        loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다. 조립 assembleProjectListRows는 I/O가 없고
+                        메타 넷과 할 일을 만들어 planProjectRow 결과만 행에 싣는다) ·
                         save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
@@ -987,7 +992,8 @@ lib/
                         repositoryConnectionState(연결 배지 키 다섯 — 설정 카드와 Home 메타 Connection 행이 같이 읽는다, 망라형)와
                         planActionAvailability(보관·끊김이면 Publish·Sync를 끈다 — Home·번역 화면이 같이 읽는다)가, cards에 planHomeHold(보류 사유의
                         **지금** 판정 — 편집 수와 열린 PR 조회, 2026-10-01)가 산다
-                        attention-view(attention-inbox — Home 카드와 헤더 Inbox가 같이 읽는 칩·문장·목적지 attentionTile·title·body·tail·attentionHref와
+                        attention-view(attention-inbox — Home 카드와 헤더 Inbox가 같이 읽는 칩·문장·목적지 attentionTile·title·body·tail·attentionHref·
+                        reconnectDestination(끊김 항목의 목적지 — 호출부가 역할로 정해 attentionHref에 넘긴다) · neverFilledHref(목록 띠와 공유)와
                         정렬 compare. ⚠️ 클라이언트 그래프에 든다 — 수집 attention.ts를 값으로 물면 어댑터가 따라온다, client-graph CLIENT_LIB_FILES)
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
                         ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync · 2026-10-04 project-card-tabs)는 server-only 조회다**: 메타 열 Sync·Publish 탭의
@@ -1003,10 +1009,10 @@ lib/
   shell/sidebar-cookie.ts LNB 접힘 여부 기기 쿠키(malmoi-sidebar-collapsed) — 잎. 서버 레이아웃이 읽고 셸 패널이 document.cookie로 쓴다. ⚠️ 이 리포에서 유일하게 http-only가 아닌 쿠키다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
-  projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 그룹·띠·
-                        Meter 자리·진행률 접기·계정 합계·그룹 나누기·검색 강조. 오케스트레이션
+  projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 행 판정 planProjectRow(칩·그룹·띠를 한 표에서,
+                        2026-10-18 project-row-redesign)·검토 셀 접기(rowReviewCells)·계정 합계·그룹 나누기·검색. 오케스트레이션
                         파일에 두면 클라이언트 번들이 그 그래프를 따라온다. projectSyncFailure(표면 배열 → 가장 나쁜 실패 하나 —
-                        칩·띠·Meter 자리·Home 배너가 같이 부른다, 2026-10-01. 전엔 조회가 표면을 평탄화해 서로 다른 표면의 값이 섞였다)
+                        행 판정·Home 배너가 같이 부른다, 2026-10-01. 전엔 조회가 표면을 평탄화해 서로 다른 표면의 값이 섞였다)
   projects/import-status.ts
                         임포트 결과의 순수 계약(닫힌 보고 스키마 · 대표 코드 · 화면 문장). ⚠️ 잎이라
                         @/lib/adapters/types를 **타입만** 가져온다
@@ -1084,7 +1090,9 @@ lib/
                         ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
   inbox/                Inbox(attention-inbox, 2026-10-05 · inbox-page, 2026-10-09 — ARCHITECTURE §6.365). plan(순수 — planInbox · isUnread · badgeLabel ·
                         clampSeenAt(페이지가 보낸 at을 toISOString 왕복 형만 받아 서버 시각으로 자른다), projectId를 입력에 두지 않는다.
-                        클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
+                        클라이언트 그래프에 든다) · project-todos(순수 — projectTodos: DB에서 정해지는 할 일 여섯(끊김 · 적재 실패 · 설정 · 미전달 ·
+                        검토 · 빈 언어)을 한 함수가 낸다. Inbox와 /projects 행 조립이 둘 다 쓴다 — 2026-10-18 project-row-redesign. 런타임 import는
+                        lib/auth/permission 하나라 클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
                         unread-store(탭 안 안 읽음 수 store — 헤더·사이드바 배지가 같은 n을 읽고 /inbox 섬이 읽음 신호를 보낸다. Provider가 아닌 것은
                         공개 셸 헤더도 같은 AttentionInbox라서다. ⚠️ 서버 스냅샷 0 · 렌더 중 setUnread 금지 — SSR에서 요청 간 공유되는 모듈 인스턴스다)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
