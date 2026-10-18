@@ -41,6 +41,10 @@ A와 B는 쓰기 파일이 겹치지 않는다 → **병렬**. A의 `todo.ts`는
 
 T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T9 QA · T10 DOC · T11 DOC — 0건.
 
+## 런 뒤 배포 (사용자 2026-10-18)
+
+이 런(+ 곁 배치 K)을 마무리하면 같은 세션에서 `/merge`를 진행한다 — **patch bump**(사용자 지정). inbox-filter-search는 문서(스펙·리뷰 반영 `861953fd`)만 이 push에 함께 실리고 구현은 다음 릴리스다.
+
 ## 진행 기록
 
 - 2026-10-18 Run `run_a8efa5c8272a`. A = 워크트리 `lrt-a` · Dispatch `ctx_41d443eb1de7` · `term_ddaf926f`. B = 워크트리 `lrt-b` · Dispatch `ctx_4616264251f2` · `term_b24799fd`. 브리프는 main 체크아웃 `.scratch/orch-language-request-todo/brief-{A,B}.md`.
