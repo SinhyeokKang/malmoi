@@ -22,8 +22,9 @@ export type Dot = { x: number; y: number };
  *
  * `offsetY`는 랜딩의 스크롤 격자다(landing-kv-background R6) — 한 화면짜리 sticky 캔버스에서 행을 `-(offsetY % gap)`부터
  * 그려 점이 콘텐츠에 박힌 것처럼 올라간다. 그때는 아래 끝 행이 높이 이상까지 간다(행이 위로 밀린 만큼 아래가 비지 않게).
- * ⚠️ **0이면 지금 출력과 바이트 단위로 같다** — 로그인은 이 인자를 넘기지 않는다. ⚠️ Safari 고무줄 스크롤은 `scrollTop`을
- * 음수로 주므로 나머지를 양수로 접는다. 유한하지 않으면 0으로 읽는다(`NaN` 좌표가 캔버스에 가면 그 프레임이 빈다).
+ * ⚠️ **0이면 지금 출력과 바이트 단위로 같다** — 로그인은 이 인자를 넘기지 않는다. 음수는 같은 위상의 양수로 접는다 — 격자의
+ * 위상은 주기적이라 그것이 수학적으로 맞다. 고무줄 스크롤의 음수 `scrollTop`은 여기 오기 전에 `clampScrollTop`이 0으로 자른다.
+ * 유한하지 않으면 0으로 읽는다(`NaN` 좌표가 캔버스에 가면 그 프레임이 빈다).
  */
 export function dotGrid(width: number, height: number, gap: number, offsetY = 0): Dot[] {
   if (gap <= 0 || width < 0 || height < 0) return [];
@@ -39,6 +40,21 @@ export function dotGrid(width: number, height: number, gap: number, offsetY = 0)
     for (let x = 0; x <= width; x += gap) dots.push({ x, y });
   }
   return dots;
+}
+
+/**
+ * 격자 위상에 넘길 스크롤 위치 — `scrollTop`을 `[0, scrollHeight - clientHeight]`로 자른다(landing-kv-background R6).
+ *
+ * ⚠️ **고무줄 스크롤 때문이다.** 튕기는 동안 `scrollTop`이 범위 밖으로 나가는데, 그때 sticky 캔버스는 콘텐츠와 함께 움직인다 —
+ * 위 끝에선 같이 내려가고(sticky는 위쪽 한계만 건다) 아래 끝에선 래퍼 바닥에 걸려 같이 올라간다. 캔버스가 이미 콘텐츠를 따라가므로
+ * 맞는 오프셋은 잘린 값이다. 자르지 않으면 점이 콘텐츠의 두 배 속도로 미끄러진다.
+ *
+ * 최대가 음수(콘텐츠가 스크롤포트보다 짧다)이거나 입력이 유한하지 않으면 0이다.
+ */
+export function clampScrollTop(scrollTop: number, scrollHeight: number, clientHeight: number): number {
+  if (!Number.isFinite(scrollTop) || !Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return 0;
+  const max = Math.max(0, scrollHeight - clientHeight);
+  return Math.min(Math.max(scrollTop, 0), max);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { autoCursor, dotGrid, dotScale, partitionDots, type Dot } from "@/lib/signin/dot-field";
+import { autoCursor, clampScrollTop, dotGrid, dotScale, partitionDots, type Dot } from "@/lib/signin/dot-field";
 
 /** 시안 값 — 지름 4px(반지름 2), 간격 16px. 커서 반경과 확대치는 목측으로 정했다. */
 const GAP = 16;
@@ -43,6 +43,8 @@ const AUTO_ROWS = 5;
  * `follow`는 소비자 둘을 가른다(landing-kv-background design §3). `"canvas"`(기본)는 로그인 KV이고 지금 동작 그대로다.
  * `"scroller"`는 랜딩 배경이다 — 캔버스는 공개 셸 스크롤러 안의 한 화면짜리 sticky이고 `pointer-events: none`이라 내용 아래에 깔린다.
  * - **R6** 격자를 `scrollTop % GAP`만큼 올려 그린다 — 점이 콘텐츠에 박힌 것처럼 올라간다. 캔버스를 콘텐츠 높이로 키우지 않는다(버퍼가 화면 몇 장 × DPR²다).
+ *   ⚠️ 이 공식은 **스크롤 0부터 캔버스 윗변 = 스크롤포트 윗변**을 전제한다(래퍼가 스크롤러의 첫 자식이고 스크롤러 padding이 0). 래퍼 위에
+ *   다른 요소나 padding이 생기면 sticky가 걸리기 전 구간에서 캔버스 이동과 오프셋이 겹쳐 점이 미끄러진다.
  * - **R7** 포인터는 가장 가까운 `[data-public-scroller]`에서 받는다(캔버스는 이벤트를 못 받는다). 스크롤러가 없으면 캔버스에서 받는다.
  * - **R8** 반경 밖 점(같은 반지름·알파)은 path 하나로 fill 한 번이다 — 2560×1440이면 점이 1만 3천 개다.
  * ⚠️ **로그인 경로를 바꾸지 않는다** — 위 셋은 스크롤러를 찾았을 때만 탄다.
@@ -63,6 +65,8 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
 
     /** 랜딩의 스크롤러 — `null`이면 로그인 경로다. */
     const scroller = follow === "scroller" ? canvas.closest<HTMLElement>("[data-public-scroller]") : null;
+    /** 격자 오프셋 — 고무줄 스크롤의 범위 밖 값은 자른다(`clampScrollTop` 주석). 로그인은 0이다. */
+    const scrollOffset = () => (scroller === null ? 0 : clampScrollTop(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight));
     /** 포인터를 받는 요소. 랜딩의 캔버스는 `pointer-events: none`이라 스크롤러가 받는다. */
     const pointerTarget: HTMLElement = scroller ?? canvas;
 
@@ -97,8 +101,8 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
     let width = 0;
     let height = 0;
     /**
-     * 지금 `dots`를 만든 스크롤 위상(`scrollTop % GAP`) — 랜딩만 쓴다. 위상이 바뀔 때만 격자를 다시 만든다 — 스크롤 프레임마다
-     * 점 1만 개를 새로 할당하지 않는다.
+     * 지금 `dots`를 만든 스크롤 위상(`scrollTop % GAP`) — 랜딩만 쓴다. 위상이 바뀔 때만 격자를 다시 만든다. 아끼는 것은 **멈춰 있는
+     * 동안**의 할당뿐이다 — 스크롤 중에는 위상이 거의 매 프레임 바뀌어 격자를 매번 새로 만든다.
      */
     let phase = 0;
 
@@ -144,7 +148,7 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
         for (const dot of dots) drawDot(dot, spot);
         return;
       }
-      const top = scroller.scrollTop;
+      const top = scrollOffset();
       if (top % GAP !== phase) {
         phase = top % GAP;
         dots = dotGrid(width, height, GAP, top);
@@ -195,7 +199,7 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const top = scroller === null ? 0 : scroller.scrollTop;
+      const top = scrollOffset();
       phase = top % GAP;
       dots = dotGrid(width, height, GAP, top);
       draw();

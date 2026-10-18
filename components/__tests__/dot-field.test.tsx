@@ -294,7 +294,7 @@ describe("DotField follow=\"scroller\"", () => {
     await act(async () => { scroller.dispatchEvent(new PointerEvent("pointermove", { pointerType: "mouse", clientX: 208, clientY: 208 })); });
 
     /** 전체 기록에서 i번째 호출 앞의 마지막 알파 — 이번 프레임이 대입하지 않았으면 앞 프레임 값이 나온다(캔버스 상태는 이어진다). */
-    const alphaBefore = (index: number) => calls.slice(0, index).findLast(([name]) => name === "globalAlpha")?.[1][0];
+    const alphaBefore = (index: number) => calls.slice(0, index).reverse().find(([name]) => name === "globalAlpha")?.[1][0];
     const check = () => {
       const start = calls.map(([name]) => name).lastIndexOf("clearRect");
       const fill = calls.findIndex(([name], i) => i > start && name === "fill");
