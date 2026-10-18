@@ -27,6 +27,7 @@ export function PublicShell({
   account,
   current,
   bare = false,
+  kv = false,
   children,
 }: {
   /** 화면 언어의 사전 — 헤더·푸터가 읽는다. 공용 컴포넌트(`"use client"` 없음)라 부모가 넘긴다(ui-locales design §3.2). */
@@ -40,6 +41,12 @@ export function PublicShell({
    * (DESIGN §6.61). 셸을 레이아웃에 두면 스크롤러가 재마운트되지 않으므로, 그 자리를 페이지로 내린 것이다.
    */
   bare?: boolean;
+  /**
+   * 랜딩 갈래 — 패널을 로그인 KV 패널과 같은 그릇으로 둔다(landing-kv-background R13, 2026-10-18 사용자). 보더·그림자를 빼고
+   * `bg-background`도 뺀다: 스크롤러가 `overscroll-contain`이어도 Safari·iOS는 그 안쪽을 튕기고, 그라디언트는 콘텐츠 래퍼에 있어
+   * 튕긴 자리에 패널 바탕이 드러난다. 넘기는 곳은 `app/page.tsx` 하나다.
+   */
+  kv?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -52,7 +59,14 @@ export function PublicShell({
 
       <div className="bg-canvas flex h-svh flex-col overflow-hidden px-2 pt-1.5">
         <PublicHeader m={m} account={account} current={current} />
-        <main className="border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border">
+        {/* ⚠️ 기본 갈래 문자열을 재배열·재작성하지 않는다 — `/docs`·`/privacy`·`/changelog`가 바이트 단위로 그대로여야 한다(테스트가 고정한다). */}
+        <main
+          className={
+            kv
+              ? "relative flex min-h-0 flex-1 overflow-hidden rounded-xl"
+              : "border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border"
+          }
+        >
           {bare ? children : <PublicScroller>{children}</PublicScroller>}
         </main>
         <PublicFooter m={m} drawer />

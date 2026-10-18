@@ -55,7 +55,7 @@ export default async function Root() {
 
   const { hero, stage, closing, mockup, shell } = m.landing;
   return (
-    <PublicShell m={m} account={null}>
+    <PublicShell m={m} account={null} kv>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-16 text-center lg:pt-30">
         {/*
