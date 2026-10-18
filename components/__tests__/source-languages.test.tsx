@@ -111,7 +111,7 @@ describe("카드 머리와 설명 — OWNER·EDITOR·비지원 포맷 세 갈래
   it("비지원 포맷 OWNER: 새 추가·제거는 꺼지고 남은 Adding·Removing의 취소만 켜진다(L4)", async () => {
     mocks.load.mockResolvedValue({ ok: true, detail: detail([
       row("ko"), row("fr", { change: add, unsent: true, translated: 6 }), row("de", { change: removal, unsent: true }), row("es", { orphaned: true, translated: 3 }),
-    ], { connection: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", format: "YAML" } }) });
+    ], { connection: { adapterName: "ts-dict", pathTemplate: "src/dict.ts", format: "TypeScript dictionary" } }) });
     await open();
     expect(card().querySelector("header")!.textContent).toContain(en.sources.languagesHelp);
     for (const control of [headerAdd(), action("ko"), action("es")]) {
@@ -138,7 +138,7 @@ describe("Inactive 띠 끝 문장 — 보존 번역 수 0·1·2(#287)", () => {
       expect(strip()).toBe(`es is inactive. ${c.rest} ${c.owner}`);
     });
     it(`비지원 OWNER · 번역 ${c.n}개`, async () => {
-      mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: c.n })], { connection: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", format: "YAML" } }) });
+      mocks.load.mockResolvedValue({ ok: true, detail: detail([row("es", { orphaned: true, translated: c.n })], { connection: { adapterName: "ts-dict", pathTemplate: "src/dict.ts", format: "TypeScript dictionary" } }) });
       await open();
       expect(strip()).toBe(`es is inactive. ${c.rest} ${en.sources.orphanStripUnsupported}`);
     });

@@ -113,7 +113,7 @@ describe("planLocaleChange — refusals write nothing", () => {
     ["unsettled publish remove", input({ kind: "remove", code: "ko" }, initial, { publishUnsettled: true }), "publish-unsettled"],
     ["unsettled publish cancel-add", input({ kind: "remove", code: "fr" }, adding, { publishUnsettled: true }), "publish-unsettled"],
     ["unsettled publish cancel-removal", input({ kind: "cancel-removal", code: "ko" }, removing, { publishUnsettled: true }), "publish-unsettled"],
-    ["unsupported format remove", input({ kind: "remove", code: "ko" }, initial, { surface: { ...surface, adapterName: "yaml-catalog" } }), "unsupported-format"],
+    ["unsupported format remove", input({ kind: "remove", code: "ko" }, initial, { surface: { ...surface, adapterName: "ts-dict" } }), "unsupported-format"],
     ["base locale removal", input({ kind: "remove", code: "en" }), "base-locale"],
     ["remove a missing locale", input({ kind: "remove", code: "fr" }), "not-found"],
     ["remove an orphan locale", input({ kind: "remove", code: "fr" }, { ...initial, locales: [...initial.locales, { code: "fr", orphaned: true }] }), "not-found"],
@@ -145,7 +145,7 @@ describe("planLocaleChange — refusals write nothing", () => {
 
   // R-A1 Y3 — 추가 취소도 리포로 새로 보내는 것이 없는 축소 방향이다.
   it("포맷이 비지원으로 바뀐 소스에서도 추가 취소를 허용한다", () => {
-    const value = input({ kind: "remove", code: "fr" }, adding, { surface: { ...surface, adapterName: "yaml-catalog" } });
+    const value = input({ kind: "remove", code: "fr" }, adding, { surface: { ...surface, adapterName: "ts-dict" } });
     expect(planLocaleChange(value)).toEqual({ ok: true, transition: { kind: "cancel-add", code: "fr", path: "src/i18n/fr.json", discardPending: true } });
   });
 
@@ -154,7 +154,7 @@ describe("planLocaleChange — refusals write nothing", () => {
   });
 
   it("allows cancelling a removal on a source whose format is no longer supported", () => {
-    const value = input({ kind: "cancel-removal", code: "ko" }, removing, { surface: { ...surface, adapterName: "yaml-catalog" } });
+    const value = input({ kind: "cancel-removal", code: "ko" }, removing, { surface: { ...surface, adapterName: "ts-dict" } });
     expect(planLocaleChange(value)).toMatchObject({ ok: true });
   });
 
