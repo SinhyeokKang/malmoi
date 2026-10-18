@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { projectSyncFailure, rowBanner, rowChip } from "@/lib/projects/list";
+import { planProjectRow, projectSyncFailure, rowBanner, rowChip } from "@/lib/projects/list";
 
 import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMemberRow } from "../query";
 
@@ -12,11 +12,11 @@ import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMe
 
 const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 const surface = (over: Partial<ProjectListMemberRow["project"]["surfaces"][number]> = {}) =>
-  ({ id: "s1", slug: "web", lastImportedAt: null, lastCommitAt: null, archivedAt: null, lastCommitSha: "sha", lastImportError: null, lastImportStartedAt: null, ...over });
+  ({ id: "s1", slug: "web", locales: [], lastImportFailedAt: null, lastImportedAt: null, lastCommitAt: null, archivedAt: null, lastCommitSha: "sha", lastImportError: null, lastImportStartedAt: null, ...over });
 const member = (surfaces: ProjectListMemberRow["project"]["surfaces"], over: Partial<ProjectListMemberRow["project"]> = {}): ProjectListMemberRow => ({
   role: "OWNER",
   project: {
-    id: "p1", slug: "acme", name: "Acme", image: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", archivedAt: null, repoOwner: "o", repoName: "r",
+    id: "p1", createdAt: new Date(0), slug: "acme", name: "Acme", image: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", archivedAt: null, repoOwner: "o", repoName: "r",
     repositoryId: "10", baseBranch: "main", lastPrUrl: null, _count: { members: 1 }, surfaces, ...over,
   },
 });
@@ -126,5 +126,40 @@ describe("assembleProjectListRows — 대표 메타", () => {
       cells: [{ projectId: "p1", surfaceId: "s1", localeCode: "orphaned", needsReview: true, count: 9 }],
     }, new Map());
     expect(row).toMatchObject({ keyCount: 2, languageCount: 1, review: 0 });
+  });
+});
+
+describe("assembleProjectListRows — DB 할 일", () => {
+  const at = new Date("2026-10-01T00:00:00Z");
+  const locales = [
+    { code: "ko", name: "Korean", orphaned: false, createdAt: at, change: { operation: "ADD" as const } },
+    { code: "es", name: "Spanish", orphaned: false, createdAt: at, change: { operation: "REMOVE" as const } },
+  ];
+  it("로케일 정보와 기존 집계로 빈 ADD를 싣고 REMOVE를 뺀다", () => {
+    const [row] = assembleProjectListRows([member([surface({ id: "s1", locales })])], {
+      ...EMPTY, keyTotals: new Map([["s1", 2]]),
+      locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false }],
+    }, new Map());
+    expect(row?.todos).toEqual([{ kind: "never_filled", at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 2, ownerRetries: false }]);
+    expect(row && planProjectRow(row, row.todos).banner).toMatchObject({ kind: "never_filled", code: "ko" });
+  });
+  it("검토의 시각·저자를 만들지 않고 셀 수를 보존한다", () => {
+    const [row] = assembleProjectListRows([member([surface({ id: "s1", locales })])], {
+      ...EMPTY, keyTotals: new Map([["s1", 2]]),
+      locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false }],
+      cells: [{ projectId: "p1", surfaceId: "s1", localeCode: "ko", needsReview: true, count: 2 },
+        { projectId: "p1", surfaceId: "s1", localeCode: "es", needsReview: true, count: 9 }],
+    }, new Map());
+    expect(row?.todos).toEqual([{ kind: "review", at: null, surfaceSlug: "web", code: "ko", name: "Korean", count: 2, who: null, ownerRetries: false }]);
+    expect(row && planProjectRow(row, row.todos).banner).toEqual({ kind: "review", count: 2 });
+  });
+  it("EDITOR 실패·재연결 할 일에 실제 실패·만료 시각과 소유자 플래그를 싣는다", () => {
+    const row = assemble({ ...member([surface({ lastImportError: "parse-failed", lastImportFailedAt: at })], {
+      repoHost: "gitlab", gitlabConnectionId: "c", gitlabConnection: { expiresAt: new Date(0) },
+    }), role: "EDITOR" });
+    expect(row.todos).toEqual([
+      { kind: "import_failed", at, surfaceSlug: "web", reason: "parse-failed", ownerRetries: true },
+      { kind: "needs_reconnect", at: new Date(0), ownerRetries: true },
+    ]);
   });
 });

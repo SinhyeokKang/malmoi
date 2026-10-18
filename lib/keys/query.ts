@@ -2,6 +2,9 @@ import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import "server-only";
 
+import { collectAttention, neverFilledLocales } from "@/lib/home/attention";
+import { projectTodos, type ProjectAttention, type ProjectTodo } from "@/lib/inbox/project-todos";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
 import { lastSyncTime } from "@/lib/home/sync-time";
 import type { PrismaClient } from "@/generated/prisma/client";
 // ⚠️ `Role`은 **생성물이 아니라 도메인 층**에서 온다 — 그 파일이 "Prisma의 `enum Role`과 두 벌인 것은
@@ -10,6 +13,7 @@ import type { Role } from "@/lib/auth/permission";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { loadRemoteSignals, type RemoteSignals } from "@/lib/projects/remote";
 import {
+  projectStatus,
   rowLocaleProgress,
   rowReviewCounts,
   type LiveLocale,
@@ -255,7 +259,7 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
  */
 /** T6이 기존 화면 타입과 합칠 메타. 반환값에서는 지금부터 필수다. */
 export type ProjectListRowMeta = { sourceCount: number; keyCount: number; languageCount: number; lastSync: string | null };
-export type ProjectListView = { rows: (ProjectListRow & ProjectListRowMeta)[] };
+export type ProjectListView = { rows: (ProjectListRow & ProjectListRowMeta & { todos: ProjectTodo[] })[] };
 
 /**
  * `/projects` 목록 전용 조회 (8-3 · DESIGN §6.63).
@@ -288,6 +292,7 @@ export async function loadProjectList(
         select: {
           // ⚠️ **서버 안에서만 쓴다** — 집계를 묶는 키이고 `ProjectListRow`에는 안 나간다.
           id: true,
+          createdAt: true,
           slug: true,
           name: true,
           image: true,
@@ -298,7 +303,7 @@ export async function loadProjectList(
            * 원격 경로 판정(`RemoteTarget.surfaces`)의 입력. ⚠️ **로케일은 orphaned도 포함한 전체 저장 로케일이다** — 탐지
            * 정규식이 거르는 코드(`es-419`·`zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
            */
-          surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true } } } },
+          surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true, name: true, orphaned: true, createdAt: true, change: { select: { operation: true } } } } } },
           archivedAt: true,
           repoOwner: true,
           repoName: true,
@@ -345,9 +350,11 @@ export async function loadProjectList(
 export type ProjectListMemberRow = {
   role: Role;
   project: {
-    id: string; slug: string; name: string; image: string | null; repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
+    id: string; createdAt: Date; slug: string; name: string; image: string | null; repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
     archivedAt: Date | null; repoOwner: string; repoName: string; repositoryId: string | null; baseBranch: string; lastPrUrl: string | null;
-    surfaces: readonly { id: string; slug: string; lastImportedAt: Date | null; lastCommitAt: Date | null; archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
+    surfaces: readonly { id: string; slug: string; lastImportedAt: Date | null; lastCommitAt: Date | null; archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null; lastImportFailedAt: Date | null;
+      locales: Parameters<typeof neverFilledLocales>[0][number]["locales"];
+    }[];
     _count: { members: number };
     gitlabConnection?: { expiresAt: Date | null } | null;
   };
@@ -364,7 +371,7 @@ export function assembleProjectListRows(
   rows: readonly ProjectListMemberRow[],
   aggregates: ProjectListAggregates,
   remote: ReadonlyMap<string, RemoteSignals>,
-): (ProjectListRow & ProjectListRowMeta)[] {
+): ProjectListView["rows"] {
   const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
 
   // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCounts`가 Meter와 **같은 접기**로 한다.
@@ -374,10 +381,24 @@ export function assembleProjectListRows(
     const surfaces = r.project.surfaces.filter(surface => surface.archivedAt === null);
     const surfaceIds = new Set(surfaces.map(surface => surface.id));
     const lastSync = lastSyncTime(surfaces);
-    return {
+    const workLocales = aggregates.locales.filter(locale => locale.projectId === r.project.id && surfaceIds.has(locale.surfaceId));
+    const importStates = surfaces.map(surface => ({ ...surface,
+      importError: isImportFailureCode(surface.lastImportError) ? surface.lastImportError : null,
+      importing: surface.lastImportStartedAt !== null,
+    }));
+    const attention: ProjectAttention[] = collectAttention(importStates, [], neverFilledLocales(surfaces, aggregates), new Map());
+    for (const locale of workLocales) {
+      const count = aggregates.cells.filter(cell => cell.projectId === r.project.id && cell.surfaceId === locale.surfaceId && cell.localeCode === locale.code && cell.needsReview)
+        .reduce((sum, cell) => sum + cell.count, 0);
+      if (count <= 0) continue;
+      const surface = surfaces.find(surface => surface.id === locale.surfaceId);
+      attention.push({ kind: "review", at: null, surfaceSlug: locale.surfaceSlug, code: locale.code,
+        name: surface?.locales.find(item => item.code === locale.code)?.name ?? locale.code, count, who: null });
+    }
+    const row: ProjectListRow & ProjectListRowMeta = {
       sourceCount: surfaces.length,
       keyCount: surfaces.reduce((sum, surface) => sum + (aggregates.keyTotals.get(surface.id) ?? 0), 0),
-      languageCount: new Set(aggregates.locales.filter(locale => locale.projectId === r.project.id && surfaceIds.has(locale.surfaceId) && !locale.isBase).map(locale => locale.code)).size,
+      languageCount: new Set(workLocales.filter(locale => !locale.isBase).map(locale => locale.code)).size,
       lastSync: lastSync instanceof Date ? lastSync.toISOString() : lastSync,
       slug: r.project.slug,
       name: r.project.name,
@@ -412,6 +433,12 @@ export function assembleProjectListRows(
       openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
       repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
     };
+    return { ...row, todos: projectTodos({
+      status: projectStatus(row), role: row.role, createdAt: r.project.createdAt,
+      connectionPinned: repoConnectionPinned(row), gitlabTokenExpiresAt: row.gitlabTokenExpiresAt,
+      attention, unsent: row.unsent > 0 && row.unsentSurfaceSlug !== null
+        ? { count: row.unsent, surfaceSlug: row.unsentSurfaceSlug, at: aggregates.unsentAt.get(r.project.id) ?? null } : null,
+    }) };
   });
 }
 
