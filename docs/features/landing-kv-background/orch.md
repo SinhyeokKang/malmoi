@@ -44,3 +44,12 @@ T0(완료) · T1 A · T2 A · T3 B+B2 · T4 DS · T5 QA · T6 QA · T7 DOC · T8
 ## 진행 기록
 
 (통합 커밋 · 리뷰 라운드 · 검증 결과 · 이슈를 여기에 쌓는다)
+
+- 2026-10-18 Run `run_7c7754e4dd5f`. A = 워크트리 `lkv-a` · Dispatch `ctx_a18a705c7810` · `term_24874f0b`. B = 워크트리 `lkv-b` · Dispatch `ctx_90dfc6b35829` · `term_245dd688`. 브리프는 main 체크아웃 `.scratch/orch-landing-kv-background/brief-{A,B}.md`.
+- B `worker_done` — 97ef139e · d88d3d74 · 274b44a0, `gate: ok`(15870 통과). 계획과 다른 점: `--landing-stage-h`를 래퍼가 아니라 스크롤러에 쓴다(R3이 허용한 둘 중 하나). ⚠️ `kv` 패널은 보더가 없어 JS 전 폴백 `calc(100svh-98px)`이 2px 짧다 — 리뷰 판정. 미룬 항목은 B2(`DotField` 삽입). 인계 사본 `.scratch/orch-landing-kv-background/handoffs/handoff-B.md`. B 터미널은 B2를 위해 유지한다. 리뷰 Dispatch `ctx_8c6cbf8695b3`(Opus medium).
+- 리뷰 B: 🔴 0 · 🟡 2 · ⚪ 4(사본 `handoffs/review-B.md`). 계획과 다른 점(스크롤러에 쓰기)은 수용. **지휘자 판단 D10** — 폴백 98 → 96: 그 폴백의 소비자는 랜딩뿐이고 랜딩 패널은 보더가 없다. 수정 라운드 B fix1(Dispatch `ctx_74bce4313c4f`): Y1 폴백 96 · Y2 래퍼가 히어로+Stage를 감싸는 순서 단언 · W1 정적 흐름에서도 `--landing-stage-h`를 쓴다(캔버스 = 스크롤러 높이, spec 3).
+- A `worker_done` — 5763dc96 · 8a9d380b · e627a80d · 65fb87d2(테스트 먼저 커밋이라 넷), `gate: ok`(15883 통과). 계획과 다른 점: 포인터 좌표를 캔버스 rect 기준으로 잰다 · 스크롤러가 없으면 캔버스 경로로 떨어진다 · 루프가 도는 동안 scroll은 그리지 않는다. 인계 사본 `handoffs/handoff-A.md`. 리뷰 Dispatch `ctx_2a69ec273f63`(Opus high).
+- B fix1 질문(Y1 범위) — `lib/landing/__tests__/stage.test.ts`의 스크롤러 모델(−18×−98)과 DESIGN §6.615 배율 표(`DESIGN.md:1158`)도 kv 패널에선 −16×−96이다. **지휘자 판단**: 지금은 `stage.tsx` 폴백 + 주석만, 테스트 기하·DESIGN 표는 **DOC(T7) 배치가 함께** 고친다.
+- B fix1 질문 2 — `calc(100svh-96px)` 리터럴은 `visual-system.test.ts` T2_RAW가 막는다(옛 표기가 `--spacing-modal-gutter`로 바뀐 값). **지휘자 판단 — D10을 뒤집는다**: 폴백은 98 그대로 두고 주석만 "보더 없는 kv 패널에선 JS 전 2px 짧다"로 고친다. W1로 정적 흐름도 실제 H를 쓰므로 폴백은 JS 전에만 쓰인다. 새 토큰·DESIGN 변경 없음.
+- 리뷰 A: 🔴 0 · 🟡 4 · ⚪ 5(사본 `handoffs/review-A.md`). 계획과 다른 점 전부 수용(캔버스 rect 좌표가 계획보다 낫다). A fix1(Dispatch `ctx_adac7b076573`): Y1 고무줄 스크롤 때 `scrollTop`을 `[0, max]`로 자르는 순수 함수 · Y2 묶음 fill 알파·`moveTo` 단언 · Y3 루프 중 scroll 재그리기 없음 단언 · N1–N3. **Y4(랜딩 캔버스가 `[data-public-scroller]` 안에 있는지 단언)는 B2로 보낸다.** QA 런타임 항목 추가: Safari 위·아래 고무줄 스크롤에서 점이 콘텐츠에 붙어 있는지, 빠른 플릭에서 한 프레임 지연.
+- A fix1 `worker_done` — 68d0d9d1(test) · 47cd319e(fix): 순수 `clampScrollTop` · 묶음 알파·`moveTo` 단언 · 루프 중 scroll 재그리기 없음 · 주석 N1·N2 · 마우스 테스트 시각 고정. 변이 검사 넷 모두 red. `gate: ok`(첫 실행은 병렬 부하로 무관한 파일 9건 타임아웃, 단독 재실행 green). 지휘자 diff 확인 — 수용. 런타임 목록 7항목은 `handoffs/handoff-A.md` fix1 절.
