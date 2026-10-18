@@ -2017,7 +2017,6 @@ export const ko = {
     orphanStripEditor: "프로젝트 소유자가 다시 추가할 수 있습니다.",
     statusHelp: "리포지토리와 동기화할 때 업데이트됩니다.",
     baseHelp: "기준 언어의 파일로 이 소스의 키 목록을 정합니다.",
-    languagesHelp: "언어 목록은 리포지토리에서 읽습니다. 파일 추가·제거는 리포지토리에서 하세요.",
     languagesHelpOwner: "여기서 언어를 추가하거나 제거합니다. 게시하면 리포지토리에 반영됩니다.",
     languagesHelpEditor: "프로젝트 소유자만 언어를 추가하거나 제거할 수 있습니다.",
     baseRow: "키 목록의 기준",

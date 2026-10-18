@@ -18,8 +18,8 @@ export function repositoryLanguageCount(detail: Pick<SourceDetail, "languages">)
   return detail.languages.filter(row => !row.orphaned && row.change?.operation !== "ADD").length;
 }
 
-/** 행 동작의 꺼짐 이유 — 앞선 것이 이긴다(기준 언어 > 권한 > 포맷 > 전달 미확정). 문장 자리는 이유마다 다르다(시안 L1·L3·L4). */
-export type ActionBlock = "base" | "role" | "format" | "unconfirmed";
+/** 행 동작의 꺼짐 이유 — 앞선 것이 이긴다(지원 포맷 안에서 기준 언어 > 권한 > 전달 미확정). 문장 자리는 이유마다 다르다(시안 L1·L3·L4). */
+export type ActionBlock = "base" | "role" | "unconfirmed";
 
 export type LanguageRowPlan = {
   badge: "adding" | "removing" | "removedFromRepository" | null;
@@ -28,7 +28,7 @@ export type LanguageRowPlan = {
   link: boolean;
   notConfirmed: boolean;
   note: "baseRow" | "noFileYet" | "readOnly" | "readOnlyDelivered" | "notConfirmedHelp" | "publishToUpdate" | null;
-  action: { kind: "add" | "remove" | "cancel"; block: ActionBlock | null };
+  action: { kind: "add" | "remove" | "cancel"; block: ActionBlock | null } | null;
 };
 
 /**
@@ -47,7 +47,7 @@ export function planLanguageRow(row: LanguageRow, input: { canManage: boolean; s
   const role = !input.canManage && "role";
   if (row.orphaned) {
     return { badge: "removedFromRepository", unsent: row.unsent, link: false, notConfirmed: false, note: row.unsent ? "publishToUpdate" : null,
-      action: { kind: "add", block: block(role, !input.supported && "format") } };
+      action: input.supported ? { kind: "add", block: block(role) } : null };
   }
   if (row.change !== null) {
     const adding = row.change.operation === "ADD";
@@ -65,5 +65,16 @@ export function planLanguageRow(row: LanguageRow, input: { canManage: boolean; s
     };
   }
   return { badge: null, unsent: row.unsent, link: false, notConfirmed: false, note: row.isBase ? "baseRow" : row.unsent ? "publishToUpdate" : null,
-    action: { kind: "remove", block: block(row.isBase && "base", role, !input.supported && "format") } };
+    action: input.supported ? { kind: "remove", block: block(row.isBase && "base", role) } : null };
+}
+
+/** 앱 안에서 바꿀 수 없는 포맷은 동작과 설명이 없다. 권한 설명은 지원 포맷에서만 고른다. */
+export function languageCardHelp(input: { supported: boolean; canManage: boolean }): "languagesHelpOwner" | "languagesHelpEditor" | null {
+  return !input.supported ? null : input.canManage ? "languagesHelpOwner" : "languagesHelpEditor";
+}
+
+/** 비지원 EDITOR에게 OWNER도 못 하는 재추가를 약속하지 않는다. 보존 문장은 별도로 항상 남는다. */
+export function inactiveLanguageRecovery(input: { supported: boolean; canManage: boolean }): "orphanStripOwner" | "orphanStripEditor" | "orphanStripUnsupported" | null {
+  if (!input.supported) return input.canManage ? "orphanStripUnsupported" : null;
+  return input.canManage ? "orphanStripOwner" : "orphanStripEditor";
 }

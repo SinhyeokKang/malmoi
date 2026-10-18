@@ -2026,7 +2026,6 @@ export const es = {
     orphanStripEditor: "Un propietario del proyecto puede añadirlo de nuevo.",
     statusHelp: "Se actualiza con las sincronizaciones desde tu repositorio.",
     baseHelp: "El idioma base decide qué claves existen en esta fuente.",
-    languagesHelp: "Los idiomas vienen del repositorio. Añade o quita los archivos allí.",
     languagesHelpOwner: "Añade o quita idiomas aquí. Publica para actualizar el repositorio.",
     languagesHelpEditor: "Solo los propietarios del proyecto pueden añadir o quitar idiomas.",
     baseRow: "Origen de todas las claves de este archivo",

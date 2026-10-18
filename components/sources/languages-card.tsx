@@ -13,14 +13,13 @@ import { Link as InlineLink } from "@/components/ui/link";
 import { Meter } from "@/components/ui/meter";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { supportsLocaleChanges } from "@/lib/locales/add-plan";
 import { reviewNumberFrom } from "@/lib/projects/review-number";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { meterValue } from "@/lib/sources/meters";
 import type { SourceDetail } from "@/lib/sources/query";
 import { cn } from "@/lib/utils";
 import { AddLocaleDialog, type AddOutcome } from "./add-locale-dialog";
-import { listedLanguageCount, planLanguageRow, type LanguageRowPlan } from "./language-row";
+import { inactiveLanguageRecovery, languageCardHelp, listedLanguageCount, planLanguageRow, type LanguageRowPlan } from "./language-row";
 import { RemoveLocaleDialog, type RemoveOutcome } from "./remove-locale-dialog";
 
 type Notice = { tone: "success" | "warning" | "danger"; text: string };
@@ -30,9 +29,9 @@ type Focus = { pick: (card: HTMLElement) => HTMLElement | null; detail: SourceDe
  * **Sources 상세의 Languages 카드** (locale-add E1 — 시안 L1–L7). 머리 [Add language] · 행마다 상태 배지 + 동작 하나 + [Open] · Inactive 띠 ·
  * 결과 notice가 이 카드에 있다. 판정은 `planLanguageRow`, 실행은 Dialog 둘(추가 · 제거/추가 취소)과 [Cancel removal](확인 없음)이다.
  *
- * ⚠️ **꺼진 동작은 숨기지 않는다**(D7) — EDITOR·비지원 포맷도 같은 자리에 `aria-disabled`로 서고, 사유는 카드 설명 한 번 + 컨트롤의 sr 설명이다.
+ * ⚠️ **앱 안에서 풀 수 있는 막힘은 사유와 함께 끈다** — 비지원 포맷의 새 동작은 숨기고, 남은 취소는 권한·전달 확인을 따른다.
  * ⚠️ **포커스 규칙 하나**(design-brief): 행이 제자리에 남으면 그 행의 다음 동작, 정렬로 옮겨 가면(Inactive로 끝에 감) 머리 [Add language], 추가 성공은
- * 새 행 [Open]. 대상은 결과를 다시 읽은 뒤에야 서므로 기다렸다가 옮긴다 — 다시 읽은 뒤에도 없으면 머리로 간다.
+ * 새 행 [Open]. 대상은 결과를 다시 읽은 뒤에야 서므로 기다렸다가 옮긴다 — 다시 읽은 뒤에도 없으면 머리로 간다. 머리 동작이 없으면 카드 제목이 받는다.
  * ⚠️ **결과는 카드 notice다**(A5·L7) — Status 카드의 적재 결과와 같은 자리·형이다. 닫는 것은 사람이다.
  */
 export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, onNavigate, onReload, focusLanguage = null }: {
@@ -50,9 +49,10 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
   const m = useMessages();
   const t = m.sources.locale;
   const helpId = useId();
+  const titleId = useId();
   const cardRef = useRef<HTMLDivElement>(null);
   const canManage = canPerform(role, "project:settings");
-  const supported = canManage && detail.connection !== undefined && supportsLocaleChanges(detail.connection.adapterName);
+  const supported = detail.languageChangesSupported;
   const unconfirmed = detail.localeDelivery === "unconfirmed";
   const pr = reviewNumberFrom(detail.pullRequestUrl, detail.repoHost);
   const prLabel = pr === null ? null : m.home.meta.pr(pr);
@@ -61,25 +61,28 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
   const [removing, setRemoving] = useState<{ code: string; adding: boolean } | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const focus = useRef<Focus | null>(null);
-  const help = !canManage ? m.sources.languagesHelpEditor : supported ? m.sources.languagesHelpOwner : m.sources.languagesHelp;
-  const headerBlocked = !canManage || !supported;
+  const help = languageCardHelp({ supported, canManage });
+  const recovery = inactiveLanguageRecovery({ supported, canManage });
+  const headerBlocked = !canManage;
 
   // 다른 소스로 바뀌면(닫힘 포함) 열린 창·안내를 버린다 — 남은 상태가 다음 소스에 서지 않게.
   useEffect(() => { setNotice(null); setAdding(null); setRemoving(null); focus.current = null; }, [detail.id]);
   useEffect(() => {
     const wanted = focus.current;
     const card = cardRef.current;
-    if (wanted === null || card === null) return;
+    // 취소 직후의 옛 행은 곧 사라질 수 있다. 다시 읽은 상세가 서기 전에 예약을 소비하지 않는다.
+    if (wanted === null || card === null || wanted.detail === detail) return;
     const target = wanted.pick(card);
     if (target !== null) { focus.current = null; target.focus(); return; }
     // 다시 읽은 뒤에도 없으면 머리로 — 원래 자리가 사라졌다.
-    if (wanted.detail !== detail) { focus.current = null; header(card)?.focus(); }
+    focus.current = null; header(card)?.focus();
   });
   const landOn = (pick: Focus["pick"]) => { focus.current = { pick, detail }; };
   // 딥링크 착지 — 행은 카드와 함께 이미 서 있어 곧바로 옮긴다. 그 언어가 없으면 아무것도 하지 않는다(머리로 보내지 않는다).
   useEffect(() => {
     if (focusLanguage === null || cardRef.current === null) return;
-    rowOf(cardRef.current, focusLanguage)?.querySelector<HTMLElement>("[data-language-action]")?.focus();
+    const row = rowOf(cardRef.current, focusLanguage);
+    if (row !== null) (row.querySelector<HTMLElement>("[data-language-action]") ?? header(cardRef.current))?.focus();
   }, [detail.id, focusLanguage]);
   /*
     ⚠️ **사람이 먼저 움직이면 예약을 버린다** — 다시 읽기가 실패하면 호스트가 같은 `detail`을 들고 있어 위 "머리로" 판정이 서지 않는다. 남은 예약은
@@ -145,15 +148,15 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
   const orphaned = detail.languages.filter(row => row.orphaned);
   return <div ref={cardRef}>
     {/* 머리 수는 카드가 보이는 행 수다(시안 L2·L6·L7 — DS #276). 모달 설명 줄과 같은 출처다(`listedLanguageCount`). */}
-    <Card title={m.sources.languages} count={listedLanguageCount(detail)} countLabel={m.sources.languageCount(listedLanguageCount(detail))}
-      description={<span id={helpId}>{help}</span>}
-      // 소스 전체의 언어 구성을 바꾸는 동작이라 행이 아니라 머리다(L1). 꺼져도 숨기지 않는다(L4).
-      action={<Button data-language-add disabled={busy} aria-disabled={headerBlocked || undefined} aria-describedby={headerBlocked ? helpId : undefined}
-        onClick={event => { if (headerBlocked) { event.preventDefault(); return; } setAdding({ code: null }); }}>{t.addLanguage}</Button>}
+    <Card title={m.sources.languages} titleId={titleId} count={listedLanguageCount(detail)} countLabel={m.sources.languageCount(listedLanguageCount(detail))}
+      description={help === null ? undefined : <span id={helpId}>{m.sources[help]}</span>}
+      // 소스 전체의 언어 구성을 바꾸는 동작이라 행이 아니라 머리다(L1). 지원 포맷에서 권한만 막히면 꺼진 채 남긴다.
+      action={supported ? <Button data-language-add disabled={busy} aria-disabled={headerBlocked || undefined} aria-describedby={headerBlocked ? helpId : undefined}
+        onClick={event => { if (headerBlocked) { event.preventDefault(); return; } setAdding({ code: null }); }}>{t.addLanguage}</Button> : undefined}
       notice={notice === null ? undefined : <Alert inset variant={notice.tone} live={notice.tone === "danger" ? "alert" : "status"} onDismiss={() => setNotice(null)}>{notice.text}</Alert>}>
       {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-row-y text-xs">{m.locales.empty.description}</p>
         : <ul>{detail.languages.map((row, index) => {
-          const plan = planLanguageRow(row, { canManage, supported: detail.connection !== undefined && supportsLocaleChanges(detail.connection.adapterName), unconfirmed });
+          const plan = planLanguageRow(row, { canManage, supported, unconfirmed });
           // 폭은 목록 행 막대와 같은 식(`meterValue`)에서 나온다 — 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다.
           // 퍼센트와 오른쪽 수치는 완료 + 검토 대기다(값이 있는 수) — 두 숫자가 다른 비율을 말하지 않게. 수치도 막대와 같은 clamp를 지난 값이라
           // 경합 중에도 `100%` 옆에 분모보다 큰 분자(`60 of 53`)가 서지 않는다(D12).
@@ -178,7 +181,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
             */}
             <StatusCell plan={plan} row={row} prLabel={prLabel} prHref={detail.pullRequestUrl} />
             <span className="flex shrink-0 items-center gap-2 @max-form:ml-auto">
-              <RowAction plan={plan} code={row.code} busy={busy} helpId={helpId} cancelling={cancelling === row.code}
+              <RowAction plan={plan} code={row.code} busy={busy} helpId={help === null ? null : helpId} cancelling={cancelling === row.code}
                 onAdd={() => setAdding({ code: row.code })}
                 onRemove={() => setRemoving({ code: row.code, adding: row.change?.operation === "ADD" })}
                 onCancel={button => void cancelRemoval(row.code, button)} />
@@ -191,7 +194,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
       {/* ⚠️ **사라짐 안내는 행이 아니라 카드 바닥의 띠다**(시안 `1c`) — 복구 길은 역할·포맷이 고른다(L3·L4). 지난 상태라 `live="off"`다. */}
       {orphaned.map(row => <div key={`missing-${row.code}`} className="border-divider border-t">
         <Alert inset size="sm" variant="danger" live="off">
-          <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated + row.needsReview)} {!canManage ? m.sources.orphanStripEditor : supported ? m.sources.orphanStripOwner(row.translated + row.needsReview) : m.sources.orphanStripUnsupported}</span></span>
+          <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated + row.needsReview)} {recovery === null ? null : recovery === "orphanStripOwner" ? m.sources[recovery](row.translated + row.needsReview) : m.sources[recovery]}</span></span>
         </Alert>
       </div>)}
     </Card>
@@ -207,7 +210,7 @@ function rowOf(card: HTMLElement, code: string): HTMLElement | null {
   return [...card.querySelectorAll<HTMLElement>("[data-language-row]")].find(node => node.getAttribute("data-language-row") === code) ?? null;
 }
 function header(card: HTMLElement): HTMLElement | null {
-  return card.querySelector<HTMLElement>("[data-language-add]");
+  return card.querySelector<HTMLElement>("[data-language-add]") ?? card.querySelector<HTMLElement>("h2");
 }
 
 function StatusCell({ plan, row, prLabel, prHref }: { plan: LanguageRowPlan; row: SourceDetail["languages"][number]; prLabel: string | null; prHref: string | null }) {
@@ -230,17 +233,19 @@ function StatusCell({ plan, row, prLabel, prHref }: { plan: LanguageRowPlan; row
 }
 
 function RowAction({ plan, code, busy, helpId, cancelling, onAdd, onRemove, onCancel }: {
-  plan: LanguageRowPlan; code: string; busy: boolean; helpId: string; cancelling: boolean;
+  plan: LanguageRowPlan; code: string; busy: boolean; helpId: string | null; cancelling: boolean;
   onAdd: () => void; onRemove: () => void; onCancel: (button: HTMLElement) => void;
 }) {
   const m = useMessages();
   const t = m.sources.locale;
+  if (plan.action === null) return null;
   const { kind, block } = plan.action;
-  // 사유의 자리: 기준 언어는 자기 sr 문장(+ title), 권한·포맷은 카드 설명, 전달 미확정은 행의 보조 줄이다(L1·L3·L4).
-  const reasonId = block === "base" ? `language-action-reason-${code}` : block === "unconfirmed" ? `language-note-${code}` : block !== null ? helpId : undefined;
+  // 사유의 자리: 기준 언어는 자기 sr 문장(+ title), 권한은 카드 설명(없으면 자기 sr 문장), 전달 미확정은 행의 보조 줄이다(L1·L3·L4).
+  const reasonId = block === "base" ? `language-action-reason-${code}` : block === "unconfirmed" ? `language-note-${code}` : block === "role" ? helpId ?? `language-action-reason-${code}` : undefined;
   const label = kind === "add" ? t.addLabel(code) : kind === "cancel" ? t.cancelLabel(code) : t.removeLabel(code);
   return <>
     {block === "base" && <span id={reasonId} className="sr-only">{t.baseReason}</span>}
+    {block === "role" && helpId === null && <span id={reasonId} className="sr-only">{m.sources.languagesHelpEditor}</span>}
     {/* 트리거가 danger다 — 승인 버튼과 같은 파괴 스타일이고 바닥 왼쪽 [Detach source]와 같은 계열이다(L1). 취소·재추가는 기본형이다. */}
     <Button size="sm" data-language-action variant={kind === "remove" ? "danger" : "default"} className="shrink-0" aria-label={label}
       title={block === "base" ? t.baseReason : undefined} disabled={busy} busy={cancelling}

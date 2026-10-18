@@ -16,7 +16,7 @@ const detail = {
   id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"),
   lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"),
   createdAt: new Date("2026-09-19T00:00:00Z"), keys: 53, locales: 1, orphanedLocales: 0, progress: { total: 53, done: 41, review: 3, percent: 83 },
-  installed: true, languages: [{ code: "en", isBase: true, orphaned: false, total: 53, translated: 41, needsReview: 3, untranslated: 9, percent: 83, change: null, unsent: false }],
+  installed: true, languageChangesSupported: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 53, translated: 41, needsReview: 3, untranslated: 9, percent: 83, change: null, unsent: false }],
 } as unknown as SourceDetail;
 
 const draw = (uiLocale: "en" | "ko" | "es", shown: SourceDetail = detail) => render(

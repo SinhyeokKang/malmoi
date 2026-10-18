@@ -110,7 +110,7 @@ const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", re
 const sourceDetail = {
   id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc", lastCommitAt: now, lastImportStartedAt: null, lastImportError: null,
   lastImportFailedAt: null, lastImportedAt: now, createdAt: now, keys: 1, locales: 1, orphanedLocales: 0, progress: { total: 1, done: 1, review: 0, percent: 100 },
-  installed: true, importActive: false, repoHost: "github", pullRequestUrl: "https://github.com/o/r/pull/7", localeDelivery: "confirmed",
+  installed: true, importActive: false, languageChangesSupported: true, repoHost: "github", pullRequestUrl: "https://github.com/o/r/pull/7", localeDelivery: "confirmed",
   repository: { repoOwner: "o", repoName: "r", baseBranch: "main" }, connection: { adapterName: "json-catalog", pathTemplate: "web/{locale}.json", format: "JSON catalog" },
   languages: [
     { code: "en", isBase: true, orphaned: false, total: 1, translated: 1, needsReview: 0, untranslated: 0, percent: 100, change: null, unsent: false },

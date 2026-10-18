@@ -3733,8 +3733,7 @@ export const en = {
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
     statusHelp: "Updated by syncs from your repository.",
     baseHelp: "The base language decides which keys exist in this source.",
-    /** 비지원 포맷(수술적 치환·공유 파일)의 카드 설명이자 꺼진 동작의 사유다. OWNER·지원 포맷과 EDITOR는 아래 둘이다(시안 L1·L4). */
-    languagesHelp: "Languages come from the repository. Add or remove the files there.",
+    /** 지원 포맷의 역할별 카드 설명이다. 비지원 포맷은 설명을 그리지 않는다. */
     languagesHelpOwner: "Add or remove languages here. Publish to update the repository.",
     languagesHelpEditor: "Only project owners can add or remove languages.",
     baseRow: "Source of every key in this file",

@@ -169,6 +169,18 @@ describe("카드 머리와 설명 — OWNER·EDITOR·비지원 포맷 세 갈래
     expect(card().querySelector("h2")?.getAttribute("tabindex")).toBe("-1");
   });
 
+  it("비지원 Removing 취소 뒤 재조회가 늦어도 새 상세의 h2로 포커스한다", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.load.mockResolvedValueOnce({ ok: true, detail: detail([row("de", { change: removal, unsent: true })], { languageChangesSupported: false }) })
+      .mockReturnValueOnce(new Promise(r => { resolve = r; }));
+    mocks.cancel.mockResolvedValue({ ok: true, delivered: false });
+    await open();
+    await act(async () => { await user().click(action("de")); });
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    await act(async () => { resolve({ ok: true, detail: detail([row("de")], { languageChangesSupported: false }) }); });
+    await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
+  });
+
   it("비지원 행 딥링크는 동작이 없으면 Languages h2로 포커스한다", async () => {
     mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de")], { languageChangesSupported: false }) });
     await render(<SourcesScreen slug="p" role="OWNER" data={data()} adapters={[]} now={new Date("2026-10-17T00:00:00Z")} deepLink={{ source: "web", language: "de" }} />);
