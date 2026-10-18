@@ -297,8 +297,8 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
     expect(SOURCES.filter(({ path, source }) => path !== "components/ui/badge.tsx" && pill.test(source)).map(({ path }) => path)).toEqual([]);
   });
 
-  it("필터 트리거 둘의 hover가 `default` 버튼과 같다", () => {
-    for (const path of ["components/logs/log-filters.tsx", "components/translations/workspace/filter-menu.tsx"]) {
+  it("공통 필터 트리거의 hover가 `default` 버튼과 같다", () => {
+    for (const path of ["components/ui/filter-menu.tsx"]) {
       expect(read(path)).toContain("<DropdownMenuTrigger asChild>");
       expect(read(path)).toContain("<FieldTrigger");
       const trigger = read("components/ui/field-trigger.tsx");
