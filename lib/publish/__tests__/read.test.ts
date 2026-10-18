@@ -607,7 +607,9 @@ it.each([
     maxUpdatedAt: new Date(), unpublished: 1,
     pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "fr", restoreValue: "" } }],
   };
-  const tree = [{ path: `en.${ext}`, mode: "100644", sha: "blob" }];
+  const { blobSha } = await import("@/lib/githash");
+  const sha = blobSha(original);
+  const tree = [{ path: `en.${ext}`, mode: "100644", sha }];
   mocks.load.mockResolvedValue(state);
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
   mocks.client.getTree.mockResolvedValue(tree);
@@ -615,7 +617,7 @@ it.each([
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(preview).toMatchObject({ withoutFile: 0, sendable: { total: 1, keys: 1 }, fileChanges: [{ path: `fr.${ext}`, kind: "new" }] });
   expect(preview.groups[0]).toMatchObject({ path: `fr.${ext}`, rows: [{ before: null, after: "Bonjour" }] });
-  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs: { blob: original } });
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs: { [sha]: original } });
   const result = await runPull({ loadState: async () => state, createClient: async () => client,
     saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme" });
   expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, files: preview.fileChanges });

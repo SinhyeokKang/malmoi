@@ -235,7 +235,7 @@ export type LocaleObservation = { status: "observed"; locales: string[] } | { st
  * base 트리에서 관측한 이 소스의 로케일 — 만료 판정의 `observed`(strict 적재의 `payload.locales`와 같은 뜻). Publish 스냅샷 전 만료(`observedLocalesOf`)·
  * 같은 head 야간 만료·야간 적재 만료(`lib/import/observe.ts`)가 **이 함수 하나**를 쓴다(R-B2 Y4) — 같은 트리에서 한쪽이 활성, 다른 쪽이 orphan으로 돌리지
  * 않는다. 의미는 어댑터 읽기(`localeFromPath`) + **정규 파일**(100644·100755)이다 — 링크·하위 모듈은 로케일 파일이 아니다.
- * 개별 파일을 재생성하는 포맷이 아니면 로케일별 파일로 관측할 수 없어 `unreadable`이다 — 만료는 보류된다(fail-closed).
+ * 언어 변경을 지원하는 로케일별 파일 포맷이 아니면 `unreadable`이다 — 만료는 보류된다(fail-closed).
  * ⚠️ 템플릿에 맞는 경로의 mode를 모르면 `unreadable`이다 — 정규 파일로 가정하면 링크를 로케일로 센다.
  */
 export function observeLocaleFiles(tree: readonly { path: string; mode?: string }[], surface: { adapterName: string | null; pathTemplate: string | null }): LocaleObservation {

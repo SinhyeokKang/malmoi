@@ -769,6 +769,46 @@ describe.each([
     fake(merged);
     const settled = await publish(after.fingerprint);
     expect(settled).toMatchObject({ status: "skipped", reason: "no-edits" });
-    expect(planPublishView(settled)).toBe("request-closed");
+    expect(planPublishView(settled)).toBe("no-changes");
   });
+  it("값 0개 ADD는 파일을 만들지 않고, 제거는 미리보기와 같은 파일 하나를 삭제한다", async () => {
+    await prisma.translationSurface.update({ where: { id: "s" }, data: { adapterName, pathTemplate: `i18n/{locale}.${ext}` } });
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    const files = { [`i18n/en.${ext}`]: en, [`i18n/ko.${ext}`]: ko };
+    fake(files);
+    const empty = await readPublishPreview(prisma, "p", "fixture");
+    expect(empty).toMatchObject({ fileChanges: [], sendable: { total: 0 }, locales: { empty: [{ localeCode: "fr" }] } });
+    const idle = fake(files);
+    const skipped = await publish(empty.fingerprint);
+    expect(skipped).toMatchObject({ status: "skipped" });
+    expect(snapshot(idle)).toBeUndefined();
+    expect(planPublishView(skipped)).toBe("no-changes");
+    await ageRuns();
+    expect(await requestRemoval("ko")).toMatchObject({ ok: true });
+    fake(files);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview.fileChanges).toEqual([{ path: `i18n/ko.${ext}`, kind: "removed" }]);
+    const made = fake(files);
+    const result = await publish(preview.fingerprint);
+    expect(result).toMatchObject({ status: "committed", files: preview.fileChanges });
+    expect(snapshot(made)?.changes).toEqual([{ kind: "delete", path: `i18n/ko.${ext}` }]);
+    expect(planPublishView(result)).toBe("created");
+  });
+
+  it("생성 규약 실패는 미리보기와 실행을 함께 막고 외부 쓰기가 없다", async () => {
+    await prisma.translationSurface.update({ where: { id: "s" }, data: { adapterName, pathTemplate: `i18n/{locale}.${ext}` } });
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    const invalid = adapterName === "yaml-catalog" ? "ko:\n  hello: Hello\n  bye: Bye\n" : "export const en = { hello: 'Hello', bye: 'Bye' };\n";
+    const files = { [`i18n/en.${ext}`]: invalid, [`i18n/ko.${ext}`]: ko };
+    fake(files);
+    await expect(readPublishPreview(prisma, "p", "fixture")).rejects.toMatchObject({ name: "PreviewWriterWarnings" });
+    const made = fake(files);
+    const result = await publish();
+    expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+    expect(planPublishView(result)).toBe("partial");
+  });
+
 });

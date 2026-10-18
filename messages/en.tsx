@@ -4526,7 +4526,7 @@ export const en = {
        * 그때 화면 키가 생기면 여기를 그 키로 바꾼다(같은 거부에 문구 두 벌 금지). 다음 행동을 함께 말한다 — 모르는 코드로 접히면 에이전트가 같은 호출을 되풀이한다.
        */
       languages: {
-        "unsupported-format": "Languages can be added or removed only for JSON catalog and Chrome extension messages sources.",
+        "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources.",
         "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
         "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
         "already-active": "That language is already in this source.",
@@ -4578,7 +4578,7 @@ export const en = {
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
       detach_source: "Detach a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_detach first and pass its approval. The last source can't be detached.",
       preview_locale_removal: "Preview removing a language from a source, or stopping a language that's being added: how many translations it has, how many unsent edits it has, and whether the change was already sent. Returns an approval to pass to remove_locale.",
-      add_locale: "Add a language to a source. Only JSON catalog and Chrome extension messages sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
+      add_locale: "Add a language to a source. JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
       remove_locale: "Remove a language from a source, or stop adding it. Call preview_locale_removal first and pass its approval. A removal deletes the language's file in the next Publish, and until then its translations can't be edited; its unsent edits go back to the last sent version. The base language can't be removed.",
       cancel_locale_removal: "Cancel a pending language removal. If the removal was already sent, the next Publish puts the file back.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, update the PUSH_TOKEN CI/CD variable.",

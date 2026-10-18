@@ -6,7 +6,7 @@ const keys: RenderKey[] = [{ key: "hello", sourceText: "Hello", orphaned: false,
 it.each([
   ["yaml-catalog", "yml", "en:\n  hello: Hello\n", "ko:\n  hello: Hello\n"],
   ["code-dict", "ts", "export default { hello: 'Hello' };\n", "export const en = { hello: 'Hello' };\n"],
-])("%s 생성 실패는 언어 태그가 붙은 blocking, 비-ADD만 파일 보류다", (adapter, ext, source, invalid) => {
+] as const)("%s 생성 실패는 언어 태그가 붙은 blocking, 비-ADD만 파일 보류다", (adapter, ext, source, invalid) => {
   const path = `fr.${ext}`;
   const format = { adapter, pathTemplate: `{locale}.${ext}`, locales: ["en", "fr"] };
   const render = (represent?: { locales: Set<string>; source: string | undefined }, entries = keys) =>
