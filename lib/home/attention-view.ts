@@ -1,5 +1,6 @@
-import { CircleX, Eye, Languages, TriangleAlert, CircleDashed, GitPullRequestArrow } from "lucide-react";
+import { CircleX, Eye, Languages, TriangleAlert, CircleDashed, GitPullRequestArrow, Unplug } from "lucide-react";
 import type { ComponentType } from "react";
+import { canPerform, type Role } from "@/lib/auth/permission";
 import type { Messages } from "@/lib/i18n";
 import type { AttentionItem } from "./attention";
 import type { InboxItem } from "@/lib/inbox/plan";
@@ -13,24 +14,46 @@ const TILE: Record<InboxItem["kind"], { icon: ComponentType<{ className?: string
   // 검토 대기는 호박 + `Eye`다 — 같은 Home의 카운트 카드·목록 띠와 같은 글리프(5-Y5).
   review: { icon: Eye, tone: "warning" },
   never_filled: { icon: Languages, tone: "muted" },
+  // 끊김은 Home Alert·목록 띠와 같은 호박 + `Unplug`다.
+  needs_reconnect: { icon: Unplug, tone: "warning" },
   setup: { icon: CircleDashed, tone: "muted" },
   unsent: { icon: GitPullRequestArrow, tone: "muted" },
+  // 미발송과 같은 글리프·톤이다 — 같은 다음 수(Publish)는 같은 모양이고, 무엇이 남았는지는 문장이 가른다(language-request-todo Q2).
+  language_unsent: { icon: GitPullRequestArrow, tone: "muted" },
 };
 
 /** 일부 반영은 경고 칸 + `TriangleAlert`다 — 실패 원을 빌리지 않는다(🔴 A2 · §2.4 글리프 열). */
 const PARTIAL_TILE = { icon: TriangleAlert, tone: "warning" } as const;
 
-export function attentionHref(slug: string, item: InboxItem): string {
+/**
+ * 비어 있는 작업 언어의 목적지 — `Incomplete` + 상세 언어 그 로케일이다(translation-tree-range — `Untranslated in` 목록 필터가 사라졌다).
+ * 다른 로케일만 빈 키가 섞이는 것은 사용자가 수용한 대가다(spec "잃는 것"). 목록 행의 `never_filled` 띠도 이것을 부른다 — 같은 항목이 두 화면에서 같은 곳으로 간다.
+ */
+export function neverFilledHref(slug: string, surfaceSlug: string, code: string): string {
+  return routes.surfaceTranslations(slug, surfaceSlug, { ns: ALL_NAMESPACES, completion: "incomplete", language: code });
+}
+
+/**
+ * 재연결 항목의 목적지 — OWNER는 Settings(목록 띠 `Reconnect`와 같은 곳), **EDITOR는 프로젝트 Home**이다(project-row-redesign T0). Settings는
+ * `project:settings` 뒤라 EDITOR가 눌러서 거절당하고, Home에는 끊김 Alert와 EDITOR 문장이 이미 선다.
+ * ⚠️ **호출부가 이것으로 정해 `attentionHref`에 넘긴다** — 행 조각은 역할을 모르고(inbox-page D3), 세 소비자(드롭다운 · `/inbox` · Home 카드)가
+ * 같은 함수에서 값을 얻어야 같은 항목이 화면마다 다른 곳으로 가지 않는다.
+ */
+export type ReconnectDestination = "settings" | "home";
+export function reconnectDestination(role: Role): ReconnectDestination {
+  return canPerform(role, "project:settings") ? "settings" : "home";
+}
+
+export function attentionHref(slug: string, item: InboxItem, reconnect: ReconnectDestination): string {
+  if (item.kind === "needs_reconnect") return reconnect === "settings" ? routes.settings(slug) : routes.project(slug);
   if (item.kind === "setup") return routes.settings(slug);
   if (item.kind === "unsent") return bannerTranslationsHref(slug, item.surfaceSlug, "unsent");
-  return item.kind === "import_failed"
-      ? routes.sources(slug)
-      : routes.surfaceTranslations(slug, item.surfaceSlug, item.kind === "review"
-          // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
-          ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
-          // 그 로케일이 비어 있는 키 — `Incomplete` + 상세 언어 그 로케일이다(translation-tree-range — `Untranslated in` 목록 필터가 사라졌다).
-          // 다른 로케일만 빈 키가 섞이는 것은 사용자가 수용한 대가다(spec "잃는 것").
-          : { ns: ALL_NAMESPACES, completion: "incomplete", language: item.code });
+  // 언어 변경은 번역 화면의 셀 목록에 없다 — [Publish]가 있는 프로젝트 Home으로 간다(language-request-todo Q1, 목록 띠와 같다).
+  if (item.kind === "language_unsent") return routes.project(slug);
+  if (item.kind === "import_failed") return routes.sources(slug);
+  // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
+  if (item.kind === "review") return routes.surfaceTranslations(slug, item.surfaceSlug, { ns: ALL_NAMESPACES, state: "review", language: item.code });
+  return neverFilledHref(slug, item.surfaceSlug, item.code);
 }
 
 export function attentionTile(item: InboxItem) {
@@ -38,16 +61,20 @@ export function attentionTile(item: InboxItem) {
 }
 
 export function title(m: Messages, item: InboxItem): string {
-  if (item.kind === "setup") return "";
-  if (item.kind === "unsent") return item.surfaceSlug;
+  // 프로젝트 단위 항목은 보조줄(표면 · 로케일)이 없다 — 그룹 머리가 이미 프로젝트 이름이다.
+  if (item.kind === "setup" || item.kind === "needs_reconnect") return "";
+  if (item.kind === "unsent" || item.kind === "language_unsent") return item.surfaceSlug;
   if (item.kind === "import_failed") return m.home.attention.importFailed.title(item.surfaceSlug);
   const label = item.kind === "review" ? m.home.attention.review : m.home.attention.neverFilled;
   return label.title(item.surfaceSlug, item.name);
 }
 
 export function body(m: Messages, item: InboxItem): string {
+  if (item.kind === "needs_reconnect") return m.inbox.needsReconnect.body;
   if (item.kind === "setup") return m.projects.banner.setup;
   if (item.kind === "unsent") return m.projects.banner.unsent(item.count);
+  // 보류 아님은 띠 문장 통째로, 보류는 띠 문장을 `—`에서 나눈 굵은 사실 + 꼬리다(design D4 — `needs_reconnect`와 같은 형).
+  if (item.kind === "language_unsent") return item.held ? m.inbox.languageRemovalHeld.body : m.projects.banner.languageChanges(item.count);
   // 일부만 반영된 표면은 실패 문장을 빌리지 않는다(DESIGN §2.4 — 데이터는 들어갔다).
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.body : m.home.attention.importFailed.body;
   if (item.kind === "review") return m.home.attention.review.body(item.count);
@@ -60,7 +87,9 @@ export function body(m: Messages, item: InboxItem): string {
  * `actorLabel`이 아니라 **`actors` 맵의 키 존재**에서 왔다.
  */
 export function tail(m: Messages, item: InboxItem): string {
+  if (item.kind === "needs_reconnect") return m.inbox.needsReconnect.tail;
   if (item.kind === "setup" || item.kind === "unsent") return "";
+  if (item.kind === "language_unsent") return item.held ? m.inbox.languageRemovalHeld.tail : "";
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.tail : m.home.attention.importFailed.tail;
   if (item.kind === "review") return item.who === null ? "." : m.home.attention.review.tail(item.who);
   return m.home.attention.neverFilled.tail(item.keys);

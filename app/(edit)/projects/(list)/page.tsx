@@ -64,7 +64,8 @@ export default async function ProjectsPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={view.rows} message={message} />
+      {/* 상대 시각의 기준은 서버 시각이다 — 클라이언트 행이 렌더하며 시계를 읽으면 하이드레이션 값이 갈린다. */}
+      <ProjectList all={view.rows} now={new Date()} message={message} />
     </ContentPanel>
   );
 }

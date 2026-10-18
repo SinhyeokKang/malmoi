@@ -30,10 +30,10 @@ const before = new Date("2026-10-09T12:00:00.000Z");
 const PLAN: InboxPlan = {
   unread: 1,
   groups: [
-    { project: { slug: "storefront", name: "Storefront", image: null }, items: [
+    { project: { slug: "storefront", name: "Storefront", image: null, reconnect: "settings" }, items: [
       { kind: "import_failed", at: new Date(before.getTime() - 12 * 60_000), surfaceSlug: "web", reason: "parse-failed", unread: true, ownerRetries: false },
     ] },
-    { project: { slug: "mobile", name: "Mobile app", image: null }, items: [
+    { project: { slug: "mobile", name: "Mobile app", image: null, reconnect: "settings" }, items: [
       { kind: "unsent", at: null, count: 2, surfaceSlug: "app", unread: false, ownerRetries: false },
     ] },
   ],

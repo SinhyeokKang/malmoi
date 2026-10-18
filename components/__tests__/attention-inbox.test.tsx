@@ -43,12 +43,12 @@ const ago = (minutes: number) => new Date(loadedAt.getTime() - minutes * 60_000)
 const PLAN: InboxPlan = {
   unread: 3,
   groups: [
-    { project: { slug: "storefront", name: "Storefront", image: null }, items: [
+    { project: { slug: "storefront", name: "Storefront", image: null, reconnect: "settings" }, items: [
       { kind: "import_failed", at: ago(12), surfaceSlug: "web", reason: "parse-failed", unread: true, ownerRetries: false },
       { kind: "review", at: ago(180), surfaceSlug: "web", code: "ko", name: "Korean", count: 8, who: "Kim", unread: false, ownerRetries: false },
       { kind: "unsent", at: ago(300), count: 3, surfaceSlug: "web", unread: false, ownerRetries: false },
     ] },
-    { project: { slug: "mobile", name: "Mobile app", image: null }, items: [
+    { project: { slug: "mobile", name: "Mobile app", image: null, reconnect: "home" }, items: [
       { kind: "import_failed", at: ago(20), surfaceSlug: "app", reason: "partial-import", unread: true, ownerRetries: true },
       { kind: "never_filled", at: ago(1440), surfaceSlug: "app", code: "fr", name: "French", keys: 903, unread: true, ownerRetries: false },
     ] },
@@ -158,8 +158,8 @@ it("행 — 프로젝트 묶음 머리, 같은 목적지, 안 읽음 점과 sr �
   expect(groups.map(group => document.getElementById(group.getAttribute("aria-labelledby")!)?.textContent)).toEqual(["Storefront", "Mobile app"]);
   const rows = items();
   expect(rows).toHaveLength(5);
-  const all = PLAN.groups.flatMap(group => group.items.map(item => ({ slug: group.project.slug, item })));
-  expect(rows.map(row => row.getAttribute("href"))).toEqual(all.map(({ slug, item }) => attentionHref(slug, item)));
+  const all = PLAN.groups.flatMap(group => group.items.map(item => ({ slug: group.project.slug, reconnect: group.project.reconnect, item })));
+  expect(rows.map(row => row.getAttribute("href"))).toEqual(all.map(({ slug, reconnect, item }) => attentionHref(slug, item, reconnect)));
   rows.forEach((row, index) => {
     const unread = all[index]!.item.unread;
     expect(row.querySelectorAll("[data-unread-dot]"), `row ${index}`).toHaveLength(unread ? 1 : 0);
@@ -689,7 +689,7 @@ describe("좁은 폭 — 전체 화면 시트", () => {
     await settle(d, ok());
     // 같은 행 조각 — 목적지·안 읽음 점이 메뉴와 같고, 시트 안에서는 메뉴 항목이 아니라 링크다.
     const rows = [...sheet()!.querySelectorAll<HTMLAnchorElement>("a[href]")];
-    const all = PLAN.groups.flatMap(group => group.items.map(item => attentionHref(group.project.slug, item)));
+    const all = PLAN.groups.flatMap(group => group.items.map(item => attentionHref(group.project.slug, item, group.project.reconnect)));
     expect(rows.map(row => row.getAttribute("href"))).toEqual(all);
     expect(sheet()!.querySelectorAll('[role="menuitem"]')).toHaveLength(0);
     expect(sheet()!.querySelectorAll("[data-unread-dot]")).toHaveLength(3);

@@ -436,7 +436,7 @@ describe("loadProjectList", () => {
    * **집계가 행까지 닿는다** (DESIGN §6.63). 조회가 배선됐다는 것과 그 값이 행에 실린다는 것은
    * 다른 사실이고, 후자가 빠지면 화면이 조용히 0을 그린다 — 이 리포가 반복해 밟은 부류다.
    */
-  it("Meter와 사건을 함께 낸다", async () => {
+  it("메타와 사건·판정을 함께 낸다", async () => {
     const base = seed();
     const h = createHarness({
       ...base,
@@ -459,11 +459,10 @@ describe("loadProjectList", () => {
     expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0 });
     // 적재 상태는 **표면마다** 싣는다 — 평탄화하면 한 표면의 동기화 중이 다른 표면의 실패를 가린다(ux-drift-unify §3.2).
     expect(rows[0]?.surfaces.every((surface) => surface.importing === false && surface.importError === null)).toBe(true);
-    // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.
-    expect(rows[0]?.meters.map((m) => m.code)).toEqual(["en", "ko"]);
-    expect(rows[0]?.meters[0]).toMatchObject({ code: "en", total: 2, done: 1, review: 0, percent: 50 });
-    // 두 구간은 겹치지 않고 라벨은 그 합이다 — 검토 대기도 값이 들어 있는 칸이다 (캔버스 `1c`).
-    expect(rows[0]?.meters[1]).toMatchObject({ code: "ko", total: 2, done: 0, review: 1, percent: 50 });
+    // 대표 메타 — 키 둘, 대상 언어는 base(en)를 뺀 ko 하나다(project-row-redesign design §1).
+    expect(rows[0]).toMatchObject({ sourceCount: 1, keyCount: 2, languageCount: 1 });
+    // 판정은 서버가 싣는다 — 이 시드는 리포 id가 없어 끊김이 사건 전부를 덮는다.
+    expect(rows[0]?.plan).toEqual({ chip: "disconnected", group: "needs_attention", banner: { kind: "needs_reconnect" } });
   });
 
   /**
@@ -497,6 +496,51 @@ describe("loadProjectList", () => {
     expect(rows[0]?.repoOwner).toBe("o");
     expect(rows[0]?.repoName).toBe("r");
     expect(rows[0]?.archivedAt).toBeNull();
+  });
+
+  /**
+   * **언어 변경 작업이 행 띠까지 닿는다** (language-request-todo T6 · review-A Y3) — 로더가 `language: null`을 넘기면 판정 표는 green인 채 띠가 사라진다.
+   * 일괄 읽기는 비보관 id만 받는다(D6) — 보관 프로젝트는 할 일이 없어 읽을 이유가 없다.
+   */
+  it("전달 전 언어 제거를 행 띠로 싣고 보관 프로젝트는 읽지 않는다", async () => {
+    const base = seed();
+    const h = createHarness({
+      ...base,
+      projects: [
+        { id: "p1", slug: "acme", name: "Acme", installationId: "i", repositoryId: "r", lastCommitSha: "sha" },
+        { id: "p3", slug: "old", name: "Old", installationId: "i", repositoryId: "r", lastCommitSha: "sha", archivedAt: new Date("2026-09-01T00:00:00Z") },
+      ],
+      members: [{ projectId: "p1", userId: "u1", role: "OWNER" }, { projectId: "p3", userId: "u1", role: "OWNER" }],
+      keys: [], translations: [],
+    });
+    vi.mocked(h.prisma.localeChange.findMany).mockResolvedValue([
+      { projectId: "p1", surfaceId: "surface-p1", localeCode: "ko", operation: "REMOVE", requestedAt: new Date("2026-10-01T00:00:00Z"), locale: { orphaned: false } },
+    ] as never);
+    const { rows } = await loadProjectList(h.prisma, "u1", { loadRemote: async () => new Map() });
+    expect(rows.find((r) => r.slug === "acme")?.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "language_unsent", count: 1, held: true } });
+    expect(h.prisma.localeChange.findMany).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ where: expect.objectContaining({ projectId: { in: ["p1"] } }) }));
+    expect(h.prisma.deliveryConfirmation.findMany).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ where: expect.objectContaining({ projectId: { in: ["p1"] } }) }));
+  });
+
+  /**
+   * **언어 상태 읽기는 프로젝트 수에 비례하지 않는다** (language-request-todo spec 완료 조건 7 · review-C 🟡1). 프로젝트마다 일괄 읽기를 부르는 N+1이면
+   * 프로젝트 1개 장면은 green으로 남는다 — 그래서 1개와 N개를 나란히 센다. 호출 수는 ADD 유무로 갈리므로 양쪽 모두 ADD를 둔다(review-B 🟡2).
+   */
+  it.each([1, 5])("비보관 멤버 프로젝트 %i개에서도 언어 상태 읽기가 요청 행·확인 행·값 수 raw 한 번씩이다", async (n) => {
+    const projects = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, slug: `project-${i}`, name: `P${i}`, installationId: "i", repositoryId: "r", lastCommitSha: "sha" }));
+    const ids = projects.map((p) => p.id);
+    const h = createHarness({ ...seed(), projects, members: ids.map((projectId) => ({ projectId, userId: "u1", role: "OWNER" as const })), keys: [], translations: [] });
+    vi.mocked(h.prisma.localeChange.findMany).mockResolvedValue(ids.map((projectId) => ({
+      projectId, surfaceId: `surface-${projectId}`, localeCode: "fr", operation: "ADD", requestedAt: new Date("2026-10-01T00:00:00Z"), locale: { orphaned: false },
+    })) as never);
+    const raw = vi.spyOn(h.prisma, "$queryRaw");
+    await loadProjectList(h.prisma, "u1", { loadRemote: async () => new Map() });
+    for (const findMany of [h.prisma.localeChange.findMany, h.prisma.deliveryConfirmation.findMany]) {
+      expect(findMany).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ where: expect.objectContaining({ projectId: { in: ids } }) }));
+    }
+    const valueCounts = raw.mock.calls.filter(([strings]) => (strings as TemplateStringsArray).join(" ").includes('GROUP BY t."surfaceId", t."localeCode"'));
+    expect(valueCounts).toHaveLength(1);
+    expect(valueCounts[0]).toContainEqual(ids);
   });
 
   /**

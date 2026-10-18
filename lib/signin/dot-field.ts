@@ -1,5 +1,5 @@
 /**
- * 로그인 우측 장식의 판정 둘 (8-1b). **잎이다 — import 0.**
+ * 로그인 우측 장식(8-1b)과 랜딩 배경(landing-kv-background)의 판정. **잎이다 — import 0.**
  *
  * ⚠️ **왜 Canvas인가**: 시안은 커서 주변 도트가 스케일하는데, `background-image: radial-gradient`는
  * **개별 도트가 요소가 아니라** 스케일 대상이 없다. DOM으로 그리면 948×1064 / 16px ≈ **4,000개
@@ -19,14 +19,58 @@ export type Dot = { x: number; y: number };
  *
  * ⚠️ **gap이 0 이하면 빈 배열이다.** 이 함수는 `ResizeObserver` 콜백에서 불리므로 무한 루프
  * 한 번이 탭을 얼린다.
+ *
+ * `offsetY`는 랜딩의 스크롤 격자다(landing-kv-background R6) — 한 화면짜리 sticky 캔버스에서 행을 `-(offsetY % gap)`부터
+ * 그려 점이 콘텐츠에 박힌 것처럼 올라간다. 그때는 아래 끝 행이 높이 이상까지 간다(행이 위로 밀린 만큼 아래가 비지 않게).
+ * ⚠️ **0이면 지금 출력과 바이트 단위로 같다** — 로그인은 이 인자를 넘기지 않는다. 음수는 같은 위상의 양수로 접는다 — 격자의
+ * 위상은 주기적이라 그것이 수학적으로 맞다. 고무줄 스크롤의 음수 `scrollTop`은 여기 오기 전에 `clampScrollTop`이 0으로 자른다.
+ * 유한하지 않으면 0으로 읽는다(`NaN` 좌표가 캔버스에 가면 그 프레임이 빈다).
  */
-export function dotGrid(width: number, height: number, gap: number): Dot[] {
+export function dotGrid(width: number, height: number, gap: number, offsetY = 0): Dot[] {
   if (gap <= 0 || width < 0 || height < 0) return [];
+  const shift = Number.isFinite(offsetY) ? ((offsetY % gap) + gap) % gap : 0;
+  const rows: number[] = [];
+  if (shift === 0) {
+    for (let y = 0; y <= height; y += gap) rows.push(y);
+  } else {
+    for (let y = -shift; y < height + gap; y += gap) rows.push(y);
+  }
   const dots: Dot[] = [];
-  for (let y = 0; y <= height; y += gap) {
+  for (const y of rows) {
     for (let x = 0; x <= width; x += gap) dots.push({ x, y });
   }
   return dots;
+}
+
+/**
+ * 격자 위상에 넘길 스크롤 위치 — `scrollTop`을 `[0, scrollHeight - clientHeight]`로 자른다(landing-kv-background R6).
+ *
+ * ⚠️ **고무줄 스크롤 때문이다.** 튕기는 동안 `scrollTop`이 범위 밖으로 나가는데, 그때 sticky 캔버스는 콘텐츠와 함께 움직인다 —
+ * 위 끝에선 같이 내려가고(sticky는 위쪽 한계만 건다) 아래 끝에선 래퍼 바닥에 걸려 같이 올라간다. 캔버스가 이미 콘텐츠를 따라가므로
+ * 맞는 오프셋은 잘린 값이다. 자르지 않으면 점이 콘텐츠의 두 배 속도로 미끄러진다.
+ *
+ * 최대가 음수(콘텐츠가 스크롤포트보다 짧다)이거나 입력이 유한하지 않으면 0이다.
+ */
+export function clampScrollTop(scrollTop: number, scrollHeight: number, clientHeight: number): number {
+  if (!Number.isFinite(scrollTop) || !Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return 0;
+  const max = Math.max(0, scrollHeight - clientHeight);
+  return Math.min(Math.max(scrollTop, 0), max);
+}
+
+/**
+ * 커서 반경 안/밖으로 가른다 — 랜딩의 묶음 그리기 입력(landing-kv-background R8). 밖의 점은 반지름·알파가 모두 기본값이라
+ * path 하나에 모아 fill 한 번으로 칠한다(2560×1440 ≈ 1만 3천 개).
+ *
+ * ⚠️ **경계는 `dotScale`과 같다** — 거리가 `radius` 이상이면 밖이다. 둘이 갈리면 묶음 그리기가 점마다 그리기와 다른 픽셀을 낸다.
+ */
+export function partitionDots(dots: Dot[], spot: Dot | null, radius: number): { near: Dot[]; far: Dot[] } {
+  if (spot === null || radius <= 0) return { near: [], far: dots };
+  const near: Dot[] = [];
+  const far: Dot[] = [];
+  for (const dot of dots) {
+    (Math.hypot(dot.x - spot.x, dot.y - spot.y) < radius ? near : far).push(dot);
+  }
+  return { near, far };
 }
 
 /**
@@ -61,6 +105,8 @@ export function dotScale(distance: number, radius: number, base: number, max: nu
  * @param height  순회할 높이
  * @param speed   px/초 — 가로·세로 같은 속도로 움직여야 코너에서 속도가 안 튄다
  * @param rows    세로로 몇 줄을 훑는가
+ * @param overshoot 좌우로 폭 밖까지 더 가는 거리(landing-kv-autosweep) — 랜딩은 커서 반경만큼 넘쳐 줄바꿈이 패널 밖에서 일어난다.
+ *                  ⚠️ **0이면 지금 출력과 바이트 단위로 같다** — 로그인은 이 인자를 넘기지 않는다.
  */
 export function autoCursor(
   elapsed: number,
@@ -68,13 +114,14 @@ export function autoCursor(
   height: number,
   speed: number,
   rows: number,
+  overshoot = 0,
 ): Dot {
   if (width <= 0 || height <= 0 || speed <= 0 || rows <= 0) return { x: 0, y: 0 };
-  if (rows === 1) return { x: legWithin(elapsed, width, speed, 0), y: height / 2 };
+  if (rows === 1) return { x: legWithin(elapsed, width, speed, 0, overshoot), y: height / 2 };
 
   /** 줄 간격 — 세로 전환 구간의 길이이기도 하다. */
   const step = height / (rows - 1);
-  const acrossMs = (width / speed) * 1000;
+  const acrossMs = ((width + 2 * overshoot) / speed) * 1000;
   const downMs = (step / speed) * 1000;
 
   /** 한 줄(가로) + 한 번의 줄바꿈(세로)이 한 묶음이고, 마지막 줄 뒤에는 줄바꿈이 없다. */
@@ -84,21 +131,26 @@ export function autoCursor(
   let remaining = t;
   for (let row = 0; row < rows; row++) {
     if (remaining < acrossMs) {
-      return { x: legWithin(remaining, width, speed, row), y: row * step };
+      return { x: legWithin(remaining, width, speed, row, overshoot), y: row * step };
     }
     remaining -= acrossMs;
     if (row === rows - 1) break;
     if (remaining < downMs) {
       // 세로 전환 — x는 방금 끝난 줄의 끝에 머문다(그래야 코너가 직각으로 이어진다).
-      return { x: row % 2 === 0 ? width : 0, y: row * step + (remaining / downMs) * step };
+      return { x: row % 2 === 0 ? width + overshoot : 0 - overshoot, y: row * step + (remaining / downMs) * step };
     }
     remaining -= downMs;
   }
-  return { x: (rows - 1) % 2 === 0 ? width : 0, y: height };
+  return { x: (rows - 1) % 2 === 0 ? width + overshoot : 0 - overshoot, y: height };
 }
 
-/** 한 줄 안에서의 가로 위치. 홀수 줄은 오른쪽에서 왼쪽으로 — 그것이 ㄹ자를 만든다. */
-function legWithin(elapsed: number, width: number, speed: number, row: number): number {
-  const progress = Math.min(1, (elapsed / 1000) * speed / width);
-  return row % 2 === 0 ? progress * width : width - progress * width;
+/**
+ * 한 줄 안에서의 가로 위치. 홀수 줄은 오른쪽에서 왼쪽으로 — 그것이 ㄹ자를 만든다.
+ *
+ * ⚠️ **`0 - overshoot`로 쓴다** — `-overshoot`는 0에서 -0이 되어 로그인 출력이 기존과 비트 단위로 갈린다. `x - 0`은 x 그대로다.
+ */
+function legWithin(elapsed: number, width: number, speed: number, row: number, overshoot: number): number {
+  const span = width + 2 * overshoot;
+  const progress = Math.min(1, (elapsed / 1000) * speed / span);
+  return row % 2 === 0 ? progress * span - overshoot : span - progress * span - overshoot;
 }

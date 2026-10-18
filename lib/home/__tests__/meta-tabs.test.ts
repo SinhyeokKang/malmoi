@@ -230,7 +230,7 @@ describe("metaTabs — Sync 탭은 실행 하나의 사실이다", () => {
   });
 
   /** 보류는 실행의 사실이 아니라 지금의 판정이다 — 기록 없음 갈래에도 붙는다. */
-  it.each(["pending-edits", "open-pr", "pr-check-failed"] as const)("보류(%s)는 Hold 행으로 선다", (held) => {
+  it.each(["pending-edits", "locale-change-pending", "open-pr", "pr-check-failed"] as const)("보류(%s)는 Hold 행으로 선다", (held) => {
     expect(flat({ ...base, held }, "sync").at(-1)).toEqual({ kind: "hold", reason: held });
     expect(flat({ ...base, held, lastSync: "unrecorded" }, "sync")).toEqual([
       { kind: "lastSync", value: "unrecorded" }, { kind: "hold", reason: held },
@@ -309,8 +309,8 @@ describe("homeLate — 보류 결론 → Hold · PR state", () => {
   });
 
   /** PR 조회 갈래는 편집 0이라 도달 불가지만 — 편집 보류는 PR을 보지 않았으므로 PR state를 말하지 않는다. */
-  it("pending-edits는 PR state를 모른다", () => {
-    expect(homeLate("pending-edits")).toEqual({ held: "pending-edits", prState: null });
+  it.each(["pending-edits", "locale-change-pending"] as const)("%s는 PR state를 모른다", (reason) => {
+    expect(homeLate(reason)).toEqual({ held: reason, prState: null });
   });
 });
 

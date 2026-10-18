@@ -34,6 +34,7 @@ The result can say:
 - **Sent for review** — a new pull request is open for the development team.
 - **Your earlier pull request now holds this** — the existing pull request was updated.
 - **Nothing changed in the files** — there is nothing new to publish.
+- Language request closed — a language change's pull request closed without merging, so Malmoi closed its request. Nothing was written to the repository.
 - **Held back — some values can't be written to the files** or N edits weren't sent — your saved values are kept. Tell a project owner which files are listed.
 - The earlier pull request was closed — your edits now match the base branch, so it had nothing left to review.
 - **GitHub didn't answer** — your saved values are kept; try again later.

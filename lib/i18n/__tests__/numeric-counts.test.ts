@@ -17,6 +17,8 @@ const counts: Readonly<Record<string, (m: Messages) => string>> = {
   "home.meta.memberCount": m => m.home.meta.memberCount(10000, 10000),
   "projects.count": m => m.projects.count(10000),
   "projects.banner.repoAhead": m => m.projects.banner.repoAhead(10000, "main"),
+  "projects.banner.languageChanges": m => m.projects.banner.languageChanges(10000),
+  "home.cards.languageChanges": m => m.home.cards.languageChanges(10000),
   "account.profile.errors.tooLong": m => m.account.profile.errors.tooLong(10000),
   "newProject.modal.step": m => m.newProject.modal.step(10000),
   "newProject.steps.files.description": m => m.newProject.steps.files.description(10000, "o/r", "main"),

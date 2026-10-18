@@ -4,6 +4,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { collectAttention, neverFilledLocales } from "@/lib/home/attention";
 import { loadActors, loadProjectListAggregates, loadReviewAttention } from "@/lib/keys/query";
 import { isImportFailureCode } from "@/lib/projects/import-failure";
+import { languageTodo } from "@/lib/locales/todo";
+import { readLocaleStatesByProject } from "@/lib/locales/work";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
 import { projectStatus } from "@/lib/projects/list";
 import { planInbox, type InboxPlan } from "./plan";
 
@@ -30,8 +33,9 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
   });
   if (rows.length === 0) return { groups: [], unread: 0 };
   const ids = rows.map(row => row.project.id);
-  const [aggregates, review] = await Promise.all([
-    loadProjectListAggregates(prisma, ids), loadReviewAttention(prisma, ids),
+  // 언어 변경 작업은 같은 라운드의 일괄 읽기다 — ids는 위 조회가 이미 보관을 뺐다(D6). 호스트 API는 부르지 않는다(배지가 매 헤더에서 이 경로를 부른다).
+  const [aggregates, review, languages] = await Promise.all([
+    loadProjectListAggregates(prisma, ids), loadReviewAttention(prisma, ids), readLocaleStatesByProject(prisma, ids),
   ]);
   const actors = await loadActors(prisma, [...new Set(review.flatMap(row => row.updatedBy === null ? [] : [row.updatedBy]))]);
   return planInbox({ seenAt: rows[0]!.user.attentionSeenAt, projects: rows.map(row => {
@@ -52,9 +56,11 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
     const count = aggregates.unsent.get(project.id) ?? 0;
     const surfaceSlug = aggregates.unsentSurfaces.get(project.id);
     return {
+      connectionPinned: repoConnectionPinned(project), gitlabTokenExpiresAt: project.gitlabConnection?.expiresAt ?? null,
       slug: project.slug, name: project.name, image: project.image, role: row.role,
       status: projectStatus({ ...project, gitlabTokenExpiresAt: project.gitlabConnection?.expiresAt ?? null }), createdAt: project.createdAt, attention,
       unsent: count > 0 && surfaceSlug !== undefined ? { count, surfaceSlug, at: aggregates.unsentAt.get(project.id) ?? null } : null,
+      language: languageTodo(languages.get(project.id) ?? [], new Map(project.surfaces.map(surface => [surface.id, surface.slug]))),
     };
   }) });
 }

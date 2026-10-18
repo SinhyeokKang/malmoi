@@ -4,6 +4,13 @@ import { searchFixture } from "./search-fixture";
 
 const db = searchFixture();
 const MEMBER_ROWS = 200100;
+// 절대 ms는 다른 게이트와 겹친 CPU 경합만으로 300을 넘었다(계획·방문 수 동일). 같은 실행의 순차 스캔
+// 대조군이 경합을 함께 겪으므로 비율로 지킨다 — 조용할 때 ≈5.7이고 300ms ÷ 대조군 42ms ≈ 7.1이다(§1.965).
+const CONTROL_RATIO = 7;
+const median = (values: readonly number[]) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return (sorted[(sorted.length - 1) >> 1]! + sorted[sorted.length >> 1]!) / 2;
+};
 beforeAll(async () => {
   await db.start();
   await db.reset();
@@ -66,7 +73,7 @@ it("방문 검출기는 탈락 행·재검사·loops를 포함하고 무제한 �
   expect(bounded(p)).toBe(false);
 });
 
-it("통계 없음과 ANALYZE 뒤 네 질의 각 20회의 계획·중앙값을 검증한다", async () => {
+it("통계 없음과 ANALYZE 뒤 네 질의 각 20회의 계획·대조군 대비 중앙값을 검증한다", async () => {
   expect(Number((await db.pool.query('SELECT count(*) FROM "Translation" WHERE "projectId" = $1', ["foreign"])).rows[0].count)).toBeGreaterThan(MEMBER_ROWS * 2);
   for (const stats of ["none", "analyzed"] as const) {
     if (stats === "analyzed") await db.pool.query("ANALYZE");
@@ -78,6 +85,7 @@ it("통계 없음과 ANALYZE 뒤 네 질의 각 20회의 계획·중앙값을 �
     expect(bounded(controlPlan)).toBe(false);
     for (const q of ["no-match-at-all", "key-123", "unique-translation", "common"]) {
       const times: number[] = [];
+      const controls: number[] = [];
       let maxVisits = 0;
       for (let repetition = 0; repetition < 20; repetition++) {
         db.captured.length = 0;
@@ -96,11 +104,15 @@ it("통계 없음과 ANALYZE 뒤 네 질의 각 20회의 계획·중앙값을 �
           }
         }
         times.push(time);
+        // 매 반복 바로 뒤에 재야 같은 순간의 경합을 겪는다 — 단계 앞뒤 한 번씩으로는 부하 변화를 놓친다.
+        controls.push((await db.pool.query('EXPLAIN (ANALYZE, FORMAT JSON) SELECT * FROM "Translation"')).rows[0]["QUERY PLAN"][0]["Execution Time"]);
       }
-      times.sort((a, b) => a - b);
-      const median = (times[9]! + times[10]!) / 2;
-      console.log(JSON.stringify({ stats, q, repetitions: times.length, medianMs: median, maxTranslationVisits: maxVisits, memberRows: MEMBER_ROWS }));
-      expect.soft(median).toBeLessThanOrEqual(300);
+      const medianMs = median(times);
+      const controlMedianMs = median(controls);
+      const ratio = medianMs / controlMedianMs;
+      // B4 판정은 조용한 머신의 절대 중앙값으로 한다 — 그 자료가 계속 보이도록 ms도 남긴다.
+      console.log(JSON.stringify({ stats, q, repetitions: times.length, medianMs, controlMedianMs, ratio, maxTranslationVisits: maxVisits, memberRows: MEMBER_ROWS }));
+      expect.soft(ratio, `${stats} ${q}`).toBeLessThanOrEqual(CONTROL_RATIO);
     }
   }
 }, 180000);

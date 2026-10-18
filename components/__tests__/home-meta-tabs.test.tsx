@@ -226,10 +226,21 @@ describe("메타 열 — Sync 탭", () => {
     expectMutedValue(find(unrecorded.panel(), "dd"));
   });
 
-  it("첫 렌더에 아는 보류는 Hold 배지 행이다", async () => {
-    const { open, rows } = await setup({ held: "pending-edits" });
+  it.each(["pending-edits", "locale-change-pending"] as const)("첫 렌더에 아는 보류(%s)는 Hold 배지 행이다", async (held) => {
+    const { open, rows } = await setup({ held });
     await open(en.home.meta.tabs.sync);
     expect(rows()[en.home.meta.hold]).toBe(`[${stateLabel(en, "held")}]`);
+  });
+
+  /** 전달 전 언어 제거(language-request-todo D12) — PR을 보지 않은 보류라 PR state 행이 없다(`absent`). 사유 문장은 카드 보조 줄이 든다. */
+  it("언어 보류 중에는 Publish 탭에 PR state 행이 없다", async () => {
+    const { open, rows } = await setup({ held: "locale-change-pending", prState: "absent" });
+    await open(en.home.meta.tabs.publish);
+    expect(Object.keys(rows())).not.toContain(en.home.meta.prState);
+    // 대조 — PR을 조회하는 갈래면 같은 자리에 행이 선다.
+    const pending = await setup({ held: null, prState: "pending" });
+    await pending.open(en.home.meta.tabs.publish);
+    expect(Object.keys(pending.rows())).toContain(en.home.meta.prState);
   });
 });
 

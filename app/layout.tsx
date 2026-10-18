@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
 import { connection } from "next/server";
 import type { CSSProperties } from "react";
 import { Toaster } from "sonner";
@@ -13,6 +14,7 @@ import { deploymentMode } from "@/lib/deployment/mode";
 import { getDateStyle, getUiLocale } from "@/lib/i18n/server";
 import { analyticsEnabled } from "@/lib/seo/public-response";
 import { metadataOrigin, OG_IMAGE } from "@/lib/seo/site";
+import { viewportFor } from "@/lib/viewport";
 
 import "./globals.css";
 
@@ -41,8 +43,14 @@ const METADATA: Metadata = {
   twitter: { card: "summary_large_image", images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
 };
 
-/** 키보드가 열리면 레이아웃 뷰포트(`dvh`)가 줄어 Auth·LargeModal 시트의 sticky footer가 선다(D20 — Chrome·Firefox Android, iOS는 무시). */
-export const viewport: Viewport = { interactiveWidget: "resizes-content" };
+/**
+ * 키보드가 열리면 레이아웃 뷰포트(`dvh`)가 줄어 Auth·LargeModal 시트의 sticky footer가 선다(D20 — Chrome·Firefox Android, iOS는 무시).
+ * iOS UA에는 포커스 자동 확대를 막는 `maximumScale: 1`이 더해진다 — 판정과 근거는 `viewportFor`가 든다.
+ * ⚠️ 헤더를 읽어도 렌더 방식은 그대로다 — 이 레이아웃은 이미 `connection()`과 쿠키로 요청마다 렌더한다.
+ */
+export async function generateViewport(): Promise<Viewport> {
+  return viewportFor((await headers()).get("user-agent"));
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   return { metadataBase: new URL(metadataOrigin(deploymentMode())), ...METADATA };

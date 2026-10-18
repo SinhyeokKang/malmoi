@@ -13,7 +13,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({}));
 
 import { NewProject } from "@/components/onboarding/new-project";
 import { ProjectList } from "@/components/projects/project-list";
-import type { ProjectListRow } from "@/lib/keys/query";
+import { planned, type RowFixture } from "./helpers/project-row";
 
 /**
  * **`/projects/new` 전체 로드의 본문이 하이드레이션에서 어긋나지 않는다** (malmoi#105 조사).
@@ -25,11 +25,12 @@ import type { ProjectListRow } from "@/lib/keys/query";
  *
  * ⚠️ **"0건"만 단언하지 않는다** (POSTMORTEM 2026-09-14) — 같은 탐침이 의도적 불일치를 잡는지 짝으로 잰다.
  */
-const BASE: ProjectListRow = {
+const NOW = new Date("2026-10-18T03:00:00Z");
+const BASE: RowFixture = {
   image: null, slug: "admin-console", name: "admin-console", role: "OWNER", repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null, repoOwner: "day1company", repoName: "admin-console",
   repositoryId: "9001", memberCount: 6, baseBranch: "main", lastPrUrl: null, reviewSurfaceSlug: null, unsentSurfaceSlug: null,
-  repoAheadFrom: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
+  repoAheadFrom: null, review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
 };
 
 async function hydrate(server: React.ReactElement, client: React.ReactElement): Promise<unknown[]> {
@@ -50,7 +51,7 @@ afterEach(() => {
 it("목록 + 모달 폴백을 서버와 같은 값으로 hydrate하면 복구 오류가 0이다", async () => {
   const body = (
     <main>
-      <ProjectList all={[BASE, { ...BASE, slug: "old", name: "old", archivedAt: new Date("2026-09-01T00:00:00Z") }]} />
+      <ProjectList all={[BASE, { ...BASE, slug: "old", name: "old", archivedAt: new Date("2026-09-01T00:00:00Z") }].map(row => planned(row))} now={NOW} />
       <NewProject repos={undefined} listError={undefined} adapters={[]} installUrl={null} now="2026-09-25T00:00:00.000Z"
         initialError={undefined} backQuery={{}} closeMode="list" />
     </main>
@@ -59,6 +60,6 @@ it("목록 + 모달 폴백을 서버와 같은 값으로 hydrate하면 복구 �
 });
 
 it("짝 — 같은 탐침이 의도적 불일치는 잡는다", async () => {
-  const errors = await hydrate(<main><ProjectList all={[BASE]} /></main>, <main><ProjectList all={[{ ...BASE, name: "renamed" }]} /></main>);
+  const errors = await hydrate(<main><ProjectList all={[planned(BASE)]} now={NOW} /></main>, <main><ProjectList all={[planned({ ...BASE, name: "renamed" })]} now={NOW} /></main>);
   expect(errors.length).toBeGreaterThan(0);
 });

@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { CHIP_STATE } from "@/lib/projects/list";
 import { STATE, stateLabel, type StateKey, type StateTone } from "@/lib/status/canon";
 
 /**
@@ -87,13 +86,14 @@ describe("프로젝트 목록 — 검색은 로컬로 거르고 주소가 그 �
 
 describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수 함수가 정한다", () => {
   /**
-   * ⚠️ **갈래를 화면에서 다시 조립하지 않는다.** 보관·연결 전·첫 적재 전·정상 넷이고 **순서가
-   * 판정의 절반**이다(보관이 readiness보다 앞이다 — `lib/projects/list.ts`). 화면이 삼항으로 다시
-   * 쓰면 그 순서가 두 벌이 되고, 그중 하나가 낡는다.
+   * ⚠️ **갈래를 화면에서 다시 조립하지 않는다.** 칩·그룹·띠는 서버 조립이 `planProjectRow` 한 표로 판정해 `row.plan`에 싣는다
+   * (project-row-redesign design §2). 화면이 삼항으로 다시 쓰면 그 순서가 두 벌이 되고, 그중 하나가 낡는다.
    */
-  it("`projectStatus` 하나로 갈래를 정한다", () => {
+  it("`planProjectRow` 하나로 갈래를 정하고 화면은 결과만 읽는다", () => {
     const src = PAGE.map(code).join("\n");
-    expect(src).toContain("projectStatus(");
+    expect(src).toContain("row.plan");
+    expect(src).not.toContain("projectStatus(");
+    expect(code("lib/keys/query.ts")).toContain("plan: planProjectRow(row, todos)");
     // 옛 계약(`ready`면 배지 없음)이 남아 있으면 상태가 두 규칙으로 갈린다.
     expect(src).not.toContain("readinessLabel");
     expect(src).not.toContain("planProjectReadiness");
@@ -101,12 +101,12 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
 
   /**
    * **칩은 상태 키만 넘긴다** (ux-drift-unify T19 · DESIGN §2.4) — variant·낱말은 `STATE`가 든다. 전에는 이 화면이 `STATUS_CHIP` 맵으로 variant와
-   * 덮개 색을 골랐고 실패 둘은 삼항이었다 — 같은 "Not synced yet"이 Sources와 글자색이 갈렸다(1-Y8). 맵(`CHIP_STATE`)은 `satisfies Record<RowChip, StateKey>`라
-   * 갈래가 늘면 컴파일 에러다(삼항은 새 갈래를 사유 없이 기본값으로 떨어뜨린다).
+   * 덮개 색을 골랐고 실패 둘은 삼항이었다 — 같은 "Not synced yet"이 Sources와 글자색이 갈렸다(1-Y8). `ProjectRowPlan.chip`이 `StateKey`라
+   * 새 갈래도 `STATE`에 행이 없으면 컴파일 에러다.
    */
-  it("칩이 `StatusBadge`에 `CHIP_STATE` 키를 넘기고 variant를 고르지 않는다", () => {
+  it("칩이 `StatusBadge`에 상태 키를 넘기고 variant를 고르지 않는다", () => {
     const src = PAGE.map(code).join("\n");
-    expect(src).toContain("<StatusBadge state={CHIP_STATE[chipState]}");
+    expect(src).toContain("<StatusBadge state={chip} />");
     expect(src).not.toContain("STATUS_CHIP");
     expect(src).not.toMatch(/variant: "(missing|warning|success|neutral)"/);
   });
@@ -116,35 +116,35 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * ⚠️ **온보딩 둘의 `#525252` 덮개는 걷었다**(1-Y8). **보관만 `#a3a3a3` 덮개가 남는다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(5-W7 제외).
    */
   it("칩 톤이 STATE 행이고 덮개는 보관 하나다", () => {
-    const expected = {
-      active: ["active", "success", "Active"],
-      needs_reconnect: ["disconnected", "warning", "Disconnected"],
-      setup: ["setup", "muted", "Setup"],
-      awaiting_first_sync: ["notSyncedYet", "muted", "Not synced yet"],
-      archived: ["archived", "muted", "Archived"],
-      sync_failed: ["syncFailed", "danger", "Sync failed"],
-      partially_synced: ["partiallySynced", "warning", "Partially synced"],
-    } satisfies Record<keyof typeof CHIP_STATE, [StateKey, StateTone, string]>;
-    for (const chip of Object.keys(expected) as (keyof typeof expected)[]) {
-      const [state, tone, label] = expected[chip];
-      expect(CHIP_STATE[chip]).toBe(state);
+    // 목록 칩 여덟(design §2 표) — `syncing`은 첫 적재 중 행의 새 칩 값이다.
+    const expected: [StateKey, StateTone, string][] = [
+      ["active", "success", "Active"],
+      ["disconnected", "warning", "Disconnected"],
+      ["setup", "muted", "Setup"],
+      ["syncing", "muted", "Syncing…"],
+      ["notSyncedYet", "muted", "Not synced yet"],
+      ["archived", "muted", "Archived"],
+      ["syncFailed", "danger", "Sync failed"],
+      ["partiallySynced", "warning", "Partially synced"],
+    ];
+    for (const [state, tone, label] of expected) {
       expect({ ...STATE[state], label: stateLabel(en, state) }).toMatchObject({ tone, label });
     }
     const src = PAGE.map(code).join("\n");
     expect(src).not.toContain("text-gray-strong");
     // 보관 칩도 색 덮개가 없다 — 물러나는 것은 이름·메타 둘이다(search-ux-unify D6).
     // 칩 여백도 덧칠이 없다 — `Badge` 기본 `px-1.5` 한 형(search-ux-polish O8).
-    expect(src).toContain('<StatusBadge state={CHIP_STATE[chipState]} />');
-    expect(src).not.toContain('chipState === "archived" && "text-gray-dim"');
+    expect(src).toContain('<StatusBadge state={chip} />');
+    expect(src).not.toContain('chip === "archived" && "text-gray-dim"');
   });
 
   /**
-   * ⚠️ **칩 순서는 `rowChip` 하나가 정한다** (ux-drift-unify Q2 — 끊김 > 실패 > 일부 반영 > readiness). 전에는 이 화면이 실패를
+   * ⚠️ **칩 순서는 `planProjectRow` 하나가 정한다** (ux-drift-unify Q2 — 끊김 > 실패 > 일부 반영 > readiness). 전에는 이 화면이 실패를
    * readiness 앞에 손으로 끼워 넣어 끊김보다 실패가 먼저였다. 순서 자체는 `lib/projects/__tests__/list.test.ts`가 센다.
    */
-  it("칩 갈래를 화면이 고르지 않고 `rowChip`에서 받는다", () => {
+  it("칩 갈래를 화면이 고르지 않고 `row.plan`에서 받는다", () => {
     const src = PAGE.map(code).join("\n");
-    expect(src).toContain("rowChip(row)");
+    expect(src).toContain("const { chip, banner } = row.plan;");
     expect(src).not.toMatch(/failing\(row\)/);
   });
 
@@ -220,7 +220,8 @@ describe("로케일 Meter — 캔버스 값 그대로", () => {
   });
 
   it.each([
-    ["칸 폭 100", "w-25"],
+    // 최소 폭이다 — 지역 코드(`bn-BD`)와 `100%`는 내용만큼 넓어진다(#293). 2글자 코드는 100 그대로다.
+    ["칸 최소 폭 100", "min-w-25"],
     ["라벨↔바 6", "gap-1.5"],
     ["바 높이 4", "h-1"],
     ["바 radius 999", "rounded-full"],
@@ -339,16 +340,17 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).toContain("archived: m.projects.archived");
   });
 
-  it("띠 갈래를 `rowBanner`가 정한다 — 화면이 상태를 다시 판정하지 않는다", () => {
-    expect(BODY).toContain("rowBanner(row)");
-    expect(BODY).toContain("meterSlot(row, row.meters)");
+  it("띠 갈래를 `planProjectRow`가 정한다 — 화면이 상태를 다시 판정하지 않는다", () => {
+    expect(BODY).toContain("const { chip, banner } = row.plan;");
+    // 화면이 목록 판정 모듈에서 받는 것은 본문 갈래(`listBody`)와 타입 둘뿐이다 — 판정 함수를 import하지 않는다.
+    expect(BODY).toContain('import { listBody, type ProjectGroup, type RowBanner } from "@/lib/projects/list";');
     expect(BODY).toContain("listBody(all, q)");
   });
 
   /**
    * ⚠️ **역할로 갈리는 것은 링크 둘과 문장 하나다** (DESIGN §6.63) — `project:settings` 뒤라 EDITOR에게
    * 보여 주면 눌러서 거절당하는 경험이 된다. 가져오기 실패의 `View details`는 Sources로 가서 EDITOR도 받고(audit #6 r1),
-   * 재시도가 OWNER 몫이라는 문장만 갈린다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
+   * 재시도가 OWNER 몫이라는 문장만 갈린다. 판정은 **호출부**가 하고 `planProjectRow`는 역할을 안 받는다.
    */
   it("두 링크와 재시도 문장이 `project:settings`로 갈린다", () => {
     expect(BODY).toContain('canPerform(row.role, "project:settings")');
@@ -389,8 +391,11 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     ["본문 카드 사이 16", "gap-4"],
     // #205 — 실물 `Card` 머리와 같은 불투명 선이다(첫 행 위 알파 선이 아니다).
     ["카드 헤더 아래 선", "border-divider flex min-h-12 items-center gap-2 border-b"],
-    ["행 글리프 radius 4", "rounded-[4px]"],
+    // 실물 `ProjectThumbnail`과 같은 8이다(POSTMORTEM 2026-09-17 — 옛 골격만 4였다).
+    ["행 썸네일 radius 8", '<Skeleton className="size-7 shrink-0 rounded-sm @max-form:col-[1] @max-form:row-[1/3] @max-form:self-center" />'],
     ["행 gap 16", "gap-4"],
+    // 칩 + chevron이 실물처럼 한 묶음이다 — 따로 서면 행 gap 16이 그 사이에 들어 칩이 4만큼 왼쪽에 선다.
+    ["우측 묶음 gap 12", "flex shrink-0 items-center gap-3"],
   ])("%s가 실물과 같다", (_label, literal) => {
     expect(SKELETON).toContain(literal);
   });
@@ -432,18 +437,19 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 });
 
 /**
- * **한 행 = 두 줄 — 미터를 숨기지 않는다** (responsive-app 시안 AT2 · 피드백 F5 · 2026-10-11 지휘자 판정 (B)). 첫 줄은 썸네일 · 이름/리포(유동 · 말줄임) ·
- * 상태 배지 + chevron(`shrink-0`), 둘째 줄은 언어 미터다(가로로 흐르며 감김 — 가로 12 · 세로 6, 왼쪽 44 들여 이름과 시작선을 맞춘다).
- *
- * ⚠️ **모든 폭에서 같은 배치다** — 옛 판은 카드 폭 1120/940/760에서 미터를 뒤에서부터 숨겼는데(F5가 그 숨김을 뒤집었다), 숨기지 않으면 1280에서도
- * 이름 420 + 미터 셋 + 배지가 한 줄에 안 든다. 폭별 배치를 둘로 두면 배지가 한 줄에서는 미터 뒤, 두 줄에서는 앞이라 CSS `order`나 격자 배치가 필요하다.
- * ⚠️ **DOM 순서가 보이는 순서다**(DESIGN §7, malmoi#82) — 썸네일 · 이름 · 배지 · 미터. 골격도 같은 두 줄이다(A-09).
+ * **한 행 = 한 줄** (project-row-redesign — 언어 막대가 Sources 소스 행으로 옮겨 갔다). 썸네일 · 이름 칸(이름 · 리포 · 메타 세 줄, 유동 · 말줄임) ·
+ * 상태 배지 + chevron(`shrink-0`). 메타 줄만 감긴다 — 칸은 통째로 다음 줄로 가고, 이름 칸보다 넓은 칸만 그 안에서 낱말 사이로 감긴다(#297).
+ * ⚠️ **DOM 순서가 보이는 순서다**(DESIGN §7, malmoi#82) — 썸네일 · 이름 · 메타 · 배지. 골격도 같은 한 줄이다(A-09).
  */
-describe("Projects 행 — 두 줄 · 미터 감김", () => {
+/** 좁은 그릇(`@max-form`) 행 배치 — 실물(`project-list.tsx`)과 골격(`loading.tsx`)이 같은 철자를 든다(D16). */
+const NARROW_GRID = "@max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-0.5";
+
+describe("Projects 행 — 한 줄 · 메타 감김", () => {
   const BODY = LIST_AND_CARD;
   const ROW = /function ProjectRow\b[\s\S]*?\n}\n/.exec(code("components/projects/project-list.tsx"))?.[0] ?? "";
+  const META = /function RowMeta\b[\s\S]*?\n}\n/.exec(code("components/projects/project-list.tsx"))?.[0] ?? "";
 
-  it("미터를 숨기는 질의·nth-child가 없다", () => {
+  it("숨기는 질의·nth-child가 없다", () => {
     expect(ROW.length).toBeGreaterThan(0);
     expect(BODY).not.toMatch(/@max-\[\d+px\]:/);
     expect(BODY).not.toMatch(/nth-child\([^)]*\)\]:hidden/);
@@ -451,26 +457,26 @@ describe("Projects 행 — 두 줄 · 미터 감김", () => {
 
   it("이름 칸이 고정 420이 아니라 유동이다 — 배지는 줄지 않는다", () => {
     expect(BODY).not.toContain("w-[420px]");
-    expect(ROW).toContain('<span className="flex min-w-0 flex-1 flex-col gap-0.5">');
-    expect(ROW).toContain('<span className="flex shrink-0 items-center gap-3">');
+    expect(ROW).toContain('<span className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents">');
+    expect(ROW).toContain('<span className="flex shrink-0 items-center gap-3 @max-form:col-[3] @max-form:row-[1/3]">');
   });
 
-  it("행이 두 줄 열이고 줄 사이 10이다", () => {
-    expect(ROW).toMatch(/className="flex-col items-stretch gap-2\.5 pr-3\.5 pl-3"/);
-    expect(ROW).toContain('<span className="flex min-w-0 items-center gap-4">');
+  it("행이 한 줄 flex이고 둘째 줄·언어 막대가 없다", () => {
+    expect(ROW).toContain(`className="gap-4 pr-3.5 pl-3 ${NARROW_GRID}"`);
+    expect(ROW).not.toContain("flex-col items-stretch");
+    expect(BODY).not.toContain("LocaleMeter");
+    expect(BODY).not.toContain("pl-11");
+    expect(BODY).not.toContain("m.projects.meter");
   });
 
-  it("둘째 줄 미터가 가로로 흐르며 감기고 이름 시작선(44)에 들여 선다", () => {
-    expect(ROW).toContain('<span className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11">');
+  it("메타 줄이 감기고 칸은 찢기지 않는다", () => {
+    expect(META).toContain('"flex flex-wrap gap-x-1 text-xs @max-form:col-[2/4] @max-form:row-[3]"');
+    expect(META).toContain('className="max-w-full"');
+    expect(META).not.toContain("whitespace-nowrap");
   });
 
-  it("미터 대체 문장도 둘째 줄이고 자르지 않는다", () => {
-    expect(ROW).toContain('<span className="text-muted-foreground pl-11 text-sm">');
-    expect(BODY).not.toContain("w-[332px]");
-  });
-
-  it("DOM 순서 — 썸네일 · 이름 · 배지 · 미터", () => {
-    const at = ["<ProjectThumbnail", "<Highlight", "<StatusBadge", "<LocaleMeter"].map((tag) => ROW.indexOf(tag));
+  it("DOM 순서 — 썸네일 · 이름 · 메타 · 배지", () => {
+    const at = ["<ProjectThumbnail", "<Highlight", "<RowMeta", "<StatusBadge"].map((tag) => ROW.indexOf(tag));
     expect(at.every((i) => i > -1)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
     expect(ROW).not.toMatch(/\border-(?:first|last|\d)/);
@@ -492,11 +498,40 @@ describe("Projects 행 — 두 줄 · 미터 감김", () => {
     expect(skeleton).not.toContain('<Skeleton className="h-9 w-64" />');
   });
 
-  it("골격도 두 줄이다 — 유동 이름 칸 · 둘째 줄 미터", () => {
+  /**
+   * **좁은 그릇은 같은 DOM의 grid 배치다** (D16 · malmoi#299) — 이름 칸이 `contents`가 되어 이름·리포는 칩 묶음 옆 두 줄, 메타는 셋째 줄에서
+   * 이름 시작선부터 행 오른쪽 끝까지 선다. 메타를 두 벌 그리지 않는다(링크의 접근 이름이 메타를 되풀이하면 안 된다). 골격도 같은 배치다.
+   */
+  it("좁은 그릇은 실물·골격이 같은 grid 자리다 — 메타는 2열부터 끝까지 셋째 줄", () => {
+    const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
+    for (const source of [ROW + META, skeleton]) {
+      expect(source).toContain(NARROW_GRID);
+      expect(source).toContain("@max-form:contents");
+      expect(source).toContain("@max-form:col-[2/4] @max-form:row-[3]");
+      expect(source).toContain("@max-form:col-[3] @max-form:row-[1/3]");
+      expect(source).toContain("@max-form:col-[1] @max-form:row-[1/3]");
+    }
+    expect([...ROW.matchAll(/<RowMeta /g)]).toHaveLength(1);
+  });
+
+  it("골격도 한 줄이다 — 유동 이름 칸 세 줄 · 좁은 그릇 메타 두 줄 · chevron 자리", () => {
     const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
     expect(skeleton).not.toContain("w-[420px]");
-    expect(skeleton).toContain('className="flex min-w-0 flex-1 flex-col gap-0.5"');
-    expect(skeleton).toContain('className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11"');
+    expect(skeleton).not.toContain("flex flex-col gap-2.5");
+    expect(skeleton).not.toContain("pl-11");
+    expect(skeleton).toContain('className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents"');
+    /*
+      메타 막대는 **상자 하나 안의 줄**이다(#298) — 실물 메타 줄은 한 flex-wrap 상자 안이라 사이 gap이 없다. 막대를 이름 칸의 형제 줄로 두면
+      줄마다 `gap-0.5`(2)를 더 받아 골격이 그만큼 높았다. 좁은 그릇(325)은 메타가 행 폭이라(D16) 실물에 가장 흔한 두 줄이다(en 18행 중 16 · es 18행 중 17).
+    */
+    expect(skeleton).toContain(`<div className="@max-form:col-[2/4] @max-form:row-[3]">
+                    <Skeleton size="xs" className="h-3 w-70 max-w-full @max-form:w-[70%]" />
+                    <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>
+                  </div>`);
+    expect(skeleton).not.toContain("w-[55%]");
+    expect(skeleton).toContain('<Skeleton className="size-4 shrink-0" />');
+    expect(skeleton).toContain("@container border-border");
+    expect(skeleton).not.toContain("rounded-[4px]");
   });
 });
 
@@ -541,8 +576,9 @@ describe("캔버스 대조로 잡은 자리", () => {
    * 색을 재는 렌더 단언은 `projects-cards.test.tsx`에 있고, 여기서는 갈래가 상태에 묶여 있는지를 센다.
    */
   it("보관 행의 이름과 메타가 gray-dim이다", () => {
-    expect(BODY).toContain('status === "archived" && "text-gray-dim"');
-    expect(BODY).toContain('status === "archived" ? "text-gray-dim" : "text-muted-foreground"');
+    expect(BODY).toContain('archived && "text-gray-dim"');
+    // 리포 줄과 메타 줄 둘이 같은 갈래다.
+    expect([...BODY.matchAll(/archived \? "text-gray-dim" : "text-muted-foreground"/g)]).toHaveLength(2);
   });
 
   /**

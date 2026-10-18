@@ -134,6 +134,44 @@ describe("공개 셸 — 구조", () => {
   });
 });
 
+/**
+ * **랜딩 갈래 `kv`** (landing-kv-background R13 — 2026-10-18 사용자). 랜딩 패널은 로그인 KV 패널과 같은 그릇이라 보더·그림자·바탕색이 없다.
+ * ⚠️ 기본 갈래(`/docs`·`/privacy`·`/changelog`)는 바이트 단위로 그대로여야 한다 — 그래서 문자열을 통째로 고정한다.
+ */
+describe("공개 셸 — 랜딩 갈래(`kv`)", () => {
+  const DEFAULT_MAIN = "border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border";
+  const DROPPED = ["border", "border-border-subtle", "shadow-low", "bg-background"];
+
+  it("`kv` 없이는 `<main>` 클래스가 지금 문자열 그대로다", async () => {
+    const { container } = await shell();
+    expect(container.querySelector("main")?.className).toBe(DEFAULT_MAIN);
+    const { container: bare } = await render(h(PublicShell, { m: en, account: GUEST, bare: true, children: h("p", null, "body") }));
+    expect(bare.querySelector("main")?.className).toBe(DEFAULT_MAIN);
+  });
+
+  it("`kv`면 보더·그림자·바탕색 토큰만 빠지고 나머지는 기본과 같다", async () => {
+    const { container } = await render(h(PublicShell, { m: en, account: GUEST, kv: true, children: h("p", null, "landing body") }));
+    const tokens = container.querySelector("main")?.className.split(/\s+/) ?? [];
+    for (const token of DROPPED) expect(tokens).not.toContain(token);
+    expect(tokens).toEqual(DEFAULT_MAIN.split(" ").filter((token) => !DROPPED.includes(token)));
+    // 스크롤러는 그대로 선다.
+    expect(container.querySelectorAll("[data-public-scroller]")).toHaveLength(1);
+  });
+
+  it("`kv`를 넘기는 곳은 `app/page.tsx` 하나다", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(join(process.cwd(), dir), { withFileTypes: true }).flatMap((entry) => {
+        const rel = join(dir, entry.name);
+        if (entry.isDirectory()) return entry.name === "__tests__" ? [] : walk(rel);
+        return entry.name.endsWith(".tsx") ? [rel] : [];
+      });
+    const sources = [...walk("app"), ...walk("components")];
+    const callers = sources.filter((file) => /<PublicShell\b[^>]*\bkv\b/.test(readFileSync(join(process.cwd(), file), "utf8")));
+    expect(sources.length).toBeGreaterThan(50);
+    expect(callers).toEqual(["app/page.tsx"]);
+  });
+});
+
 describe("공개 셸 — 헤더", () => {
   it("HeaderBar를 쓰고 로고·내비는 start, 가운데는 검색 캡슐이다", async () => {
     const { container } = await shell();

@@ -13,7 +13,7 @@ import { getMessages } from "@/lib/i18n/server";
  * 레이아웃이 든다, `page.tsx` 주석). `loading.tsx`는 page를 대체하므로 패널을 빼면 로딩 동안
  * 흰 표면이 통째로 사라졌다가 돌아온다.
  *
- * ⚠️ **골격이 실제 화면과 같은 치수여야 한다** — 제목 줄 · 카드 헤더 · 행 둘. 다르면 데이터가
+ * ⚠️ **골격이 실제 화면과 같은 치수여야 한다** — 제목 줄 · 카드 헤더 · 행 둘(한 줄 행 — 이름·리포·메타). 다르면 데이터가
  * 도착하는 순간 레이아웃이 튀고, 그 튐이 로딩 표시보다 더 눈에 띈다. **2026-09-15에 Summary 줄이
  * 빠졌다** — 골격이 실물보다 90px 길면 목록이 그만큼 밀려 올라온다 (projects-panel-rework).
  *
@@ -64,7 +64,8 @@ export default async function ProjectsLoading() {
 
       {/* 본문 — 그룹 헤더 하나 + 카드 안의 행 둘. */}
       <PanelBody className="flex flex-col gap-4" aria-hidden>
-        <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
+        {/* 실물 `Card`처럼 `@container`를 선언한다 — 메타 줄 수가 카드 그릇 640(`@max-form`)으로 갈린다. */}
+        <section className="@container border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/*
             카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. ⚠️ **머리 아래 선은 머리가 든다** (#205) — 실물 `Card`가
             `border-b`의 1px을 `min-h-12` 안에 흡수하고 첫 행은 자기 선이 없다. 첫 행 위에 그으면 그 행이 1px 높다.
@@ -74,29 +75,38 @@ export default async function ProjectsLoading() {
           </div>
           <ul>
             {[0, 1].map((i) => (
-              /* 실물 행과 같은 두 줄이다(responsive-app AT2) — 둘째 줄(미터)이 없으면 도착할 때 행마다 그 높이만큼 튄다. */
+              /*
+                실물 행과 같은 한 줄이다(project-row-redesign — 언어 막대 줄이 사라졌다). 이름 칸 세 줄(이름 · 리포 · 메타)의 줄 상자는 실물과 같은
+                글자 크기의 `Skeleton` 줄이 세운다 — 막대 높이(16 · 12)만 시안 값이다.
+              */
               <li
                 key={i}
-                className={`flex flex-col gap-2.5 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
+                /* 좁은 그릇의 배치도 실물과 같은 grid다(D16 · #299) — 메타 자리가 이름 시작선부터 행 오른쪽 끝까지 셋째 줄이다. */
+                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 @max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-0.5 ${i > 0 ? "border-border border-t" : ""}`}
               >
-                <div className="flex min-w-0 items-center gap-4">
-                  <Skeleton className="size-7 rounded-[4px]" />
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <Skeleton size="md" className="w-48 max-w-full" />
-                    {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
-                    <Skeleton size="xs" className="w-72 max-w-full" />
+                {/* 모서리는 실물 `ProjectThumbnail`과 같은 8이다(POSTMORTEM 2026-09-17 — 같은 엔터티를 두 모서리로 그렸다). */}
+                <Skeleton className="size-7 shrink-0 rounded-sm @max-form:col-[1] @max-form:row-[1/3] @max-form:self-center" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents">
+                  <div className="@max-form:col-[2] @max-form:row-[1]"><Skeleton size="md" className="h-4 w-48 max-w-full" /></div>
+                  {/* 리포·메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
+                  <div className="@max-form:col-[2] @max-form:row-[2]"><Skeleton size="xs" className="h-3 w-40 max-w-full" /></div>
+                  {/*
+                    메타 줄 — 넓은 그릇은 이름 칸의 셋째 줄 한 줄, 좁은 그릇(`@max-form`)은 행 폭의 셋째 줄 **두** 줄이다(D16 — 메타가 칩 묶음 아래까지 넓어져
+                    카드 325에서 실물 메타가 대개 두 줄이다 — en 18행 중 16 · es 18행 중 17, malmoi#299). 다른 줄 수인 행은 도착할 때 그만큼 바뀐다 — 골격은 길이를 모른다.
+                    ⚠️ **막대들은 상자 하나 안의 줄이다** — 실물 메타 줄은 한 flex-wrap 상자 안이라 사이 gap이 없다. 이름 칸의 형제 줄로 두면 줄마다
+                    `gap-0.5`(2)를 더 받아 골격이 실물보다 높았다(#298 — 106.48 vs 104.48).
+                  */}
+                  <div className="@max-form:col-[2/4] @max-form:row-[3]">
+                    <Skeleton size="xs" className="h-3 w-70 max-w-full @max-form:w-[70%]" />
+                    <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>
                   </div>
+                </div>
+                {/* 칩 + chevron은 실물처럼 한 묶음(사이 12)이다 — 행의 형제로 두면 그 사이가 행 gap 16이 된다. */}
+                <span className="flex shrink-0 items-center gap-3 @max-form:col-[3] @max-form:row-[1/3]">
                   <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
-                </div>
-                {/* 미터 둘 — 실물 `LocaleMeter`(폭 100 · 국기·코드 배지 20 + 간격 6 + 바 4)와 같은 칸이다. 배지·바는 둘 다 알약이다. */}
-                <div className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11">
-                  {[0, 1].map((j) => (
-                    <div key={j} className="flex w-25 flex-col gap-1.5">
-                      <Skeleton className="h-5 w-12 rounded-full" />
-                      <Skeleton className="h-1 w-full rounded-full" />
-                    </div>
-                  ))}
-                </div>
+                  {/* chevron 자리 16 — 실물 행 오른쪽 끝의 `ChevronRight`다. 없으면 칩 자리가 16+12만큼 오른쪽에 선다. */}
+                  <Skeleton className="size-4 shrink-0" />
+                </span>
               </li>
             ))}
           </ul>

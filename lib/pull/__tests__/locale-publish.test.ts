@@ -4,6 +4,7 @@ import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, localeNotesOf, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { reachedRepository } from "@/lib/locales/reached";
+import { awaitsResolution } from "@/lib/locales/work";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
@@ -488,6 +489,24 @@ describe("작업 0 + 전달된 효과 — 1층 전 만료 (#267)", () => {
   const deliveredRemove = { ...changes([["ko", "REMOVE"]], [{ localeCode: "ko", effect: "delete" }]), work: 0 };
   const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const, presence: "active" as const }];
 
+  /**
+   * **만료 뒤 보류로 끝나도 닫은 요청을 싣는다** (#282 fix1 🟡2). 웹의 정리 갈래는 보낼 것 0이면 보류 편집이 있어도 선다 — 실행이 만료를 커밋한 뒤
+   * `withheld`로 끝나면서 `expired`를 떨어뜨리면 결과 화면이 요청을 닫았다는 사실을 말하지 않는다. 다시 읽은 스냅샷은 로더 결과를 손으로 준다(fr은 보류된 ADD).
+   */
+  it("만료 뒤 셀이 전부 보류로 끝나도 withheld 결과가 닫은 요청을 싣는다 — 쓰기 0", async () => {
+    const withFr = { ...files, "i18n/fr.json": FR };
+    const pendingEdits = [{ id: "t1", token: "tok", cell: { surfaceId: "s1", keyId: "ka", localeCode: "fr", restoreValue: "" } }];
+    const loads = [
+      state({ unpublished: 1, localeChanges: deliveredRemove, pendingEdits }),
+      state({ localeCodes: ["en", "ko", "fr"], unpublished: 1, localeChanges: { ...changes([["fr", "ADD"]], [], [["fr", 1]]), work: 0 }, pendingEdits }),
+    ];
+    const made = fake(withFr);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => EXPIRED);
+    const result = await runPull(deps(loads[0]!, made, { loadState: async () => loads.shift()!, expireLocales }).deps);
+    expect(result).toMatchObject({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: EXPIRED });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+  });
+
   it("만료가 있었으면 다시 읽고, 보낼 것이 없으면 no-edits + 버린 요청 — 쓰기 0", async () => {
     const made = fake(files);
     const loads = [state({ localeChanges: deliveredRemove }), state()];
@@ -499,12 +518,16 @@ describe("작업 0 + 전달된 효과 — 1층 전 만료 (#267)", () => {
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 
-  it("열린 PR이면 만료 0 — no-edits에 버린 요청이 없다, 쓰기 0", async () => {
+  /**
+   * 열린 PR이 언어 요청을 들고 있어 보낼 것이 없다 — "리포에 이미 있다"와 다른 원인이라 결과가 `prOpen`으로 가른다(#282 fix1 · POSTMORTEM 2026-10-14
+   * "결과 코드 하나에 원인 문장 하나를 고정하지 않는다"). 정리 미리보기 뒤 PR이 다시 열린 경합도 이 갈래다 — 1층 뒤 `no-edits`가 지문 대조보다 앞이라 MCP도 같다.
+   */
+  it("열린 PR이면 만료 0 — no-edits에 버린 요청이 없고 prOpen이 그 원인을 말한다, 쓰기 0", async () => {
     const made = fake(files, { openPr: { url: "u", number: 3, title: "t" } });
     const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
     const result = await runPull(deps(state({ localeChanges: deliveredRemove }), made, { expireLocales }).deps);
     expect(expireLocales.mock.calls[0]?.[0].pullRequest).toBe("open");
-    expect(result).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(result).toEqual({ status: "skipped", reason: "no-edits", prOpen: true });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 
@@ -539,6 +562,25 @@ describe("만료 판정의 읽기 전용 쪽 — 미리보기가 실행과 같�
     expect(expiryCheckApplies(0, [surface({ ...changes([["de", "ADD"]]), work: 0 })])).toBe(false);
     // 확인 안 된 목록(`null`)은 만료할 수 없다 — 작업 0이면 1층 그대로다.
     expect(expiryCheckApplies(0, [surface({ ...changes([["ko", "REMOVE"]], null), work: 0 })])).toBe(false);
+  });
+
+  /**
+   * **버튼의 `settle`과 실행의 1층 앞 만료가 같은 술어다** (#282) — 셀·언어 작업 0에서 실행이 1층 앞에서 PR을 묻는 조건(`expiryCheckApplies(0, …)`)과
+   * 버튼이 PR 조회를 다는 조건이 갈리면, 버튼이 켜졌는데 실행이 1층에서 끝나거나 실행이 정리할 요청이 있는데 버튼이 꺼진다.
+   */
+  it("awaitsResolution — 행 + 비지 않은 전달 목록이면 참, 값 0개 ADD·확인 안 된 목록·행 없는 목록은 거짓. 작업 0의 expiryCheckApplies와 같은 값", () => {
+    const table: [string, SurfaceLocaleChanges | undefined, boolean][] = [
+      ["행 + 전달 비지 않음", deliveredRemove, true],
+      ["값 0개 ADD만(전달 효과 없음)", { ...changes([["de", "ADD"]]), work: 0 }, false],
+      ["확인 안 된 목록(null)", { ...changes([["ko", "REMOVE"]], null), work: 0 }, false],
+      ["행 없음 + 전달만(전달 뒤 취소)", { ...changes([], [{ localeCode: "fr", effect: "create" }]), work: 0 }, false],
+      ["언어 변경 없음", undefined, false],
+    ];
+    for (const [name, localeChanges, expected] of table) {
+      const surfaces = [surface(localeChanges)];
+      expect(awaitsResolution(surfaces.flatMap(item => item.localeChanges === undefined ? [] : [item.localeChanges])), name).toBe(expected);
+      expect(expiryCheckApplies(0, surfaces), name).toBe(expected);
+    }
   });
 
   it("expiringLocalesOf — 열린 PR 없음(성공한 조회) + 현재 = 전달 + 관측이면 만료로 판정한다. 열림·조회 실패·관측 불가는 0", () => {

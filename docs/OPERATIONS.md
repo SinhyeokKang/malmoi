@@ -557,7 +557,7 @@ prod DB가 코드보다 앞서 있는 창에서도 구버전 앱이 그대로 �
 ## GitLab CI 원본 릴리스 — 태그 `malmoi-i18n-push-gitlab-vN` (2026-10-12, gitlab-repositories D5)
 
 **앱 릴리스(`v<x.y.z>`)와 GitHub action 태그(`malmoi-i18n-push-vN`)와 별개 축이다** — 형은 action 릴리스와 같다(ACTIONS §2 "태그를 옮기는 것은 릴리스다").
-GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **생성 때 박힌 40자 SHA**와 `HEAD`를 대조한다. **v1 발행 2026-10-13** — 태그는 `v1.4.0` squash 커밋 `456e0e1f`이고 SHA는 후속 커밋으로 상수에 들어가 다음 앱 릴리스로 나간다.
+GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **생성 때 박힌 40자 SHA**와 `HEAD`를 대조한다. **v1 발행 2026-10-13** — 태그는 `v1.4.0` squash 커밋 `456e0e1f`이고 SHA는 후속 커밋으로 상수에 들어가 다음 앱 릴리스로 나간다. **v2 발행 2026-10-17** — `v1.4.3` squash 커밋 `325ae01a`(보안 감사 후속 `push.sh` 변경). 같은 후속 커밋 절차로 상수·ACTIONS §5를 v2로 옮겼다.
 `GITLAB_CI_RELEASE.sha`(`lib/onboarding/gitlab-ci.ts`)가 `null`인 판(발행 전 · 그 이전 버전의 설치본)에서는 화면은 템플릿 대신 "아직 없다"를 말하고, MCP `get_workflow`는 `workflow-unavailable`이다.
 
 1. `.gitlab/malmoi-i18n-push/`(또는 그것이 부르는 `push:local`·`lib/cli/gitlab-ci-input.ts`)의 변경이 **`main`에 머지된 뒤** 그 커밋에 태그를 만든다 —

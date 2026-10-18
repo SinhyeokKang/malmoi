@@ -2,20 +2,27 @@ import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import "server-only";
 
+import { collectAttention, neverFilledLocales } from "@/lib/home/attention";
+import { projectTodos, type ProjectAttention } from "@/lib/inbox/project-todos";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
+import { lastSyncTime } from "@/lib/home/sync-time";
 import type { PrismaClient } from "@/generated/prisma/client";
 // ⚠️ `Role`은 **생성물이 아니라 도메인 층**에서 온다 — 그 파일이 "Prisma의 `enum Role`과 두 벌인 것은
 // 의도"라고 못박아 두고 `canPerform`이 그 union을 든다. 사이드바가 이 값을 그쪽으로 넘긴다.
 import type { Role } from "@/lib/auth/permission";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { loadRemoteSignals, type RemoteSignals } from "@/lib/projects/remote";
+import { languageTodo } from "@/lib/locales/todo";
+import { readLocaleStatesByProject, type SurfaceLocaleState } from "@/lib/locales/work";
 import {
-  rowLocaleProgress,
-  rowReviewCounts,
+  planProjectRow,
+  projectStatus,
+  rowReviewCells,
   type LiveLocale,
   type LocaleCellCount,
   type ProjectEvents,
+  type ProjectRowPlan,
   type RowInput,
-  type RowLocaleProgress,
 } from "@/lib/projects/list";
 import { countPendingBySurface } from "@/lib/protection/where";
 import { planWriteLock } from "@/lib/sync/plan";
@@ -220,8 +227,8 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 */
 export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceCount" | "keyCount" | "surfaces"> &
   /**
-   * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정 셋(`projectStatus`·`rowBanner`·`meterSlot`)이
-   * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 화면이 렌더마다 `{...row, ...row.events}`를
+   * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정(`projectStatus`·`planProjectRow`)이
+   * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 조립이 `{...row, ...row.events}`를
    * 새로 만들어야 하고 그 합성이 판정의 입력이 된다.
    */
   ProjectEvents & {
@@ -239,8 +246,17 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
   baseBranch: string;
   /** `pr_open` 띠의 목적지. 번호는 여기서 파싱한다. */
   lastPrUrl: string | null;
-  /** 행의 Meter — **정렬 후 최대 셋**이다 (DESIGN §6.63). */
-  meters: RowLocaleProgress[];
+  /** 대표 메타 넷(project-row-redesign design §1) — 비보관 소스 수 · 그 소스들의 살아 있는 키 합 · 고유 대상 언어 수 · 마지막 적재. */
+  sourceCount: number;
+  keyCount: number;
+  languageCount: number;
+  /** ISO 문자열 · `"unrecorded"` · `null`(`lastSyncTime`). ⚠️ **`"unrecorded"`를 먼저 견준다** — `new Date("unrecorded")`는 Invalid Date다. */
+  lastSync: string | "unrecorded" | null;
+  /**
+   * 칩·그룹·띠 — **서버가 판정해 결과만 싣는다**(RA 🟢3). 할 일 목록 전체(`projectTodos`)를 실으면 57언어 프로젝트의 행마다 빈 언어 항목이
+   * 수십 개 RSC 페이로드에 오르는데, 행이 쓰는 것은 띠 하나다.
+   */
+  plan: ProjectRowPlan;
   reviewSurfaceSlug: string | null;
   unsentSurfaceSlug: string | null;
   repoAheadFrom: string | null;
@@ -285,6 +301,7 @@ export async function loadProjectList(
         select: {
           // ⚠️ **서버 안에서만 쓴다** — 집계를 묶는 키이고 `ProjectListRow`에는 안 나간다.
           id: true,
+          createdAt: true,
           slug: true,
           name: true,
           image: true,
@@ -295,7 +312,7 @@ export async function loadProjectList(
            * 원격 경로 판정(`RemoteTarget.surfaces`)의 입력. ⚠️ **로케일은 orphaned도 포함한 전체 저장 로케일이다** — 탐지
            * 정규식이 거르는 코드(`es-419`·`zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
            */
-          surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true } } } },
+          surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true, name: true, orphaned: true, createdAt: true, change: { select: { operation: true } } } } } },
           archivedAt: true,
           repoOwner: true,
           repoName: true,
@@ -318,7 +335,7 @@ export async function loadProjectList(
    *
    * ⚠️ **원격은 실패해도 목록을 죽이지 않는다** — 그 함수가 실패를 값으로 접는다.
    */
-  const [aggregates, remote] = await Promise.all([
+  const [aggregates, remote, languages] = await Promise.all([
     loadProjectListAggregates(prisma, ids),
     (options.loadRemote ?? loadRemoteSignals)(
       rows.map((r) => ({
@@ -334,17 +351,24 @@ export async function loadProjectList(
         archived: r.project.archivedAt !== null,
       })),
     ),
+    /*
+      언어 변경 작업(language-request-todo design §2) — `projectId in ids` 일괄 읽기라 프로젝트 수와 무관하게 Prisma 2–3회다. ⚠️ **보관 프로젝트는 넘기지 않는다**
+      (D6) — `projectTodos`가 보관이면 빈 목록이라 쓸 곳이 없다. 같은 라운드라 직렬 홉이 늘지 않는다(D13).
+    */
+    readLocaleStatesByProject(prisma, rows.flatMap((r) => (r.project.archivedAt === null ? [r.project.id] : []))),
   ]);
-  return { rows: assembleProjectListRows(rows, aggregates, remote) };
+  return { rows: assembleProjectListRows(rows, aggregates, remote, languages) };
 }
 
 /** `loadProjectList`의 멤버십 select 한 행 — 조립 함수의 입력이다(쓰는 필드만). */
 export type ProjectListMemberRow = {
   role: Role;
   project: {
-    id: string; slug: string; name: string; image: string | null; repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
+    id: string; createdAt: Date; slug: string; name: string; image: string | null; repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
     archivedAt: Date | null; repoOwner: string; repoName: string; repositoryId: string | null; baseBranch: string; lastPrUrl: string | null;
-    surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
+    surfaces: readonly { id: string; slug: string; lastImportedAt: Date | null; lastCommitAt: Date | null; archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null; lastImportFailedAt: Date | null;
+      locales: Parameters<typeof neverFilledLocales>[0][number]["locales"];
+    }[];
     _count: { members: number };
     gitlabConnection?: { expiresAt: Date | null } | null;
   };
@@ -361,54 +385,85 @@ export function assembleProjectListRows(
   rows: readonly ProjectListMemberRow[],
   aggregates: ProjectListAggregates,
   remote: ReadonlyMap<string, RemoteSignals>,
-): ProjectListRow[] {
-  const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
+  /** 프로젝트별 언어 변경 상태(`readLocaleStatesByProject`) — 없는 id는 작업 0이다. */
+  languages: ReadonlyMap<string, readonly SurfaceLocaleState[]>,
+): ProjectListView["rows"] {
+  // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCells`가 한다. 행의 `review` 합과 띠의 검토 할 일이 이 한 결과를 읽는다.
+  const reviewCells = rowReviewCells(aggregates.locales, aggregates.cells);
 
-  // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCounts`가 Meter와 **같은 접기**로 한다.
-  const review = rowReviewCounts(aggregates.locales, aggregates.cells);
-
-  return rows.map((r) => ({
-    slug: r.project.slug,
-    name: r.project.name,
-    image: r.project.image,
-    role: r.role,
-    repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
-    gitlabTokenExpiresAt: r.project.gitlabConnection?.expiresAt ?? null,
-    surfaces: r.project.surfaces.map(s => ({
-      archivedAt: s.archivedAt,
-      lastCommitSha: s.lastCommitSha,
-      // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
-      importError: isImportFailureCode(s.lastImportError) ? s.lastImportError : null,
-      importing: s.lastImportStartedAt !== null,
-    })),
-    archivedAt: r.project.archivedAt,
-    repoOwner: r.project.repoOwner,
-    repoName: r.project.repoName,
-    repositoryId: r.project.repositoryId,
-    memberCount: r.project._count.members,
-    baseBranch: r.project.baseBranch,
-    lastPrUrl: r.project.lastPrUrl,
-    meters: meters.get(r.project.id) ?? [],
-    reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
-    unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
-    repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
-    review: review.get(r.project.id) ?? 0,
-    unsent: aggregates.unsent.get(r.project.id) ?? 0,
-    /**
-     * ⚠️ **`undefined`(확인 못 함)를 보존한다** (ux-drift-unify Q6 ④) — `?? null`로 접으면 원격 조회가 지킨 삼상태가 여기서 "없음"이 되어
-     * "Couldn't check" 띠가 사라진다. 원격 결과에 행이 없을 때만 없음이다.
-     */
-    openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
-    repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
-  }));
+  return rows.map((r) => {
+    const surfaces = r.project.surfaces.filter(surface => surface.archivedAt === null);
+    const surfaceIds = new Set(surfaces.map(surface => surface.id));
+    const lastSync = lastSyncTime(surfaces);
+    const workLocales = aggregates.locales.filter(locale => locale.projectId === r.project.id && surfaceIds.has(locale.surfaceId));
+    const importStates = surfaces.map(surface => ({ ...surface,
+      importError: isImportFailureCode(surface.lastImportError) ? surface.lastImportError : null,
+      importing: surface.lastImportStartedAt !== null,
+    }));
+    const attention: ProjectAttention[] = collectAttention(importStates, [], neverFilledLocales(surfaces, aggregates), new Map());
+    const review = reviewCells.get(r.project.id) ?? [];
+    for (const { surfaceId, code, count } of review) {
+      const surface = surfaces.find(surface => surface.id === surfaceId);
+      if (surface === undefined) continue;
+      attention.push({ kind: "review", at: null, surfaceSlug: surface.slug, code,
+        name: surface.locales.find(item => item.code === code)?.name ?? code, count, who: null });
+    }
+    const row: Omit<ProjectListRow, "plan"> = {
+      sourceCount: surfaces.length,
+      keyCount: surfaces.reduce((sum, surface) => sum + (aggregates.keyTotals.get(surface.id) ?? 0), 0),
+      languageCount: new Set(workLocales.filter(locale => !locale.isBase).map(locale => locale.code)).size,
+      lastSync: lastSync instanceof Date ? lastSync.toISOString() : lastSync,
+      slug: r.project.slug,
+      name: r.project.name,
+      image: r.project.image,
+      role: r.role,
+      repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
+      gitlabTokenExpiresAt: r.project.gitlabConnection?.expiresAt ?? null,
+      surfaces: r.project.surfaces.map(s => ({
+        archivedAt: s.archivedAt,
+        lastCommitSha: s.lastCommitSha,
+        // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
+        importError: isImportFailureCode(s.lastImportError) ? s.lastImportError : null,
+        importing: s.lastImportStartedAt !== null,
+      })),
+      archivedAt: r.project.archivedAt,
+      repoOwner: r.project.repoOwner,
+      repoName: r.project.repoName,
+      repositoryId: r.project.repositoryId,
+      memberCount: r.project._count.members,
+      baseBranch: r.project.baseBranch,
+      lastPrUrl: r.project.lastPrUrl,
+      // 검토 띠의 목적지 — 띠의 수와 같은 `rowReviewCells` 결과에서 고른다(검토가 있는 가장 작은 slug). 따로 거르면 수와 목적지가 갈린다.
+      reviewSurfaceSlug: review.flatMap(cell => surfaces.find(surface => surface.id === cell.surfaceId)?.slug ?? []).sort()[0] ?? null,
+      unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
+      repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
+      review: review.reduce((sum, cell) => sum + cell.count, 0),
+      unsent: aggregates.unsent.get(r.project.id) ?? 0,
+      /**
+       * ⚠️ **`undefined`(확인 못 함)를 보존한다** (ux-drift-unify Q6 ④) — `?? null`로 접으면 원격 조회가 지킨 삼상태가 여기서 "없음"이 되어
+       * "Couldn't check" 띠가 사라진다. 원격 결과에 행이 없을 때만 없음이다.
+       */
+      openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
+      repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
+    };
+    const todos = projectTodos({
+      status: projectStatus(row), role: row.role, createdAt: r.project.createdAt,
+      connectionPinned: repoConnectionPinned(row), gitlabTokenExpiresAt: row.gitlabTokenExpiresAt,
+      attention, unsent: row.unsent > 0 && row.unsentSurfaceSlug !== null
+        ? { count: row.unsent, surfaceSlug: row.unsentSurfaceSlug, at: aggregates.unsentAt.get(r.project.id) ?? null } : null,
+      // 대표 slug는 비보관 소스에서 고른다 — Inbox 로더와 같은 재료다(행 띠와 Inbox 항목이 같은 판정에서 나온다).
+      language: languageTodo(languages.get(r.project.id) ?? [], new Map(surfaces.map((surface) => [surface.id, surface.slug]))),
+    });
+    return { ...row, plan: planProjectRow(row, todos) };
+  });
 }
 
 /**
  * 로케일별 진행률의 재료 (6b-5). **집계는 `localeProgress`가 한다** — 여기는 조회만이다.
  *
  * ⚠️ **번역 화면의 조회를 재사용하지 않는다.** 그쪽은 셀과 `refs`를 들고 오므로 903키 프로젝트에서
- * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 **셀에서 `{ localeCode, needsReview }`
- * 둘만** 뽑는다 — `value`를 select하면 번역 본문 전체가 따라온다.
+ * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 로케일·검토 여부별로 집계한다.
+ * 셀 행이나 번역 본문은 가져오지 않는다.
  *
  * ⚠️ **필터 둘이 판정이다.**
  * - `value: { not: "" }` — 빈 값은 미번역이다. 편집 UI에서 값을 지우면 빈 문자열 행이 남는다
@@ -422,18 +477,19 @@ export function assembleProjectListRows(
 export type LocaleCounts = {
   /** 살아 있는 키 수 — 전 로케일 공통 분모다. */
   total: number;
-  cells: { localeCode: string; needsReview: boolean }[];
+  cells: { localeCode: string; needsReview: boolean; count: number }[];
 };
 
 export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, surfaceId: string): Promise<LocaleCounts> {
   const [total, cells] = await Promise.all([
     prisma.stringKey.count({ where: { projectId, surfaceId, orphaned: false, surface: { archivedAt: null } } }),
-    prisma.translation.findMany({
+    prisma.translation.groupBy({
+      by: ["localeCode", "needsReview"],
       where: { projectId, surfaceId, surface: { archivedAt: null }, value: { not: "" }, stringKey: { orphaned: false } },
-      select: { localeCode: true, needsReview: true },
+      _count: { _all: true },
     }),
   ]);
-  return { total, cells };
+  return { total, cells: cells.map(cell => ({ localeCode: cell.localeCode, needsReview: cell.needsReview, count: cell._count._all })) };
 }
 
 
@@ -443,8 +499,8 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, 
  * ⚠️ **`Promise.all`로 보낸다.** 순차로 보내면 도쿄 리전 왕복이 다섯 번 쌓이고, 그 고정 비용은
  * 이미 실측돼 있다 (POSTMORTEM 2026-09-09 — 3.3초의 원인이 함수 리전이었다).
  *
- * ⚠️ **`loadLocaleCounts`를 재사용하지 않는다** — 그쪽은 프로젝트 하나 전용이고 셀을 **행으로**
- * 전부 가져온다. 여기 필요한 것은 개수뿐이라 `groupBy`가 맞고, 그래서 `value`가 애초에 안 딸려온다.
+ * ⚠️ **`loadLocaleCounts`를 재사용하지 않는다** — 그쪽은 프로젝트 하나의 소스 전용이다.
+ * 여기서는 프로젝트 여럿을 한 번에 집계해야 왕복 수가 늘지 않는다.
  */
 export type ProjectListAggregates = {
   /** ① 작업 언어 — 살아 있고 제거 예정이 아닌 로케일(`workLocaleWhere`). 셀 접기도 이 집합을 따르므로 제거 예정의 값은 진행률에서 빠진다. */
@@ -492,7 +548,7 @@ export async function loadProjectListAggregates(
      * `@@index([projectId, localeCode, needsReview])`를 탄다.
      *
      * ⚠️ **orphaned 로케일의 번역이 섞여 올 수 있다** — 로케일의 생사는 여기 조건에 없다. 접기에서
-     * ①의 활성 (projectId, code) 집합에 없는 그룹을 버린다 (`rowLocaleProgress`의 `foldCells`).
+     * ①의 활성 (projectId, code) 집합에 없는 그룹을 버린다 (`lib/projects/list.ts`의 `foldCells`).
      */
     prisma.translation.groupBy({
       by: ["projectId", "surfaceId", "localeCode", "needsReview"],

@@ -8,7 +8,10 @@ import { loadConnectionHealth } from "@/lib/repo-host";
 import { repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { countUnpublishedBySurface, loadActors, loadProject } from "@/lib/keys/query";
-import { countLocaleWork } from "@/lib/locales/work";
+import { readLocaleWork } from "@/lib/locales/work";
+import { loadOpenPrUrlMemo } from "@/lib/projects/open-pr";
+import { openPrGateApplies } from "@/lib/protection/plan";
+import { planSettleLookup } from "@/lib/publish/plan";
 import { loadTranslationDetail, loadTranslationList, loadTranslationTree, withActorLabels } from "@/lib/keys/translation-list";
 import { buildPermalink } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -80,7 +83,7 @@ export default async function TranslationsPage({
   const searchOnly = treeFollowsSearch(screen) && statusOf(screen) !== "all"
     ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: { ...withStatus(unselected, "all"), scope: "project" }, pageSize: "all" })
     : null;
-  const [project, tree, full, unsentBySurface, early, counted, languageWork] = await Promise.all([
+  const [project, tree, full, unsentBySurface, early, counted, localeWork] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadTranslationTree(prisma, projectId),
     // ⚠️ **화면 목록은 전량이다** (translation-filter-scope) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
@@ -88,8 +91,8 @@ export default async function TranslationsPage({
     countUnpublishedBySurface(prisma, projectId),
     onRoute ? readDetail({ id: surfaceId }, selected) : null,
     searchOnly,
-    // 언어 변경 작업 수 — 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). Home과 같은 술어다.
-    countLocaleWork(prisma, projectId),
+    // 언어 변경 작업 수 — 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). Home과 같은 술어다. `awaiting`은 #282 `settle`의 DB 판정이다.
+    readLocaleWork(prisma, projectId),
   ]);
   if (!project) redirect(routes.projects());
   const readiness = planProjectReadiness(project);
@@ -151,6 +154,20 @@ export default async function TranslationsPage({
       return { status: "unknown" } as const;
     }),
   };
+  const unpublished = [...unsentBySurface.values()].reduce((sum, n) => sum + n, 0);
+  /*
+    [Publish]의 `settle` (#282 — ARCHITECTURE §5.10.4). 셀·언어 작업 0 · 전달된 언어 요청이 PR 결말을 기다리는 **좁은 창에서만** 메모된 열린 PR 조회를 기다리지 않고 내린다
+    (연결 확인과 같은 형 — 메모 30초). ⚠️ 창 밖에서는 조회를 만들지 않는다 — 이 화면은 키 클릭·저장마다 다시 렌더된다(`open-pr-memo.test.ts` 배선).
+    표시 전용이다 — 누르면 실행이 실물로 다시 묻는다. 거부는 모름으로 접어 버튼을 끈 채 둔다.
+  */
+  const settle = planSettleLookup(
+    { count: unpublished, languageWork: localeWork.work, awaiting: localeWork.awaiting, applies: target.status === "ok" && openPrGateApplies(project) },
+    // 보관된 프로젝트는 위에서 이미 돌아갔다(`ProjectArchived`) — 조회 입력의 보관 시각은 null이다.
+    () => loadOpenPrUrlMemo(slug, { ...project, archivedAt: null }).catch((error: unknown) => {
+      logFailure("translations-open-pr", error);
+      return undefined;
+    }),
+  );
 
   return (
     <TranslationWorkspace
@@ -163,13 +180,14 @@ export default async function TranslationsPage({
       list={list}
       counts={counts}
       detail={detailView}
-      unpublished={[...unsentBySurface.values()].reduce((sum, n) => sum + n, 0)}
+      unpublished={unpublished}
       publish={{
         /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
         repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug), host: project.repoHost },
         lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date(), uiLocale),
         lastPrUrl: project.lastPrUrl,
-        languageWork,
+        languageWork: localeWork.work,
+        settle,
       }}
       sync={{ name: project.name, branch: project.baseBranch }}
       baseLocale={project.baseLocale}

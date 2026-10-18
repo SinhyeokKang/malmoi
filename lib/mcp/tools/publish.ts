@@ -140,6 +140,9 @@ async function publishOutcome(
   // 보낼 것 없이 언어 요청만 정리했으면 그것이 이유다(#267) — 리포에 닿지 못한 요청이 있으면 "리포에 이미 있다"가 거짓이다.
   const expired = outcome.status === "skipped" && outcome.reason === "no-edits" ? outcome.expired ?? [] : [];
   const reached = expired.filter(reachedRepository).length;
-  const summary = (repoHost === "gitlab" ? en.mcp.summary.gitlab : en.mcp.summary).published(view, expired.length - reached, reached);
+  const s = repoHost === "gitlab" ? en.mcp.summary.gitlab : en.mcp.summary;
+  // 언어 요청이 열린 PR/MR을 기다려 보낼 것이 없었다(#282 fix1) — "리포에 이미 있다"가 아니다.
+  const waiting = outcome.status === "skipped" && outcome.reason === "no-edits" && outcome.prOpen === true;
+  const summary = waiting ? s.languageWaiting : s.published(view, expired.length - reached, reached);
   return ok({ result: view, outcome: withWarningLines(outcome, en.adapterErrors) }, summary);
 }

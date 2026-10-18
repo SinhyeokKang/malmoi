@@ -19,8 +19,12 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn(), usePathname: () => "/", u
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn(), loadSearchMembershipsAction: vi.fn() }));
 
-beforeEach(() => { vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} })); });
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  // 랜딩 배경 캔버스 — jsdom엔 2D 컨텍스트가 없어 경고를 찍는다. `null`이면 `DotField`는 그리지 않고 나간다.
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+});
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe.each([["ko", ko], ["es", es]] as const)("%s 랜딩", (_code, dict) => {
   it("h1·하단 h2는 사전 값, lang 속성 없음", async () => {

@@ -13,7 +13,8 @@ import { importOutcomeFields } from "@/lib/projects/import-status";
 import { applyPushInTransaction, type LocaleChangeHandling } from "@/lib/push/apply";
 import { planLocaleImportGate } from "@/lib/push/locale-gate";
 import type { PullRequestCheck } from "@/lib/locales/expiry";
-import { readLocaleStates } from "@/lib/locales/work";
+import { deliveredOf, readLocaleStates } from "@/lib/locales/work";
+import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
@@ -263,7 +264,7 @@ async function current(tx: Prisma.TransactionClient, lease: Lease, captured: Tra
  * 표면 적재가 언어 변경 의도를 다루는 법 (locale-add design §1). 자동화는 같은 잠금에서 만료를 겸하고, 지문 승인한 수동 Sync는 **빠진 파일이 없는
  * 적재에서만** 의도를 지운다 — 부분 적재는 리포 관측이 불완전해 의도를 남기고 빈 ADD를 지키는 기본(`keep`)으로 간다.
  */
-function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { files?: readonly { path: string; mode?: string }[] }, complete: boolean): LocaleChangeHandling {
+function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { files?: readonly { path: string; mode?: string }[] }, complete: boolean, pullRequest: PullRequestCheck): LocaleChangeHandling {
   const { actor } = lease;
   // 만료의 관측은 적재가 읽은 그 트리에서 Publish 쪽 만료와 같은 함수로 본다(R-B2 Y4) — `payload.locales`는 링크도 로케일로 센다.
   // 이 경로의 AUTOMATION은 야간 적재 하나다(CI는 `applyProtectedPush`) — 만료 사건이 "CI"로 서지 않게 실행을 싣는다(시안 P3).
@@ -272,13 +273,36 @@ function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { f
   const surfaceId = surface.id;
   if (!complete) return { kind: "keep" };
   const approved = lease.approvedLocaleChanges.filter(row => row.surfaceId === surfaceId).map(({ surfaceId: _surface, ...row }) => row);
-  return { kind: "discard", actor: { kind: "USER", userId: actor.userId }, approved };
+  return { kind: "discard", actor: { kind: "USER", userId: actor.userId }, approved, pullRequest };
+}
+
+/**
+ * **승인 Sync가 폐기할 행의 열린 PR/MR 상태** (#283 — ARCHITECTURE §5.10.2). 승인된 행 가운데 저장된 전달 목록에 효과가 있는 코드가 있을 때만 **한 번** 묻는다
+ * (호스트 2회) — 그 밖은 뺄 효과가 없어 묻지 않고 `failed`(목록 유지)다. 성공한 조회만 `none-open`이다 — 모름은 목록을 남긴다(fail-closed).
+ * ⚠️ lease 뒤에 묻는다 — 실행 중 Publish는 lease가 막아 PR 상태를 바꿀 이 앱의 쓰기가 없다. 사람이 호스트에서 PR을 다시 여는 경합은 만료와 같이 수용한다.
+ */
+async function discardPullRequest(prisma: PrismaClient, lease: Lease): Promise<PullRequestCheck> {
+  if (lease.actor.kind !== "USER" || lease.approvedLocaleChanges.length === 0) return "failed";
+  // ⚠️ 이 조회가 던져도 적재를 실패시키지 않는다 — 없어도 되는 정리의 입력이다. 모름으로 접어 목록을 남긴다(fail-closed).
+  try {
+    const confirmations = await prisma.deliveryConfirmation.findMany({
+      where: { projectId: lease.project.id, surfaceId: { in: [...new Set(lease.approvedLocaleChanges.map(row => row.surfaceId))] } },
+      select: { surfaceId: true, deliveredLocaleChanges: true, invalidatedAt: true },
+    });
+    const stored = new Map(confirmations.map(row => [row.surfaceId, deliveredOf(row) ?? []]));
+    if (!lease.approvedLocaleChanges.some(row => stored.get(row.surfaceId)?.some(effect => effect.localeCode === row.localeCode))) return "failed";
+    const open = await loadOpenPrUrl(lease.project.slug, lease.project);
+    return open === undefined ? "failed" : open === null ? "none-open" : "open";
+  } catch (error) {
+    logFailure("repository-import-open-pr", error);
+    return "failed";
+  }
 }
 
 /** 커밋된 표면 트랜잭션이 실제로 바꾼 값 수의 합 — 롤백된 표면은 더하지 않는다(트랜잭션이 끝난 뒤에 더한다). */
 type Tally = { changedValues: number };
 
-async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string; files?: readonly { path: string; mode?: string }[] }, tally: Tally): Promise<SurfaceImportResult> {
+async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string; files?: readonly { path: string; mode?: string }[] }, tally: Tally, pullRequest: PullRequestCheck = "failed"): Promise<SurfaceImportResult> {
   const finished = await prisma.$transaction(async tx => {
     const check = await current(tx, lease, surface);
     if (!check.ok) return { surface: result(surface, "superseded", check.reason), changedValues: 0 };
@@ -289,7 +313,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
     let changedValues = 0;
     if (prepared.kind === "payload") {
       const applied = await applyPushInTransaction(tx, scope, prepared.payload, {
-        localeChanges: localeHandling(lease, surface, snapshot, prepared.result.errors.length === 0),
+        localeChanges: localeHandling(lease, surface, snapshot, prepared.result.errors.length === 0, pullRequest),
         token: lease.token, startedAt: lease.startedAt, refsMode: "preserve", previousBaseLocale: surface.baseLocale,
         importOutcome: prepared.result.failed > 0 ? "partial-import" : null,
         // 승인 뒤에 저장된 셀은 토큰이 달라 여기서 안 덮인다 — 결과의 `remainingEdits`가 그 수를 말한다.
@@ -427,6 +451,8 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
       return await close({ ok: false, error: snapshotError(snapshot) });
     }
     const surfaces: SurfaceImportResult[] = [];
+    // 표면 루프 앞에서 한 번 — 표면마다 묻지 않는다(#283).
+    const pullRequest = await discardPullRequest(prisma, lease);
     for (const surface of lease.surfaces) {
       if (surface.adapterName === null || !isAdapterName(surface.adapterName) || !surface.pathTemplate || !surface.baseLocale) {
         surfaces.push(result(surface, "failed", "invalid-format"));
@@ -445,7 +471,7 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
           token: lease.token, startedAt: lease.startedAt,
           surface: { id: surface.id, slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale, nested: surface.nested, nestedByPath: surface.nestedByPath },
         });
-        surfaces.push(await finishSurface(prisma, lease, surface, prepared, snapshot, tally));
+        surfaces.push(await finishSurface(prisma, lease, surface, prepared, snapshot, tally, pullRequest));
       } catch (error) {
         // 자동화의 사후 재집계 — 이 표면은 이미 롤백됐다. 실패로 기록하지 않고(편집이 들어왔을 뿐이다) 뒤 표면을 시작하지 않는다.
         if (error instanceof PendingEditsDuringImport) { halted = "pending-edits"; break; }

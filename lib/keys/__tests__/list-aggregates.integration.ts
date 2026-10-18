@@ -16,7 +16,10 @@ import { cardQuery } from "@/components/home/count-cards";
 import { bannerTranslationsHref } from "@/lib/routes";
 import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/cards";
 import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
-import { reviewByLocale, rowBanner, rowChip, summaryQueue } from "@/lib/projects/list";
+import { loadAttentionInbox } from "@/lib/inbox/load";
+import { countLocaleWork, readLocaleWork } from "@/lib/locales/work";
+import type { RemoteTarget } from "@/lib/projects/remote";
+import { reviewByLocale, summaryQueue } from "@/lib/projects/list";
 import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { countPending } from "@/lib/protection/where";
 import { loadPullState } from "@/lib/pull/load";
@@ -523,8 +526,8 @@ it("목록 행이 표면 A 동기화 중 + 표면 B 실패를 실패로 말한�
     { importError: null, importing: true },
     { importError: "parse-failed", importing: false },
   ]);
-  expect(rowChip(row)).toBe("sync_failed");
-  expect(rowBanner(row)).toEqual({ kind: "import_failed", reason: "parse-failed" });
+  expect(row).toMatchObject({ sourceCount: 2, keyCount: 3, languageCount: 1, lastSync: null });
+  expect(row.plan).toEqual({ chip: "syncFailed", group: "needs_attention", banner: { kind: "import_failed", reason: "parse-failed" } });
 });
 
 /**
@@ -1069,4 +1072,80 @@ it("검토 집계는 프로젝트 두 개의 같은 로케일을 섞지 않는�
     { projectId: "p2", surfaceId: "surface-p2", localeCode: "ko", count: 1, at: AFTER, updatedBy: "person-2" },
   ]);
   expect(await loadReviewAttention(prisma, [])).toEqual([]);
+});
+
+it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 빈 ADD와 검토 ADD 포함", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await seed({ id: "outsider", lastPulledAt: PULLED, archived: false });
+  await prisma.project.update({ where: { id: "p1" }, data: { installationId: "1", repositoryId: "10" } });
+  await prisma.user.create({ data: { id: "owner", email: "owner-fixture" } });
+  await prisma.projectMember.create({ data: { projectId: "p1", userId: "owner", role: "OWNER" } });
+  await prisma.translationSurface.update({ where: { id: "surface-p1" }, data: { lastCommitSha: "sha", lastImportedAt: AFTER } });
+  await prisma.translation.updateMany({ where: { projectId: "p1" }, data: { pendingEditToken: null, needsReview: true } });
+  for (const key of ["old", "same", "new"]) await prisma.translation.create({ data: {
+    projectId: "p1", surfaceId: "surface-p1", keyId: `p1-${key}`, localeCode: "en", value: key,
+  } });
+  await prisma.locale.createMany({ data: [
+    { projectId: "p1", surfaceId: "surface-p1", code: "es", name: "Spanish", createdAt: AFTER },
+    { projectId: "p1", surfaceId: "surface-p1", code: "gone", name: "Gone", orphaned: true },
+  ] });
+  await prisma.localeChange.createMany({ data: [
+    { projectId: "p1", surfaceId: "surface-p1", localeCode: "ko", operation: "REMOVE" },
+    { projectId: "p1", surfaceId: "surface-p1", localeCode: "es", operation: "ADD" },
+  ] });
+  for (const [id, archivedAt, lastImportedAt] of [["second", null, BEFORE], ["archived", AFTER, new Date("2099-01-01")]] as const) {
+    await prisma.translationSurface.create({ data: { id, projectId: "p1", slug: id,
+      adapterName: "json-catalog", pathTemplate: `${id}/{locale}.json`, baseLocale: "ko", lastCommitSha: "sha", archivedAt, lastImportedAt } });
+    await prisma.locale.createMany({ data: ["ko", "en", "fr"].map(code => ({
+      projectId: "p1", surfaceId: id, code, name: code, isBase: code === "ko",
+    })) });
+    await prisma.stringKey.create({ data: { id: `${id}-key`, projectId: "p1", surfaceId: id, key: "key", namespace: "", sourceText: "Key", sourceHash: "hash" } });
+    await prisma.translation.createMany({ data: ["ko", "en", "fr"].map(code => ({
+      projectId: "p1", surfaceId: id, keyId: `${id}-key`, localeCode: code, value: "filled", needsReview: code === "fr",
+    })) });
+    await prisma.localeChange.create({ data: { projectId: "p1", surfaceId: id, localeCode: "fr", operation: "ADD" } });
+  }
+  await prisma.translationSurface.create({ data: { id: "waiting", projectId: "p1", slug: "waiting", adapterName: "json-catalog", pathTemplate: "waiting/{locale}.json", baseLocale: "en" } });
+  const loadRemote = vi.fn(async (_targets: readonly RemoteTarget[]) => new Map());
+  let queries = 0;
+  const counted = prisma.$extends({ query: { $allOperations: ({ args, query }) => { queries++; return query(args); } } }) as unknown as typeof prisma;
+  const load = () => loadProjectList(counted, "owner", { loadRemote });
+  const { rows: [row] } = await load();
+  if (row === undefined) throw new Error("no row");
+  // 멤버십 하나 + 기존 집계 다섯 + 언어 변경 일괄 읽기 셋(요청 행 · 확인 행 · ADD가 있어 값 수 raw — language-request-todo design §2, D13).
+  expect(queries).toBe(9);
+
+  expect(row).toMatchObject({ sourceCount: 3, keyCount: 4, languageCount: 3, lastSync: AFTER.toISOString(), review: 1, unsent: 0 });
+  /*
+    언어 변경 작업이 검토보다 앞선다(language-request-todo §4) — `default`의 ko 제거(미전달 → 보류)와 `second`의 값 있는 fr 추가가 둘이다. 값 0개 es 추가와
+    보관 소스의 fr 추가는 작업이 아니다. 행 띠 · Inbox 항목 · `countLocaleWork`가 같은 수를 센다(spec 완료 조건 6).
+  */
+  expect(row.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "language_unsent", count: 2, held: true } });
+  expect("todos" in row).toBe(false);
+  const inbox = await loadAttentionInbox(prisma, "owner");
+  const inboxItems = inbox.groups.flatMap(group => group.items);
+  expect(inboxItems.map(item => item.kind).sort()).toEqual(["language_unsent", "never_filled", "review"]);
+  const language = inboxItems.find(item => item.kind === "language_unsent");
+  expect(language).toMatchObject({ count: 2, held: true, surfaceSlug: "default" });
+  expect(await countLocaleWork(prisma, "p1")).toBe(2);
+  // Home의 수(`readLocaleWork().work` — [Publish]·`To send` 보조 줄)도 같은 정의다(spec 완료 조건 6의 셋째 화면).
+  expect((await readLocaleWork(prisma, "p1")).work).toBe(2);
+  expect(inboxItems.filter(item => item.kind === "review").map(item => item.code)).toEqual(["fr"]);
+  expect(inboxItems.filter(item => item.kind === "never_filled").map(item => item.code)).toEqual(["es"]);
+  const targets = loadRemote.mock.calls[0]?.[0];
+  expect(targets?.map(target => target.projectId)).toEqual(["p1"]);
+  expect(targets?.[0]?.surfaces.find(surface => surface.pathTemplate === "i18n/{locale}.json")?.storedLocales).toEqual(expect.arrayContaining(["en", "ko", "es", "gone"]));
+
+  await prisma.translation.updateMany({ where: { projectId: "p1", surfaceId: "second", localeCode: "fr" }, data: { needsReview: false } });
+  // 언어 변경을 전달한 것으로 확인한다 — 확인 실행이 요청보다 뒤라 요청의 효과가 전달로 세어진다(`deliveredForRequests`). 그러면 띠가 빈 언어로 내려간다.
+  const run = await prisma.syncRun.create({ data: { projectId: "p1", status: "SUCCEEDED", trigger: "MANUAL", startedAt: new Date("2099-01-01T00:00:00Z") } });
+  for (const [surfaceId, delivered] of [["surface-p1", [{ localeCode: "ko", effect: "delete" }]], ["second", [{ localeCode: "fr", effect: "create" }]]] as const) {
+    await prisma.deliveryConfirmation.create({ data: { projectId: "p1", surfaceId, revision: `rev-${surfaceId}`, syncRunId: run.id, contextFingerprint: "ctx", deliveredLocaleChanges: delivered } });
+  }
+  expect(await countLocaleWork(prisma, "p1")).toBe(0);
+  // 0 쪽에서도 교차가 선다 — 작업이 없으면 Inbox에도 언어 변경 항목이 없다.
+  expect((await loadAttentionInbox(prisma, "owner")).groups.flatMap(group => group.items).some(item => item.kind === "language_unsent")).toBe(false);
+  const { rows: [emptyLanguageRow] } = await load();
+  if (emptyLanguageRow === undefined) throw new Error("no row");
+  expect(emptyLanguageRow.plan.banner).toEqual({ kind: "never_filled", surfaceSlug: "default", code: "es", name: "Spanish", keys: 3 });
 });

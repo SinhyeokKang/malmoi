@@ -26,7 +26,7 @@ import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
 import { ProjectList } from "@/components/projects/project-list";
 import { bannerTranslationsHref } from "@/lib/routes";
-import type { ProjectListRow } from "@/lib/keys/query";
+import { planned, type RowFixture } from "./helpers/project-row";
 import { en } from "@/messages/en";
 import type { HomeCard } from "@/lib/home/cards";
 import { parseTranslationQuery } from "@/lib/translations/query";
@@ -85,16 +85,16 @@ it("프로젝트 목록 띠의 검토 대기·보낼 편집 링크는 ns=*를 �
     expect(narrowing(bannerTranslationsHref("acme", "web", state))).toMatchObject({ ns: "*", scope: null, state, parsedNs: "*" });
   }
   // 실제 목록을 그려 띠의 앵커를 센다 — 띠가 손으로 주소를 조립하면 여기서 갈린다.
-  const row = (over: Partial<ProjectListRow>): ProjectListRow => ({
+  const row = (over: Partial<RowFixture>): RowFixture => ({
     image: null, slug: "acme", reviewSurfaceSlug: "web", unsentSurfaceSlug: "app", repoAheadFrom: null, name: "Acme", role: "OWNER", repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i",
     surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null, repoOwner: "o", repoName: "r", repositoryId: "9001",
-    memberCount: 2, baseBranch: "main", lastPrUrl: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, ...over,
+    memberCount: 2, baseBranch: "main", lastPrUrl: null, review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, ...over,
   });
   for (const [over, label, href] of [
     [{ review: 3 }, en.projects.banner.action.review, bannerTranslationsHref("acme", "web", "review")],
     [{ unsent: 2 }, en.projects.banner.action.send, bannerTranslationsHref("acme", "app", "unsent")],
   ] as const) {
-    const { container } = await render(<ProjectList all={[row(over)]} />);
+    const { container } = await render(<ProjectList all={[planned(row(over))]} now={new Date("2026-10-18T03:00:00Z")} />);
     const anchor = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === label);
     expect(anchor?.getAttribute("href"), label).toBe(href);
     expect(narrowing(anchor!.getAttribute("href")!)).toMatchObject({ ns: "*", parsedNs: "*" });

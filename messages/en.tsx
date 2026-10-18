@@ -99,6 +99,22 @@ export const en = {
     failed: "Couldn't load this list.",
     /** 골격은 `aria-hidden`이라 이 sr 문장이 "불러오는 중"을 말한다. */
     loading: "Loading items…",
+    /**
+     * 연결이 끊긴 프로젝트 항목(project-row-redesign) — 목록 띠 `projects.banner.needsReconnect`를 `—`에서 나눈 두 조각이다. 굵은 사실 + 근거 꼬리라
+     * 다른 항목과 같은 형이고, 새 문장이 아니라 같은 말이다(`inbox-row-slots.test.tsx`가 둘을 이어 띠 문장과 견준다).
+     */
+    needsReconnect: {
+      body: "This repository is disconnected",
+      tail: " — syncs and publishes stop until it's reconnected.",
+    },
+    /**
+     * 전달 전 언어 제거(language-request-todo) — 목록 띠 `projects.banner.languageRemovalHeld`를 `—`에서 나눈 두 조각이다(`needsReconnect`와
+     * 같은 형). 보류 아닌 언어 변경 항목은 띠 문장 `projects.banner.languageChanges`를 통째로 쓴다.
+     */
+    languageRemovalHeld: {
+      body: "A language removal isn't published yet",
+      tail: " — repository updates are held.",
+    },
   },
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
@@ -1104,6 +1120,11 @@ export const en = {
       nothingPending: "nothing to send",
       nothingToReview: "nothing to review",
       /**
+       * 셀 편집 0 · 언어 변경만 남았다(language-request-todo) — `nothingPending`이 서면 [Publish]가 켜져 있는데 "보낼 게 없다"고 거짓으로
+       * 읽힌다(POSTMORTEM 2026-09-27과 같은 부류). 목록 띠 `projects.banner.languageChanges`와 같은 낱말이다.
+       */
+      languageChanges: (n: number): string => `${n.toLocaleString("en-US")} language change${n === 1 ? "" : "s"} to publish`,
+      /**
        * `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다.
        * ⚠️ 정상 줄(`synced`)과 같은 낱말이다(2026-09-30 사용자 — `last good sync`가 혼자 길어 카드가 한 줄 높았다). 과거형 `synced`가 성공을
        * 말하고, 실패는 주의 카드가 든다. `last sync`로 줄이지 않는다 — 그러면 방금 실패한 시도를 가리킨다.
@@ -1126,6 +1147,8 @@ export const en = {
         "open-pr": "held until the pull request is merged or closed",
         "pr-check-failed": "held — couldn't check for an open pull request",
         "publish-raced": "held — Publish finished after the sync checks",
+        /** 전달 전 언어 제거 — 게이트 순서(`/api/push`)대로 미전달 편집 다음, 열린 PR 앞이다. 목록 띠 `languageRemovalHeld`와 같은 사실이다. */
+        "locale-change-pending": "held — a language removal isn't published yet",
       },
       frozen: "frozen at archive",
       neverSent: "never sent",
@@ -1945,20 +1968,8 @@ export const en = {
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**
-     * Meter 자리에 **바 대신 서는 문장** (DESIGN §6.63). 값이 없는 상태에서 0% 바를 그리면
-     * "0% 번역됨"으로 읽히는데, 그 프로젝트는 아직 셀 것이 없는 상태다.
-     */
-    meter: {
-      note: {
-        waiting: "Not synced yet",
-        importing: "Syncing…",
-        failed: "Sync failed",
-        setup: "Connect the GitHub App to continue.",
-      },
-    },
-    /**
      * 행 아래 띠 — **다음 한 수**를 말한다 (DESIGN §6.63). 겹치면 하나만 그리고 우선순위는
-     * `rowBanner`가 정한다.
+     * `planProjectRow`가 정한다.
      *
      * ⚠️ **복수형을 함수가 든다** — 시안 문구가 전부 복수형이지만 `1 strings`는 틀렸다
      * (`memberCount`가 같은 이유로 이미 함수다).
@@ -1970,15 +1981,33 @@ export const en = {
     banner: {
       review: (n: number): string =>
         `${n.toLocaleString("en-US")} cell${n === 1 ? " is" : "s are"} translated and waiting for review.`,
+      /**
+       * 값이 하나도 없는 작업 언어(project-row-redesign) — Home `neverFilled`의 본문·꼬리에서 `here`만 `in {source}`로 바꾼 형이라 같은
+       * 항목이 두 화면에서 같은 말이다. 언어는 코드가 아니라 `Locale.name`이다. `never`·`yet`은 그 술어가 모르는 과거를 단언한다.
+       */
+      neverFilled: (locale: string, source: string, n: number): string =>
+        `${locale} has no translations in ${source} — ${n.toLocaleString("en-US")} ${n === 1 ? "key" : "keys"} to translate.`,
       unsent: (n: number): string =>
         // ⚠️ 결과를 약속하지 않는다 — Publish가 보류하는 편집(파일·키가 아직 없음)도 같은 술어로 세어진다.
         `${n.toLocaleString("en-US")} unsent edit${n === 1 ? "" : "s"} — publish to send ${n === 1 ? "it" : "them"}.`,
+      /**
+       * 언어 변경만 아직 Publish되지 않았다(language-request-todo) — 낱말은 [Publish] 힌트 `translations.publish.language.ready`와 같은
+       * `to publish`다. ⚠️ `pending`을 쓰지 않는다(코드 이름이다). 상태 낱말 `Adding`·`Removing`은 Languages 카드의 것이다.
+       */
+      languageChanges: (n: number): string =>
+        `${n.toLocaleString("en-US")} language change${n === 1 ? "" : "s"} to publish.`,
+      /**
+       * 전달 전 제거가 CI 적재를 보류한다(`locale-change-pending`). ⚠️ **수를 말하지 않는다** — 제거가 여럿이어도 보류는 하나다.
+       * 언제 풀리는지 약속하지 않는다 — Publish 뒤에도 열린 PR 보류가 이어받는다(ARCHITECTURE §5.10.3).
+       */
+      languageRemovalHeld: "A language removal isn't published yet — repository updates are held.",
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
       /**
        * 열린 PR 조회가 실패했다(ux-drift-unify Q6) — "없음"이 아니라 모름이다. ⚠️ **목적어를 붙인다** — 홀로 서는 "Couldn't check"는
-       * 연결 확인 실패의 낱말이다(DESIGN §10.1). 게이트가 fail-closed라 그 동안 리포 갱신이 멈춘다.
+       * 연결 확인 실패의 낱말이다(DESIGN §10.1). 앞 문장은 칩 낱말 그대로이고, 뒷문장이 다음 수를 말한다 — 띠에 링크가 없어서다
+       * (project-row-redesign 결정 5). `retry`·`check again`은 쓰지 않는다.
        */
-      prCheckFailed: "Couldn't check for an open pull request.",
+      prCheckFailed: "Couldn't check for an open pull request. This page asks again the next time you open it.",
       /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
       repoAhead: (n: number, baseBranch: string): string =>
         `${n.toLocaleString("en-US")} translation file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last sync.`,
@@ -2009,7 +2038,7 @@ export const en = {
     /**
      * 목록 행 우측 배지의 낱말 중 `STATE`가 이 사전에서 읽는 셋 (`lib/status/canon.ts`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
      * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다. 나머지 칩(Not synced yet · Disconnected · 실패 둘)은 `STATE`가 다른 화면과
-     * 같은 사전 키에서 읽는다(ux-drift-unify T19 — 칩이 `CHIP_STATE` 키만 넘긴다).
+     * 같은 사전 키에서 읽는다(ux-drift-unify T19 — 칩이 상태 키만 넘긴다).
      *
      * ⚠️ **내부 이름을 화면에 쓰지 않는다** (PRODUCT §3) — 번역자도 이 목록을 본다.
      */
@@ -2046,10 +2075,9 @@ export const en = {
     },
     /** GitLab 프로젝트 — Home 셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
     onGitLab: {
-      meter: { note: { setup: "Connect this project to GitLab to continue." } },
       banner: {
         prOpen: (n: number): string => `Merge request !${n} is open — merge it to finish.`,
-        prCheckFailed: "Couldn't check for an open merge request.",
+        prCheckFailed: "Couldn't check for an open merge request. This page asks again the next time you open it.",
         action: { viewPr: "Open on GitLab" },
       },
     },
@@ -3088,6 +3116,14 @@ export const en = {
             addNotReached: (code: string): string => `${code} wasn't added — its merge request closed without merging. Its translations stay in Malmoi.`,
             removeNotReached: (code: string): string => `${code} wasn't removed — its merge request closed without merging. It stays in this source.`,
           },
+          settle: {
+            progressDescription: "Checking the merge request and the repository, then closing the request. This usually takes a few seconds.",
+            progress: ["Checking whether the merge request is still open", "Reading the repository", "Closing the request"] as readonly string[],
+            stillOpen: "A merge request with language changes is open, so the request stays until it's merged or closed. Nothing was sent.",
+            hint: "The merge request for a language change is no longer open. Publish to close its request.",
+            body: (n: number): string =>
+              `The merge request ${n === 1 ? "this request was" : "these requests were"} sent in is no longer open. Nothing goes out and no new merge request opens \u2014 publishing only closes ${n === 1 ? "it" : "them"}.`,
+          },
           createdDescription: "The language changes are in a merge request. They reach the product once someone on the team merges it.",
           updatedDescription: (n: number): string =>
             `!${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, including the language changes.`,
@@ -3327,6 +3363,26 @@ export const en = {
          * 켜진다(버튼은 base를 읽지 않는다). 그때는 모달이 Held 행으로 이유를 말한다(R-E3 ⚪2).
          */
         ready: "There are language changes to publish.",
+        /**
+         * 셀·언어 작업 0 · 전달된 언어 요청의 PR/MR이 더는 열려 있지 않다(#282 — ARCHITECTURE §5.10.4 `settle`). `hint`는 켜진 [Publish]의 sr·`title`이고, 나머지는 만료될 요청만
+         * 있는 미리보기다 — 보낼 것이 없으니 `Nothing can be sent yet`으로 떨어지지 않고 요청을 닫는 실행을 세운다. 어느 언어가 어떻게 끝났는지는 표 아래 `expiring` 줄이 말한다.
+         */
+        settle: {
+          hint: "The pull request for a language change is no longer open. Publish to close its request.",
+          title: (n: number): string => (n === 1 ? "Close the language request" : "Close the language requests"),
+          body: (n: number): string =>
+            `The pull request ${n === 1 ? "this request was" : "these requests were"} sent in is no longer open. Nothing goes out and no new pull request opens \u2014 publishing only closes ${n === 1 ? "it" : "them"}.`,
+          action: (n: number): string => (n === 1 ? "Close request" : "Close requests"),
+          /** 정리 실행의 진행 화면(#282 fix1) — PR을 쓰지 않으므로 Publish의 세 단계(파일 쓰기 · 커밋 · PR 열기)를 말하지 않는다. */
+          progressTitle: (n: number): string => (n === 1 ? "Closing the language request" : "Closing the language requests"),
+          progressDescription: "Checking the pull request and the repository, then closing the request. This usually takes a few seconds.",
+          progress: ["Checking whether the pull request is still open", "Reading the repository", "Closing the request"] as readonly string[],
+          /** 실행이 열린 PR을 봤다(`no-edits` + `prOpen`) — 정리 미리보기 뒤 PR이 다시 열린 경합이다. "리포에 이미 있다"가 아니다. */
+          stillOpen: "A pull request with language changes is open, so the request stays until it's merged or closed. Nothing was sent.",
+          /** 보류 없이 요청만 닫은 결과(#289) — Held back이 아니다. 무엇을 닫았는지는 뒤의 만료 줄이 말한다. */
+          doneTitle: (n: number): string => (n === 1 ? "Language request closed" : "Language requests closed"),
+          doneDescription: "Nothing was written to the repository.",
+        },
         /** 만료 안내가 여러 소스에 걸칠 때 언어에 소스를 붙인다(`fr (web)`) — "this source"가 어느 소스인지. */
         inSource: (code: string, source: string): string => `${code} (${source})`,
       },
@@ -3558,8 +3614,11 @@ export const en = {
     count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"}`,
     /** Sources 상세 Languages 카드의 개수 배지 sr 문장. */
     languageCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"}`,
-    /** Sources 상세 언어 행의 오른쪽 수치 — 번역된 수 / 전체 수. */
+    /** Sources 상세 언어 행의 오른쪽 수치 — 값이 있는 수(완료 + 검토 대기) / 전체 수. 퍼센트와 같은 비율을 말한다. 키 이름은 옛 뜻(완료만)에서 남았다. */
     translatedOfTotal: (translated: number, total: number): string => `${translated.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
+    /** Sources 목록 행의 막대 다섯 뒤 평문 — 보이는 글자는 `aria-hidden`이고 아래 문장이 접근 이름을 바꿔 끼운다(행 버튼의 이름이 내용에서 계산된다). */
+    moreLanguages: (n: number): string => `+${n.toLocaleString("en-US")}`,
+    moreLanguagesLabel: (n: number): string => (n === 1 ? "1 more language" : `${n.toLocaleString("en-US")} more languages`),
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.
@@ -3641,9 +3700,11 @@ export const en = {
     orphanReason: "This language is inactive.",
     orphanStrip: (code: string): string => `${code} is inactive.`,
     /** 띠 둘째 문장 — 보존 수만 말한다. 복구 길은 뒤 문장 셋 중 하나가 든다(역할·포맷이 고른다, 시안 L3·L4). */
-    orphanStripRest: (translations: number): string =>
-      `Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
-    orphanStripOwner: "Add it again to bring them back.",
+    orphanStripRest: (translations: number): string => translations === 0 ? "It has no translations."
+      : `Its ${translations.toLocaleString("en-US")} ${translations === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+    /** 되살릴 번역이 없으면(0) 약속하지 않는다 — 수는 `orphanStripRest`와 같은 값이다(#287). */
+    orphanStripOwner: (translations: number): string => translations === 0 ? "Add it again to use it here."
+      : translations === 1 ? "Add it again to bring it back." : "Add it again to bring them back.",
     orphanStripUnsupported: "Restore the file in the repository, then sync.",
     orphanStripEditor: "A project owner can add it again.",
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
@@ -3704,9 +3765,13 @@ export const en = {
       fileToCreate: "File to create",
       checkFailed: "We couldn't check this language.",
       savedTranslations: (n: number): string => `${n.toLocaleString("en-US")} saved ${n === 1 ? "translation" : "translations"}`,
-      /** 되살림 안내 — `count`는 `savedTranslations`를 굵게 든다. 행에서 열면 코드가 제목에 있어 둘째 형이다(시안 A4). */
-      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} was in this source before. Adding it again brings back {count}, ready to publish.</>,
-      reviveAgain: (count: ReactNode): ReactNode => <>Adding it again brings back {count}, ready to publish.</>,
+      /**
+       * 되살림 안내 — `count`는 `savedTranslations`를 굵게 든다. 행에서 열면 코드가 제목에 있어 둘째 형이다(시안 A4).
+       * `n`은 보존된 번역 수이고 분기에만 쓴다 — 0이면 되돌릴 것을 약속하지 않는다(#294 — `orphanStripRest`·`cancelAddDone`과 같은 갈래).
+       */
+      reviveLine: (code: string, n: number, count: ReactNode): ReactNode => n === 0 ? <>{code} was in this source before. It has no saved translations.</>
+        : <>{code} was in this source before. Adding it again brings back {count}, ready to publish.</>,
+      reviveAgain: (n: number, count: ReactNode): ReactNode => n === 0 ? <>It has no saved translations.</> : <>Adding it again brings back {count}, ready to publish.</>,
       /** 필드 자리의 거부 — 도움말을 대신한다(시안 A2). */
       errors: {
         unreadable: "Malmoi can't read this code back from the repository. Add the file in the repository instead.",
@@ -3722,7 +3787,9 @@ export const en = {
       addUnsettled: "We couldn't add the language. The last publish couldn't finish — publish again first.",
       addUnconfirmed: (code: string): string => `We couldn't confirm whether ${code} was added. The list shows the current state.`,
       addedNotice: (code: string): string => `Added ${code}. Open it to start translating.`,
-      addedAgain: (code: string, n: number): string => `Added ${code} again. ${n.toLocaleString("en-US")} saved ${n === 1 ? "translation is" : "translations are"} back and unsent.`,
+      /** 돌아온 번역이 없으면(0) 수 문장을 뺀다(#294). */
+      addedAgain: (code: string, n: number): string => n === 0 ? `Added ${code} again.`
+        : `Added ${code} again. ${n.toLocaleString("en-US")} saved ${n === 1 ? "translation is" : "translations are"} back and unsent.`,
       removeTitle: (code: string, source: string): string => `Remove ${code} from ${source}?`,
       removeBody: "Publishing removes this language file from the repository. Saved translations are kept.",
       cancelAddBody: "This language will become inactive. Saved translations are kept.",
@@ -3731,7 +3798,7 @@ export const en = {
       factFile: "File",
       factTranslations: "Translations",
       factPullRequest: "Pull request",
-      keptInMalmoi: (n: number): string => `${n.toLocaleString("en-US")} kept in Malmoi`,
+      keptInMalmoi: (n: number): string => n === 0 ? "None" : `${n.toLocaleString("en-US")} kept in Malmoi`,
       notCreatedYet: (path: string): string => `${path} — not created yet`,
       /** 아직 어느 PR에도 실리지 않았다 — 상태 낱말 Unsent 그대로다(DESIGN §2.4 개념 색인 — "Not sent yet"은 쓰지 않는 말). */
       notSentYet: "Unsent",
@@ -3758,7 +3825,9 @@ export const en = {
       removeUnconfirmed: (code: string): string => `We couldn't confirm whether ${code} was removed. The list shows the current state.`,
       /** 제거 요청 성공 — 행은 제자리에 Removing으로 남는다. 리포 파일은 Publish 뒤에 사라진다. */
       removeRequested: (code: string): string => `Removing ${code}. Publishing removes its file from the repository.`,
-      cancelAddDone: (code: string, n: number): string => `${code} is inactive. Its ${n.toLocaleString("en-US")} ${n === 1 ? "translation is" : "translations are"} kept in Malmoi.`,
+      /** 보존할 번역이 없으면(0) 보존을 말하지 않는다 — `orphanStripRest`와 같은 문장이다(#288). */
+      cancelAddDone: (code: string, n: number): string => `${code} is inactive. ${n === 0 ? "It has no translations."
+        : `Its ${n.toLocaleString("en-US")} ${n === 1 ? "translation is" : "translations are"} kept in Malmoi.`}`,
       onGitLab: {
         notConfirmed: "Not confirmed in the merge request",
         readOnlyDelivered: "Read-only until the merge request is merged or the removal is cancelled.",
@@ -4533,11 +4602,14 @@ export const en = {
       },
       published: (view: string, dropped = 0, reached = 0): string =>
         // 보낼 것 없이 언어 요청만 정리했다(#267) — 그것이 이 결과의 이유다. 리포에 닿지 못한 요청이 있으면 "이미 있다"가 거짓이다.
-        (view === "no-changes" || view === "partial") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
+        // 그 실행은 `request-closed`(버린 요청 있음)나 `no-changes`(반영만)다 — `partial`은 언어 요청 수를 싣지 않는다(#289).
+        (view === "no-changes" || view === "request-closed") && dropped + reached > 0 ? languageRequests("pull request").result(dropped, reached)
         : view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
         : "Nothing changed — the repository already has these values.",
+      /** 보낼 것 없이 끝났는데 언어 요청이 열린 PR을 기다린다(`no-edits` + `prOpen`, #282 fix1) — "리포에 이미 있다"는 일어나지 않은 원인이다. */
+      languageWaiting: "Nothing was sent. A pull request with language changes is still open, so their requests stay until it's merged or closed.",
       saved: (saved: number, rejected: number): string =>
         `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key wasn't" : "keys weren't"} saved`}.`,
       updated: "Settings saved.",
@@ -4591,11 +4663,12 @@ export const en = {
           return `${rest}. Publish with this fingerprint.`;
         },
         published: (view: string, dropped = 0, reached = 0): string =>
-          (view === "no-changes" || view === "partial") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
+          (view === "no-changes" || view === "request-closed") && dropped + reached > 0 ? languageRequests("merge request").result(dropped, reached)
           : view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."
           : view === "partial" ? "Some changes weren't sent. See the result for why."
           : "Nothing changed — the repository already has these values.",
+        languageWaiting: "Nothing was sent. A merge request with language changes is still open, so their requests stay until it's merged or closed.",
         pushToken: "New push token issued. The old one stopped working. Update the PUSH_TOKEN CI/CD variable in the GitLab project's settings.",
         created: (slug: string, keys: number): string =>
           `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Add the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked) first, then commit the jobs to .gitlab-ci.yml.`,

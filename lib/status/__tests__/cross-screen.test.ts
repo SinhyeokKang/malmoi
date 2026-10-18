@@ -4,6 +4,7 @@ import { planConnectionHealth, type ConnectionHealth, type ProbeResult } from "@
 import { metaTabs } from "@/lib/home/meta";
 import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { en } from "@/messages/en";
+import { withRepoHost } from "@/lib/i18n/host";
 import { planRepositoryImport, type ImportPlanInput } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
 import { planSurfaceImportStatus } from "@/lib/import/surface-status";
@@ -11,7 +12,7 @@ import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMe
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import { importOutcomeFields, isImportFailureCode, type ImportFailureCode } from "@/lib/projects/import-status";
-import { CHIP_STATE, rowBanner, rowChip, worstFailingSurface, type RowBanner } from "@/lib/projects/list";
+import { worstFailingSurface, type RowBanner } from "@/lib/projects/list";
 import { openPrGateApplies, planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
 import { repoTargetOf } from "@/lib/repo-host/target";
@@ -32,14 +33,14 @@ import { STATE, stateLabel, type StateKey } from "../canon";
  * - readiness가 먼저 막는다 — Home(`ProjectNotReady`)·적재 거부(`not-ready`)가 그 판정에 닿지 않는다.
  *
  * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 사본이 남은 것이 있다** — 목록 띠(`project-list.tsx` `ProjectBanner`)는 컴포넌트 안에 있다.
- * 칩(`CHIP_STATE`)·Home 배너 갈래(`homeBannerState`)·Settings 배지와 Home 메타 열 Connection 배지(둘 다 `repositoryConnectionState`, `lib/home/state.ts`)는
+ * 칩(`row.plan.chip`)·Home 배너 갈래(`homeBannerState`)·Settings 배지와 Home 메타 열 Connection 배지(둘 다 `repositoryConnectionState`, `lib/home/state.ts`)는
  * 화면이 쓰는 그 순수 매핑을 그대로 부른다(ux-drift-unify T18·T19·T22 · project-card-tabs fix1).
  */
 
 // ── 판정 묶음 — 카나리아가 한 판정만 바꿔 넣는다 ─────────────────────────────
 
 const REAL = {
-  rowChip, rowBanner, worstFailingSurface,
+  worstFailingSurface,
   planConnectionHealth, connectionProblem, planHomeState, homeBannerState, planActionAvailability, planHoldNotice,
   planSurfaceImportStatus, planRepositoryImport, planProjectReadiness,
 };
@@ -104,7 +105,7 @@ function bannerKey(banner: RowBanner): StateKey | null {
     case "unsent": return "unsent";
     case "pr_open": return "prOpen";
     case "pr_check_failed": return "prCheckFailed";
-    case "repo_ahead": case "review": return null;
+    case "repo_ahead": case "review": case "never_filled": case "language_unsent": return null;
   }
 }
 
@@ -132,15 +133,17 @@ function observe(f: Fixture, J: Judgments): Observed {
   const member: ProjectListMemberRow = {
     role: "OWNER",
     project: {
-      id: "p1", slug: "acme", name: "Acme", image: null, repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
-      repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces,
+      id: "p1", createdAt: T0, slug: "acme", name: "Acme", image: null, repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
+      repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces.map(surface => ({ ...surface, id: surface.slug, lastCommitAt: null, locales: [] })),
       gitlabConnection: f.gitlabConnectionId === null ? null : { expiresAt: f.gitlabTokenExpiresAt ?? null },
     },
   };
-  const [row] = assembleProjectListRows([member], { ...EMPTY, unsent: new Map([["p1", f.pending]]) }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
+  // ⑤의 수와 소스는 같은 쿼리에서 함께 온다 — 수만 주면 미발송 할 일이 소스 없이 서지 않는다.
+  const unsent = f.pending > 0 ? { unsent: new Map([["p1", f.pending]]), unsentSurfaces: new Map([["p1", f.surfaces[0]?.slug ?? "web"]]) } : {};
+  const [row] = assembleProjectListRows([member], { ...EMPTY, ...unsent }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]), new Map());
   if (row === undefined) throw new Error("no row");
-  // 칩은 화면이 `StatusBadge`에 넘기는 그 맵이다(ux-drift-unify T19 — 전엔 여기 사본이었다).
-  const list = { chip: CHIP_STATE[J.rowChip(row)], banner: bannerKey(J.rowBanner(row)) };
+  // 칩·띠는 조립이 `planProjectRow`로 판정해 싣는 그 값이다 — 화면은 `row.plan.chip`을 `StatusBadge`에 그대로 넘긴다.
+  const list = { chip: row.plan.chip, banner: bannerKey(row.plan.banner) };
 
   // GitHub은 지금처럼 저장값 + probe(`planConnectionHealth`), GitLab은 `loadConnectionHealth`의 경계 판정(ok가 아니면 그 갈래 그대로).
   const health = f.repoHost === "github" ? J.planConnectionHealth({ project, probe: f.probe })
@@ -159,7 +162,8 @@ function observe(f: Fixture, J: Judgments): Observed {
     // 배너 갈래는 `HomeNotices`가 부르는 그 함수다(ux-drift-unify T18 — 전엔 여기 사본이었다).
     const banner = J.homeBannerState({ state, problem, failure: worst === null ? null : worst.importError });
     const hold = J.planHoldNotice({
-      pending: f.pending, openPr: f.openPr === undefined ? undefined : f.openPr?.url ?? null,
+      // 언어 변경 상태는 이 행렬의 입력이 아니다 — 그 갈래의 게이트 일치는 `hold-notice.test.ts`가 전수로 센다.
+      pending: f.pending, localeHeld: false, openPr: f.openPr === undefined ? undefined : f.openPr?.url ?? null,
       gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected",
     });
     // 메타 열 Connection 배지 — Settings와 같은 함수를 `metaTabs`에 넣고 그 행을 읽는다(project-card-tabs fix1 — 사본이 판정과 갈렸다).
@@ -473,8 +477,13 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
 });
 
 describe("화면 매핑 사본이 낡지 않았다", () => {
+  // 띠의 첫 문장이 Home 배지 낱말 그대로이고, 띠에는 링크가 없어 둘째 문장이 다음 수를 말한다(project-row-redesign 결정 5).
   it("띠와 Home 배지는 목적어가 있는 PR 조회 실패 낱말을 공유한다", () => {
-    expect(en.projects.banner.prCheckFailed).toBe(`${stateLabel(en, "prCheckFailed")}.`);
+    for (const host of ["github", "gitlab"] as const) {
+      const banner = withRepoHost(en, host).projects.banner.prCheckFailed;
+      expect(banner.startsWith(`${stateLabel(en, "prCheckFailed", host)}. `)).toBe(true);
+      expect(banner).not.toBe(`${stateLabel(en, "prCheckFailed", host)}.`);
+    }
   });
 });
 

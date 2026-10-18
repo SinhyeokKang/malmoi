@@ -13,7 +13,7 @@ vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetai
 vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: mocks.runFirstIngest }));
 vi.mock("@/components/sources/add-sources-modal", () => ({ AddSourcesModal: ({ open, onAdded, onClose }: { open: boolean; onAdded: (r: unknown[]) => void; onClose: () => void }) => open ? <button onClick={() => { onAdded([{ surfaceSlug: "mobile", count: 9, failed: 2 }]); onClose(); }}>Finish adding</button> : null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace, push: mocks.push }) }));
-const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 1, orphanedLocales: 1, progress: { total: 248, done: 210, review: 12, percent: 84 } };
+const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 1, orphanedLocales: 1, meters: { shown: [], hidden: 0 }, progress: { total: 248, done: 210, review: 12, percent: 84 } };
 const data: SourcesData = { installed: true, repoHost: "github", sources: [source] };
 const detail: SourceDetail = { ...source, installed: true, repoHost: "github", pullRequestUrl: null, importActive: false, localeDelivery: "confirmed", languages: [{ code: "en", isBase: true, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84, change: null, unsent: false }, { code: "ja", isBase: false, orphaned: true, total: 248, translated: 0, needsReview: 0, untranslated: 248, percent: 0, change: null, unsent: false }] };
 const button = (text: string) => [...document.querySelectorAll('button')].find(node => node.textContent === text)!;
@@ -457,4 +457,98 @@ it("소스 상세 정보 격자: 640 미만 한 열 — 850 두 열 토큰은 �
   // 선언은 상세 본문 래퍼가 한다(`dl`보다 위, 다른 요소) — 질의 요소 자신이 선언하지 않는다.
   expect(tokens(grid.closest("div.\\@container"))).toContain("@container");
   expect(tokens(grid)).not.toContain("@container");
+});
+
+/*
+  source-row-locale-meter T7 — 이름 칸 셋째 줄의 언어 막대(시안 프레임 1·2·5·6). 서버가 이미 잘라 주므로(`sourceRowMeters`) 화면은 받은 만큼 그린다.
+  행 버튼의 접근 이름은 내용에서 계산된다 — `aria-hidden` 밑의 글자는 빠지고 `sr-only`는 남는다.
+*/
+const meter = (code: string, done: number, review = 0) => ({ code, total: 248, done, review, percent: Math.floor(((done + review) / 248) * 100) });
+const accessibleText = (root: Element) => {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (!node.parentElement?.closest('[aria-hidden="true"]')) parts.push(node.textContent ?? "");
+  return parts.join(" ").replace(/\s+/g, " ");
+};
+const manyMeters = { shown: [meter("en", 248), meter("am", 160), meter("ar", 210, 6), meter("bg", 180), meter("bn", 130)], hidden: 54 };
+
+it("막대는 받은 다섯까지 그리고 뒤에 평문 +N — 글자는 숨기고 접근 이름은 N more languages", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, locales: 59, meters: manyMeters }] }} adapters={[]} now={new Date()} />);
+  const row = document.querySelector("[data-source-row]")!;
+  const meters = row.querySelectorAll("[data-locale-meter]");
+  expect(meters).toHaveLength(5);
+  expect([...meters].map(node => node.textContent)).toEqual(["en100%", "am64%", "ar87%", "bg72%", "bn52%"]);
+  const more = row.querySelector("[data-source-meters-more]")!;
+  expect(more.parentElement).toBe(row.querySelector("[data-source-meters]"));
+  expect(more.querySelector('[aria-hidden="true"]')?.textContent).toBe(en.sources.moreLanguages(54));
+  expect(more.querySelector(".sr-only")?.textContent).toBe(en.sources.moreLanguagesLabel(54));
+  // 배지가 아니라 평문이고, 명시 높이 20(`h-5`)이 묶음의 기본 `align-items: stretch` 안에서 라벨 줄 위쪽에 선다 — 문자열 전체로 고정한다.
+  // 이름은 글자를 바꿔 끼워서 내고 `aria-label`로 덮지 않는다.
+  expect(more.className).toBe("text-muted-foreground flex h-5 items-center text-xs");
+  expect(row.querySelector("[aria-label]")).toBeNull();
+  const name = accessibleText(row);
+  expect(name).toContain("54 more languages");
+  expect(name).not.toContain("+54");
+  expect(name).toMatch(/en 100 ?%/);
+});
+
+it("숨은 언어가 하나면 단수, 없으면 +N 자리가 없다", async () => {
+  expect(en.sources.moreLanguagesLabel(1)).toBe("1 more language");
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, meters: { shown: manyMeters.shown.slice(0, 2), hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  expect(document.querySelectorAll("[data-locale-meter]")).toHaveLength(2);
+  expect(document.querySelector("[data-source-meters-more]")).toBeNull();
+});
+
+it("막대 묶음은 이름 칸 안, 경로 아래 — mt-2 · gap-x-3 · gap-y-1.5", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, connection: { pathTemplate: "locales/{locale}.json", format: "JSON", adapterName: "json-catalog" }, meters: { shown: [meter("en", 248)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  const bundle = document.querySelector("[data-source-meters]")!;
+  // 골격(`sibling-loading.test.tsx`)과 같은 강도 — `items-*`가 붙으면 `+N` 정렬이 바뀐다.
+  expect(bundle.className).toBe("mt-2 flex flex-wrap gap-x-3 gap-y-1.5");
+  const column = bundle.parentElement!;
+  expect(column.classList.contains("flex-col")).toBe(true);
+  expect(column.lastElementChild).toBe(bundle);
+  expect(bundle.previousElementSibling?.textContent).toContain("locales/{locale}.json");
+});
+
+it("키 0 소스(첫 적재 전·첫 적재 실패)는 막대 줄 자체가 없다", async () => {
+  const empty = { shown: [], hidden: 0 };
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...failedFirst, keys: 0, locales: 0, meters: empty }, { ...source, id: "t", slug: "emails", lastCommitSha: null, lastImportedAt: null, keys: 0, locales: 0, meters: empty }] }} adapters={[]} now={new Date()} />);
+  expect(document.querySelectorAll("[data-source-row]")).toHaveLength(2);
+  expect(document.querySelector("[data-source-meters]")).toBeNull();
+  expect(document.querySelector("[data-locale-meter]")).toBeNull();
+});
+
+it.each([
+  { state: "failed-after", row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") } },
+  { state: "partial", row: partialAfter },
+])("적재 이후 실패($state)는 마지막 값의 막대가 남고 흐리게 하지 않는다", async ({ row }) => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...row, meters: { shown: [meter("en", 248), meter("ko", 221, 8)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  const meters = document.querySelectorAll("[data-source-row] [data-locale-meter]");
+  expect(meters).toHaveLength(2);
+  expect(meters[1]?.textContent).toBe("ko92%");
+  // `dimmed`(사라진 언어)의 완료 구간 색이 아니다.
+  expect(document.querySelector("[data-source-row] .bg-foreground\\/25")).toBeNull();
+  expect(document.querySelectorAll("[data-source-row] .bg-foreground\\/85")).toHaveLength(2);
+});
+
+it("행 버튼 안에 <div>가 없다 — 버튼은 phrasing content만 든다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, meters: manyMeters }] }} adapters={[]} now={new Date()} />);
+  const row = document.querySelector("[data-source-row]")!;
+  expect(row.querySelectorAll("[data-locale-meter]")).toHaveLength(5);
+  expect(row.querySelector("div")).toBeNull();
+});
+
+/*
+  #293 — 지역 코드(`bn-BD`)와 `100%`가 함께 서면 100을 넘는다. 슬롯이 고정 100이면 배지의 `truncate`가 `bn-B…`로 잘랐다.
+  슬롯은 최소 100(`min-w-25`)이라 내용만큼 넓어진다. 실제 폭은 브라우저 몫이고 여기서는 클래스 계약과 글자를 센다.
+*/
+it("지역 코드 막대는 고정 폭이 아니라 최소 폭이고 코드 글자가 그대로다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, meters: { shown: [meter("en", 248), meter("bn-BD", 248)], hidden: 0 } }] }} adapters={[]} now={new Date()} />);
+  const meters = [...document.querySelectorAll("[data-source-row] [data-locale-meter]")];
+  expect(meters).toHaveLength(2);
+  for (const node of meters) {
+    expect(node.classList.contains("min-w-25")).toBe(true);
+    expect(node.classList.contains("w-25")).toBe(false);
+  }
+  expect(meters[1]?.textContent).toBe("bn-BD100%");
 });

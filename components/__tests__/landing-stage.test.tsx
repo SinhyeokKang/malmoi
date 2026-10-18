@@ -170,6 +170,9 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     expect(layers).toHaveLength(5);
     expect(layers.every((node) => node.className.includes("opacity-0") && node.style.opacity === "")).toBe(true);
     expect(track.className).toContain("data-[ready]:h-[var(--landing-track-h)]");
+    // JS 전 폴백은 셸 치수 합 98이다 — 테두리 없는 랜딩 패널(landing-kv-background R13)에선 2px 짧지만 96은 `visual-system.test.ts`가 막는 옛 철자다.
+    expect(track.className).toContain("h-[var(--landing-stage-h,calc(100svh-98px))]");
+    expect(find<HTMLElement>(container, "[data-landing-frame]").closest(".sticky")?.className).toContain("h-[var(--landing-stage-h,calc(100svh-98px))]");
 
     await flush();
     expect(track.hasAttribute("data-ready")).toBe(true);
@@ -178,7 +181,9 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
       `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`,
     );
     const root = find<HTMLElement>(container, "[data-landing-root]");
-    expect(root.style.getPropertyValue("--landing-stage-h")).toBe(`${H}px`);
+    // 스테이지 높이는 한 칸 위(스크롤러)에 쓴다 — 랜딩 배경 캔버스가 스테이지 밖에서 같은 값을 읽는다(landing-kv-background R3).
+    expect(find<HTMLElement>(container, "[data-public-scroller]").style.getPropertyValue("--landing-stage-h")).toBe(`${H}px`);
+    expect(root.style.getPropertyValue("--landing-stage-h")).toBe("");
     expect(root.style.getPropertyValue("--landing-track-h")).toBe(`${trackHeight(H)}px`);
   });
 
@@ -395,7 +400,7 @@ describe("Stage — 크기 변화", () => {
     expect(find<HTMLElement>(container, "[data-landing-frame]").style.transform).toBe(
       `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`,
     );
-    expect(find<HTMLElement>(container, "[data-landing-root]").style.getPropertyValue("--landing-stage-h")).toBe("1342px");
+    expect(scroller.style.getPropertyValue("--landing-stage-h")).toBe("1342px");
     expect(find<HTMLElement>(container, "[data-landing-root]").style.getPropertyValue("--landing-track-h")).toBe(`${trackHeight(1342)}px`);
   });
 
@@ -751,6 +756,18 @@ describe("Stage — 캡션은 같은 칸에 겹친다", () => {
 describe("Stage — 높이 부족 정적 흐름", () => {
   const trackOf = (container: HTMLElement) => find<HTMLElement>(container, "section[aria-label='How Malmoi works']");
 
+  /** 고정 → 정적 리사이즈가 옛(더 큰) H를 스크롤러에 남기면 캔버스가 스크롤러보다 길어진다. */
+  it("고정 재생에서 정적 흐름으로 줄면 스크롤러의 `--landing-stage-h`가 새 H로 바뀐다", async () => {
+    const { container, scroller, size } = await mount();
+    await flush();
+    expect(scroller.style.getPropertyValue("--landing-stage-h")).toBe(`${H}px`);
+    size.h = 640;
+    size.chrome = 600;
+    await resized();
+    expect(trackOf(container).hasAttribute("data-static")).toBe(true);
+    expect(scroller.style.getPropertyValue("--landing-stage-h")).toBe("640px");
+  });
+
   it("높이가 충분하면 정적 흐름이 없다", async () => {
     const { container } = await mount();
     await flush();
@@ -766,6 +783,8 @@ describe("Stage — 높이 부족 정적 흐름", () => {
     const track = trackOf(container);
     expect(track.hasAttribute("data-static")).toBe(true);
     expect(track.hasAttribute("data-ready")).toBe(false);
+    // 정적 흐름에서도 스크롤러가 잰 H를 든다 — 랜딩 배경 캔버스가 이 값으로 스크롤러 높이를 맞춘다(landing-kv-background spec 3).
+    expect(scroller.style.getPropertyValue("--landing-stage-h")).toBe(`${H}px`);
     const figures = [...container.querySelectorAll<HTMLElement>("[data-landing-static] figure")];
     expect(figures).toHaveLength(5);
     expect(figures.map((node) => node.querySelector("figcaption")?.textContent)).toEqual([...CAPTIONS]);

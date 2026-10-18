@@ -113,7 +113,7 @@ describe("createOpenPrMemo", () => {
 });
 
 /**
- * **메모를 거치는 호출부는 Home 하나다.** 게이트는 언제나 실물을 본다 — `/api/push`·야간·Publish 미리보기·Sync 확인·설정·MCP가
+ * **메모를 거치는 호출부는 Home과 번역 화면 둘이다**(표시 전용 — 보류 문장 · 정리 버튼). 게이트는 언제나 실물을 본다 — `/api/push`·야간·Publish 미리보기·Sync 확인·설정·MCP가
  * 메모를 거치면 30초 동안 옛 "없음"으로 적재를 통과시키거나 옛 "열림"으로 보류를 말한다(fail-closed가 깨진다).
  * **지우는 곳은 PR 상태를 바꿀 수 있는 실행 둘이다** — Publish(`runSync` — 웹·MCP·야간이 모두 지난다)와 수동 Sync(`importRepository`).
  */
@@ -123,9 +123,31 @@ describe("배선", () => {
     execFileSync("git", ["grep", "-l", "-F", needle, "--", "app", "lib", "components"], { cwd: ROOT, encoding: "utf8" })
       .trim().split("\n").filter(path => !path.includes("__tests__"));
 
-  it("메모된 조회를 부르는 곳은 Home뿐이다", () => {
-    expect(callers("loadOpenPrUrlMemo(").filter(path => path !== "lib/projects/open-pr.ts"))
-      .toEqual(["app/(edit)/projects/[slug]/(home)/page.tsx"]);
+  it("메모된 조회를 부르는 곳은 Home과 번역 화면뿐이다", () => {
+    expect(callers("loadOpenPrUrlMemo(").filter(path => path !== "lib/projects/open-pr.ts").sort())
+      .toEqual(["app/(edit)/projects/[slug]/(home)/page.tsx", "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx"]);
+  });
+
+  /**
+   * **번역 화면은 좁은 창에서만 조회한다** (#282 — ARCHITECTURE §5.10.4 `settle`). 그 화면은 키 클릭·저장마다 다시 렌더되므로 창 밖 조회는 번역자마다
+   * 호스트 호출을 늘린다. 조회는 `planSettleLookup`의 콜백 안에서만 만들어진다 — 창 판정은 그 함수의 단위 테스트가 잰다.
+   */
+  it("번역 화면의 메모 조회는 planSettleLookup 콜백 안 한 곳뿐이다", () => {
+    const source = readFileSync(`${ROOT}/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx`, "utf8");
+    expect(source.split("loadOpenPrUrlMemo(").length - 1).toBe(1);
+    expect(source).toMatch(/planSettleLookup\([^;]*?\(\) => loadOpenPrUrlMemo\(/s);
+    // 창의 입력도 고정한다(#282 fix1 — R-282 변이 M1·M2가 살았다) — `awaiting`을 참으로 박으면 편집 0인 모든 프로젝트가 30초마다 호스트를 부르고,
+    // `applies`를 참으로 박으면 게이트·연결 없는 프로젝트가 묻는다.
+    expect(source).toMatch(/planSettleLookup\(\s*\{ count: unpublished, languageWork: localeWork\.work, awaiting: localeWork\.awaiting, applies: target\.status === "ok" && openPrGateApplies\(project\) \}/);
+  });
+
+  /** Home은 보류 판정의 조회를 나눠 쓴다(#282 fix1 — 변이 M3) — 메모는 진행 중 조회를 합치지 않아, 새 조회면 콜드 착지에서 호스트를 2회 더 부른다. */
+  it("Home의 settle은 보류 판정과 같은 조회 함수를 넘기고, 창은 보류 판정이 조회하는 갈래로 좁힌다", () => {
+    const source = readFileSync(`${ROOT}/app/(edit)/projects/[slug]/(home)/page.tsx`, "utf8");
+    expect(source.split("loadOpenPrUrlMemo(").length - 1).toBe(1);
+    expect(source).toMatch(/const lookupOpenPr = \(\) => openPr \?\?= loadOpenPrUrlMemo\(/);
+    expect(source).toMatch(/planHomeHold\([^;]*?\n\s*lookupOpenPr,\n\s*\);/s);
+    expect(source).toMatch(/planSettleLookup\(\{ count: counts\.toSend, languageWork, awaiting: localeWork\.awaiting, applies: heldLater !== undefined \}, lookupOpenPr\)/);
   });
 
   it("메모 인스턴스를 직접 만지는 곳은 조회 한 곳과 지우는 함수뿐이다", () => {

@@ -9,7 +9,7 @@ import { formatLabel } from "@/lib/onboarding/detect";
 import type { Messages } from "@/lib/i18n";
 import { hasActiveImport } from "@/lib/import/plan";
 import { hasRepoConnection } from "@/lib/repo-host/target";
-import { workLocaleWhere } from "@/lib/keys/work-locale";
+import { sourceRowMeters } from "./meters";
 import { readLocaleStates } from "@/lib/locales/work";
 import { localeRole } from "@/lib/translations/summary";
 
@@ -40,9 +40,9 @@ export async function loadSources(prisma: PrismaClient, m: Messages, projectId: 
   const [project, counts, locales, cells] = await Promise.all([
     prisma.project.findFirst({ where: { id: projectId, archivedAt: null }, select: { ...projectSelect, surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, select: sourceSelect } } }),
     loadSurfaceCounts(prisma, projectId),
-    prisma.locale.findMany({ where: { projectId, surface: { archivedAt: null } }, select: { surfaceId: true, code: true, orphaned: true } }),
-    // 목록은 셀을 가져오지 않고 표면별 두 개수만 집계한다. 소스가 늘어도 왕복은 같다. 분모(`loadSurfaceCounts`)와 같은 작업 언어 술어다.
-    prisma.translation.groupBy({ by: ["surfaceId", "needsReview"], where: { projectId, surface: { archivedAt: null }, stringKey: { orphaned: false }, locale: workLocaleWhere, value: { not: "" } }, _count: { _all: true } }),
+    prisma.locale.findMany({ where: { projectId, surface: { archivedAt: null } }, select: { surfaceId: true, code: true, isBase: true, orphaned: true, change: { select: { operation: true } } } }),
+    // 상세와 같은 조건으로 집계한다. 작업 언어는 아래에서 골라 분모(`loadSurfaceCounts`)와 맞추며 왕복은 늘리지 않는다.
+    prisma.translation.groupBy({ by: ["surfaceId", "localeCode", "needsReview"], where: { projectId, surface: { archivedAt: null }, stringKey: { orphaned: false }, value: { not: "" } }, _count: { _all: true } }),
   ]);
   if (project === null) return null;
   return { ...projectView(project, role), sources: project.surfaces.map(source => {
@@ -50,10 +50,15 @@ export async function loadSources(prisma: PrismaClient, m: Messages, projectId: 
     const keys = count?.keys ?? 0;
     const languageCount = count?.locales ?? 0;
     const total = keys * languageCount;
-    const done = Math.min(total, cells.find(row => row.surfaceId === source.id && !row.needsReview)?._count._all ?? 0);
-    const review = Math.min(total - done, cells.find(row => row.surfaceId === source.id && row.needsReview)?._count._all ?? 0);
+    const languages = localeProgress({
+      locales: locales.filter(row => row.surfaceId === source.id && localeRole(row) === "work"),
+      total: keys,
+      cells: cells.filter(row => row.surfaceId === source.id).map(row => ({ localeCode: row.localeCode, needsReview: row.needsReview, count: row._count._all })),
+    });
+    const done = Math.min(total, languages.reduce((sum, row) => sum + row.translated, 0));
+    const review = Math.min(total - done, languages.reduce((sum, row) => sum + row.needsReview, 0));
     return { ...sourceView(m, source, role), keys, locales: languageCount, orphanedLocales: locales.filter(row => row.surfaceId === source.id && row.orphaned).length,
-      progress: { total, done, review, percent: total === 0 ? 0 : Math.floor(done / total * 100) } };
+      progress: { total, done, review, percent: total === 0 ? 0 : Math.floor(done / total * 100) }, meters: sourceRowMeters(languages) };
   }) };
 }
 

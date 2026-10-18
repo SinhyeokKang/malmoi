@@ -1,11 +1,12 @@
-import { expect, it } from "vitest";
-import { planPublishButton, planPublishView, planWithheldLines } from "../plan";
+import { describe, expect, it, vi } from "vitest";
+import { planPublishButton, planPublishView, planSettleLookup, planWithheldLines } from "../plan";
 import { en } from "@/messages/en";
 import { buildPublishDiff, type PublishCell } from "../diff";
 import { summarizeWarnings } from "../warnings";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
-import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
+import { SYNC_ERROR_CODES, planSyncFinish } from "@/lib/sync/plan";
+import type { PullResult } from "@/lib/pull/run";
 
 const committed = { status: "committed", delivered: 1, pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[], changedValues: 1 } as const;
 it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
@@ -69,6 +70,48 @@ it("언어 작업만 있으면 켜지고 배지 없이 이유를 말한다", () 
     .toMatchObject({ disabled: true, hint: "Archived." });
   expect(planPublishButton(en, { count: 3, languageWork: 1, paused: false, otherPending: false, publishPending: false })).toMatchObject({ disabled: false, badge: 3, hint: "" });
 });
+/**
+ * **전달된 언어 요청의 PR이 더는 열려 있지 않으면 켠다** (#282 — ARCHITECTURE §5.10.4 `settle`). 셀·언어 작업이 0이라 지금은 `nothing`으로 꺼지는 창이다.
+ * 진행·멈춤 판정은 그대로 이긴다.
+ */
+it("settle이 오면 셀·언어 작업 0이어도 켜지고 정리 힌트를 단다 — 없으면 지금처럼 nothing", () => {
+  expect(planPublishButton(en, { count: 0, languageWork: 0, settle: true, paused: false, otherPending: false, publishPending: false }))
+    .toEqual({ mode: "preview", disabled: false, badge: null, hint: en.translations.publish.language.settle.hint });
+  expect(planPublishButton(en, { count: 0, languageWork: 0, settle: false, paused: false, otherPending: false, publishPending: false }))
+    .toMatchObject({ disabled: true, hint: en.translations.publish.nothing });
+  expect(planPublishButton(en, { count: 0, settle: true, paused: true, otherPending: false, publishPending: false, pausedReason: "Archived." }))
+    .toMatchObject({ disabled: true, hint: "Archived." });
+  expect(planPublishButton(en, { count: 0, settle: true, paused: false, otherPending: false, publishPending: true })).toMatchObject({ mode: "progress", disabled: false });
+  // 셀 편집·언어 작업이 있으면 settle은 판정에 끼지 않는다 — 기존 힌트 그대로다.
+  expect(planPublishButton(en, { count: 0, languageWork: 1, settle: true, paused: false, otherPending: false, publishPending: false }).hint).toBe(en.translations.publish.language.ready);
+});
+
+/**
+ * **조회는 좁은 창에서만 만든다** (#282) — 셀·언어 작업이 0이고, 행이 전달된 PR을 기다리고, 조회가 의미 있는(게이트·연결) 때만이다. 그 밖에서는 promise를
+ * 만들지 않는다 — 번역 화면이 키 클릭·저장마다 다시 렌더되므로, 창 밖 조회는 번역자마다 호스트 호출을 늘린다.
+ */
+describe("planSettleLookup", () => {
+  const window = { count: 0, languageWork: 0, awaiting: true, applies: true };
+  it.each([
+    ["미발송 편집이 있다", { ...window, count: 1 }],
+    ["언어 작업이 있다", { ...window, languageWork: 1 }],
+    ["전달된 요청을 기다리지 않는다", { ...window, awaiting: false }],
+    ["조회가 의미 없다(게이트·연결)", { ...window, applies: false }],
+  ])("창 밖(%s)이면 조회하지 않는다", (_name, input) => {
+    const lookup = vi.fn(async () => null);
+    expect(planSettleLookup(input, lookup)).toBeUndefined();
+    expect(lookup).not.toHaveBeenCalled();
+  });
+  it("창 안이면 한 번 조회하고, 열린 PR 없음(null)만 참이다 — 열림·모름·거부는 거짓", async () => {
+    for (const [answer, expected] of [[null, true], ["https://example.test/pull/2", false], [undefined, false]] as const) {
+      const lookup = vi.fn(async () => answer);
+      expect(await planSettleLookup(window, lookup)).toBe(expected);
+      expect(lookup).toHaveBeenCalledTimes(1);
+    }
+    expect(await planSettleLookup(window, () => Promise.reject(new Error("boom")))).toBe(false);
+  });
+});
+
 const cell = (over: Partial<PublishCell> = {}): PublishCell => ({ surface: "web", path: "ko.json", keyId: "k1", key: "hello", localeCode: "ko", after: "new", author: "Editor", updatedAt: "2026-09-16", ...over });
 it("파일·키·로케일로 정렬하고 키 병합과 상한 초과 수를 센다", () => {
   const rows = [cell({ localeCode: "ko" }), cell({ localeCode: "en" }), cell({ keyId: "k2", key: "z" })];
@@ -124,11 +167,40 @@ it("base와 같은 값의 행은 same이고 diff가 그 수를 센다 · 다른 
 });
 
 /**
- * fix1 Y1 (#267) — 머지 없이 닫힌 PR/MR의 언어 요청을 버리고 끝난 no-edits는 "파일이 같았다"가 아니다. 그 언어의 편집은 나가지 않았다 — Not sent 틀이다.
+ * fix1 Y1 (#267) — 머지 없이 닫힌 PR/MR의 언어 요청을 버리고 끝난 no-edits는 "파일이 같았다"가 아니다.
+ * #289 — 보류한 값도 없다(Home To send 0 · Logs `Nothing to send`) — Held back이 아니라 요청을 닫았다 틀이다. 보류가 실제로 있으면(`withheld`) Held back 그대로다.
  * 리포가 이미 요청대로였으면(머지) "이미 리포에 있다"가 참이라 No changes 그대로다.
  */
-it("no-edits + 리포에 없는 채로 버린 언어 요청은 Not sent 틀이다 — 리포에 반영된 요청만이면 No changes", () => {
-  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" }] })).toBe("partial");
-  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" }] })).toBe("partial");
+it("no-edits + 리포에 없는 채로 버린 언어 요청은 요청을 닫았다 틀이다 — 보류가 있으면 Held back · 리포에 반영된 요청만이면 No changes", () => {
+  const dropped = { surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" } as const;
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [dropped] })).toBe("request-closed");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" }] })).toBe("request-closed");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [dropped, { surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("request-closed");
+  expect(planPublishView({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: [dropped] })).toBe("partial");
   expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("no-changes");
+});
+
+/**
+ * #289 review 🟡1 — 결과 모달(`planPublishView`, `reason`을 본다)과 Logs(`SyncRun` 컬럼 — `eventResult`가 `withheld > 0 || warnings > 0`이면 Held back)는
+ * 같은 실행을 다른 입력으로 판정한다(POSTMORTEM 2026-09-27). 스킵 결과에서 모달의 Held back(`partial`) ⇔ Logs의 Held back이어야 둘이 갈리지 않는다.
+ * ⚠️ `reconfirm`은 표본에 없다 — 웹 Publish는 지문을 넘기지 않아 모달에 닿지 않는다(Logs는 `errorCode`로 따로 Held back이다).
+ */
+it("스킵 결과의 모달 Held back ⇔ Logs Held back — 요청만 닫은 실행은 둘 다 아니다 (#289)", () => {
+  const dropped = { surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" } as const;
+  const reached = { surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" } as const;
+  const samples: PullResult[] = [
+    { status: "skipped", reason: "no-edits" },
+    { status: "skipped", reason: "no-edits", expired: [dropped] },
+    { status: "skipped", reason: "no-edits", expired: [reached] },
+    { status: "skipped", reason: "no-edits", expired: [dropped, reached] },
+    { status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: [dropped] },
+    { status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "s", path: "ko.json", code: "parse-failed" }], expired: [dropped] },
+    { status: "skipped", reason: "no-changes", withheld: { file: 0, key: 2 } },
+    { status: "skipped", reason: "no-changes" },
+  ];
+  for (const result of samples) {
+    const row = planSyncFinish(result);
+    expect([JSON.stringify(result), planPublishView(result) === "partial"]).toEqual([JSON.stringify(result), row.withheld > 0 || row.warnings > 0]);
+  }
+  expect(planSyncFinish({ status: "skipped", reason: "no-edits", expired: [dropped] })).toMatchObject({ status: "SKIPPED", withheld: 0, warnings: 0 });
 });

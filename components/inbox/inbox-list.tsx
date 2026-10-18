@@ -30,7 +30,7 @@ export function InboxList({ plan, now, m, uiLocale }: { plan: InboxPlan; now: Da
     }>
       <ul>
         {group.items.map(item => {
-          const { href, ...slots } = attentionRowSlots(m, uiLocale, group.project.slug, item, now, { time: "long" });
+          const { href, ...slots } = attentionRowSlots(m, uiLocale, group.project.slug, item, now, { time: "long", reconnect: group.project.reconnect });
           return (
             // 첫 행은 머리 선 바로 아래라 자기 선을 내려놓는다(Home 카드와 같다).
             <li key={attentionItemKey(group.project.slug, item)} className="[&:first-child>a]:border-t-0">

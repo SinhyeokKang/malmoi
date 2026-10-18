@@ -64,7 +64,7 @@ Mientras hay un cambio de idioma sin terminar, Malmoi bloquea algunas otras tare
 
 - Idioma base: no puedes elegir como idioma base uno que se está añadiendo o quitando, ni quitar el idioma base.
 - Rama base: en **Configuración**, **Rama base** no se puede cambiar mientras alguna fuente tenga un cambio de idioma sin terminar. Malmoi nombra la fuente; termina o cancela antes su cambio de idioma. Un cambio termina cuando su pull request se fusiona o se cierra, algo que Malmoi comprueba en la siguiente publicación o [ejecución nocturna](../sync/nightly.md#held).
-- Actualizaciones desde el repositorio: si hay una eliminación de idioma que aún no se ha publicado, el workflow y la ejecución nocturna no actualizan el proyecto: Registros muestra **Retenido** y **Retenido porque** dice que una eliminación de idioma sigue sin enviar. La actualización se reanuda cuando la eliminación se publica o se cancela. Añadir un idioma no retiene las actualizaciones. Consulta [Conserva las ediciones sin enviar](../sync/push.md#deferred).
+- Actualizaciones desde el repositorio: si hay una eliminación de idioma que aún no se ha publicado, el workflow no actualiza el proyecto: Registros muestra **Retenido** y **Retenido porque** dice que una eliminación de idioma sigue sin enviar. La lista de proyectos, la bandeja de entrada e Inicio también lo indican. La ejecución nocturna publica la eliminación en lugar de actualizar el proyecto. La actualización se reanuda cuando la eliminación se publica o se cancela. Añadir un idioma no retiene las actualizaciones. Consulta [Conserva las ediciones sin enviar](../sync/push.md#deferred).
 - Sincronización: la [sincronización desde el repositorio](../sync/revert.md#resync) de un propietario descarta los cambios de idioma pendientes. Su confirmación enumera cada uno: un idioma que no se añadirá (sus traducciones se quedan en Malmoi) o que no se quitará (se queda en la fuente). Si un cambio descartado ya estaba en una pull request, publica de nuevo después para que la pull request deje de incluirlo.
 
 ## Publica el cambio {#publish}
@@ -85,6 +85,8 @@ Si hay una pull request de Malmoi abierta, Publicar reemplaza lo que contiene po
 ## Qué pasa tras la fusión {#after-merge}
 
 Malmoi se entera de lo que pasó con una pull request en la siguiente publicación o ejecución nocturna, así que una fusión puede tardar hasta un día en verse.
+
+No tienes que esperar a la ejecución nocturna. Cuando la pull request deja de estar abierta, **Publicar** se activa aunque no haya nada más por enviar, y su vista previa cierra la solicitud de idioma al momento. Si la pull request se cerró sin fusionarse y no había nada más esperando, el resultado dice Solicitud de idioma cerrada y no se escribe nada en el repositorio.
 
 - Eliminación fusionada: el idioma pasa a **Inactivo**. Sus traducciones, su historial y su fila se conservan.
 - Eliminación cerrada sin fusionar: el archivo sigue en el repositorio, así que el idioma sigue activo y la solicitud de eliminación desaparece. Vuelve a pedirla si aún quieres quitarlo. Registros anota el cierre.

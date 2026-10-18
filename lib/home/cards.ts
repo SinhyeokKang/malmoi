@@ -39,6 +39,8 @@ export type CardSubline =
   | { kind: "reviewByLocale"; locales: readonly { code: string; count: number }[] }
   | { kind: "allFilled"; keys: number }
   | { kind: "nothingPending" }
+  /** 셀 편집 0 · 언어 변경만 남았다(language-request-todo design §5) — `nothingPending`이면 켜진 [Publish] 옆에서 거짓이다. */
+  | { kind: "languageChanges"; count: number }
   | { kind: "nothingToReview" }
   | { kind: "lastGoodSync"; at: Date | null }
   | { kind: "asOf"; at: Date | null }
@@ -86,9 +88,11 @@ export function countCards(input: {
   reviewByLocale: readonly { code: string; count: number }[];
   /**
    * 지금의 보류 사유 — `planHomeHold`의 결론이다(게이트와 같은 입력, ux-drift-unify Q6). ⚠️ **PR 조회를 기다리는 동안은 `null`이다** — 그 갈래는
-   * 편집 0이라 `nothing to send`가 참이고, 사유는 Suspense로 늦게 도착해 이 줄을 바꾼다(`CountCards`의 `heldLater`).
+   * 편집 0이라 기본 줄(`nothing to send`, 언어 변경만 남았으면 그 수 — `sendFallback`)이 서고, 사유는 늦게 도착해 이 줄을 바꾼다(`CountCards`의 `heldLater`).
    */
   hold: HoldReason | null;
+  /** 언어 변경 작업 수(`countLocaleWork`) — 셀 편집이 0이고 보류가 없을 때 `To send` 보조 줄이 말한다. 수치는 셀 수 그대로다(Q4). */
+  languageChanges: number;
 }): HomeCard[] {
   const { counts } = input;
   return CARD_KEYS.map((key) => ({
@@ -144,24 +148,35 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
     ⚠️ **판정은 게이트와 같은 입력이다** (ux-drift-unify Q6) — 편집 0이어도 PR이 열려 있거나 확인하지 못했으면 보류다. 전에는 `toSend > 0`만
     봐서 PR 보류 동안 "nothing pending"이었다. 판정은 호출부의 `planHomeHold`가 한다 — 여기는 결론을 줄로 옮길 뿐이다.
   */
-  return holdSubline(input.hold);
+  return holdSubline(input.hold, sendFallback(counts.toSend, input.languageChanges));
 }
 
-/** 보류 결론 → `To send` 보조 줄. 스트리밍으로 늦게 도착한 사유도 이것으로 옮긴다 — 두 자리가 다른 줄을 만들지 않게. */
-export function holdSubline(hold: HoldReason | null): CardSubline {
-  return hold === null ? { kind: "nothingPending" } : { kind: "repositoryUpdatesPaused", reason: hold };
+/**
+ * 보류가 없을 때의 `To send` 보조 줄 — 서버가 정해 늦은 갈래(`HoldLater`)에도 넘긴다. ⚠️ 셀 0 · 언어 변경 > 0이면 `nothing to send`가 아니다
+ * (language-request-todo design §5 R1 — 도착 전·결론 `null`에서도 같은 줄이어야 한다).
+ */
+function sendFallback(toSend: number, languageChanges: number): CardSubline {
+  return toSend === 0 && languageChanges > 0 ? { kind: "languageChanges", count: languageChanges } : { kind: "nothingPending" };
+}
+
+/**
+ * 보류 결론 → `To send` 보조 줄. 스트리밍으로 늦게 도착한 사유도 이것으로 옮긴다 — 두 자리가 다른 줄을 만들지 않게.
+ * @param fallback 결론이 `null`일 때의 줄 — 보류 사유가 오면 사유가 이긴다.
+ */
+export function holdSubline(hold: HoldReason | null, fallback: CardSubline): CardSubline {
+  return hold === null ? fallback : { kind: "repositoryUpdatesPaused", reason: hold };
 }
 
 /**
  * **Home이 말하는 보류** (ux-drift-unify Q6 · DESIGN §6.64) — 게이트와 같은 입력으로 `planHoldNotice`를 부른다. ⚠️ **PR을 몰라도 결론이
- * 서면 조회하지 않는다**(편집 > 0 · 보관 · 끊김 · 게이트 없음) — 결과가 같고, Home 착지마다 GitHub 왕복을 더하지 않는다(malmoi#107).
+ * 서면 조회하지 않는다**(편집 > 0 · 전달 전 언어 제거 · 보관 · 끊김 · 게이트 없음) — 결과가 같고, Home 착지마다 GitHub 왕복을 더하지 않는다(malmoi#107).
  * 조회가 필요할 때만 promise를 돌려준다 — 호출부는 그것을 기다리지 않고 Suspense 뒤로 내린다(본문 렌더를 막지 않는다).
  *
  * ⚠️ **PR을 모르는 채로 물었을 때 `pr-check-failed`가 나오는 것이 "PR에 달렸다"의 판정이다** — 그 사유는 PR 갈래에서만 나오므로 술어를 여기에
  * 다시 쓰지 않는다(게이트 순서의 사본이 생기지 않게). ⚠️ 조회가 던지면 `pr-check-failed`다 — 게이트가 fail-closed다.
  */
 export function planHomeHold(
-  input: { pending: number; gateApplies: boolean; archived: boolean; disconnected: boolean },
+  input: { pending: number; localeHeld: boolean; gateApplies: boolean; archived: boolean; disconnected: boolean },
   lookupOpenPr: () => Promise<string | null | undefined>,
 ): HoldReason | null | Promise<HoldReason | null> {
   const unknown = planHoldNotice({ ...input, openPr: undefined });

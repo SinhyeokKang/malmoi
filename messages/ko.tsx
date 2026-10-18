@@ -38,6 +38,14 @@ export const ko = {
     emptyDescription: "어느 프로젝트에도 확인할 항목이 없습니다.",
     failed: "목록을 불러오지 못했습니다.",
     loading: "항목을 불러오는 중…",
+    needsReconnect: {
+      body: "이 리포지토리의 연결이 끊어졌습니다",
+      tail: " — 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+    },
+    languageRemovalHeld: {
+      body: "미전송 언어 제거가 있습니다",
+      tail: " — 리포지토리 업데이트를 보류합니다.",
+    },
   },
   repositorySync: {
     action: "동기화",
@@ -350,6 +358,7 @@ export const ko = {
       allFilled: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개 번역 완료`,
       nothingPending: "보낼 내용 없음",
       nothingToReview: "검토할 내용 없음",
+      languageChanges: (n: number): string => `게시할 언어 변경 ${n.toLocaleString("ko-KR")}건`,
       lastGoodSync: (when: string | null): string => (when === null ? "아직 동기화하지 않음" : `${when} 동기화됨`),
       asOf: (when: string | null): string => (when === null ? "아직 동기화하지 않음" : `${when} 기준`),
       asOfLastSync: "마지막 동기화 기준",
@@ -359,6 +368,7 @@ export const ko = {
         "open-pr": "PR이 머지되거나 닫힐 때까지 보류",
         "pr-check-failed": "보류 — 열린 PR을 확인하지 못했습니다",
         "publish-raced": "보류 — 동기화 전 확인을 마친 뒤 게시가 완료되었습니다",
+        "locale-change-pending": "보류 — 미전송 언어 제거가 있습니다",
       },
       frozen: "보관 시점에 고정됨",
       neverSent: "전송 이력 없음",
@@ -870,21 +880,17 @@ export const ko = {
     resultsFor: (q: string): string => `“${q}” 검색 결과`,
     count: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개`,
     clearSearch: "검색어 지우기",
-    meter: {
-      note: {
-        waiting: "아직 동기화 안 됨",
-        importing: "동기화 중…",
-        failed: "동기화 실패",
-        setup: "계속하려면 GitHub App을 연결하세요.",
-      },
-    },
     banner: {
       review: (n: number): string =>
         `번역 ${n.toLocaleString("ko-KR")}개를 검토해야 합니다.`,
+      neverFilled: (locale: string, source: string, n: number): string =>
+        `${source}에서 ${locale} 번역이 비어 있습니다 — 번역할 키 ${n.toLocaleString("ko-KR")}개.`,
       unsent: (n: number): string =>
         `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건 — 게시해 리포지토리로 보내세요.`,
+      languageChanges: (n: number): string => `게시할 언어 변경이 ${n.toLocaleString("ko-KR")}건 있습니다.`,
+      languageRemovalHeld: "미전송 언어 제거가 있습니다 — 리포지토리 업데이트를 보류합니다.",
       prOpen: (n: number): string => `PR #${n} 열림 — 머지하면 반영됩니다.`,
-      prCheckFailed: "열린 PR을 확인하지 못했습니다.",
+      prCheckFailed: "열린 PR을 확인하지 못했습니다. 다음에 이 페이지를 열 때 다시 확인합니다.",
       repoAhead: (n: number, baseBranch: string): string =>
         `마지막 동기화 뒤에 ${baseBranch} 브랜치에서 번역 파일 ${n.toLocaleString("ko-KR")}개가 바뀌었습니다.`,
       setup: "번역을 시작하려면 설정을 마치세요.",
@@ -919,10 +925,9 @@ export const ko = {
       ownerRetries: "프로젝트 소유자만 다시 시도할 수 있습니다.",
     },
     onGitLab: {
-      meter: { note: { setup: "계속하려면 이 프로젝트를 GitLab에 연결하세요." } },
       banner: {
         prOpen: (n: number): string => `MR !${n} 열림 — 머지하면 반영됩니다.`,
-        prCheckFailed: "열린 MR을 확인하지 못했습니다.",
+        prCheckFailed: "열린 MR을 확인하지 못했습니다. 다음에 이 페이지를 열 때 다시 확인합니다.",
         action: { viewPr: "GitLab에서 열기" },
       },
     },
@@ -1574,6 +1579,13 @@ export const ko = {
             addNotReached: (code: string): string => `${code} 언어는 추가되지 않았습니다. MR이 머지되지 않고 닫혔습니다. 번역은 Malmoi에 남습니다.`,
             removeNotReached: (code: string): string => `${code} 언어는 제거되지 않았습니다. MR이 머지되지 않고 닫혔습니다. 이 소스에 남습니다.`,
           },
+          settle: {
+            progressDescription: "MR과 리포지토리를 확인한 뒤 요청을 닫습니다. 보통 몇 초 걸립니다.",
+            progress: ["MR이 아직 열려 있는지 확인", "리포지토리 읽기", "요청 닫기"] as readonly string[],
+            stillOpen: "언어 변경이 담긴 MR이 열려 있어, 머지되거나 닫힐 때까지 요청이 남습니다. 아무것도 보내지 않았습니다.",
+            hint: "언어 변경의 MR이 더 이상 열려 있지 않습니다. 게시하면 요청을 닫습니다.",
+            body: (_n: number): string => "요청을 보낸 MR이 더 이상 열려 있지 않습니다. 아무것도 보내지 않고 새 MR도 열지 않으며, 게시하면 요청만 닫습니다.",
+          },
           createdDescription: "언어 변경을 MR에 담았습니다. 팀원이 머지하면 서비스에 반영됩니다.",
           updatedDescription: (n: number): string =>
             `!${n} MR이 아직 열려 있어 두 번째 MR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
@@ -1755,6 +1767,18 @@ export const ko = {
         updatedDescription: (n: number): string =>
           `#${n} PR이 아직 열려 있어 두 번째 PR을 열지 않고 내용을 교체했습니다. 이제 언어 변경을 포함한 미전송 변경 사항 전체가 담겨 있습니다.`,
         ready: "게시할 언어 변경이 있습니다.",
+        settle: {
+          hint: "언어 변경의 PR이 더 이상 열려 있지 않습니다. 게시하면 요청을 닫습니다.",
+          title: (_n: number): string => "언어 요청 닫기",
+          body: (_n: number): string => "요청을 보낸 PR이 더 이상 열려 있지 않습니다. 아무것도 보내지 않고 새 PR도 열지 않으며, 게시하면 요청만 닫습니다.",
+          action: (_n: number): string => "언어 요청 닫기",
+          progressTitle: (_n: number): string => "언어 요청 닫는 중",
+          progressDescription: "PR과 리포지토리를 확인한 뒤 요청을 닫습니다. 보통 몇 초 걸립니다.",
+          progress: ["PR이 아직 열려 있는지 확인", "리포지토리 읽기", "요청 닫기"] as readonly string[],
+          stillOpen: "언어 변경이 담긴 PR이 열려 있어, 머지되거나 닫힐 때까지 요청이 남습니다. 아무것도 보내지 않았습니다.",
+          doneTitle: (_n: number): string => "언어 요청을 닫았습니다",
+          doneDescription: "리포지토리에 아무것도 쓰지 않았습니다.",
+        },
         inSource: (code: string, source: string): string => `${code}(${source})`,
       },
 
@@ -1911,6 +1935,8 @@ export const ko = {
     count: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개`,
     languageCount: (n: number): string => `언어 ${n.toLocaleString("ko-KR")}개`,
     translatedOfTotal: (translated: number, total: number): string => `${total.toLocaleString("ko-KR")}개 중 ${translated.toLocaleString("ko-KR")}개`,
+    moreLanguages: (n: number): string => `+${n.toLocaleString("ko-KR")}`,
+    moreLanguagesLabel: (n: number): string => `언어 ${n.toLocaleString("ko-KR")}개 더`,
     unmanaged: (n: number): string => `항목 ${n.toLocaleString("ko-KR")}개는 일반 텍스트가 아니어서 코드에 그대로 남습니다.`,
     add: "소스 추가",
     open: "번역 열기",
@@ -1963,8 +1989,8 @@ export const ko = {
     pendingHelp: "CI에서 기준 언어를 지정했다면 워크플로의 값도 새 언어로 변경하세요.",
     orphanReason: "이 언어는 비활성 상태입니다.",
     orphanStrip: (code: string): string => `${code} 언어는 비활성 상태입니다.`,
-    orphanStripRest: (translations: number): string => `번역 ${translations.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`,
-    orphanStripOwner: "다시 추가하면 돌아옵니다.",
+    orphanStripRest: (translations: number): string => translations === 0 ? "번역이 없습니다." : `번역 ${translations.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`,
+    orphanStripOwner: (translations: number): string => translations === 0 ? "다시 추가하면 사용할 수 있습니다." : "다시 추가하면 돌아옵니다.",
     orphanStripUnsupported: "리포지토리에 파일을 복원한 뒤 동기화하세요.",
     orphanStripEditor: "프로젝트 소유자가 다시 추가할 수 있습니다.",
     statusHelp: "리포지토리와 동기화할 때 업데이트됩니다.",
@@ -2014,8 +2040,9 @@ export const ko = {
       fileToCreate: "만들 파일",
       checkFailed: "이 언어를 확인하지 못했습니다.",
       savedTranslations: (n: number): string => `보존된 번역 ${n.toLocaleString("ko-KR")}개`,
-      reviveLine: (code: string, count: ReactNode): ReactNode => <>{code} 언어는 전에 이 소스에 있었습니다. 다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
-      reviveAgain: (count: ReactNode): ReactNode => <>다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
+      reviveLine: (code: string, n: number, count: ReactNode): ReactNode => n === 0 ? <>{code} 언어는 전에 이 소스에 있었습니다. 보존된 번역이 없습니다.</>
+        : <>{code} 언어는 전에 이 소스에 있었습니다. 다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
+      reviveAgain: (n: number, count: ReactNode): ReactNode => n === 0 ? <>보존된 번역이 없습니다.</> : <>다시 추가하면 {count}가 돌아오고 게시할 준비가 됩니다.</>,
       errors: {
         unreadable: "Malmoi가 리포지토리에서 이 코드를 다시 읽을 수 없습니다. 리포지토리에서 직접 파일을 추가하세요.",
         unsupportedLocale: "Chrome 확장 프로그램이 지원하지 않는 언어 코드입니다.",
@@ -2030,7 +2057,8 @@ export const ko = {
       addUnsettled: "언어를 추가하지 못했습니다. 마지막 게시가 끝나지 않았습니다 — 먼저 다시 게시하세요.",
       addUnconfirmed: (code: string): string => `${code} 언어가 추가되었는지 확인하지 못했습니다. 목록은 현재 상태입니다.`,
       addedNotice: (code: string): string => `${code} 언어를 추가했습니다. 열어서 번역을 시작하세요.`,
-      addedAgain: (code: string, n: number): string => `${code} 언어를 다시 추가했습니다. 보존된 번역 ${n.toLocaleString("ko-KR")}개가 돌아왔고 미전송 상태입니다.`,
+      addedAgain: (code: string, n: number): string => n === 0 ? `${code} 언어를 다시 추가했습니다.`
+        : `${code} 언어를 다시 추가했습니다. 보존된 번역 ${n.toLocaleString("ko-KR")}개가 돌아왔고 미전송 상태입니다.`,
       removeTitle: (code: string, source: string): string => `${source}에서 ${code} 언어를 제거할까요?`,
       removeBody: "게시하면 리포지토리에서 이 언어 파일이 제거됩니다. 저장된 번역은 보존됩니다.",
       cancelAddBody: "이 언어는 비활성 상태가 됩니다. 저장된 번역은 보존됩니다.",
@@ -2039,7 +2067,7 @@ export const ko = {
       factFile: "파일",
       factTranslations: "번역",
       factPullRequest: "PR",
-      keptInMalmoi: (n: number): string => `${n.toLocaleString("ko-KR")}개 Malmoi에 보존`,
+      keptInMalmoi: (n: number): string => n === 0 ? "없음" : `${n.toLocaleString("ko-KR")}개 Malmoi에 보존`,
       notCreatedYet: (path: string): string => `${path} — 아직 만들어지지 않음`,
       notSentYet: "미전송",
       prRemoves: (pr: string): string => `${pr}에서 이 파일 제거`,
@@ -2058,7 +2086,7 @@ export const ko = {
       removeFailed: (code: string): string => `${code} 언어를 제거하지 못했습니다. 바뀐 것은 없습니다.`,
       removeUnconfirmed: (code: string): string => `${code} 언어가 제거되었는지 확인하지 못했습니다. 목록은 현재 상태입니다.`,
       removeRequested: (code: string): string => `${code} 언어를 제거 중입니다. 게시하면 리포지토리에서 파일이 제거됩니다.`,
-      cancelAddDone: (code: string, n: number): string => `${code} 언어는 비활성 상태입니다. 번역 ${n.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`,
+      cancelAddDone: (code: string, n: number): string => `${code} 언어는 비활성 상태입니다. ${n === 0 ? "번역이 없습니다." : `번역 ${n.toLocaleString("ko-KR")}개는 Malmoi에 보존됩니다.`}`,
       onGitLab: {
         notConfirmed: "MR 반영 여부 확인 안 됨",
         readOnlyDelivered: "MR이 머지되거나 제거가 취소될 때까지 읽기 전용입니다.",

@@ -106,7 +106,7 @@ export type LocaleProgress = {
  * (POSTMORTEM 2026-09-09이 그 상태를 다뤘다), base 행을 무조건 100%로 그리면 화면이 거짓말을 한다.
  *
  * ⚠️ **`검토 필요`는 번역된 것이 아니다** — 원문이 바뀌어 사람이 다시 봐야 하는 값이라 `translated`와
- * 따로 센다.
+ * 따로 센다. 다만 `percent`는 값이 채워진 비율이므로 둘을 더한다.
  *
  * **순서가 화면의 정보구조다**: base가 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 →
  * orphaned 맨 뒤. 마지막 것은 행마다 사유 설명이 붙어서, 사이에 끼면 건강한 목록이 쪼개진다.
@@ -116,7 +116,7 @@ export function localeProgress(input: {
   /** 살아 있는 키 수. orphaned 키는 export에서 빠지므로 번역해야 할 일이 아니다. */
   total: number;
   /** **값이 있는** 셀만. 죽은 키의 셀도 조회가 걸러 준다 — 안 걸러지면 분자가 분모보다 커진다. */
-  cells: readonly { localeCode: string; needsReview: boolean }[];
+  cells: readonly { localeCode: string; needsReview: boolean; count: number }[];
 }): LocaleProgress[] {
   const filled = new Map<string, { translated: number; needsReview: number }>();
   for (const locale of input.locales) filled.set(locale.code, { translated: 0, needsReview: 0 });
@@ -125,8 +125,8 @@ export function localeProgress(input: {
     // 목록에 없는 코드는 버린다 — 로케일 목록의 정본은 `Locale` 행이고 셀이 행을 지어내지 않는다.
     const entry = filled.get(cell.localeCode);
     if (entry === undefined) continue;
-    if (cell.needsReview) entry.needsReview += 1;
-    else entry.translated += 1;
+    if (cell.needsReview) entry.needsReview += cell.count;
+    else entry.translated += cell.count;
   }
 
   const rows = input.locales.map((locale): LocaleProgress => {
@@ -138,7 +138,7 @@ export function localeProgress(input: {
       needsReview,
       untranslated: Math.max(0, input.total - translated - needsReview),
       // 0으로 나누지 않는다 — 첫 적재 전에는 키가 없다.
-      percent: input.total <= 0 ? 0 : Math.min(100, Math.max(0, Math.floor((translated / input.total) * 100))),
+      percent: input.total <= 0 ? 0 : Math.min(100, Math.max(0, Math.floor(((translated + needsReview) / input.total) * 100))),
     };
   });
 

@@ -281,6 +281,7 @@ export function homeLate(held: HoldReason | null): HomeLate {
     case null: return { held, prState: "notOpen" };
     case "open-pr": return { held, prState: "prOpen" };
     case "pr-check-failed": return { held, prState: "couldNotCheck" };
-    case "pending-edits": return { held, prState: null };
+    // 편집·언어 보류는 PR을 보기 전에 서는 결론이라 PR state를 말하지 않는다 — 그 갈래는 조회하지 않으므로 여기 오지 않는다.
+    case "pending-edits": case "locale-change-pending": return { held, prState: null };
   }
 }

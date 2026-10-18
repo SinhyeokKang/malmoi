@@ -2975,3 +2975,15 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `rg -n '\bauth\(\)' app lib` — 인자 없는 `auth()`는 Auth.js가 응답에 싣는 Set-Cookie(세션 재발급 등)를 버린다. **세션 쿠키를 다시 심어야 하는 기능(sliding 수명, 세션 회전)을 들이려면 이 호출부가 그 헤더를 전달하는지부터 본다.** 2026-10-15 실행: 코드 호출은 `lib/auth/read-session.ts:43` 하나(나머지는 주석·테스트). `app/__tests__/entry-points.test.ts`가 "read-session.ts 밖에서 `auth()`를 직접 부르지 않는다"를 이미 고정하므로 새 호출부는 거기서 막힌다.
   - 테스트: `adapter.test.ts`가 `updateSession`이 prisma `session`에 접근하지 않음을, `postgres.integration.ts`가 실제 핸들러로 읽은 뒤 `expires`가 그대로임을, `provider-config.test.ts`가 `maxAge`·`updateAge` 두 리터럴(7일)을 고정한다.
   - **규칙: 쿠키 수명을 문장으로 쓰려면 쿠키를 잰다.** 방침·가이드의 쿠키 행은 DB 값이나 설정 리터럴이 아니라 실제 응답의 Set-Cookie와 브라우저의 쿠키 Expires로 확인한다 — 이번 T0의 CDP `Network.responseReceivedExtraInfo`(이름만)·`Network.getCookies`가 그 절차다.
+
+### 2026-10-18 — iOS Safari에서 검색 Dialog를 열면 화면이 살짝 확대됐다
+
+- **영역**: `app/layout.tsx`(루트 viewport) · `lib/viewport.ts`(새) · `components/ui/input.tsx`(`fieldClass` `text-sm` 14 · `sm`/`xs` 13) · `components/ui/command.tsx`(`CommandInput`의 `data-initial-focus`)
+- **증상**: 모바일 Safari에서 검색 Dialog를 열면 화면이 핀치한 것처럼 조금 확대된 채 남았다. 사용자 제보(2026-10-18).
+- **근본 원인**: iOS Safari는 글자 크기 16px 미만 입력에 포커스가 가면 화면을 확대한다. 앱의 입력 필드는 전부 14·13px이고, 검색 Dialog는 열리면서 첫 포커스를 입력에 준다(`dialog.tsx`의 `data-initial-focus`). 루트 viewport에는 `interactiveWidget`만 있었다. 같은 확대는 다른 입력을 탭할 때도 났지만 사용자가 직접 누르는 순간이라 덜 보였다.
+- **그물**: 잡은 것 — 실기기 사용자 관측. 놓친 것 — jsdom·데스크톱 브라우저에는 포커스 자동 확대가 없어 어떤 자동 검증도 원리적으로 못 본다.
+- **수정**: `40a362e3` — 글자 크기는 건드리지 않는다(사용자 결정). 루트 레이아웃이 `generateViewport`로 요청 UA를 `viewportFor`에 넘기고, iPhone·iPad·iPod UA에만 `maximumScale: 1`을 더한다. iOS 10+ Safari는 이 값을 사용자 핀치에는 무시하고 포커스 확대만 막는다. Android Chrome은 핀치까지 막으므로 전역으로 걸지 않는다. 받아들인 대가: 인앱 WKWebView(카카오톡·인스타그램 등)에서 핀치가 막힐 수 있고, iPadOS 데스크톱 모드(UA = Mac)는 판정에 넣지 않아 그 모드의 확대는 남는다.
+- **재발 방지**:
+  - 테스트: `lib/__tests__/viewport.test.ts`가 iOS UA 일곱(Safari·CriOS·FxiOS·카카오톡·인스타그램·iPad·iPod)에서만 `maximumScale: 1`, Android·Windows·Mac·UA 없음에서는 없음, 어떤 UA에서도 `userScalable` 없음, 모든 UA에서 `interactiveWidget: "resizes-content"`를 고정한다. `signin-screen.test.ts`가 레이아웃이 정적 `viewport` 대신 `generateViewport` → `viewportFor`를 쓰는지 본다.
+  - grep: `rg -n "maximumScale|userScalable|maximum-scale|user-scalable" app lib components` — `lib/viewport.ts` 밖에 생기면 Android 핀치를 막는 전역 설정이 아닌지 본다. 2026-10-18 실행: `lib/viewport.ts` 하나.
+  - 규칙: 처음 열 때 입력에 포커스를 주는 표면(Dialog `data-initial-focus` · Combobox `initialFocus`)은 iOS에서 이 판정에 기댄다 — 입력 글자 크기를 16 미만으로 유지하는 한 `viewportFor`의 iOS 갈래를 지우지 않는다.

@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
+import { LocaleMeter } from "@/components/locale-meter";
 import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
 
 import AccountLoading from "../account/loading";
@@ -68,11 +69,113 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
     expect(container.querySelectorAll("[data-skeleton-card]")).toHaveLength(4);
   });
 
-  it("Sources: 소스 행 하나(본문·경로 두 줄)", async () => {
+  it("Sources: 소스 행 하나(본문·경로 두 줄 — 좁은 그릇에서는 본문이 한 줄 더)", async () => {
     const { container } = await render(<SourcesLoading />);
     const rows = container.querySelectorAll("[data-skeleton-source]");
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.querySelectorAll("[data-skeleton-line]")).toHaveLength(2);
+    const lines = [...(rows[0]?.querySelectorAll("[data-skeleton-line]") ?? [])];
+    expect(lines.filter(line => line.closest(".hidden") === null)).toHaveLength(2);
+    expect(lines).toHaveLength(3);
+  });
+
+  /**
+   * source-row-locale-meter — 소스 행 셋째 줄 막대 자리(시안 프레임 9). 넓은 그릇은 둘, 좁은 그릇은 하나다(아래 #292 검사).
+   * ⚠️ **자리의 두께는 실물과 다르고 합만 같다** — 골격은 라벨 16 + 간격 6 + 바 8, 실물은 배지 20 + 6 + 바 4. jsdom은 높이를 못 재므로
+   * 양쪽의 철자를 px로 옮겨 더한다(4px 스케일 · 배지 = `py-0.5` 위아래 + `text-2xs` 줄 높이 16 — `globals.css`의 `calc(1 / 0.75)` × 12).
+   */
+  it("Sources: 막대 자리 — 묶음은 실물과 같은 철자, 자리 높이 합은 실물 LocaleMeter와 같다", async () => {
+    const { container } = await render(<SourcesLoading />);
+    const row = container.querySelector("[data-skeleton-source]")!;
+    const bundle = row.querySelector("[data-skeleton-meters]")!;
+    expect(bundle.className).toBe("mt-2 flex flex-wrap gap-x-3 gap-y-1.5");
+    // 이름 칸의 마지막 줄 — 본문·경로 두 줄 아래다.
+    expect(bundle.parentElement?.lastElementChild).toBe(bundle);
+    expect([...(bundle.parentElement?.children ?? [])].map(child => child.hasAttribute("data-skeleton-name") ? "name" : child.hasAttribute("data-skeleton-line") ? "line" : "meters")).toEqual(["name", "line", "meters"]);
+    const slots = [...bundle.querySelectorAll("[data-skeleton-meter]")];
+    expect(slots).toHaveLength(2);
+
+    const px = (token: string) => Number(/^(?:h|gap|py)-(\d+(?:\.\d+)?)$/.exec(token)?.[1]) * 4;
+    const pick = (element: Element | null | undefined, prefix: string) => [...(element?.classList ?? [])].find(token => new RegExp(`^${prefix}-\\d`).test(token)) ?? "";
+    for (const slot of slots) {
+      for (const token of ["flex", "w-25", "flex-col", "gap-1.5"]) expect(slot.classList.contains(token)).toBe(true);
+      const [label, bar] = [...slot.children];
+      expect(label?.classList.contains("rounded-full")).toBe(true);
+      expect(bar?.classList.contains("rounded-full")).toBe(true);
+      // `/projects` 골격의 실물 치수(`h-5`·`h-1`)가 아니다.
+      expect(pick(label, "h")).toBe("h-4");
+      expect(pick(bar, "h")).toBe("h-2");
+      expect(px(pick(label, "h")) + px(pick(slot, "gap")) + px(pick(bar, "h"))).toBe(30);
+    }
+
+    const real = (await render(<LocaleMeter locale={{ code: "fr", total: 10, done: 5, review: 0, percent: 50 }} />)).container.querySelector("[data-locale-meter]")!;
+    const [labelRow, track] = [...real.children];
+    const badge = labelRow?.firstElementChild;
+    expect(badge?.classList.contains("text-2xs")).toBe(true);
+    const realHeight = (px(pick(badge, "py")) * 2 + 16) + px(pick(real, "gap")) + px(pick(track, "h"));
+    expect(realHeight).toBe(20 + 6 + 4);
+    expect(px(pick(slots[0], "gap"))).toBe(px(pick(real, "gap")));
+    // 골격 자리는 고정 100, 실물은 최소 100(#293 — 지역 코드만 넓어진다). 2글자 코드의 실물 폭과 같다.
+    expect(slots[0]?.classList.contains("w-25") && real.classList.contains("min-w-25")).toBe(true);
+  });
+
+  /**
+   * #291·#292 — 375의 실제 카드(325, 이름 칸 207)에서 실물 막대는 줄당 하나다. 골격도 좁은 그릇(`@max-form`)에서는 자리 **하나**,
+   * 넓은 그릇에서는 둘이다. jsdom은 컨테이너 질의를 계산하지 못하므로 철자를 센다 — 질의는 카드가 이미 선언한 `@container`다.
+   */
+  /**
+   * #295 — 골격 행의 높이 합이 실물 행과 같다. 넓은 그릇(≥ 640)과 좁은 그릇(`@max-form`, 375 → 카드 325 · 이름 칸 207) 둘 다.
+   * jsdom은 높이를 못 재므로 골격의 철자를 px로 옮겨 더하고, 실물은 QA 실측(#295)의 분해를 적는다 — 실물 쪽 철자가 바뀌면 이 상수가 거짓이 된다.
+   * 실물 넓은 행 109.8 = py-row-y 13×2 + 이름 칸(이름 22.5 + 3 + 경로 17.33 + 3 + mt-2 8 + 막대 30) — 상태 배지 20은 이름 칸 옆이라 더해지지 않는다.
+   * 실물 좁은 행 160.3 = 13×2 + 이름 칸(이름 두 줄 45 + 3 + 17.33 + 3 + 8 + 30) + 적층 `gap-y-2` 8 + 상태 배지 20(자기 줄).
+   */
+  it("Sources: 골격 행 높이 합 = 실물 행(넓은 그릇 109.8 · 좁은 그릇 160.3)", async () => {
+    const { container } = await render(<SourcesLoading />);
+    const row = container.querySelector("[data-skeleton-source]")!;
+    const content = row.firstElementChild!;
+    const has = (element: Element, token: string) => element.classList.contains(token);
+    const visible = (element: Element, narrow: boolean) => {
+      if (narrow && has(element, "@max-form:hidden")) return false;
+      if (has(element, "hidden")) return narrow && has(element, "@max-form:block");
+      return true;
+    };
+    const LINE = { "text-base": 22.5, "text-xs": 13 * (4 / 3) } as const;
+    const lineHeight = (line: Element) => (Object.entries(LINE).find(([token]) => has(line, token))?.[1] ?? Number.NaN);
+    const blockHeight = (element: Element, narrow: boolean): number => {
+      if (!visible(element, narrow)) return 0;
+      if (element.hasAttribute("data-skeleton-line")) return lineHeight(element);
+      if (element.hasAttribute("data-skeleton-meters")) return 8 + 30; // mt-2 + 자리 한 줄(넓은 그릇 둘 · 좁은 그릇 하나 — 위 검사)
+      // 줄 래퍼(이름 블록 · 좁은 그릇 둘째 줄) — 간격 없이 쌓인다.
+      return [...element.children].reduce((sum, child) => sum + blockHeight(child, narrow), 0);
+    };
+    const column = content.children[1]!;
+    expect(has(column, "gap-copy-gap")).toBe(true);
+    const nameColumn = (narrow: boolean) => {
+      const parts = [...column.children].map(child => blockHeight(child, narrow)).filter(height => height > 0);
+      return parts.reduce((sum, height) => sum + height, 0) + 3 * (parts.length - 1);
+    };
+    const status = content.children[2]!.firstElementChild!;
+    expect(has(content, "py-row-y")).toBe(true);
+    expect(SOURCE_CONTENT_STACK).toContain("@max-form:gap-y-2");
+    const wide = 13 * 2 + Math.max(28, nameColumn(false), 12);
+    const narrow = 13 * 2 + Math.max(28, nameColumn(true)) + 8 + (has(status, "@max-form:h-5") ? 20 : 12);
+    expect(has(status, "h-3")).toBe(true);
+    expect(wide).toBeCloseTo(13 * 2 + 22.5 + 3 + 13 * (4 / 3) + 3 + 8 + 30, 5);
+    expect(wide).toBeCloseTo(109.8, 0);
+    expect(narrow).toBeCloseTo(13 * 2 + 45 + 3 + 13 * (4 / 3) + 3 + 8 + 30 + 8 + 20, 5);
+    expect(narrow).toBeCloseTo(160.3, 0);
+  });
+
+  it("Sources: 막대 자리 — 넓은 그릇 둘, 좁은 그릇(@max-form) 하나", async () => {
+    const { container } = await render(<SourcesLoading />);
+    const slots = [...container.querySelectorAll("[data-skeleton-meter]")];
+    const wide = slots.filter(slot => !slot.classList.contains("hidden"));
+    const narrow = slots.filter(slot => !slot.classList.contains("hidden") && !slot.classList.contains("@max-form:hidden"));
+    expect(wide).toHaveLength(2);
+    expect(narrow).toHaveLength(1);
+    expect(narrow[0]).toBe(slots[0]);
+    expect(slots[0]?.closest(".\\@container")).not.toBeNull();
+    // 새 컨테이너를 선언하지 않는다 — 묶음·자리 어느 쪽도 `@container`가 아니다.
+    for (const node of [container.querySelector("[data-skeleton-meters]"), ...slots]) expect(node?.classList.contains("@container")).toBe(false);
   });
 
   /** 행 끝 chevron 16 칸이 실물에 있다(4-W9) — 없으면 도착 순간 결과 열이 16+12 밀린다. 첫 행은 헤더 급 선이다(4-Y3). */

@@ -453,8 +453,9 @@ describe("T1 동치 철자와 값 보존 예외", () => {
     });
   });
 
-  it("4px와 rem은 조건부 동치라 기존 4px 한 곳을 보존한다", () => {
-    expect(byFile(/rounded-\[4px\]/g)).toEqual({ "app/(edit)/projects/(list)/loading.tsx": 1 });
+  // 마지막 한 곳(목록 골격 썸네일)은 실물 `ProjectThumbnail`의 8로 고쳤다(project-row-redesign T7 · POSTMORTEM 2026-09-17).
+  it("4px와 rem은 조건부 동치라 값 보존 예외가 남아 있지 않다", () => {
+    expect(byFile(/rounded-\[4px\]/g)).toEqual({});
   });
 
   it("tracking 재도입과 값 보존 예외 추가가 스캐너에 잡힌다 (카나리아)", () => {

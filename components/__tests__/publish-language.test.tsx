@@ -6,6 +6,7 @@ import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/compon
 import { RepoHostScope } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
 import { render } from "./helpers/dom";
+import { en } from "@/messages/en";
 
 const mocks = vi.hoisted(() => ({ preview: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
@@ -59,9 +60,9 @@ async function click(name: string) { await act(async () => { await userEvent.set
 const modal = () => document.querySelector<HTMLElement>('[role="dialog"]')!;
 const fileHead = (path: string) => [...modal().querySelectorAll("th[scope=colgroup]")].find(th => th.textContent?.includes(path)) as HTMLElement | undefined;
 
-function Host({ unsent = 0, languageWork = 1, role = "OWNER", host = "github" }: { unsent?: number; languageWork?: number; role?: "OWNER" | "EDITOR"; host?: string }) {
+function Host({ unsent = 0, languageWork = 1, role = "OWNER", host = "github", settle }: { unsent?: number; languageWork?: number; role?: "OWNER" | "EDITOR"; host?: string; settle?: Promise<boolean> }) {
   const ui = <HomeActions slug="acme" writeLock={null}><HomeTitle archived={false}>Host</HomeTitle>
-    <HomeHeaderActions slug="acme" name="Host" branch="main" role={role} unsent={unsent} languageWork={languageWork} paused={false} />
+    <HomeHeaderActions slug="acme" name="Host" branch="main" role={role} unsent={unsent} languageWork={languageWork} paused={false} settle={settle} />
     <HomeNotices slug="acme" name="Host" branch="main" role={role} state="default" repo={{ ...REPO, host }} unsent={unsent} languageWork={languageWork} failedSurface={null} reason={null} lastSyncAt={null} now={new Date()} />
   </HomeActions>;
   return host === "gitlab" ? <RepoHostScope host="gitlab">{ui}</RepoHostScope> : ui;
@@ -245,6 +246,196 @@ describe("Publish 미리보기 — 언어 변경 (시안 P1)", () => {
     const text = modal().textContent ?? "";
     expect(text).toContain("ja wasn't removed — its pull request closed without merging. It stays in this source.");
     expect(text).toContain("es is already in the repository, so its request is closed.");
+  });
+});
+
+/**
+ * **닫힌 언어 요청 정리** (#282 — ARCHITECTURE §5.10.4 `settle`). 전달된 추가의 PR이 머지 없이 닫혔고 편집이 없으면 셀·언어 작업이 0이라 버튼이 꺼졌다.
+ * 서버가 좁은 창에서만 내린 열린 PR 조회가 "없음"으로 도착하면 켜지고, 미리보기는 `Nothing can be sent yet` + Close로 떨어지지 않고 요청을 닫는 실행을 세운다.
+ */
+describe("Publish — 닫힌 언어 요청 정리 (#282)", () => {
+  const dropped = { ...base, total: 0, keys: 0, openPr: null, sendable: { total: 0, keys: 0 }, changedFiles: [], fileChanges: [],
+    expiringLocales: [{ surfaceSlug: "web", localeCode: "fr", operation: "ADD", presence: "orphan" }] };
+  const sr = () => document.getElementById(button("Publish").getAttribute("aria-describedby") ?? "")?.textContent;
+
+  it("열린 PR 없음이 도착하면 켜지고 sr이 이유를 말한다 — 도착 전에는 꺼져 있다", async () => {
+    let resolve!: (value: boolean) => void;
+    await render(<Host languageWork={0} settle={new Promise(done => { resolve = done; })} />);
+    expect(button("Publish").getAttribute("aria-disabled")).toBe("true");
+    await act(async () => resolve(true));
+    expect(button("Publish").getAttribute("aria-disabled")).toBeNull();
+    expect(sr()).toBe("The pull request for a language change is no longer open. Publish to close its request.");
+  });
+
+  it("열린 PR·모름(거짓)이면 꺼진 채다", async () => {
+    await render(<Host languageWork={0} settle={Promise.resolve(false)} />);
+    await act(async () => {});
+    expect(button("Publish").getAttribute("aria-disabled")).toBe("true");
+    expect(sr()).toBe("Nothing to send — every edit is already sent.");
+  });
+
+  it("GitLab 프로젝트는 merge request로 말한다", async () => {
+    await render(<Host host="gitlab" languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    expect(sr()).toBe("The merge request for a language change is no longer open. Publish to close its request.");
+  });
+
+  it("만료될 요청만 있는 미리보기 — 요청을 닫는 실행 버튼이 서고 누르면 실행한다 (#282 ③ 재현)", async () => {
+    mocks.preview.mockResolvedValue(ok(dropped));
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Close the language request");
+    expect(text).toContain("The pull request this request was sent in is no longer open. Nothing goes out and no new pull request opens — publishing only closes it.");
+    expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+    expect(text).not.toContain(en.translations.publish.nothingSendable.title);
+    // #296 — 나갈 것이 없으니 표에 채울 행도 없다. 빈 머리(`Key | Language | Value`)를 그리지 않는다(341에서 최소 폭 520이 가로 스크롤을 만들었다).
+    expect(modal().querySelector("table")).toBeNull();
+    // 빈 표를 감싸던 `flex-1` 테두리 상자·스크롤러도 서지 않는다 — 만료 줄만 본문에 선다.
+    expect(modal().querySelector("[class*='@container/preview']")).toBeNull();
+    await click("Close request");
+    expect(mocks.pull).toHaveBeenCalledTimes(1);
+  });
+
+  it("정리 미리보기에 표에 설 행이 있으면 표는 그대로다 (#296 대조)", async () => {
+    const held = [{ surfaceSlug: "web", localeCode: "zh-CN", path: "apps/web/locales/zh-CN.json", reason: "proposal-path-exists" }];
+    mocks.preview.mockResolvedValue(ok({ ...dropped, locales: { withheld: held, empty: [] } }));
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    expect(modal().querySelector("h2")?.textContent).toBe("Close the language request");
+    expect(modal().querySelector("table")).not.toBeNull();
+    expect(modal().textContent).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+  });
+
+  it("요청이 둘이면 복수로 말한다 · GitLab은 merge request", async () => {
+    mocks.preview.mockResolvedValue(ok({ ...dropped, expiringLocales: [...dropped.expiringLocales, { surfaceSlug: "web", localeCode: "ja", operation: "REMOVE", presence: "active" }] }));
+    await render(<Host host="gitlab" languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    expect(modal().querySelector("h2")?.textContent).toBe("Close the language requests");
+    expect(modal().textContent).toContain("The merge request these requests were sent in is no longer open. Nothing goes out and no new merge request opens — publishing only closes them.");
+    expect(button("Close requests")).toBeDefined();
+  });
+
+  /** ⚪5(변이 M8) — 창이 닫혀 서버가 promise를 내리지 않으면 옛 도착값(`true`)을 쓰지 않는다. 정리 Publish 뒤 재검증이 이 렌더다. */
+  it("창이 닫히면(settle 없음으로 다시 렌더) 옛 도착값을 버리고 꺼진다", async () => {
+    const { rerender } = await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    expect(button("Publish").getAttribute("aria-disabled")).toBeNull();
+    await rerender(<Host languageWork={0} />);
+    expect(button("Publish").getAttribute("aria-disabled")).toBe("true");
+  });
+
+  /** 🟡4 — 정리 실행의 진행 화면은 PR을 연다고 말하지 않는다. 편집이 있어도(보류 1) 정리 갈래였으면 같은 진행 문장이다. */
+  it.each([[0], [1]])("정리 실행 중(미발송 %i) 진행 화면은 요청을 닫는다고 말한다 — PR을 연다고 하지 않는다", async unsent => {
+    let resolve!: (value: unknown) => void;
+    mocks.pull.mockReturnValue(new Promise(done => { resolve = done; }));
+    mocks.preview.mockResolvedValue(ok(dropped));
+    await render(<Host unsent={unsent} languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click(unsent === 0 ? "Publish" : `Publish${unsent}`);
+    await click("Close request");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Closing the language request");
+    expect(text).toContain("Checking the pull request and the repository, then closing the request. This usually takes a few seconds.");
+    expect(text).not.toContain("opening a pull request");
+    expect(text).not.toContain("Publishing");
+    await act(async () => resolve({ status: "skipped", reason: "no-edits", expired: dropped.expiringLocales }));
+  });
+
+  it("GitLab — 정리 진행 문장은 merge request로 말한다", async () => {
+    mocks.pull.mockReturnValue(new Promise(() => {}));
+    mocks.preview.mockResolvedValue(ok(dropped));
+    await render(<Host host="gitlab" languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close request");
+    expect(modal().textContent).toContain("Checking the merge request and the repository, then closing the request.");
+  });
+
+  /** 🟡2 — 보류 편집이 남은 정리는 `withheld`로 끝나도 결과가 닫은 요청을 말한다(미리보기 == 결과). */
+  it("보류 편집이 남은 정리 — Held back 결과에 닫은 요청 줄이 선다", async () => {
+    mocks.preview.mockResolvedValue(ok({ ...dropped, total: 1, keys: 1, withoutFile: 1 }));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 }, expired: dropped.expiringLocales });
+    await render(<Host unsent={1} languageWork={0} />);
+    await click("Publish1");
+    expect(modal().querySelector("h2")?.textContent).toBe("Close the language request");
+    await click("Close request");
+    expect(modal().querySelector("h2")?.textContent).toBe("Held back — some values can't be written to the files");
+    expect(modal().textContent).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+  });
+
+  /** #289 — 보류할 것이 없는 정리는 Held back이 아니다. 요청을 닫았다 틀 + 만료 줄(Home To send 0 · Logs `Nothing to send`와 같은 사실). */
+  it("보류 없는 정리 — 결과는 요청을 닫았다 틀이고 만료 줄이 선다", async () => {
+    mocks.preview.mockResolvedValue(ok(dropped));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", expired: dropped.expiringLocales });
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close request");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Language request closed");
+    expect(text).toContain("Nothing was written to the repository.");
+    expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+    expect(text).not.toContain("Held back");
+    expect(text).not.toContain("until they can be sent");
+    // D13 — 형제 틀(`Nothing changed`·`stillOpen`)과 같이 Logs로 가는 길을 둔다. Logs는 이 실행을 `Nothing to send`로 적는다.
+    expect(text).toContain(en.translations.publish.inLogs);
+    expect(button("Close")).toBeDefined();
+  });
+
+  /** review 🟢4 — 버린 요청 + 리포가 이미 요청대로인 요청: 제목 수는 닫은 요청 전부, 만료 줄도 둘 다 선다. */
+  it("보류 없는 정리 · 버린 요청 + 반영된 요청 — 복수 제목, 만료 줄 둘", async () => {
+    const mixed = [...dropped.expiringLocales, { surfaceSlug: "web", localeCode: "ko", operation: "REMOVE", presence: "orphan" }];
+    mocks.preview.mockResolvedValue(ok({ ...dropped, expiringLocales: mixed }));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", expired: mixed });
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close requests");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Language requests closed");
+    expect(text).toContain("fr wasn't added — its pull request closed without merging. Its translations stay in Malmoi.");
+    expect(text).toContain("ko is already gone from the repository, so its request is closed.");
+  });
+
+  it("보류 없는 정리 · 요청 둘 · GitLab — 복수 제목, merge request 만료 줄", async () => {
+    const two = [...dropped.expiringLocales, { surfaceSlug: "web", localeCode: "ja", operation: "REMOVE", presence: "active" }];
+    mocks.preview.mockResolvedValue(ok({ ...dropped, expiringLocales: two }));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", expired: two });
+    await render(<Host host="gitlab" languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close requests");
+    const text = modal().textContent ?? "";
+    expect(modal().querySelector("h2")?.textContent).toBe("Language requests closed");
+    expect(text).toContain("Nothing was written to the repository.");
+    expect(text).toContain("fr wasn't added — its merge request closed without merging. Its translations stay in Malmoi.");
+    expect(text).toContain("ja wasn't removed — its merge request closed without merging. It stays in this source.");
+  });
+
+  /** 🟡3 — 미리보기 뒤 PR이 다시 열렸다(실행은 실물을 본다). "리포에 이미 있다"가 아니라 요청이 열린 PR을 기다린다고 말한다. */
+  it("정리 미리보기 뒤 PR이 다시 열렸으면 결과가 요청이 남는다고 말한다 — already in the repository가 아니다", async () => {
+    mocks.preview.mockResolvedValue(ok(dropped));
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits", prOpen: true });
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    await click("Close request");
+    const text = modal().textContent ?? "";
+    expect(text).toContain("A pull request with language changes is open, so the request stays until it's merged or closed. Nothing was sent.");
+    expect(text).not.toContain("already in the repository");
+  });
+
+  it("만료될 요청이 없으면 지금처럼 Nothing can be sent yet + Close다(대조)", async () => {
+    mocks.preview.mockResolvedValue(ok({ ...dropped, expiringLocales: undefined }));
+    await render(<Host languageWork={0} settle={Promise.resolve(true)} />);
+    await act(async () => {});
+    await click("Publish");
+    expect(modal().querySelector("h2")?.textContent).toBe(en.translations.publish.nothingSendable.title);
+    expect(button("Close")).toBeDefined();
   });
 });
 

@@ -116,7 +116,7 @@ export function Stage({
     let lastH = 0;
     let lastStageTop = 0;
     let lastScrollTop = 0;
-    /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
+    /** 같은 값을 다시 쓰지 않는다 — 루트·스크롤러의 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
     let written = { stageH: "", width: "", height: "", transform: "", chromeTransform: "", caption: -1, typed: "", chromeW: -1, staticScale: -1, staticCanvas: "" };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
@@ -125,7 +125,9 @@ export function Stage({
     const setStageH = (H: number) => {
       const value = `${H}px`;
       if (value === written.stageH) return;
-      root.style.setProperty("--landing-stage-h", value);
+      // 스테이지 높이만 스크롤러에 쓴다 — 랜딩 배경 캔버스(`app/page.tsx`의 `[data-landing-kv]` 래퍼)가 스테이지 밖에서 같은 값을 읽는다
+      // (landing-kv-background R3). 스크롤러는 페이지마다 다시 마운트되므로 다른 공개 화면에 남지 않는다.
+      scroller.style.setProperty("--landing-stage-h", value);
       root.style.setProperty("--landing-track-h", `${trackHeight(H)}px`);
       written = { ...written, stageH: value };
     };
@@ -235,6 +237,8 @@ export function Stage({
       const chromeHeight = CHROME_GAP + chrome.getBoundingClientRect().height;
       const fit = fitScale({ W, H, chromeHeight, device });
       if (!fit.pinnable) {
+        // 정적 흐름에서도 H는 쓴다 — 랜딩 배경 캔버스가 이 값으로 스크롤러 높이를 맞춘다. 고정 → 정적 리사이즈가 옛 H를 남기면 캔버스가 더 길다.
+        setStageH(H);
         // 정적 흐름은 폭이 정한 배율이다 — 세로로 줄이지 않는다(장마다 자기 높이를 갖는다).
         enterStatic(fit.chromeW / STATE_CANVAS_W[device], device);
         lastH = 0;
@@ -309,7 +313,7 @@ export function Stage({
             <li key={text}>{text}</li>
           ))}
         </ol>
-        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx` — 2026-10-04 D8 뒤에도 합은 같다) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. 정적 흐름에서는 흐름 밖(`absolute`)에서 `invisible`로 남아 캡션 높이를 계속 잰다. */}
+        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx`). ⚠️ 랜딩 패널은 `kv` 갈래라 테두리가 없어(landing-kv-background R13) 실제 스크롤러보다 2px 짧다 — JS 전에만 쓰이고 준비 뒤엔 정적 흐름까지 잰 H로 덮인다. 96으로 맞추지 않는 것은 `calc(100svh-96px)`가 `--spacing-modal-gutter`로 대체된 옛 철자라 `visual-system.test.ts`가 막기 때문이다. 셸 치수가 바뀌면 트랙과 함께 고친다. 정적 흐름에서는 흐름 밖(`absolute`)에서 `invisible`로 남아 캡션 높이를 계속 잰다. */}
         <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))] group-data-[static]/track:absolute group-data-[static]/track:inset-x-0">
           <div
             ref={frameRef}

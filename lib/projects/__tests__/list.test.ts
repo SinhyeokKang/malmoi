@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import { stateLabel } from "@/lib/status/canon";
+import { projectTodos } from "@/lib/inbox/project-todos";
+import type { LanguageTodo } from "@/lib/locales/todo";
 import { en } from "@/messages/en";
 
 import {
-  CHIP_STATE,
+  planProjectRow,
   groupProjects,
   listBody,
-  meterSlot,
-  projectGroup,
   projectStatus,
   projectSyncFailure,
-  rowBanner,
-  rowChip,
   reviewByLocale,
-  rowLocaleProgress,
+  rowReviewCells,
   searchProjects,
   summaryQueue,
+  type ProjectRowPlan,
   type ProjectStatus,
   type ProjectStatusInput,
+  type RowInput,
 } from "../list";
 
 describe("searchProjects", () => {
@@ -154,14 +154,20 @@ describe("상태 문구", () => {
   const _coversUnion: [Missing] extends [never] ? true : false = true;
   void _coversUnion;
 
+  // 칩은 `planProjectRow`가 낸다 — 상태마다 대표 입력 하나로 칩 키를 얻는다(목록이 보이는 그 낱말이다).
+  const chipOf = (status: ProjectStatus) => planProjectRow(row({
+    archived: { archivedAt: new Date(0) }, setup: { installationId: null }, awaiting_first_sync: { surfaces: [FIRST] },
+    needs_reconnect: { repositoryId: null }, active: {},
+  }[status]), []).chip;
+
   it("갈래 다섯이 전부 문구를 갖는다", () => {
-    for (const status of ALL) expect(stateLabel(en, CHIP_STATE[status])).toBeTruthy();
+    for (const status of ALL) expect(stateLabel(en, chipOf(status))).toBeTruthy();
   });
 
   it("내부 이름을 흘리지 않는다 — 읽는 사람은 비개발자 동료다", () => {
     for (const status of ALL) {
-      // 칩 낱말은 `STATE`가 든다(ux-drift-unify T19 — 칩이 `CHIP_STATE` 키만 넘긴다).
-      const label = stateLabel(en, CHIP_STATE[status]);
+      // 칩 낱말은 `STATE`가 든다(ux-drift-unify T19 — 칩이 상태 키만 넘긴다).
+      const label = stateLabel(en, chipOf(status));
       expect(label).not.toContain(status);
       // snake_case는 우리 내부 이름의 모양이다 — en 라벨의 보통 낱말과 갈린다.
       expect(label).not.toMatch(/[a-z]+_[a-z]+/);
@@ -169,7 +175,7 @@ describe("상태 문구", () => {
   });
 
   it("다섯이 서로 다르다 — 한 문구로 접히면 상태를 구별할 수 없다", () => {
-    expect(new Set(ALL.map((s) => stateLabel(en, CHIP_STATE[s]))).size).toBe(ALL.length);
+    expect(new Set(ALL.map((s) => stateLabel(en, chipOf(s)))).size).toBe(ALL.length);
   });
 });
 
@@ -186,111 +192,8 @@ const S = { archivedAt: null, lastCommitSha: "s", importError: null, importing: 
 const FIRST = { ...S, lastCommitSha: null } as const;
 const READY = { repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i", surfaces: [S], repositoryId: "r", archivedAt: null } as const;
 const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0 } as const;
-const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
+const row = (over: Partial<RowInput> = {}): RowInput => ({ ...READY, ...QUIET, ...over });
 const failed = (importError: "parse-failed" | "partial-import" | "import-failed", importing = false) => ({ surfaces: [{ ...S, importError, importing }] });
-
-describe("projectGroup — 상태표의 그룹 열과 1:1 (DESIGN §6.63)", () => {
-  it.each([
-    ["active · all set", {}],
-    ["review pending", { review: 88 }],
-    ["pull request open", { openPr: { number: 142, url: "https://github.com/o/r/pull/142" } }],
-  ])("%s은 All set이다 — 손댈 것이 없거나 읽기만 하면 된다", (_label, over) => {
-    expect(projectGroup(row(over))).toBe("all_set");
-  });
-
-  it.each([
-    ["unsent edits", { unsent: 24 }],
-    ["repo moved ahead", { repoAheadFiles: 3 }],
-    ["awaiting first sync", { surfaces: [FIRST] }],
-    ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }],
-    ["needs reconnect", { repositoryId: null }],
-    ["import failed", failed("parse-failed")],
-  ])("%s은 Needs attention이다", (_label, over) => {
-    expect(projectGroup(row(over))).toBe("needs_attention");
-  });
-
-  /** 보관은 사건과 무관하다 — 멈춘 프로젝트에 "지금 뭘 하면 되나"는 답할 질문이 아니다. */
-  it("보관은 어떤 사건이 겹쳐도 Archived다", () => {
-    const archived = { archivedAt: new Date("2026-09-01T00:00:00Z") };
-    expect(projectGroup(row({ ...archived, unsent: 24, review: 9, repoAheadFiles: 3 }))).toBe("archived");
-  });
-});
-
-describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", () => {
-  it("보관 행에는 액션이 없다", () => {
-    expect(rowBanner(row({ archivedAt: new Date(), unsent: 24, review: 9 }))).toBeNull();
-  });
-
-  /** 끊긴 연결은 모든 것을 덮는다 — 그 밑의 사건은 전부 손댈 수 없는 상태다. */
-  it("needs_reconnect가 사건 전부를 덮는다", () => {
-    expect(rowBanner(row({ repositoryId: null, unsent: 24, review: 9, repoAheadFiles: 3 }))).toEqual({
-      kind: "needs_reconnect",
-    });
-  });
-
-  it("임포트 실패가 사건을 덮는다 — 적재된 프로젝트에서도 뜬다", () => {
-    expect(rowBanner(row({ ...failed("parse-failed"), review: 9 }))).toEqual({
-      kind: "import_failed",
-      reason: "parse-failed",
-    });
-  });
-
-  /**
-   * ⚠️ **지금 돌고 있으면 지난 실패를 외치지 않는다.** `lastImportStartedAt`이 서 있다는 것은 새
-   * 실행이 시작됐다는 뜻이고, 남아 있는 코드는 **이전 실행의 것**이다 — 끝나면 성공이 비우거나
-   * 실패가 덮어쓴다.
-   */
-  it("적재가 도는 중에는 옛 실패 띠를 그리지 않는다", () => {
-    expect(rowBanner(row(failed("parse-failed", true)))).toBeNull();
-  });
-
-  it("setup은 자기 띠를 갖고, 첫 적재 대기는 안 갖는다 — 그 문장은 Meter 자리가 든다", () => {
-    expect(rowBanner(row({ repoHost: "github", gitlabConnectionId: null, installationId: null }))).toEqual({ kind: "setup" });
-    expect(rowBanner(row({ surfaces: [FIRST] }))).toBeNull();
-  });
-
-  /** E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다. */
-  it("안 보낸 편집이 열린 PR을 이긴다", () => {
-    const pr = { number: 142, url: "https://github.com/o/r/pull/142" };
-    expect(rowBanner(row({ unsent: 24, openPr: pr }))).toEqual({ kind: "unsent", count: 24 });
-    expect(rowBanner(row({ openPr: pr }))).toEqual({ kind: "pr_open", number: 142, url: pr.url });
-  });
-
-  /**
-   * **PR 조회 실패는 "없음"이 아니라 "모름"이다** (ux-drift-unify Q6) — 열린 PR 게이트가 fail-closed라 그 동안 적재가 실제로 멈춘다.
-   * 같은 신호의 모름이라 `pr_open` 자리에 선다: 안 보낸 편집 뒤, 원격 변경·검토 앞.
-   */
-  it("PR 조회 실패(undefined)는 pr_open 자리의 Couldn't check 띠다", () => {
-    expect(rowBanner(row({ openPr: undefined }))).toEqual({ kind: "pr_check_failed" });
-    expect(rowBanner(row({ openPr: undefined, unsent: 3 }))).toEqual({ kind: "unsent", count: 3 });
-    expect(rowBanner(row({ openPr: undefined, repoAheadFiles: 2, review: 5 }))).toEqual({ kind: "pr_check_failed" });
-    expect(rowBanner(row({ openPr: undefined, repositoryId: null }))).toEqual({ kind: "needs_reconnect" });
-    expect(rowBanner(row({ openPr: undefined, archivedAt: new Date(0) }))).toBeNull();
-  });
-
-  it("원격 변경이 검토를 이긴다 — C′는 키가 아니라 파일 수다", () => {
-    expect(rowBanner(row({ repoAheadFiles: 3, review: 88 }))).toEqual({ kind: "repo_ahead", files: 3 });
-    expect(rowBanner(row({ review: 88 }))).toEqual({ kind: "review", count: 88 });
-  });
-
-  it("사건이 없으면 띠도 없다", () => {
-    expect(rowBanner(row())).toBeNull();
-  });
-
-  /** GitHub 조회가 실패하면 그 둘만 빠진다 — 0과 null이 "그 신호 없음"이다. */
-  it("원격 신호가 없으면 그 띠만 사라지고 DB 사건은 남는다", () => {
-    expect(rowBanner(row({ openPr: null, repoAheadFiles: 0, review: 88 }))).toEqual({ kind: "review", count: 88 });
-  });
-
-  /**
-   * ⚠️ **역할을 받지 않는다** (F). 링크가 역할로 갈리는 셋(`Reconnect`·`Continue setup`·
-   * `View details`)의 판정은 **호출부**가 `row.role`로 한다 — 띠를 순수하게 유지하는 것이
-   * 이 매트릭스를 반으로 줄인다.
-   */
-  it("입력에 역할이 없다", () => {
-    expect(Object.keys(row())).not.toContain("role");
-  });
-});
 
 /**
  * **표면별 `failing` 후 가장 나쁜 것 하나** (ux-drift-unify §3.2 · 🔴 E). 행을 평탄화하면(`find` · `some`) 표면 A가 동기화 중일 때
@@ -315,158 +218,27 @@ describe("projectSyncFailure", () => {
 });
 
 /**
- * **칩은 끊김이 먼저다** (ux-drift-unify Q2) — Disconnected > Sync failed > Partially synced > Not synced yet·Setup > Active.
- * 띠(`rowBanner`)와 Home(`planHomeState`)은 이미 끊김이 먼저였고 칩만 실패가 먼저였다.
+ * **`rowReviewCells` — 행의 `review` 합과 띠의 검토 할 일이 읽는 한 결과** (project-row-redesign RA 🟡). (표면, 로케일) 단위이고 살아 있는 로케일만이다.
  */
-describe("rowChip — 끊김 > 실패 > 일부 반영 > readiness", () => {
-  it.each([
-    ["끊김 + 실패", { repositoryId: null, ...failed("import-failed") }, "needs_reconnect"],
-    ["끊김 + 일부 반영", { repositoryId: null, ...failed("partial-import") }, "needs_reconnect"],
-    ["실패", failed("parse-failed"), "sync_failed"],
-    ["일부 반영", failed("partial-import"), "partially_synced"],
-    ["A 동기화 중 + B 실패", { surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }] }, "sync_failed"],
-    ["A partial + B failed", { surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }, "sync_failed"],
-    ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "sync_failed"],
-    ["setup + 실패", { repoHost: "github", gitlabConnectionId: null, installationId: null, ...failed("parse-failed") }, "sync_failed"],
-    ["첫 적재 대기", { surfaces: [FIRST] }, "awaiting_first_sync"],
-    ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }, "setup"],
-    ["정상", {}, "active"],
-    ["보관 + 끊김 + 실패", { archivedAt: new Date(0), repositoryId: null, ...failed("parse-failed") }, "archived"],
-  ] as const)("%s → %s", (_label, over, chip) => {
-    expect(rowChip(row(over))).toBe(chip);
-  });
-
-  /**
-   * ⚠️ **칩이 끊김·실패·일부 반영이면 같은 행의 띠도 같은 상태를 말한다** (spec 완료 조건 7a). 칩 Active + 띠 Unsent·PR open·검토 대기는 정상 조합이다.
-   */
-  it.each([
-    [{ repositoryId: null, ...failed("import-failed"), unsent: 3 }],
-    [{ ...failed("partial-import"), unsent: 3 }],
-    [{ surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }], review: 2 }],
-    [{ surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }],
-    [{ repoHost: "github", gitlabConnectionId: null, installationId: null, ...failed("parse-failed") }],
-  ])("칩과 띠가 같은 상태를 말한다 %#", (over) => {
-    const chip = rowChip(row(over));
-    const banner = rowBanner(row(over));
-    if (chip === "needs_reconnect") expect(banner).toEqual({ kind: "needs_reconnect" });
-    else if (chip === "sync_failed") expect(banner).toMatchObject({ kind: "import_failed" });
-    else if (chip === "partially_synced") expect(banner).toEqual({ kind: "import_failed", reason: "partial-import" });
-    else throw new Error(`unexpected chip ${chip}`);
-    if (chip === "sync_failed") expect(banner?.kind === "import_failed" && banner.reason).not.toBe("partial-import");
-  });
-});
-
-describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (DESIGN §6.63)", () => {
-  it("값이 있는 상태는 바를 그린다", () => {
-    const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
-    expect(meterSlot(row(), locales)).toEqual({ kind: "meters", locales });
-  });
-
-  it.each([
-    ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }, "setup"],
-    ["첫 적재 대기", { surfaces: [FIRST] }, "waiting"],
-    ["적재 진행 중", { surfaces: [{ ...FIRST, importing: true }] }, "importing"],
-    ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "failed"],
-  ])("%s은 바가 아니라 문장이다", (_label, over, note) => {
-    expect(meterSlot(row(over), [])).toEqual({ kind: "note", note });
-  });
-
-  /**
-   * ⚠️ **이미 적재된 프로젝트의 실패는 Meter를 지우지 않는다** (DESIGN §6.63) — 데이터가 있는데
-   * 문장으로 덮으면 "번역이 사라졌다"로 읽힌다. 그 사실은 띠가 말한다.
-   */
-  it("적재된 뒤의 실패는 바를 유지한다", () => {
-    const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
-    expect(meterSlot(row(failed("partial-import")), locales)).toEqual({ kind: "meters", locales });
-  });
-
-  /** 진행 중이 더 최신 사실이다 — 남아 있는 코드는 이전 실행의 것이다. */
-  it("첫 적재 대기에서 진행이 실패를 이긴다", () => {
-    expect(meterSlot(row({ surfaces: [{ ...FIRST, importError: "parse-failed", importing: true }] }), [])).toEqual({
-      kind: "note",
-      note: "importing",
-    });
-  });
-});
-
-/**
- * **행의 Meter 재료** (DESIGN §6.63). ①②③의 조회 결과를 프로젝트별로 접는다.
- *
- * ⚠️ **`localeProgress`(`lib/keys/view.ts`)와 합치지 않는다** — 저쪽은 `untranslated`·orphaned 꼬리까지
- * 드는 화면 계약이고 여기 필요한 것은 두 구간 비율뿐이다. **`percent`의 내림 규칙만 그대로 쓴다**
- * (902/903이 100%로 보이면 안 된다).
- */
-describe("rowLocaleProgress", () => {
+describe("rowReviewCells", () => {
   const locales = [
-    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "ko", isBase: false },
-    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true },
-    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "ja", isBase: false },
-    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "de", isBase: false },
+    { projectId: "p", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false },
+    { projectId: "p", surfaceId: "s2", surfaceSlug: "app", code: "ko", isBase: false },
+    { projectId: "q", surfaceId: "s3", surfaceSlug: "web", code: "ja", isBase: false },
   ];
-  const totals = new Map([["p", 10]]);
+  const cells = [
+    { projectId: "p", surfaceId: "s1", localeCode: "ko", needsReview: true, count: 3 },
+    { projectId: "p", surfaceId: "s1", localeCode: "ko", needsReview: false, count: 9 },
+    { projectId: "p", surfaceId: "s2", localeCode: "ko", needsReview: true, count: 2 },
+    // 살아 있지 않은 로케일의 셀은 세지 않는다 — 분모(키)는 orphaned를 빼므로 분자가 분모를 넘는다.
+    { projectId: "p", surfaceId: "s1", localeCode: "gone", needsReview: true, count: 7 },
+    { projectId: "q", surfaceId: "s3", localeCode: "ja", needsReview: false, count: 4 },
+  ];
 
-  it("base가 먼저, 나머지는 코드순, 그리고 셋까지다", () => {
-    const got = rowLocaleProgress(locales, totals, []);
-    expect(got.get("p")?.map((l) => l.code)).toEqual(["en", "de", "ja"]);
-  });
-
-  /**
-   * ⚠️ **두 구간은 겹치지 않고, 라벨은 그 둘의 합이다** (캔버스 `1c`: `done 84 + review 8 → 92%`).
-   * 바의 폭이 겹치면 트랙을 넘어 흐르고, 라벨을 `done`만으로 내면 검토를 기다리는 값이 화면에서
-   * 미번역과 구별되지 않는다.
-   */
-  it("두 구간이 겹치지 않고 라벨이 그 합이다", () => {
-    const cells = [
-      { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 7 },
-      { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: true, count: 2 },
-    ];
-    const en = rowLocaleProgress(locales, totals, cells).get("p")?.[0];
-    expect(en).toMatchObject({ surfaceSlug: "default", code: "en", total: 10, done: 7, review: 2, percent: 90 });
-  });
-
-  it("내림이다 — 902/903이 100%로 보이면 안 된다", () => {
-    const got = rowLocaleProgress(
-      [{ projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true }],
-      new Map([["p", 903]]),
-      [{ projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 902 }],
-    );
-    expect(got.get("p")?.[0]?.percent).toBe(99);
-  });
-
-  /** 캔버스의 값 그대로 — 84 + 8이 92로 읽힌다. */
-  it("캔버스 `1c`의 en 행을 재현한다", () => {
-    const got = rowLocaleProgress(
-      [{ projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true }],
-      new Map([["p", 100]]),
-      [
-        { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 84 },
-        { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: true, count: 8 },
-      ],
-    );
-    expect(got.get("p")?.[0]).toMatchObject({ done: 84, review: 8, percent: 92 });
-  });
-
-  it("분모가 0이면 비율도 0이다 — 0으로 나누지 않는다", () => {
-    const got = rowLocaleProgress([{ projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true }], new Map(), []);
-    expect(got.get("p")?.[0]).toMatchObject({ total: 0, done: 0, review: 0, percent: 0 });
-  });
-
-  /** ③은 orphaned 로케일의 번역을 포함할 수 있다 — ①에 없는 셀은 먼저 버린다. */
-  it("살아 있는 로케일 목록에 없는 셀은 버린다", () => {
-    const cells = [{ projectId: "p", surfaceId: "p", localeCode: "fr", needsReview: false, count: 5 }];
-    const got = rowLocaleProgress(locales, totals, cells);
-    expect(got.get("p")?.map((l) => l.code)).toEqual(["en", "de", "ja"]);
-    expect(got.get("p")?.every((l) => l.done === 0)).toBe(true);
-  });
-
-  it("다른 프로젝트의 값이 섞이지 않는다", () => {
-    const got = rowLocaleProgress(
-      [...locales, { projectId: "q", surfaceId: "q", surfaceSlug: "default", code: "en", isBase: true }],
-      new Map([["p", 10], ["q", 4]]),
-      [{ projectId: "q", surfaceId: "q", localeCode: "en", needsReview: false, count: 4 }],
-    );
-    expect(got.get("q")?.[0]).toMatchObject({ total: 4, done: 4, percent: 100 });
-    expect(got.get("p")?.[0]?.done).toBe(0);
+  it("프로젝트별로 (표면, 로케일) 검토 수를 내고 검토가 없는 칸은 뺀다", () => {
+    const got = rowReviewCells(locales, cells);
+    expect(got.get("p")).toEqual([{ surfaceId: "s1", code: "ko", count: 3 }, { surfaceId: "s2", code: "ko", count: 2 }]);
+    expect(got.has("q")).toBe(false);
   });
 });
 
@@ -474,8 +246,8 @@ describe("rowLocaleProgress", () => {
  * **계정 합계 넷** (DESIGN §6.63의 Summary 항). 검색 전 전체 멤버십 중 **보관하지 않은** 프로젝트의 값이다.
  */
 /**
- * Home 카드의 보조 줄 `8 cells · 5 en, 3 ja` (DESIGN §6.64). `rowReviewCounts`는 프로젝트
- * 단위로 접어서 그 분해가 없었다 — **같은 `foldCells`를 쓰므로 "살아 있는 로케일만"이 한 벌로 남는다.**
+ * Home 카드의 보조 줄 `8 cells · 5 en, 3 ja` (DESIGN §6.64). 프로젝트 합은
+ * 그 분해가 없었다 — **같은 `foldCells`를 쓰므로 "살아 있는 로케일만"이 한 벌로 남는다.**
  */
 describe("reviewByLocale — 검토 대기의 로케일별 분해", () => {
   const locales = [
@@ -503,7 +275,7 @@ describe("reviewByLocale — 검토 대기의 로케일별 분해", () => {
     expect(reviewByLocale(locales, tied).get("p")).toEqual([{ code: "en", count: 2 }, { code: "ja", count: 2 }]);
   });
 
-  /** ⚠️ orphaned 로케일의 셀은 ①에 없으므로 버려진다 — `rowReviewCounts`와 **같은 접기**다. */
+  /** ⚠️ orphaned 로케일의 셀은 ①에 없으므로 버려진다 — `rowReviewCells`와 **같은 접기**다. */
   it("살아 있지 않은 로케일의 셀은 세지 않는다", () => {
     const stray = [{ projectId: "p", surfaceId: "web", localeCode: "fr", needsReview: true, count: 4 }];
     expect(reviewByLocale(locales, stray).get("p")).toBeUndefined();
@@ -595,12 +367,15 @@ describe("summaryQueue", () => {
   });
 });
 
+/** 서버가 싣는 판정(`row.plan`)을 붙인다 — 그룹은 그것을 읽기만 한다. */
+const withPlan = <T extends RowInput>(input: T): T & { plan: ProjectRowPlan } => ({ ...input, plan: planProjectRow(input, []) });
+
 describe("groupProjects — 검색 중에는 평평하다 (DESIGN §6.63)", () => {
   const rows = [
     { slug: "b", ...READY, ...QUIET, archivedAt: new Date("2026-09-01T00:00:00Z") },
     { slug: "a", ...READY, ...QUIET },
-    { slug: "c", ...READY, ...QUIET, unsent: 3 },
-  ];
+    { slug: "c", ...READY, ...QUIET, repositoryId: null },
+  ].map(withPlan);
 
   it("질의가 없으면 그룹 순서가 고정이다 — 손볼 것이 먼저다", () => {
     const got = groupProjects(rows, undefined);
@@ -648,8 +423,8 @@ describe("listBody — 아트보드 넷과 1:1", () => {
   const all = [
     { slug: "b", name: "old-landing", ...READY, ...QUIET, archivedAt: new Date("2026-09-01T00:00:00Z") },
     { slug: "a", name: "admin-console", ...READY, ...QUIET },
-    { slug: "c", name: "chrome-extension", ...READY, ...QUIET, unsent: 24 },
-  ];
+    { slug: "c", name: "chrome-extension", ...READY, ...QUIET, repositoryId: null },
+  ].map(withPlan);
 
   it("`1a` — 질의가 없으면 그룹 카드가 순서대로 선다", () => {
     const body = listBody(all, undefined);
@@ -717,5 +492,142 @@ describe("listBody — 아트보드 넷과 1:1", () => {
     const original = [...all];
     listBody(all, "chrome");
     expect(all).toEqual(original);
+  });
+});
+
+describe("planProjectRow — 건강과 할 일", () => {
+  const at = new Date("2026-10-01T00:00:00Z");
+  const blank = { kind: "never_filled" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 5, ownerRetries: false };
+  const todos = (input: ReturnType<typeof row>, neverFilled = false, language: LanguageTodo | null = null) => projectTodos({
+    status: projectStatus(input), role: "OWNER", createdAt: at,
+    connectionPinned: input.repositoryId !== null && (input.repoHost === "gitlab" ? input.gitlabConnectionId !== null : input.installationId !== null),
+    gitlabTokenExpiresAt: input.gitlabTokenExpiresAt,
+    attention: [
+      ...input.surfaces.flatMap(s => s.importError !== null && !s.importing ? [{ kind: "import_failed" as const, at, surfaceSlug: "web", reason: s.importError }] : []),
+      ...(input.review > 0 ? [{ kind: "review" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", count: input.review, who: null }] : []),
+      ...(neverFilled ? [blank] : []),
+    ],
+    unsent: input.unsent > 0 ? { count: input.unsent, surfaceSlug: "web", at } : null,
+    language,
+  });
+
+  it.each([
+    ["보관", { archivedAt: at }, "archived", "archived", null],
+    ["연결 끊김", { repositoryId: null }, "disconnected", "needs_attention", "needs_reconnect"],
+    ["실패", failed("parse-failed"), "syncFailed", "needs_attention", "import_failed"],
+    ["일부 반영", failed("partial-import"), "partiallySynced", "needs_attention", "import_failed"],
+    ["연결 전", { installationId: null }, "setup", "needs_attention", "setup"],
+    ["첫 적재 중", { surfaces: [{ ...FIRST, importing: true }] }, "syncing", "needs_attention", null],
+    ["첫 적재 대기", { surfaces: [FIRST] }, "notSyncedYet", "needs_attention", null],
+    ["정상", {}, "active", "all_set", null],
+  ] as const)("상태표: %s", (_label, over, chip, group, banner) => {
+    const input = row(over);
+    const plan = planProjectRow(input, todos(input));
+    expect(plan).toMatchObject({ chip, group });
+    expect(plan.banner?.kind ?? null).toBe(banner);
+  });
+
+  it("미발송이 PR 조회 실패보다 먼저다", () => {
+    const input = row({ unsent: 3, openPr: undefined });
+    expect(planProjectRow(input, todos(input))).toEqual({ chip: "active", group: "all_set", banner: { kind: "unsent", count: 3 } });
+  });
+
+  it.each(["github", "gitlab"])("%s EDITOR의 연결·설정과 빈 언어도 같은 판정이다", repoHost => {
+    const input = row({ repoHost, gitlabConnectionId: "connection" });
+    const todo = projectTodos({ status: "active", role: "EDITOR", createdAt: at, connectionPinned: true,
+      gitlabTokenExpiresAt: null, attention: [blank], unsent: null, language: null });
+    // 띠는 그리는 데 쓰는 필드만 싣는다 — 할 일의 시각·역할 플래그는 Inbox 몫이다.
+    expect(planProjectRow(input, todo)).toEqual({ chip: "active", group: "all_set",
+      banner: { kind: "never_filled", surfaceSlug: "web", code: "ko", name: "Korean", keys: 5 } });
+    const setup = row({ repoHost, installationId: null, repositoryId: null, gitlabConnectionId: null, surfaces: [] });
+    expect(planProjectRow(setup, [])).toMatchObject({ chip: "setup", banner: { kind: "setup" } });
+  });
+
+  /**
+   * 칩·그룹·띠·미터 자리를 따로 판정하던 함수 넷이 고정하던 갈래 — 한 표로 접힌 뒤에도 같은 답이어야 하는 것만 옮겼다.
+   * 그룹이 바뀐 갈래(미발송·리포 앞섬 → All set)는 위 표와 아래 전수가 센다.
+   */
+  it.each([
+    ["적재가 도는 중이면 옛 실패를 외치지 않는다", failed("parse-failed", true), "active", null],
+    ["A 동기화 중 + B 실패 → B의 실패", { surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }] }, "syncFailed", "import_failed"],
+    ["A partial + B failed → failed", { surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }, "syncFailed", "import_failed"],
+    ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "syncFailed", "import_failed"],
+    ["첫 적재 대기에서 진행이 실패를 이긴다", { surfaces: [{ ...FIRST, importError: "parse-failed" as const, importing: true }] }, "syncing", null],
+    ["setup + 실패 → 실패", { installationId: null, ...failed("parse-failed") }, "syncFailed", "import_failed"],
+    ["끊김 + 실패 → 끊김", { repositoryId: null, ...failed("import-failed"), unsent: 3 }, "disconnected", "needs_reconnect"],
+    ["끊김 + PR 조회 실패 → 끊김", { repositoryId: null, openPr: undefined }, "disconnected", "needs_reconnect"],
+    ["보관 + 끊김 + 실패 → 보관", { archivedAt: new Date(0), repositoryId: null, ...failed("parse-failed") }, "archived", null],
+    ["리포 앞섬이 검토를 이긴다", { repoAheadFiles: 3, review: 88 }, "active", "repo_ahead"],
+    ["PR 조회 실패가 리포 앞섬·검토를 이긴다", { openPr: undefined, repoAheadFiles: 2, review: 5 }, "active", "pr_check_failed"],
+    ["원격 신호가 없으면 DB 할 일은 남는다", { openPr: null, repoAheadFiles: 0, review: 88 }, "active", "review"],
+  ] as const)("%s", (_label, over, chip, banner) => {
+    const input = row(over);
+    const plan = planProjectRow(input, todos(input));
+    expect(plan.chip).toBe(chip);
+    expect(plan.banner?.kind ?? null).toBe(banner);
+  });
+
+  it("partial 실패의 띠 사유는 partial이고 danger 실패의 칩은 Sync failed다", () => {
+    const partial = row(failed("partial-import"));
+    expect(planProjectRow(partial, todos(partial)).banner).toEqual({ kind: "import_failed", reason: "partial-import" });
+    const danger = row(failed("import-failed"));
+    expect(planProjectRow(danger, todos(danger))).toMatchObject({ chip: "syncFailed", banner: { reason: "import-failed" } });
+  });
+
+  it("입력에 역할이 없다 — 링크의 역할 분기는 호출부가 한다", () => {
+    expect(Object.keys(row())).not.toContain("role");
+  });
+
+  /**
+   * 언어 변경 띠(language-request-todo design §4) — 미발송 다음, 열린 PR·PR 조회 실패 앞이다. 같은 [Publish] 한 번이 미발송과 함께 보내므로
+   * 미발송 띠가 이기고, 언어 변경이 미전달이면 열린 PR에도 아직 없으니 다음 수는 Publish다. 칩·그룹은 바뀌지 않는다(보류여도 건강이 아니다).
+   */
+  it.each([
+    ["미발송 > 언어 변경", { unsent: 3 }, false, "unsent"],
+    ["언어 변경 > 열린 PR", { openPr: { number: 4, url: "https://example.com/4" } }, false, "language_unsent"],
+    ["언어 변경 > PR 조회 실패", { openPr: undefined }, true, "language_unsent"],
+    ["언어 변경 > 리포 앞섬 · 검토", { repoAheadFiles: 2, review: 5 }, false, "language_unsent"],
+    ["끊김이 언어 변경을 이긴다", { repositoryId: null }, true, "needs_reconnect"],
+  ] as const)("%s", (_label, over, held, banner) => {
+    const input = row(over);
+    const plan = planProjectRow(input, todos(input, false, { count: 2, surfaceSlug: "web", at, held }));
+    expect(plan.banner?.kind).toBe(banner);
+    if (banner === "language_unsent") expect(plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "language_unsent", count: 2, held } });
+  });
+
+  it("입력 축 8,640조합에서 불변식 넷과 띠 우선순위를 센다", () => {
+    let cases = 0;
+    const seen = new Map<string, number>();
+    for (const archived of [false, true])
+    for (const status of ["active", "setup", "awaiting_first_sync", "needs_reconnect", "archived"] as const)
+    for (const failure of [null, "parse-failed", "partial-import"] as const)
+    for (const importing of [false, true])
+    for (const openPr of [null, undefined, { number: 1, url: "https://example.com/1" }])
+    for (const unsent of [0, 2])
+    for (const repoAheadFiles of [0, 2])
+    for (const review of [0, 2])
+    for (const neverFilled of [false, true])
+    for (const language of [null, { count: 2, surfaceSlug: "web", at, held: false }, { count: 1, surfaceSlug: "web", at: null, held: true }]) {
+      const input = row({ archivedAt: archived || status === "archived" ? at : null,
+        installationId: status === "setup" ? null : "i", repositoryId: status === "needs_reconnect" ? null : "r",
+        surfaces: [{ ...S, lastCommitSha: status === "awaiting_first_sync" ? null : "s", importError: failure, importing }],
+        openPr, unsent, repoAheadFiles, review });
+      // 축이 의도한 상태에 실제로 닿는다 — 기본값이 바뀌어 상태가 접히면 아래 불변식이 공허하게 green이 된다(RA 🟢1).
+      expect(projectStatus(input)).toBe(archived ? "archived" : status);
+      const plan = planProjectRow(input, todos(input, neverFilled, language));
+      const kind = plan.banner?.kind;
+      seen.set(kind ?? "none", (seen.get(kind ?? "none") ?? 0) + 1);
+      if (kind && ["needs_reconnect", "import_failed", "setup"].includes(kind)) expect(plan.group).toBe("needs_attention");
+      if (kind && ["unsent", "language_unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"].includes(kind)) expect([plan.chip, plan.group]).toEqual(["active", "all_set"]);
+      expect(plan.chip === "active").toBe(plan.group === "all_set");
+      if (input.archivedAt !== null) expect(plan.banner).toBeNull();
+      if (plan.chip === "active") expect(kind ?? null).toBe(unsent ? "unsent" : language ? "language_unsent" : openPr === undefined ? "pr_check_failed" : openPr ? "pr_open" : repoAheadFiles ? "repo_ahead" : review ? "review" : neverFilled ? "never_filled" : null);
+      cases++;
+    }
+    expect(cases).toBe(8640);
+    // 띠 종류 열(없음 포함)이 전부 나오고 각각 여러 조합에서 나온다 — 한 갈래만 도는 표는 불변식을 재지 못한다.
+    for (const kind of ["none", "needs_reconnect", "import_failed", "setup", "unsent", "language_unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"]) {
+      expect(seen.get(kind) ?? 0, kind).toBeGreaterThanOrEqual(2);
+    }
   });
 });

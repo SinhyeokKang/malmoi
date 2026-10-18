@@ -9,7 +9,7 @@ import ProjectsLoading from "@/app/(edit)/projects/(list)/loading";
 import { NoProjectsMatch } from "@/components/projects/empty-projects";
 import { ProjectList } from "@/components/projects/project-list";
 import { en } from "@/messages/en";
-import type { ProjectListRow } from "@/lib/keys/query";
+import { planned, type RowFixture } from "./helpers/project-row";
 
 vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
@@ -17,13 +17,13 @@ vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMe
  * `/projects`의 링크 색·글리프 (ux-drift-unify T19 · DESIGN §2.4 동작 규칙 · 글리프 열).
  * 🔴 N — 행 띠에서 앱 안 이동과 새 탭 외부 링크가 같은 파랑이었다. 파랑은 새 탭 외부만, 앱 안은 muted + chevron이다.
  */
-const BASE: ProjectListRow = {
+const BASE: RowFixture = {
   image: null, slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s", name: "Acme", role: "OWNER",
   repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i", surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null,
   repoOwner: "o", repoName: "r", repositoryId: "9001", memberCount: 2, baseBranch: "release", lastPrUrl: "https://github.com/o/r/pull/142",
-  meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
+  review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
 };
-const draw = async (over: Partial<ProjectListRow>) => (await render(<ProjectList all={[{ ...BASE, ...over }]} />)).container;
+const draw = async (over: Partial<RowFixture>) => (await render(<ProjectList all={[planned({ ...BASE, ...over })]} now={new Date("2026-10-18T03:00:00Z")} />)).container;
 const link = (container: HTMLElement, text: string) => [...container.querySelectorAll("a")].find((a) => a.textContent?.trim() === text);
 
 describe("띠 링크 — 파랑은 새 탭 외부만", () => {

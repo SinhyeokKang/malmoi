@@ -27,9 +27,9 @@ vi.mock("next/link", () => ({
 
 import { ProjectList } from "@/components/projects/project-list";
 import { en } from "@/messages/en";
-import type { ProjectListRow } from "@/lib/keys/query";
+import { planned, type RowFixture } from "./helpers/project-row";
 
-const BASE: ProjectListRow = {
+const BASE: RowFixture = {
   image: null,
   slug: "admin-console",
   name: "admin-console",
@@ -46,13 +46,12 @@ const BASE: ProjectListRow = {
   reviewSurfaceSlug: null,
   unsentSurfaceSlug: null,
   repoAheadFrom: null,
-  meters: [],
   review: 0,
   unsent: 0,
   openPr: null,
   repoAheadFiles: 0,
 };
-const ALL: ProjectListRow[] = [
+const ALL: RowFixture[] = [
   BASE,
   { ...BASE, slug: "chrome-extension", name: "chrome-extension" },
   { ...BASE, slug: "old-landing", name: "old-landing" },
@@ -71,7 +70,7 @@ const rows = (container: HTMLElement) => [...container.querySelectorAll('a[href^
 const search = (container: HTMLElement) => find<HTMLInputElement>(container, `input[aria-label="${en.projects.search.label}"]`);
 
 it("Enter가 곧바로 거르고 서버로 이동하지 않는다 — URL은 `replaceState`로만 따라간다", async () => {
-  const { container } = await render(<ProjectList all={ALL} />);
+  const { container } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   expect(rows(container)).toHaveLength(3);
 
   const field = search(container);
@@ -88,33 +87,33 @@ it("Enter가 곧바로 거르고 서버로 이동하지 않는다 — URL은 `re
 
 it("주소에 `?q=`를 들고 들어오면 첫 렌더부터 걸러져 있다", async () => {
   navigation.params = new URLSearchParams("q=old");
-  const { container } = await render(<ProjectList all={ALL} />);
+  const { container } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   expect(rows(container)).toEqual(["/projects/old-landing"]);
   expect(search(container).value).toBe("old");
   expect(replaceState).not.toHaveBeenCalled();
 });
 
 it("뒤로·앞으로 가기로 주소의 `q`가 바뀌면 목록과 입력이 주소를 따른다", async () => {
-  const { container, rerender } = await render(<ProjectList all={ALL} />);
+  const { container, rerender } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   const field = search(container);
   await input(field, "chrome");
   await key(field, "Enter");
   expect(rows(container)).toHaveLength(1);
 
   navigation.params = new URLSearchParams("q=admin");
-  await rerender(<ProjectList all={ALL} />);
+  await rerender(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   expect(rows(container)).toEqual(["/projects/admin-console"]);
   expect(search(container).value).toBe("admin");
 
   navigation.params = new URLSearchParams();
-  await rerender(<ProjectList all={ALL} />);
+  await rerender(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   expect(rows(container)).toHaveLength(3);
   expect(search(container).value).toBe("");
 });
 
 it("[Clear search]도 로컬로 되돌린다 — 새 탭 열기용 href는 그대로 `/projects`다", async () => {
   navigation.params = new URLSearchParams("q=chrome");
-  const { container } = await render(<ProjectList all={ALL} />);
+  const { container } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   const clear = [...container.querySelectorAll("a")].find((a) => a.textContent === en.projects.clearSearch);
   expect(clear?.getAttribute("href")).toBe("/projects");
   await act(async () => clear?.click());
@@ -126,7 +125,7 @@ it("[Clear search]도 로컬로 되돌린다 — 새 탭 열기용 href는 그�
 });
 
 it("0건 카드의 출구도 로컬이다", async () => {
-  const { container } = await render(<ProjectList all={ALL} />);
+  const { container } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   const field = search(container);
   await input(field, "zzz");
   await key(field, "Enter");
@@ -137,7 +136,7 @@ it("0건 카드의 출구도 로컬이다", async () => {
 });
 
 it("[New project]가 지금 걸러진 검색어를 싣는다 — 모달 뒤 목록이 같아야 한다", async () => {
-  const { container } = await render(<ProjectList all={ALL} />);
+  const { container } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   const field = search(container);
   await input(field, "chrome");
   await key(field, "Enter");
@@ -150,7 +149,7 @@ it("[New project]가 지금 걸러진 검색어를 싣는다 — 모달 뒤 목�
  * 그 줄이 넘치므로 256은 **줄어들 수 있는 바깥 칸**이 들고 입력은 칸을 채운다. 한 줄일 때(묶음 `shrink-0`)는 지금처럼 256이다.
  */
 it("the actual ProjectSearch caller sits in a shrinkable 256px slot and the input fills it", async () => {
-  const { container } = await render(<ProjectList all={ALL} />);
+  const { container } = await render(<ProjectList all={ALL.map(row => planned(row))} now={new Date("2026-10-18T03:00:00Z")} />);
   const field = search(container);
   expect(field.classList.contains("w-full")).toBe(true);
   expect(field.classList.contains("w-64")).toBe(false);

@@ -74,7 +74,7 @@ import type { SourceDetail } from "@/lib/sources/query";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { en } from "@/messages/en";
-import type { ProjectListRow } from "@/lib/keys/query";
+import { planned, type RowFixture } from "./helpers/project-row";
 
 import { render } from "./helpers/dom";
 import { props as workspaceProps } from "./helpers/workspace-props";
@@ -251,11 +251,11 @@ describe("확인 Dialog의 확정이 danger면 트리거도 danger다 (DESIGN §
   });
 });
 
-const BLUE_ROW: ProjectListRow = {
+const BLUE_ROW: RowFixture = {
   image: null, slug: "acme", name: "acme", role: "OWNER", repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null, repoOwner: "o", repoName: "r", repositoryId: "1", memberCount: 1, baseBranch: "main", lastPrUrl: null,
-  reviewSurfaceSlug: null, unsentSurfaceSlug: null, repoAheadFrom: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
+  reviewSurfaceSlug: null, unsentSurfaceSlug: null, repoAheadFrom: null, review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
 };
 
 /** 파랑 링크 중 규칙을 어기는 것 — 새 탭도 아니고 문장 안도 아닌 것. */
@@ -288,7 +288,7 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
     ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} uiLocale="en" m={en} />,
     open: () => click([...document.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === "Publish")!),
   },
-  { name: "/projects 행 띠 — 열린 PR", file: "components/projects/project-list.tsx", ui: () => <ProjectList all={[{ ...BLUE_ROW, openPr: { url: "https://github.com/o/r/pull/7", number: 7 } }]} /> },
+  { name: "/projects 행 띠 — 열린 PR", file: "components/projects/project-list.tsx", ui: () => <ProjectList all={[planned({ ...BLUE_ROW, openPr: { url: "https://github.com/o/r/pull/7", number: 7 } })]} now={new Date("2026-10-18T03:00:00Z")} /> },
   { name: "Settings 연결 — App 설치", file: "components/settings/repository-card.tsx", ui: () => <RepositoryCard slug="acme" owner="o" repo="r" branch="main" archived={false} health={Promise.resolve({ status: "app-uninstalled" } as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" /> },
   { name: "Settings CI — Sources·문서 (문장 안)", file: "components/settings/ci-card.tsx", ui: () => <CiCard slug="acme" archived={false} stale={[]}><p>yaml</p></CiCard> },
   {

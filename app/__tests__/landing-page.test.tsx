@@ -30,8 +30,10 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 beforeEach(() => {
   mocks.redirect.mockClear();
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  // 랜딩 배경 캔버스 — jsdom엔 2D 컨텍스트가 없어 경고를 찍는다. `null`이면 `DotField`는 그리지 않고 나간다.
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
 });
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 async function page(status: SessionRead["status"]) {
   mocks.status = status;
@@ -189,6 +191,25 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     vi.stubEnv("APP_VERSION", "");
     const { container } = await render(await page(status));
     expect(container.querySelector("a[data-landing-latest]")?.textContent).toBe("Latest changelog");
+  });
+
+  /**
+   * 랜딩 배경 캔버스(landing-kv-background R3 · review-A Y4) — `DotField follow="scroller"`는 가장 가까운 `[data-public-scroller]`를 찾고,
+   * 없으면 **조용히 로그인 경로로 떨어진다**(격자가 스크롤을 안 따르고 포인터를 캔버스에서 받는다). 그래서 렌더된 트리에서 자리를 센다.
+   */
+  it("배경 캔버스가 래퍼의 둘째 자식이고 공개 셸 스크롤러 안에 있다", async () => {
+    const { container } = await render(await page(status));
+    const wrappers = container.querySelectorAll("[data-landing-kv]");
+    expect(wrappers).toHaveLength(1);
+    const canvas = wrappers[0]?.children[1];
+    expect(canvas?.tagName).toBe("CANVAS");
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+    expect(canvas?.closest("[data-public-scroller]")).not.toBeNull();
+    expect(canvas?.getAttribute("aria-hidden")).toBe("true");
+    expect(canvas?.className.split(/\s+/)).toEqual(expect.arrayContaining(["pointer-events-none", "sticky", "top-0"]));
+    // 그라디언트가 첫 자식이고 내용 섹션은 그 뒤다.
+    expect(wrappers[0]?.children[0]?.getAttribute("aria-hidden")).toBe("true");
+    expect(wrappers[0]?.children[2]?.getAttribute("aria-labelledby")).toBe("landing-hero");
   });
 
   it("목업 프레임은 `aria-hidden`이고 캡션 다섯은 숨은 `<ol>`이 든다", async () => {

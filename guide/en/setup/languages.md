@@ -64,7 +64,7 @@ While a language change is pending, Malmoi blocks a few other changes:
 
 - Base language: you can't choose a language that is being added or removed as the base language, and you can't remove the base language.
 - Base branch: in **Settings**, **Base branch** can't be changed while any source has a language change that isn't finished. Malmoi names the source; finish or cancel its language change first. A change is finished once its pull request is merged or closed, which Malmoi notices at the next Publish or [nightly run](../sync/nightly.md#held).
-- Updates from the repository: if a language removal hasn't been published yet, the workflow and the nightly run don't update the project: Logs shows **Held**, and **Held because** says a language removal is still unsent. The update resumes once the removal is published or cancelled. Adding a language doesn't hold updates. See [Keep unsent edits](../sync/push.md#deferred).
+- Updates from the repository: if a language removal hasn't been published yet, the workflow doesn't update the project: Logs shows **Held**, and **Held because** says a language removal is still unsent. The project list, Inbox, and Home say so too. The nightly run publishes the removal instead of updating the project. The update resumes once the removal is published or cancelled. Adding a language doesn't hold updates. See [Keep unsent edits](../sync/push.md#deferred).
 - Sync: a project owner's [Sync from the repository](../sync/revert.md#resync) drops pending language changes. Its confirmation lists each one: a language that won't be added (its translations stay in Malmoi) or won't be removed (it stays in the source). If a dropped change was already in a pull request, publish again afterward so the pull request stops carrying it.
 
 ## Publish the change {#publish}
@@ -85,6 +85,8 @@ If a Malmoi pull request is open, Publish replaces what it holds with everything
 ## What happens after the merge {#after-merge}
 
 Malmoi learns what happened to a pull request at the next Publish or nightly run, so a merge can take up to a day to show.
+
+You don't have to wait for the nightly run. Once the pull request is no longer open, **Publish** turns on even if nothing else is waiting to be sent, and its preview closes the language request right away. If the pull request closed without merging and nothing else was waiting, the result says Language request closed and nothing is written to the repository.
 
 - Removal merged: the language becomes **Inactive**. Its translations, history, and row stay.
 - Removal closed without merging: the file is still in the repository, so the language stays active and the removal request is gone. Request it again if you still want it removed. Logs records the closing.

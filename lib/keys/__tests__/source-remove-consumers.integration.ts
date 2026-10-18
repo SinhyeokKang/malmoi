@@ -15,7 +15,7 @@ import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 import { countPending } from "@/lib/protection/where";
 import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
 import { loadSources } from "@/lib/sources/query";
-import { loadMemberships, loadProjectListAggregates } from "@/lib/keys/query";
+import { loadProjectList, loadMemberships, loadProjectListAggregates } from "@/lib/keys/query";
 import { surfaceQueues } from "@/lib/home/cards";
 import { loadAttentionInbox } from "@/lib/inbox/load";
 import { searchKeys } from "@/lib/keys/search";
@@ -103,6 +103,7 @@ beforeEach(async () => {
   await prisma.projectMember.create({ data: { projectId: "p", userId: "owner", role: "OWNER" } });
   await seedSurface("s-web", "web", { pending: true, failed: true });
   await seedSurface("s-app", "app");
+  await prisma.stringKey.create({ data: { id: "orphan-key", projectId: "p", surfaceId: "s-app", key: "orphan", namespace: "", sourceText: "Hello orphan", sourceHash: "h", orphaned: true } });
   await prisma.project.update({ where: { id: "p" }, data: { defaultSurfaceId: "s-web" } });
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -121,7 +122,13 @@ async function seen() {
   const aggregates = await loadProjectListAggregates(prisma, ["p"]);
   const inbox = await loadAttentionInbox(prisma, "owner");
   const hits = await searchKeys(prisma, { userId: "owner", q: "Hello", activeSlug: null });
-  const nav = toNavProjects(await loadMemberships(prisma, "owner")).find(row => row.slug === "p");
+  const memberships = await loadMemberships(prisma, "owner");
+  const { rows: [projectRow] } = await loadProjectList(prisma, "owner", { loadRemote: async () => new Map() });
+  const membership = memberships.find(row => row.slug === "p");
+  expect(projectRow?.keyCount).toBe(membership?.keyCount);
+  expect(projectRow?.sourceCount).toBe(sources?.sources.length);
+  expect(projectRow?.keyCount).toBe(sources?.sources.length); // 소스마다 활성 키 하나, orphan 키는 제외.
+  const nav = toNavProjects(memberships).find(row => row.slug === "p");
   const tree = await loadTranslationTree(prisma, "p");
   const pull = await loadPullState(prisma, "p");
   const preview = await loadPreviewSnapshot(prisma, "p", 50);

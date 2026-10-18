@@ -8,6 +8,8 @@ import { SourcesScreen } from "@/components/sources/sources-screen";
 import { withRepoHost } from "@/lib/i18n/host";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { en } from "@/messages/en";
+import { es } from "@/messages/es";
+import { ko } from "@/messages/ko";
 import { render } from "./helpers/dom";
 import { waitForLayer } from "./helpers/layer";
 
@@ -30,7 +32,7 @@ type Row = SourceDetail["languages"][number];
 const row = (code: string, over: Partial<Row> = {}): Row => ({ code, isBase: false, orphaned: false, total: 248, translated: 200, needsReview: 0, untranslated: 48, percent: 80, change: null, unsent: false, ...over });
 const add = { operation: "ADD" as const, requestedAt: new Date("2026-10-16T00:00:00Z") };
 const removal = { operation: "REMOVE" as const, requestedAt: new Date("2026-10-16T00:00:00Z") };
-const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 3, orphanedLocales: 0, progress: { total: 248, done: 210, review: 12, percent: 84 } };
+const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 3, orphanedLocales: 0, meters: { shown: [], hidden: 0 }, progress: { total: 248, done: 210, review: 12, percent: 84 } };
 const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
 const connection = { adapterName: "json-catalog", pathTemplate: "apps/web/locales/{locale}.json", format: "JSON catalog" };
 const base = row("en", { isBase: true, translated: 248, untranslated: 0, percent: 100 });
@@ -211,6 +213,16 @@ describe("확정", () => {
     await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("header button")));
   });
 
+  it("추가 취소 성공 · 보존 번역 0개: 0개를 보존한다고 말하지 않는다(#288)", async () => {
+    mocks.preview.mockResolvedValue(ready({ kind: "cancel-add", path: "apps/web/locales/fr.json", translations: 0, pendingCount: 0, delivered: false }));
+    mocks.remove.mockResolvedValue({ ok: true, kind: "cancel-add", discarded: 0 });
+    await open();
+    await openRemove("fr");
+    mocks.load.mockResolvedValue({ ok: true, detail: detail([row("de"), row("ko"), row("fr", { orphaned: true, translated: 0 })]) });
+    await act(async () => { await user().click(inDialog(en.sources.locale.removeLanguage)!); });
+    expect(card().querySelector("[data-card-notice]")!.textContent).toBe("fr is inactive. It has no translations.");
+  });
+
   it("낡은 승인: 다시 받아 바뀐 수를 그리고 info 한 줄 · 확정은 다시 켜진다 · 포커스 Cancel", async () => {
     mocks.preview.mockResolvedValueOnce(ready({ pendingCount: 12 })).mockResolvedValueOnce(ready({ pendingCount: 14, translations: 203, approval: "fp-2" }));
     mocks.remove.mockResolvedValueOnce({ ok: false, error: "stale-approval" });
@@ -236,4 +248,17 @@ it("#278 미전달 1건의 추가 취소 줄은 단수다", async () => {
   await open();
   await openRemove("fr");
   expect(dialog()!.querySelector("[data-alert='neutral']")!.textContent).toBe(`${en.repositorySync.unsentCount(1)} stops being tracked. Add the language again to bring it back.`);
+});
+
+describe("cancelAddDone — 보존 번역 수 0·1·2, 세 사전(#288)", () => {
+  const cases = [
+    { lang: "en", t: en, out: ["fr is inactive. It has no translations.", "fr is inactive. Its 1 translation is kept in Malmoi.", "fr is inactive. Its 2 translations are kept in Malmoi."] },
+    { lang: "ko", t: ko, out: ["fr 언어는 비활성 상태입니다. 번역이 없습니다.", "fr 언어는 비활성 상태입니다. 번역 1개는 Malmoi에 보존됩니다.", "fr 언어는 비활성 상태입니다. 번역 2개는 Malmoi에 보존됩니다."] },
+    { lang: "es", t: es, out: ["fr está inactivo. No tiene traducciones.", "fr está inactivo. Su traducción se conserva en Malmoi.", "fr está inactivo. Sus 2 traducciones se conservan en Malmoi."] },
+  ];
+  for (const c of cases) {
+    it(c.lang, () => {
+      expect([0, 1, 2].map(n => c.t.sources.locale.cancelAddDone("fr", n))).toEqual(c.out);
+    });
+  }
 });

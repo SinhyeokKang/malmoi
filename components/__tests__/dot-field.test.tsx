@@ -7,6 +7,54 @@ import { DotField } from "@/components/signin/dot-field";
 import { render } from "./helpers/dom";
 
 /**
+ * jsdom엔 Canvas가 없다 — 2D 컨텍스트를 기록기로 바꾼다. `fills`는 `fillStyle` 대입, `calls`는 메서드 호출(`[이름, 인자]`)과
+ * `globalAlpha` 대입(`["globalAlpha", [값]]`)이고 `clearRect` 하나가 그리기 한 번의 시작이다.
+ */
+function stubContext() {
+  const fills: string[] = [];
+  const calls: [string, number[]][] = [];
+  const ctx = new Proxy({} as Record<string | symbol, unknown>, {
+    get: (target, key) => (key in target ? target[key] : (...args: number[]) => { calls.push([String(key), args]); }),
+    set: (target, key, value) => {
+      if (key === "fillStyle") fills.push(String(value));
+      if (key === "globalAlpha") calls.push(["globalAlpha", [Number(value)]]);
+      target[key] = value;
+      return true;
+    },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+  return { fills, calls };
+}
+
+/** 400×400 캔버스 — jsdom의 `getBoundingClientRect`는 0이라 그대로면 격자가 점 하나다. 400 / 16 → 26 × 26점. */
+function sized() {
+  vi.spyOn(HTMLCanvasElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ width: 400, height: 400, top: 0, left: 0, right: 400, bottom: 400, x: 0, y: 0, toJSON: () => ({}) }));
+}
+
+function motion(reduced: boolean) {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: reduced && query.includes("reduced-motion"), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }) as unknown as MediaQueryList);
+}
+
+type Calls = [string, number[]][];
+const lastDraw = (calls: Calls) => calls.slice(calls.map(([name]) => name).lastIndexOf("clearRect"));
+const drawCount = (calls: Calls) => calls.filter(([name]) => name === "clearRect").length;
+/** (x, y) 점을 그린 `arc`의 반지름들. */
+const arcsAt = (draw: Calls, x: number, y: number) => draw.flatMap(([name, args]) => (name === "arc" && args[0] === x && args[1] === y ? [args[2]] : []));
+
+/**
+ * 리스너가 **어느 요소에** 붙었나 — 캔버스냐 스크롤러냐가 `follow`의 요지다. ⚠️ React 루트도 컨테이너에 `pointermove`를 위임하므로
+ * 캔버스·스크롤러만 센다.
+ */
+function spyListeners() {
+  const add = vi.spyOn(EventTarget.prototype, "addEventListener");
+  const remove = vi.spyOn(EventTarget.prototype, "removeEventListener");
+  const ours = (target: unknown) => target instanceof HTMLCanvasElement || (target instanceof HTMLElement && target.hasAttribute("data-public-scroller"));
+  const on = (spy: typeof add, type: string) =>
+    spy.mock.calls.flatMap((args, i) => (args[0] === type && ours(spy.mock.contexts[i]) ? [{ target: spy.mock.contexts[i], listener: args[1], options: args[2] }] : []));
+  return { added: (type: string) => on(add, type), removed: (type: string) => on(remove, type) };
+}
+
+/**
  * **로그인 점 색은 계산된 `color`에서 읽는다** (color-scheme design §3.5). `--signin-dot`이 `light-dark()`가 되면 사용자 정의 속성은
  * 선언 문자열을 돌려주고 Canvas `fillStyle`은 그것을 모른다 — 브라우저가 풀어 준 `color`를 읽는다. System이면 OS 테마가 바뀔 때 다시 읽는다.
  * jsdom은 Canvas도 `var()` 해석도 없어 둘 다 스텁이다 — 여기서 보는 것은 **배선**(무엇을 읽고 언제 다시 읽는가)이다.
@@ -18,16 +66,7 @@ describe("DotField", () => {
   });
 
   function setup() {
-    const fills: string[] = [];
-    const ctx = new Proxy({} as Record<string | symbol, unknown>, {
-      get: (target, key) => (key in target ? target[key] : () => undefined),
-      set: (target, key, value) => {
-        if (key === "fillStyle") fills.push(String(value));
-        target[key] = value;
-        return true;
-      },
-    });
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+    const { fills, calls } = stubContext();
     let dotColor = "rgb(37, 99, 235)";
     const real = window.getComputedStyle.bind(window);
     vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
@@ -53,7 +92,7 @@ describe("DotField", () => {
       removeListener: () => undefined,
       dispatchEvent: () => false,
     }) as unknown as MediaQueryList);
-    return { fills, listeners, setColor: (color: string) => { dotColor = color; } };
+    return { fills, calls, listeners, setColor: (color: string) => { dotColor = color; } };
   }
 
   it("캔버스의 계산된 `color`(= `var(--signin-dot)`)로 칠한다 — 사용자 정의 속성의 선언 문자열이 아니다", async () => {
@@ -100,5 +139,249 @@ describe("DotField", () => {
     await act(async () => notify());
     expect(cancel).toHaveBeenCalled();
     expect(raf).not.toHaveBeenCalled();
+  });
+  it("기본(`follow` 없음)은 지금처럼 캔버스에서 포인터를 받는다 — 스크롤러 안에 있어도 스크롤러에 붙지 않는다", async () => {
+    setup();
+    sized();
+    motion(false);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    const listeners = spyListeners();
+    const { container } = await render(<div data-public-scroller=""><DotField /></div>);
+    const canvas = container.querySelector("canvas");
+    expect(listeners.added("pointermove").map(({ target }) => target)).toEqual([canvas]);
+    expect(listeners.added("pointerleave").map(({ target }) => target)).toEqual([canvas]);
+    expect(listeners.added("scroll")).toEqual([]);
+  });
+
+  /** ⚠️ 로그인은 점마다 `fill`이다 — 묶음 그리기(R8)는 `follow="scroller"`만 탄다. */
+  it("기본은 점마다 칠한다(fill 수 = 점 수)", async () => {
+    const { calls } = setup();
+    sized();
+    await render(<DotField />);
+    expect(lastDraw(calls).filter(([name]) => name === "fill").length).toBe(26 * 26);
+  });
+});
+
+/**
+ * **랜딩 배경** (landing-kv-background design §3) — 캔버스는 한 화면짜리 sticky이고 `pointer-events: none`이라 내용 아래에 깔린다.
+ * 격자는 스크롤러의 `scrollTop`만큼 올라가고(R6), 포인터를 받지 않고 자동 순회만 돌며 줄바꿈은 패널 밖에서 한다(R7 — landing-kv-autosweep),
+ * 반경 밖 점은 한 번에 칠한다(R8).
+ */
+describe("DotField follow=\"scroller\"", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  async function mount() {
+    const { container, rerender } = await render(<div data-public-scroller=""><DotField follow="scroller" /></div>);
+    const scroller = container.querySelector<HTMLElement>("[data-public-scroller]");
+    if (scroller === null) throw new Error("Missing scroller");
+    return { scroller, canvas: container.querySelector("canvas"), rerender };
+  }
+
+  /**
+   * jsdom은 레이아웃이 없어 `scrollTop`을 정하지 않는다 — 값을 박고 `scroll`을 쏜다. 스크롤 범위는 `[0, 1600]`이다
+   * (`scrollHeight` 2000 − `clientHeight` 400). 컴포넌트가 그 범위로 자르기 때문이다(고무줄 스크롤 — `clampScrollTop`).
+   */
+  async function scrollTo(scroller: HTMLElement, top: number) {
+    Object.defineProperty(scroller, "scrollHeight", { configurable: true, value: 2000 });
+    Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 400 });
+    Object.defineProperty(scroller, "scrollTop", { configurable: true, value: top });
+    await act(async () => { scroller.dispatchEvent(new Event("scroll")); });
+  }
+
+  const rowsOf = (draw: Calls) => [...new Set(draw.flatMap(([name, args]) => (name === "arc" && args[1] !== undefined ? [args[1]] : [])))];
+
+  /** rAF를 손으로 돌린다 — 루프가 도는 경로(모션 허용)를 결정적으로 본다. */
+  function manualFrames() {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => frames.push(callback));
+    return async () => { await act(async () => frames.at(-1)?.(0)); };
+  }
+
+  it("모션 감소면 rAF가 0이고, 스크롤 한 번에 한 번만 다시 그린다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(true);
+    const raf = vi.spyOn(window, "requestAnimationFrame");
+    const { scroller } = await mount();
+    const before = drawCount(calls);
+    await scrollTo(scroller, 4);
+    expect(drawCount(calls)).toBe(before + 1);
+    await scrollTo(scroller, 9);
+    expect(drawCount(calls)).toBe(before + 2);
+    expect(raf).not.toHaveBeenCalled();
+  });
+
+  it("격자가 scrollTop % 16만큼 올라가 그려진다 — 16px마다 원위치", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(true);
+    const { scroller } = await mount();
+    const rows = () => rowsOf(lastDraw(calls));
+    expect(Math.min(...rows())).toBe(0);
+    await scrollTo(scroller, 4);
+    expect(Math.min(...rows())).toBe(-4);
+    expect(Math.max(...rows())).toBeGreaterThanOrEqual(400);
+    await scrollTo(scroller, 36);
+    expect(Math.min(...rows())).toBe(-4);
+    await scrollTo(scroller, 48);
+    expect(Math.min(...rows())).toBe(0);
+  });
+
+  /**
+   * ⚠️ **고무줄 스크롤에선 범위로 자른 값으로 그린다**(Y1) — 위 끝 튕김에서 sticky 캔버스는 콘텐츠와 같이 내려가므로 오프셋은 0이다.
+   * 음수를 양수 위상으로 접으면(-5 → 11) 점이 콘텐츠의 두 배 속도로 미끄러진다. 아래 끝도 같다(최대값 1600 → 위상 0).
+   */
+  it("범위 밖 scrollTop은 잘라서 쓴다 — 튕기는 동안 점이 콘텐츠에 붙어 있다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(true);
+    const { scroller } = await mount();
+    await scrollTo(scroller, -5);
+    expect(Math.min(...rowsOf(lastDraw(calls)))).toBe(0);
+    await scrollTo(scroller, 1612);
+    expect(Math.min(...rowsOf(lastDraw(calls)))).toBe(0);
+    await scrollTo(scroller, 1595);
+    expect(Math.min(...rowsOf(lastDraw(calls)))).toBe(-(1595 % 16));
+  });
+
+  /**
+   * ⚠️ **루프가 도는 동안 `scroll`은 그리지 않는다**(Y3) — 다음 프레임이 `scrollTop`을 읽는다. 그리면 스크롤 중 프레임마다
+   * 1만 3천 점을 두 번 그린다.
+   */
+  it("모션 허용이면 scroll이 그리기를 더하지 않고, 다음 프레임이 잘린 위상으로 그린다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(false);
+    const frame = manualFrames();
+    const { scroller } = await mount();
+    await frame();
+    const before = drawCount(calls);
+    await scrollTo(scroller, 21);
+    expect(drawCount(calls)).toBe(before);
+    await frame();
+    expect(drawCount(calls)).toBe(before + 1);
+    expect(Math.min(...rowsOf(lastDraw(calls)))).toBe(-(21 % 16));
+    await scrollTo(scroller, -7);
+    expect(drawCount(calls)).toBe(before + 1);
+    await frame();
+    expect(Math.min(...rowsOf(lastDraw(calls)))).toBe(0);
+  });
+
+  /** R8 — 커서가 없으면 점이 전부 반경 밖이라 path 하나에 모아 `fill` 한 번이다. */
+  it("반경 밖 점은 묶어서 fill 한 번으로 칠한다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(true);
+    await mount();
+    const draw = lastDraw(calls);
+    expect(draw.filter(([name]) => name === "fill").length).toBe(1);
+    expect(draw.filter(([name]) => name === "arc").length).toBe(26 * 26);
+  });
+
+  /**
+   * ⚠️ **묶음의 알파와 `moveTo`**(Y2). 묶음 `fill` 직전 알파는 기본값(0.08)이어야 한다 — 이 대입이 없으면 앞 프레임 마지막 근접 점의
+   * 알파(최대 0.3)로 반경 밖 1만여 점이 칠해진다. 점마다 같은 중심의 `moveTo(x + 2, y)`가 없으면 `arc`가 앞 점에서 선을 이어 그 선까지 칠한다.
+   */
+  it("묶음 fill은 알파 0.08로 칠하고, 근접 점을 그린 다음 프레임에도 0.08이다 — arc마다 moveTo가 앞선다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(false);
+    // 마운트 시각 0 → 가상 커서가 패널 한가운데(x = 200)에 오는 시각. 폭 400 + 넘침 360을 320px/s로 — 380px에 1187.5ms다.
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    const frame = manualFrames();
+    await mount();
+    now = 1187.5;
+
+    /** 전체 기록에서 i번째 호출 앞의 마지막 알파 — 이번 프레임이 대입하지 않았으면 앞 프레임 값이 나온다(캔버스 상태는 이어진다). */
+    const alphaBefore = (index: number) => calls.slice(0, index).reverse().find(([name]) => name === "globalAlpha")?.[1][0];
+    const check = () => {
+      const start = calls.map(([name]) => name).lastIndexOf("clearRect");
+      const fill = calls.findIndex(([name], i) => i > start && name === "fill");
+      expect(alphaBefore(fill)).toBe(0.08);
+      const path = calls.slice(calls.findIndex(([name], i) => i > start && name === "beginPath"), fill);
+      const arcs = path.flatMap(([name], i) => (name === "arc" ? [i] : []));
+      expect(arcs.length).toBeGreaterThan(0);
+      for (const i of arcs) {
+        const [x = Number.NaN, y = Number.NaN, r] = path[i]?.[1] ?? [];
+        expect(r).toBe(2);
+        expect(path[i - 1]).toEqual(["moveTo", [x + 2, y]]);
+      }
+      return calls.slice(fill).flatMap(([name, args]) => (name === "globalAlpha" ? [args[0]] : []));
+    };
+
+    await frame();
+    const nearAlphas = check();
+    // 이 프레임은 근접 점을 그렸고 마지막 알파가 기본값보다 크다 — 다음 프레임의 묶음이 그 값을 물려받으면 안 된다.
+    expect(Math.max(...nearAlphas.map(Number))).toBeGreaterThan(0.08);
+    expect(alphaBefore(calls.length)).toBeGreaterThan(0.08);
+    await frame();
+    check();
+  });
+
+  /** R7 — 랜딩은 포인터를 받지 않는다(landing-kv-autosweep 결정 1). 스크롤 리스너만 스크롤러에 붙는다. */
+  it("포인터 리스너는 어디에도 없고, 스크롤 리스너만 스크롤러에 붙었다 떠나면 떨어진다", async () => {
+    stubContext();
+    sized();
+    motion(false);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    const listeners = spyListeners();
+    const { scroller, rerender } = await mount();
+    expect(listeners.added("pointermove")).toEqual([]);
+    expect(listeners.added("pointerleave")).toEqual([]);
+    expect(listeners.added("scroll").map(({ target }) => target)).toEqual([scroller]);
+    expect(listeners.added("scroll")[0]?.options).toEqual({ passive: true });
+    await rerender(null);
+    expect(listeners.removed("scroll").map(({ target, listener }) => [target, listener])).toEqual(listeners.added("scroll").map(({ target, listener }) => [target, listener]));
+  });
+
+  /**
+   * ⚠️ **마우스도 점을 끌지 않는다** — 시각을 고정해 가상 커서를 첫 줄 시작(x = -180, 패널 밖)에 묶는다. 마우스를 (208, 208)에 올려도
+   * 그 점은 기본 크기이고 그리기 전체가 그대로다.
+   */
+  it("마우스 pointermove를 쏴도 그리기가 바뀌지 않는다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(false);
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const frame = manualFrames();
+    const { scroller } = await mount();
+    await frame();
+    const before = lastDraw(calls);
+    for (const type of ["pointermove", "pointerleave", "pointermove"]) {
+      await act(async () => { scroller.dispatchEvent(new PointerEvent(type, { pointerType: "mouse", clientX: 208, clientY: 208 })); });
+    }
+    await frame();
+    expect(arcsAt(lastDraw(calls), 208, 208)).toEqual([2]);
+    expect(lastDraw(calls)).toEqual(before);
+  });
+
+  /**
+   * 결정 2 — 가상 커서가 반경만큼 패널 밖에서 시작한다. 넘침이 없으면 시각 0의 커서는 (0, 0)이라 왼쪽 위 점들이 밝아진다.
+   */
+  it("자동 순회는 패널 밖(x = -180)에서 시작한다 — 시각 0엔 반경 안 점이 0이다", async () => {
+    const { calls } = stubContext();
+    sized();
+    motion(false);
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const frame = manualFrames();
+    await mount();
+    await frame();
+    expect(lastDraw(calls).filter(([name]) => name === "fill").length).toBe(1);
+  });
+
+  it("스크롤러를 못 찾아도 포인터를 받지 않는다", async () => {
+    stubContext();
+    sized();
+    motion(false);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    const listeners = spyListeners();
+    await render(<DotField follow="scroller" />);
+    expect(listeners.added("pointermove")).toEqual([]);
+    expect(listeners.added("pointerleave")).toEqual([]);
+    expect(listeners.added("scroll")).toEqual([]);
   });
 });

@@ -475,13 +475,17 @@ it("no-changes에 보류가 있으면 Not sent 틀이고 nothing-to-send 약속�
   expect(text).toContain(p.withheldDescription.noChanges);
   expect(text).toContain(`${p.withheld.file(1)} ${p.withheld.editor}`);
 });
-it("언어 요청을 리포에 없는 채로 버린 no-edits는 \"Your edits were already in the repository\"가 아니다 (#267 fix1 Y1)", async () => {
+/** #289 — 보류한 값이 없으니 Held back도 아니다(Home To send 0 · Logs `Nothing to send`와 같은 사실). 요청을 닫았다고 말한다. */
+it("언어 요청을 리포에 없는 채로 버린 no-edits는 \"Your edits were already in the repository\"도 Held back도 아니다 (#267 fix1 Y1 · #289)", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "orphan" }] });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const text = document.body.textContent ?? "";
   expect(text).not.toContain(en.translations.publish.noChangesDescription);
   expect(text).not.toContain(en.translations.publish.notSentDescription);
-  expect(text).toContain(en.translations.publish.withheldDescription.withheld);
+  expect(text).not.toContain(en.translations.publish.notSent);
+  expect(text).not.toContain(en.translations.publish.withheldDescription.withheld);
+  expect(document.querySelector('[role="dialog"] h2')?.textContent).toBe("Language request closed");
+  expect(text).toContain("Nothing was written to the repository.");
 });
 it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
@@ -716,4 +720,12 @@ it("Publish 모달은 ButtonLink로 내부 이동과 새 탭 외부 링크를 �
   expect(internal).toHaveLength(3);
   for (const link of internal) expect(link).toMatch(/href=\{routes\.(settings\(slug\)|sources\(slug, )/);
   expect(source).not.toMatch(/<a\b[^>]*buttonClass/);
+});
+
+/** 번역 화면도 서버가 내린 settle promise로 버튼을 켠다 (#282 — 신고한 화면이 번역 화면이다). 도착값은 그 소스 경로의 것만 쓴다(`useArrived`). */
+it("번역 화면 — 셀 편집 0 · settle 도착(열린 PR 없음)이면 Publish가 켜진다", async () => {
+  await render(<TranslationWorkspace {...workspaceProps({ unpublished: 0, publish: { repo: { owner: "o", name: "r", branch: "main", syncBranch: "s" }, lastSentLabel: null, lastPrUrl: null, settle: Promise.resolve(true) } })} />);
+  await act(async () => {});
+  const publish = [...document.querySelectorAll("button")].find(b => visible(b) === "Publish");
+  expect(publish?.getAttribute("aria-disabled")).toBeNull();
 });

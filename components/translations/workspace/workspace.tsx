@@ -75,8 +75,11 @@ export type WorkspaceProps = {
   /** `null`은 선택 없음, `absent`는 URL의 키가 사라졌다(부재 안내 — 다른 키로 바꾸지 않는다). */
   detail: DetailView | { absent: true; surfaceSlug: string } | null;
   unpublished: number;
-  /** `languageWork` — 언어 변경 작업 수(`countLocaleWork`). 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). 없으면 0이다. */
-  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string; host?: string }; lastSentLabel: string | null; lastPrUrl: string | null; languageWork?: number };
+  /**
+   * `languageWork` — 언어 변경 작업 수(`countLocaleWork`). 셀 편집이 0이어도 [Publish]를 켠다(locale-add 시안 P1 ①④). 없으면 0이다.
+   * `settle` — 전달된 언어 요청의 PR이 더는 열려 있지 않다(#282 — `planSettleLookup`). 서버가 좁은 창에서만 만든다. 없으면 그 창이 아니다.
+   */
+  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string; host?: string }; lastSentLabel: string | null; lastPrUrl: string | null; languageWork?: number; settle?: Promise<boolean> };
   sync: { name: string; branch: string };
   /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). 옛 헤더에서 옮겨 왔다. */
   baseLocale: string | null;
@@ -972,7 +975,8 @@ function WorkspaceBody(props: WorkspaceProps) {
               const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
-              <PublishButton id={publishButtonId} count={props.unpublished} languageWork={props.publish.languageWork} publish={publish} disabled={syncPending || !availability.publish} pausedReason={connectionBlock ?? undefined} />
+              <PublishButton id={publishButtonId} count={props.unpublished} languageWork={props.publish.languageWork}
+                settle={props.publish.settle === undefined ? undefined : { later: props.publish.settle, identity: `${slug}/${routeSurfaceSlug}` }} publish={publish} disabled={syncPending || !availability.publish} pausedReason={connectionBlock ?? undefined} />
             </span>
 
           </span>
