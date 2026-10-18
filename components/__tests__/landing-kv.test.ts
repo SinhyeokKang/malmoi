@@ -29,6 +29,16 @@ describe("랜딩 배경 — 구조", () => {
     );
   });
 
+  /** 래퍼가 히어로와 스테이지(마무리 CTA 포함)를 함께 감싼다 — 닫는 태그가 히어로 뒤로 올라가면 그라디언트가 히어로 길이에서 끝난다. */
+  it("래퍼가 히어로와 `<Stage>`를 둘 다 감싼다", () => {
+    const close = page.match(/<\/div>\s*<\/PublicShell>/)?.index ?? -1;
+    const order = [page.indexOf("data-landing-kv"), page.indexOf('aria-labelledby="landing-hero"'), page.indexOf("<Stage"), close];
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // 히어로 섹션과 `<Stage>` 사이에 래퍼를 닫는 `</div>`가 없다 — 섹션을 닫은 바로 다음이 스테이지다.
+    expect(page.slice(page.indexOf('aria-labelledby="landing-hero"'), page.indexOf("<Stage"))).toMatch(/<\/section>\s*$/);
+  });
+
   it("랜딩만 셸 `kv` 갈래를 쓴다", () => {
     expect(page).toMatch(/<PublicShell\b[^>]*\bkv\b/);
   });
