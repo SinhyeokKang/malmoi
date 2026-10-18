@@ -29,6 +29,10 @@ tasks T1–T11 전부(T0 완료). 스키마·마이그레이션·새 환경변�
 | QA | T9 `/runtime-test` — 폐기용 새 프로젝트(D15), 장면 ①②③ | 없음(리포트 전용 · BugShot) | DS 뒤 dev push | DS와 같은 워커의 새 Task | 예 | 이슈 0 또는 수정·재실측 | 대기 |
 | DOC | T10 정본 · T11 가이드 + 이 디렉터리 삭제(지휘자) | `docs/{DESIGN,ARCHITECTURE,PRODUCT,DIRECTORY}.md` · `guide/{en,ko,es}/…` | QA 완료(문서는 QA와 병행 가능) | C 터미널 새 Task | 아니오 | `/push` 4단계 · `pnpm guide:check` | 대기 |
 
+| K (곁 배치) | landing-kv-autosweep K1–K3 — `docs/features/landing-kv-autosweep/` | `lib/signin/dot-field.ts` · `components/signin/dot-field.tsx` · 각 테스트 · DESIGN §6.62·§6.615 행 · DIRECTORY dot-field 서술 | — | 워크트리 `lkv-auto` · Opus 5.5 medium | 아니오 | `pnpm gate --base dev` · 지휘자 diff(작은 변경) | 진행 |
+
+K는 이 런과 다른 기능이지만 같은 Run에 붙였다(사용자 2026-10-18 — 랜딩 커서 추종 제거 · 패널 밖 줄바꿈 · 로그인 현행 유지). K4 런타임 확인은 QA 브리프에 얹는다.
+
 ### 파일 겹침
 
 A와 B는 쓰기 파일이 겹치지 않는다 → **병렬**. A의 `todo.ts`는 `work.ts`의 `SurfaceLocaleState`를 `import type`으로만 읽는다(이미 있는 타입). C는 A의 호출부(O2)·Home 컴포넌트와 겹치므로 A·B 통합 뒤 직렬이다. `messages/*`는 A만 쓴다 — C·DOC가 새 키가 필요하면 그 배치 안에서 세 사전을 함께 고친다(A 통합 뒤라 겹치지 않는다).
@@ -40,4 +44,5 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 ## 진행 기록
 
 - 2026-10-18 Run `run_a8efa5c8272a`. A = 워크트리 `lrt-a` · Dispatch `ctx_41d443eb1de7` · `term_ddaf926f`. B = 워크트리 `lrt-b` · Dispatch `ctx_4616264251f2` · `term_b24799fd`. 브리프는 main 체크아웃 `.scratch/orch-language-request-todo/brief-{A,B}.md`.
+- K(곁 배치) 시작 — 워크트리 `lkv-auto` · Dispatch `ctx_60eb88e004d9` · `term_2fcfec0f`. 스펙 커밋 `395d4373`. DESIGN은 §6.62·§6.615 행만 고친다(A는 §10.1) — 겹침 없음.
 
