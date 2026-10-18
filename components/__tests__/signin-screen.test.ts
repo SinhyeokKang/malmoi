@@ -308,9 +308,11 @@ describe("KeyVisual — 앞 카드 세 장 (2026-10-06 사용자)", () => {
 });
 
 describe("루트 viewport — 키보드가 dvh를 줄인다 (D20)", () => {
-  it("`interactiveWidget: \"resizes-content\"`를 낸다", () => {
+  /** 값은 `viewportFor`(lib/viewport.ts)가 정하고 `lib/__tests__/viewport.test.ts`가 모든 UA에서 `resizes-content`를 센다. 여기는 배선만 본다. */
+  it("루트 레이아웃이 `generateViewport`로 `viewportFor`를 낸다", () => {
     const layout = read(ROOT_LAYOUT);
-    expect(layout).toMatch(/export const viewport: Viewport = \{[^}]*interactiveWidget: "resizes-content"/);
+    expect(layout).toMatch(/export async function generateViewport\(\)[^{]*\{[^}]*viewportFor\(/);
+    expect(layout).not.toMatch(/export const viewport\b/);
   });
 
   /** sticky CTA가 `lg` 미만뿐이라 `scroll-pb`도 `lg` 미만뿐이다(#221 · D24) — `lg` 이상 스크롤러 클래스는 R 배치 이전(`3a1afe68`)과 바이트로 같다. */
