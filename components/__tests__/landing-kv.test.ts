@@ -1,0 +1,47 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+/**
+ * **랜딩 배경 한 장** (landing-kv-background R1·R2·R4·R12). 랜딩은 async 서버 컴포넌트(세션·사전)라 DOM으로 세우지 않고
+ * 소스로 센다 — 래퍼가 하나이고, 그라디언트가 그 첫 자식으로 콘텐츠 높이 전체를 덮고, 내용 섹션이 위치 지정돼 있는지.
+ * 색 리터럴 0은 `visual-system.test.ts`가 전 소스로 센다.
+ */
+const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
+/** JSX 속성으로 선 래퍼만 센다 — 주석의 `[data-landing-kv]`는 세지 않는다. */
+const WRAPPER = /\bdata-landing-kv(?=[\s=>])/g;
+
+const walk = (dir: string): string[] =>
+  readdirSync(join(process.cwd(), dir), { withFileTypes: true }).flatMap((entry) => {
+    const rel = join(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === "__tests__" ? [] : walk(rel);
+    return /\.tsx?$/.test(entry.name) ? [rel] : [];
+  });
+
+describe("랜딩 배경 — 구조", () => {
+  const page = read("app/page.tsx");
+
+  it("래퍼가 `app/page.tsx`에 하나이고 첫 자식이 콘텐츠 높이 전체의 그라디언트다", () => {
+    expect([...page.matchAll(WRAPPER)]).toHaveLength(1);
+    expect(page).toMatch(
+      /<div data-landing-kv="" className="relative">\s*<div aria-hidden className="absolute inset-0 bg-gradient-to-b from-auth-hero-from to-auth-hero-to" \/>/,
+    );
+  });
+
+  it("랜딩만 셸 `kv` 갈래를 쓴다", () => {
+    expect(page).toMatch(/<PublicShell\b[^>]*\bkv\b/);
+  });
+
+  /** R4 — 위치 지정된 층(그라디언트·캔버스)보다 나중에 그려져야 내용이 그 위에 온다. */
+  it("히어로와 마무리 CTA 섹션이 `relative`다", () => {
+    expect(page).toMatch(/<section aria-labelledby="landing-hero" className="relative [^"]*"/);
+    expect(page).toMatch(/<section aria-labelledby="landing-closing" className="relative [^"]*"/);
+  });
+
+  it("다른 공개 화면과 컴포넌트에는 래퍼가 없다", () => {
+    const others = ["app/docs", "app/privacy", "app/changelog", "app/signin", "components"].flatMap(walk);
+    expect(others.length).toBeGreaterThan(50);
+    expect(others.filter((file) => read(file).match(WRAPPER) !== null)).toEqual([]);
+  });
+});

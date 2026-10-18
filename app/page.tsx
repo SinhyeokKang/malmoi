@@ -57,59 +57,67 @@ export default async function Root() {
   return (
     <PublicShell m={m} account={null} kv>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
-      <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-16 text-center lg:pt-30">
-        {/*
-          최신 릴리스 알약(2026-09-30 사용자) — 버전은 빌드가 박은 `APP_VERSION`이다. ⚠️ GitHub Releases를 부르지 않는다 — 랜딩 첫 진입이
-          외부 API(콜드 캐시 최대 3초)에 묶이지 않게. 머지마다 릴리스라 배포 버전이 곧 최신 릴리스다.
-        */}
-        <NextLink
-          href={routes.changelog()}
-          data-landing-latest
-          className="bg-muted hover:bg-foreground/[0.07] focus-visible:ring-ring mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-        >
-          {hero.latest(appVersion())}
-          <ArrowRight className="size-4 shrink-0" aria-hidden />
-        </NextLink>
-        {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). 히어로는 `lg` 미만에서 30/1.2 · 본문 16 · 위 여백 64로 한 단계 내려간다(2026-10-10 D3). */}
-        <h1 id="landing-hero" className="m-0 text-3xl leading-[1.2] font-semibold lg:text-5xl lg:leading-[1.1]">
-          {hero.title[0]}
-          <br />
-          {hero.title[1]}
-        </h1>
-        <p className="mt-5 max-w-[44em] text-prose leading-body text-balance lg:text-lg">{hero.body}</p>
-        <p data-landing-fact className="text-muted-foreground mt-3 text-sm">{hero.fact}</p>
-        <div data-landing-cta className="mt-5 flex gap-2">
-          {/* 선행 아이콘은 `Button`의 svg 슬롯(16 · gap 8)에 맡긴다 — 크기를 여기서 주지 않는다(DESIGN §6.615). */}
-          {/* ⚠️ ButtonLink external은 native <a>다. newTab으로 새 탭을 열고 기존 rel에 noopener·noreferrer를 보존·추가한다(DESIGN §6.3). */}
-          <ButtonLink size={"lg"} external href={GITHUB_REPO_URL} newTab rel="noreferrer"
-            >
-            <GithubIcon />{shell.github}
-          </ButtonLink>
-          <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
-        </div>
-      </section>
-      <Stage
-        label={stage.label}
-        captions={stage.captions}
-        typed={mockup.selected.typed}
-        scenes={mockupScenes(m, uiLocale)}
-        closing={
-          // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
-          <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">
-            <h2 id="landing-closing" className="m-0 text-3xl leading-[1.2] font-semibold lg:text-5xl lg:leading-[1.1]">{closing.title}</h2>
-            <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
-            <nav aria-label={closing.links.label} data-landing-doc-links className="text-muted-foreground mt-3 text-sm">
-              {closing.links.label}: <Link href={routes.docs("reference/formats")}>{closing.links.formats}</Link>
-              {" · "}<Link href={routes.docs("ai-agents")}>{closing.links.aiAgents}</Link>
-              {" · "}<Link href={routes.docs("faq")}>{closing.links.faq}</Link>
-            </nav>
-            <div data-landing-cta className="mt-5 flex gap-2">
-              <ButtonLink href={routes.docs()} size="lg"><DocsIcon aria-hidden />{shell.docs}</ButtonLink>
-              <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
-            </div>
-          </section>
-        }
-      />
+      {/*
+        랜딩 배경 한 장(landing-kv-background R1·R2) — 로그인 KV와 같은 세로 그라디언트를 래퍼의 첫 자식이 콘텐츠 높이 전체(히어로 윗변 ~
+        CTA 아랫변)로 덮는다. ⚠️ 패널·스크롤러에 칠하지 않는다 — 길이가 한 화면이 되어 첫 화면이 로그인 KV 강도로 파래진다.
+        내용 섹션은 `relative`다(R4) — 위치 지정된 층보다 나중에 그려져야 그 위에 온다.
+      */}
+      <div data-landing-kv="" className="relative">
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-auth-hero-from to-auth-hero-to" />
+        <section aria-labelledby="landing-hero" className="relative flex flex-col items-center px-8 pt-16 text-center lg:pt-30">
+          {/*
+            최신 릴리스 알약(2026-09-30 사용자) — 버전은 빌드가 박은 `APP_VERSION`이다. ⚠️ GitHub Releases를 부르지 않는다 — 랜딩 첫 진입이
+            외부 API(콜드 캐시 최대 3초)에 묶이지 않게. 머지마다 릴리스라 배포 버전이 곧 최신 릴리스다.
+          */}
+          <NextLink
+            href={routes.changelog()}
+            data-landing-latest
+            className="bg-muted hover:bg-foreground/[0.07] focus-visible:ring-ring mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {hero.latest(appVersion())}
+            <ArrowRight className="size-4 shrink-0" aria-hidden />
+          </NextLink>
+          {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). 히어로는 `lg` 미만에서 30/1.2 · 본문 16 · 위 여백 64로 한 단계 내려간다(2026-10-10 D3). */}
+          <h1 id="landing-hero" className="m-0 text-3xl leading-[1.2] font-semibold lg:text-5xl lg:leading-[1.1]">
+            {hero.title[0]}
+            <br />
+            {hero.title[1]}
+          </h1>
+          <p className="mt-5 max-w-[44em] text-prose leading-body text-balance lg:text-lg">{hero.body}</p>
+          <p data-landing-fact className="text-muted-foreground mt-3 text-sm">{hero.fact}</p>
+          <div data-landing-cta className="mt-5 flex gap-2">
+            {/* 선행 아이콘은 `Button`의 svg 슬롯(16 · gap 8)에 맡긴다 — 크기를 여기서 주지 않는다(DESIGN §6.615). */}
+            {/* ⚠️ ButtonLink external은 native <a>다. newTab으로 새 탭을 열고 기존 rel에 noopener·noreferrer를 보존·추가한다(DESIGN §6.3). */}
+            <ButtonLink size={"lg"} external href={GITHUB_REPO_URL} newTab rel="noreferrer"
+              >
+              <GithubIcon />{shell.github}
+            </ButtonLink>
+            <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
+          </div>
+        </section>
+        <Stage
+          label={stage.label}
+          captions={stage.captions}
+          typed={mockup.selected.typed}
+          scenes={mockupScenes(m, uiLocale)}
+          closing={
+            // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
+            <section aria-labelledby="landing-closing" className="relative flex flex-col items-center px-8 py-60 text-center">
+              <h2 id="landing-closing" className="m-0 text-3xl leading-[1.2] font-semibold lg:text-5xl lg:leading-[1.1]">{closing.title}</h2>
+              <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
+              <nav aria-label={closing.links.label} data-landing-doc-links className="text-muted-foreground mt-3 text-sm">
+                {closing.links.label}: <Link href={routes.docs("reference/formats")}>{closing.links.formats}</Link>
+                {" · "}<Link href={routes.docs("ai-agents")}>{closing.links.aiAgents}</Link>
+                {" · "}<Link href={routes.docs("faq")}>{closing.links.faq}</Link>
+              </nav>
+              <div data-landing-cta className="mt-5 flex gap-2">
+                <ButtonLink href={routes.docs()} size="lg"><DocsIcon aria-hidden />{shell.docs}</ButtonLink>
+                <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
+              </div>
+            </section>
+          }
+        />
+      </div>
     </PublicShell>
   );
 }
