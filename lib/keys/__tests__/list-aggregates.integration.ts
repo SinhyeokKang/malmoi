@@ -17,7 +17,7 @@ import { bannerTranslationsHref } from "@/lib/routes";
 import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/cards";
 import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
 import { loadAttentionInbox } from "@/lib/inbox/load";
-import { countLocaleWork } from "@/lib/locales/work";
+import { countLocaleWork, readLocaleWork } from "@/lib/locales/work";
 import type { RemoteTarget } from "@/lib/projects/remote";
 import { reviewByLocale, summaryQueue } from "@/lib/projects/list";
 import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
@@ -1128,6 +1128,8 @@ it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 
   const language = inboxItems.find(item => item.kind === "language_unsent");
   expect(language).toMatchObject({ count: 2, held: true, surfaceSlug: "default" });
   expect(await countLocaleWork(prisma, "p1")).toBe(2);
+  // Home의 수(`readLocaleWork().work` — [Publish]·`To send` 보조 줄)도 같은 정의다(spec 완료 조건 6의 셋째 화면).
+  expect((await readLocaleWork(prisma, "p1")).work).toBe(2);
   expect(inboxItems.filter(item => item.kind === "review").map(item => item.code)).toEqual(["fr"]);
   expect(inboxItems.filter(item => item.kind === "never_filled").map(item => item.code)).toEqual(["es"]);
   const targets = loadRemote.mock.calls[0]?.[0];
@@ -1141,6 +1143,8 @@ it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 
     await prisma.deliveryConfirmation.create({ data: { projectId: "p1", surfaceId, revision: `rev-${surfaceId}`, syncRunId: run.id, contextFingerprint: "ctx", deliveredLocaleChanges: delivered } });
   }
   expect(await countLocaleWork(prisma, "p1")).toBe(0);
+  // 0 쪽에서도 교차가 선다 — 작업이 없으면 Inbox에도 언어 변경 항목이 없다.
+  expect((await loadAttentionInbox(prisma, "owner")).groups.flatMap(group => group.items).some(item => item.kind === "language_unsent")).toBe(false);
   const { rows: [emptyLanguageRow] } = await load();
   if (emptyLanguageRow === undefined) throw new Error("no row");
   expect(emptyLanguageRow.plan.banner).toEqual({ kind: "never_filled", surfaceSlug: "default", code: "es", name: "Spanish", keys: 3 });

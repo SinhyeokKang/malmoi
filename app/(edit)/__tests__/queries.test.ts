@@ -523,6 +523,27 @@ describe("loadProjectList", () => {
   });
 
   /**
+   * **언어 상태 읽기는 프로젝트 수에 비례하지 않는다** (language-request-todo spec 완료 조건 7 · review-C 🟡1). 프로젝트마다 일괄 읽기를 부르는 N+1이면
+   * 프로젝트 1개 장면은 green으로 남는다 — 그래서 1개와 N개를 나란히 센다. 호출 수는 ADD 유무로 갈리므로 양쪽 모두 ADD를 둔다(review-B 🟡2).
+   */
+  it.each([1, 5])("비보관 멤버 프로젝트 %i개에서도 언어 상태 읽기가 요청 행·확인 행·값 수 raw 한 번씩이다", async (n) => {
+    const projects = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, slug: `project-${i}`, name: `P${i}`, installationId: "i", repositoryId: "r", lastCommitSha: "sha" }));
+    const ids = projects.map((p) => p.id);
+    const h = createHarness({ ...seed(), projects, members: ids.map((projectId) => ({ projectId, userId: "u1", role: "OWNER" as const })), keys: [], translations: [] });
+    vi.mocked(h.prisma.localeChange.findMany).mockResolvedValue(ids.map((projectId) => ({
+      projectId, surfaceId: `surface-${projectId}`, localeCode: "fr", operation: "ADD", requestedAt: new Date("2026-10-01T00:00:00Z"), locale: { orphaned: false },
+    })) as never);
+    const raw = vi.spyOn(h.prisma, "$queryRaw");
+    await loadProjectList(h.prisma, "u1", { loadRemote: async () => new Map() });
+    for (const findMany of [h.prisma.localeChange.findMany, h.prisma.deliveryConfirmation.findMany]) {
+      expect(findMany).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ where: expect.objectContaining({ projectId: { in: ids } }) }));
+    }
+    const valueCounts = raw.mock.calls.filter(([strings]) => (strings as TemplateStringsArray).join(" ").includes('GROUP BY t."surfaceId", t."localeCode"'));
+    expect(valueCounts).toHaveLength(1);
+    expect(valueCounts[0]).toContainEqual(ids);
+  });
+
+  /**
    * ⚠️ **셸이 이 집계를 물지 않는다.** 두 로더가 같은 테이블을 읽는 것이 중복처럼 보이지만,
    * 합치는 순간 `(edit)` 아래 **모든** 페이지가 `_count` 서브쿼리를 돈다.
    */

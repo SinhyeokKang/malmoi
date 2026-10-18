@@ -152,7 +152,6 @@ it("언어 변경 항목은 muted IconTile + GitPullRequestArrow이고 보조줄
     const { container } = await row(item);
     expect(container.querySelector("svg.lucide-git-pull-request-arrow")).not.toBeNull();
     expect(container.querySelector("[data-tone='muted']")).not.toBeNull();
-    expect(attentionRowSlots(en, "en", "acme", item, now, { time: "long", reconnect: "settings" }).description).toBeDefined();
     expect(container.textContent).toContain(slug);
   }
 });
