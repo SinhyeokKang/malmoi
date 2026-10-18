@@ -22,12 +22,12 @@
 |---|---|---|---|---|---|---|
 | A | T1,T2,T3; T11 계약 선기록 | lib/adapters/**, lib/survey/one.ts·__tests__/classify.test.ts, messages/{en,ko,es}.tsx(writer 경고만), docs/ARCHITECTURE.md | 인테이크 | Codex gpt-6-astra/high — 생성 결정성·루트·AST 계약 | 차단. red→green, 계약 매트릭스, pnpm gate --base dev, 독립 리뷰 | 대기 |
 | B | T4,T5,T6 | lib/locales/**, lib/pull/**, lib/publish/**, lib/import 테스트, lib/mcp 테스트, source-languages.test.tsx 비지원 fixture, messages/en.tsx MCP | A 통합 | Codex gpt-6-astra/medium — 미리보기·실행·관측 정합성 | 차단. T4–T6 원자 커밋, preview==execution, 격리 postgres 포함 gate, 독립 리뷰 | 대기 |
-| C | T7,T8,T9 | components/sources/**, components/ui/select.tsx, lib/sources/query.ts, 관련 DOM/순수 테스트·SourceDetail fixture, messages/{en,ko,es}.tsx languagesHelp 삭제 | B 통합 | Codex gpt-6.1-sol/medium — 기존 UI·판정 변경 | 차단. 동작·포커스·300px 테스트, gate, 독립 리뷰 | 대기 |
-| D | T10,T11 최종 대조,T12,T12-1,T13 본문 | PRODUCT, ARCHITECTURE, DESIGN, CLAUDE/AGENTS 미러, guide en/ko/es, AUTHORING, README, DIRECTORY 영향 | C 통합 | Codex gpt-6.1-sol/medium — 사실·번역 대조 | 차단. 문서별 커밋, guide 스킬, test·미러·문서 신선도 | 대기 |
+| C | T7,T8,T9 | components/sources/**, components/ui/select.tsx, lib/sources/query.ts, 관련 DOM/순수 테스트·SourceDetail fixture, messages/{en,ko,es}.tsx languagesHelp 삭제 | B 통합 | Codex gpt-6.1-sol/high — 기존 UI·판정 변경 | 차단. 동작·포커스·300px 테스트, gate, 독립 리뷰 | 대기 |
+| D | T10,T11 최종 대조,T12,T12-1,T13 본문 | PRODUCT, ARCHITECTURE, DESIGN, CLAUDE/AGENTS 미러, guide en/ko/es, AUTHORING, README, DIRECTORY 영향 | C 통합 | Codex gpt-6.1-sol/high — 사실·번역 대조 | 차단. 문서별 커밋, guide 스킬, test·미러·문서 신선도 | 대기 |
 | R | 각 A/B/C/D 독립 리뷰 | 리포트만; 해당 diff·인계·POSTMORTEM | 각 배치 완료 | Codex gpt-6-astra/medium — 독립 불변식 검증 | 차단. 🔴 0, 🟡 수정/판정 기록; 시나리오/런타임 분류 확인 | 대기 |
 | P | 통합 검증·dev push | 지휘자 dev | D·R 완료 | 지휘자 | pnpm gate, /push 나머지 게이트, 정확 SHA CI success | 대기 |
-| Q | T14,T15 | main checkout 읽기·QA 픽스처·BugShot 이슈; 제품 코드 수정 없음 | P | Codex gpt-6.1-sol/medium — 실리포 왕복·전체 레이아웃 | 차단. roundtrip 6종·둘째 Publish, runtime-test 전 범위; 1280/1440/1890·극단 데이터 DOM 실측; DB 사전/사후 복구 표 | 대기 |
-| S | T13 스크린샷·매핑 | public/guide/**, guide/SHOOTING.md | Q·수정 재실측 완료 | Codex gpt-6.1-sol/medium — guide-shots | 차단. languages-card·preferences-time-zone 육안 판단, guide stale 0, test | 대기 |
+| Q | T14,T15 | main checkout 읽기·QA 픽스처·BugShot 이슈; 제품 코드 수정 없음 | P | Codex gpt-6.1-sol/high — 실리포 왕복·전체 레이아웃 | 차단. roundtrip 6종·둘째 Publish, runtime-test 전 범위; 1280/1440/1890·극단 데이터 DOM 실측; DB 사전/사후 복구 표 | 대기 |
+| S | T13 스크린샷·매핑 | public/guide/**, guide/SHOOTING.md | Q·수정 재실측 완료 | Codex gpt-6.1-sol/high — guide-shots | 차단. languages-card·preferences-time-zone 육안 판단, guide stale 0, test | 대기 |
 | F | 최종 게이트·push·CI·정리 | 계획 체크·정본·워크트리 정리 | S | 지휘자 | 클린트리·origin/dev 일치·CI success·모든 워커 정리. 정본 승격 후 기능 폴더 제거 | 대기 |
 
 ## 파일 겹침
@@ -48,3 +48,5 @@
 - A 범위 보완: 지휘자 판단 — 새 AdapterErrorCode 전수 맵을 검사하는 `lib/survey/__tests__/classify.test.ts`는 T1의 필수 배선이라 소유 범위에 포함(`msg_7e8933643f13`).
 
 - 사용자 비용 조정(2026-10-18): 진행 중 A만 Astra high 유지. B·독립 리뷰는 Astra medium, C·D·Q·S는 Sol medium으로 하향. 자동 일괄 상향하지 않고 실제 결함의 난이도에 따라 수정 라운드별 판단.
+
+- 사용자 후속 정정: 비용 제한은 Astra high에 해당한다. C·D·Q·S의 Sol은 high 허용·배정. A Astra high 유지, B·독립 리뷰 Astra medium 유지.
