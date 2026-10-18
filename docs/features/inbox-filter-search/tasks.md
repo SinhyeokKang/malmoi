@@ -5,7 +5,7 @@
 ## 1. 순수 판정
 - [x] **T1a — `lib/query-list.ts`** — `lib/events/filter.ts`의 `list()`·`text()`·`encodeList`·`MAX_TEXT`·`MAX_ITEMS`를 글자 그대로 옮기고 events가 import한다(design §1).
   - 검증(자동): 기존 `lib/events/__tests__/*filter*` 수정 없이 green · `client-graph.test.ts` — `CLIENT_LIB_FILES`에 `lib/query-list.ts` 한 줄 등재(정확 일치 검사, 완화 금지).
-- [ ] **T1b — `lib/inbox/filter.ts`** — `INBOX_KIND_FILTERS` · `inboxKindOf` · `parseInboxFilter` · `inboxQuery` · `inboxFilterOptions` · `effectiveInboxFilter` · `hasNarrowing` · `filterInbox`(design §1–§4). `plan.ts`는 `import type`만.
+- [x] **T1b — `lib/inbox/filter.ts`** — `INBOX_KIND_FILTERS` · `inboxKindOf` · `parseInboxFilter` · `inboxQuery` · `inboxFilterOptions` · `effectiveInboxFilter` · `hasNarrowing` · `filterInbox`(design §1–§4). `plan.ts`는 `import type`만.
   - 검증(자동): `lib/inbox/__tests__/filter.test.ts` — 최소 행:
     - 파서: `?kind=` 배열(첫 값) · 알 수 없는 값 · `__proto__`·`constructor` → `null` / `?project=` 중복·빈 항목·정렬·50개 상한 · 대소문자 구별 / `q` 공백만 → `null` · 201자 → 200자 · 내부 공백 정규화 / `inboxQuery` 왕복.
     - `inboxKindOf`: `INBOX_KIND_FILTERS`가 아니라 **항목 fixture 일곱 종류 + 일부 반영**을 순회해 기대 값을 단언한다(손으로 쓴 kind 목록이 낡지 않게 — exhaustive는 `never` 검사가 typecheck로 강제).
@@ -30,7 +30,7 @@
 ──
 
 ## 4. 화면
-- [ ] **T4 — 필터 줄 + 페이지 배선 + 골격** (`components/inbox/inbox-filters.tsx` · `app/(edit)/inbox/page.tsx` · `app/(edit)/inbox/loading.tsx` · `lib/routes.ts` · `components/inbox/inbox-list.tsx`).
+- [x] **T4 — 필터 줄 + 페이지 배선 + 골격** (`components/inbox/inbox-filters.tsx` · `app/(edit)/inbox/page.tsx` · `app/(edit)/inbox/loading.tsx` · `lib/routes.ts` · `components/inbox/inbox-list.tsx`).
   - 검증(자동, DOM — user-event를 쓰는 새 파일은 머리에 `vi.setConfig({ testTimeout: 20_000 })`):
     - 필터 둘 + Clear(실효 좁힘 있을 때만) + SearchInput이 `PanelHeader` 안에 · 계획이 비어도 필터 줄이 선다 · 프로젝트 메뉴 `menuitemcheckbox`(썸네일 + 이름) · 종류 선택지는 계획에 있는 값만 · 고르면 `router.push`가 `routes.inbox(inboxQuery(…))`로 불린다.
     - 좁힌 결과 0이면 `NoMatch`(card) + `Clear filters`, 원래 0이면 `Nothing needs you`.
