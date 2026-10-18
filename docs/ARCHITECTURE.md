@@ -2474,9 +2474,10 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 
 ### 5.10.3 자동 적재 보류와 승인 경계
 
-- **`locale-change-pending`** — 어느 소스든 `current: delete`인데 `delivered ≠ delete`인 작업(= 아직 PR/MR로 안 나간 제거)이 있으면 CI·야간 적재 **프로젝트 전체**를 보류한다(`planLocaleImportGate`, `lib/push/locale-gate.ts`).
-  200 `deferred` + 이 사유, 사건 `import.ci`/`import.nightly` `deferred`. 판정 위치는 미전달 편집 보류 **뒤**, 열린 PR 게이트 **앞**이고 보류해도 리포 호스트를 부르지 않는다. 잠금 뒤에 다시 판정한다.
+- **`locale-change-pending`** — 어느 소스든 `current: delete`인데 `delivered ≠ delete`인 작업(= 아직 PR/MR로 안 나간 제거)이 있으면 CI 적재 **프로젝트 전체**를 보류한다(`planLocaleImportGate`, `lib/push/locale-gate.ts`).
+  200 `deferred` + 이 사유, 사건 `import.ci` `deferred`. ⚠️ **야간 실행은 이 게이트로 시작하지 않는다** — 언어 작업이 있으면 적재가 아니라 Publish로 간다(`planNightly`, `lib/nightly/plan.ts` — 편집과 같은 갈래). 야간 쪽 게이트는 적재 중 경합(아래 `LocaleChangeDuringImport`)만 잡고, 그때 사건이 `import.nightly` `deferred`다. 그래서 보류는 보통 다음 야간 Publish까지이고, 그 Publish가 실패하거나 보류되면 더 길어진다. 판정 위치는 미전달 편집 보류 **뒤**, 열린 PR 게이트 **앞**이고 보류해도 리포 호스트를 부르지 않는다. 잠금 뒤에 다시 판정한다.
   셀을 고르지 않고 적재 전체를 보류하므로 병합이 아니다. 전달된 뒤에는 기존 열린 PR 보호가 맡는다.
+  ⚠️ **표시도 이 게이트를 읽는다** (2026-10-18, language-request-todo) — 목록 행 띠·Inbox 항목의 `held`(`languageTodo`, `lib/locales/todo.ts`)와 Home 보류 사유 `locale-change-pending`(`planHoldNotice`의 `localeHeld`)은 호출부가 `planLocaleImportGate(states).action === "defer"`로 낸다 — 술어를 다시 쓰지 않는다. `planHoldNotice`의 순서는 `/api/push`와 같다(미전달 편집 → 언어 게이트 → 열린 PR). 화면 문장과 우선순위는 DESIGN §6.63·§6.64가 정본이다.
   **ADD만 있으면 보류하지 않는다** — 그 언어를 orphan 대상에서 빼고(`keptAddLocales`) 적재한다. 야간 적재는 표면 tx가 쓰기 전에 게이트를 다시 보고(`LocaleChangeDuringImport`), 걸리면 그 표면을 롤백하고 루프를 멈춘다.
 - **같은 이유로 거부하는 자리**: 기준 브랜치 변경(`changeBaseBranch`)은 비보관 소스 어디에든 행이 하나라도 남아 있으면 `locale-change-pending`으로 거부한다 — 의도는 옛 브랜치를 보고 승인됐다.
   기준 언어 선언(`planBaseLocaleCandidate`)은 **추가 중·제거 예정인 그 언어만** 같은 코드로 거부한다(그 언어가 기준 후보에서 빠진다) — 다른 언어에 행이 있어도 선언된다. 기준 언어는 **제거할 수 없다**(`base-locale`, 선언된 기준 포함). 리포 연결 변경은 거부하지 않는다 — 리포 정체성(고정된 id)을 바꾸지 못해 삭제가 다른 리포로 새지 않는다.
@@ -3484,8 +3485,9 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
     조립이 한 번 읽어 셋을 만든다. 호출부가 셀을 다시 거르면 "살아 있는 로케일만" 규칙이 두 벌이 되어 띠의 수와 목적지가 갈린다.
   - **메타 넷**(`sourceCount` · `keyCount` · `languageCount` · `lastSync`)도 같은 조립 층이 만든다 — 소스 수는 첫 적재 전을 포함한 비보관 소스 수,
     키 수는 `keyTotals`를 비보관 표면 id로 합산(로케일 수만큼 중복되지 않게), 언어 수는 작업 언어(`workLocaleWhere`) 중 소스를 가로지른 고유 대상(비-base)
-    코드 수, `lastSync`는 Home 카드와 같은 `lastSyncTime`(ISO · `"unrecorded"` · `null` — `"unrecorded"`를 `new Date` 전에 거른다). 새 왕복은 없다
-    (멤버십 1 + 집계 5 — `list-aggregates.integration.ts`가 센다). 사이드바 `keyCount`와 행 `keyCount`가 같은 fixture에서 같다는 교차 단언은
+    코드 수, `lastSync`는 Home 카드와 같은 `lastSyncTime`(ISO · `"unrecorded"` · `null` — `"unrecorded"`를 `new Date` 전에 거른다). 메타는 새 왕복이 없다
+    (멤버십 1 + 집계 5). 언어 변경 띠의 재료(`readLocaleStatesByProject` — **비보관 프로젝트 id만**, §6.365)가 같은 `Promise.all`에 붙어 조회가 늘었다
+    (2026-10-18 — `list-aggregates.integration.ts`가 6 → 9를 세고, `queries.test.ts`가 프로젝트 1개와 5개에서 호출 수가 같은지 센다). 사이드바 `keyCount`와 행 `keyCount`가 같은 fixture에서 같다는 교차 단언은
     `source-remove-consumers.integration.ts`에 있다.
 - ⚠️ **"남이 정한 문자열을 객체 키로 쓰지 않는다"는 규칙은 살아 있고, 자리만 옮겼다.** 이 리포는 그것을 두 번 밟았다
   (POSTMORTEM 2026-09-08 조회 · 2026-09-09 대입). §1.1의 "키 대입" 규칙과 같은 계보인데 그쪽은 어댑터 축에만
@@ -3524,7 +3526,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 묶음은 안 읽은 항목이 있는 묶음 먼저(2026-10-18 — 최신 항목이 늘 읽음인 검토라 안 읽은 실패보다 위에 서던 순서를 고쳤다) → 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다. 열린 목록의 읽음 처리(`readAll`)는 표시만 내리고 순서는 다음 열기까지 그대로다.
 
 **항목은 목록 행의 띠와 같은 DB 할 일 판정에서 나온다** (2026-10-18 project-row-redesign) — `projectTodos`(`lib/inbox/project-todos.ts`)가
-`needs_reconnect` · `import_failed` · `setup` · `unsent` · `review` · `never_filled`를 내고, `planInbox`와 목록 조립(§6.36)이 둘 다 그 결과를 쓴다.
+`needs_reconnect` · `import_failed` · `setup` · `unsent` · `language_unsent` · `review` · `never_filled`를 내고, `planInbox`와 목록 조립(§6.36)이 둘 다 그 결과를 쓴다.
 역할 예외는 `setup` 하나다(Inbox는 OWNER만 — EDITOR가 할 수 있는 일이 없다. 행 띠는 EDITOR에게 소유자 요청 문장). 원격 신호 셋(열린 PR · PR 조회 실패 ·
 리포 앞섬)은 **목록 띠 전용**이다 — 배지 Action이 매 헤더에서 불리므로 호스트 API를 부르면 헤더마다 비용이 든다. 행 띠가 DB 할 일이면 그 종류가 같은 프로젝트의
 Inbox 항목에 있다는 것을 `lib/inbox/__tests__/project-todos.test.ts`가 표로 세고, 배지 경로에 `loadRemoteSignals` import가 0인 것을
@@ -3533,6 +3535,7 @@ Inbox 항목에 있다는 것을 `lib/inbox/__tests__/project-todos.test.ts`가 
   타일은 warning + `Unplug`, 보조줄은 없다. EDITOR는 둘째 줄에 `askOwner.reconnect`(플래그 `ownerRetries`는 `projectTodos`가 정하고 행 조각은 문장만 고른다).
   `at`은 GitLab 토큰 만료면 저장 만료일, 연결 고정이 빠진 행(`repoConnectionPinned` 거짓)은 `null`이다 — `null`은 그룹 안 맨 뒤이고 `seenAt`이 있으면 안 읽음으로
   세지 않는다. ⚠️ **만료일이 마지막 열람보다 이르면 처음부터 읽음이다** — 배지 수가 늘지 않는다(`at` 정의의 귀결, `plan.test.ts`).
+- **언어 변경 항목**(`language_unsent`, 2026-10-18 language-request-todo) — 언어 변경 작업(§5.10.1 `work`)이 남으면 두 역할 모두에게 선다(Publish가 `translation:write`). 재료는 서버 로더만 부르는 순수 함수 `languageTodo(states, slugOf)`(`lib/locales/todo.ts` — 수 · 대표 소스(slug가 가장 작은 것) · 시각 · `held`)이고, `project-todos.ts`는 그 타입만 import한다 — 클라이언트 그래프(`attention-inbox.tsx` → `plan.ts` → `project-todos.ts`)에 게이트 모듈을 끌어오지 않는다. **수는 `countLocaleWork`와 같은 정의다**(확인보다 뒤에 낸 요청 규칙 `deliveredForRequests` 포함 — 격리 PG `list-aggregates.integration.ts`가 행 띠 수 = Inbox 항목 수 = `countLocaleWork`를 센다). `held`는 `planLocaleImportGate`를 그대로 부른다(§5.10.3). `at`은 작업이 있는 코드의 요청 행 `requestedAt` 가운데 가장 늦은 것이고, 보낸 뒤 취소해 거둘 것만 남으면 행이 없어 `null`이다(`needs_reconnect`의 `null` 규칙과 같다). 정렬 rank는 `unsent`와 같다. 끊긴 프로젝트에서도 `unsent`처럼 선다(행 띠는 끊김이 이긴다). 값 있는 추가는 `unsent`와 이 항목 둘이 선다. 목적지는 프로젝트 Home이다.
 - **목적지는 호출부가 정한다** — OWNER Settings · EDITOR 프로젝트 Home(Settings는 `project:settings` 뒤라 EDITOR가 거절당한다). 정하는 함수는
   `reconnectDestination(role)` 하나(`lib/home/attention-view.ts`)이고 `attentionHref(slug, item, reconnect)`가 셋째 인자로 받는다. `planInbox`가 그룹마다
   `project.reconnect`를 싣고(드롭다운·`/inbox`가 그 값을 넘긴다), Home 카드는 같은 함수를 자기 역할로 부른다 — 소비자마다 역할을 다시 판정하면 같은 항목이
@@ -3542,7 +3545,8 @@ Inbox 항목에 있다는 것을 `lib/inbox/__tests__/project-todos.test.ts`가 
 공개 셸 헤더는 세션을 읽지 않고 페이지가 넘긴 `publicAccount`가 값일 때만 Inbox를 마운트한다 — 비로그인 방문자에게는 Action 호출이 0이다.
 전용 멤버십 조회가 `userId`·프로젝트 `archivedAt: null`로 범위를 확정하고 같은 조회에 `User.attentionSeenAt`을 붙인다.
 셸의 공용 멤버십 조회를 넓히지 않는다. 집계와 검토 조회는 그 ids로 제한해 병렬 실행하고, 검토 행의 행위자만 추가 조회한다.
-프로젝트 수와 무관하게 Prisma 조회 호출 수는 상수(멤버십 1 + 집계 5 + 검토 1 + 행위자 최대 1)다. 관계 조회의 내부 SQL 수는 Prisma의
+언어 상태는 `readLocaleStatesByProject(db, ids)`(`lib/locales/work.ts`)가 같은 `Promise.all`에서 일괄로 읽는다 — `LocaleChange`·`DeliveryConfirmation`을 `projectId in ids`로 한 번씩, 값 있는 추가 행이 있을 때만 값 수 raw 하나를 더 부르고, 접기는 `readLocaleStates`와 같은 순수 함수 `foldLocaleStates`다(규칙이 두 벌로 갈리지 않는다). ⚠️ **project-row-redesign의 "새 왕복을 만들지 않는다"를 완화했다**(2026-10-18, language-request-todo D13) — 목록·Inbox·배지 경로에 Prisma 호출 2–3(관계 select까지 SQL 최대 4–5)이 늘고 배지 Action이 매 헤더에서 이 경로를 부른다. 같은 리전이고(§1.95) 기존 `Promise.all`에 합쳐 직렬 홉은 늘지 않는다. 호스트 API는 여전히 부르지 않는다.
+프로젝트 수와 무관하게 Prisma 조회 호출 수는 상수(멤버십 1 + 집계 5 + 언어 상태 2–3 + 검토 1 + 행위자 최대 1)다. 관계 조회의 내부 SQL 수는 Prisma의
 relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다. GitHub은 부르지 않고, 하위 조회가 실패하면 전체가 실패다.
 검토 조회는 `ANY(ids)`·`PARTITION BY projectId, surfaceId, localeCode`, 미전달 시각은 기존 pending 토큰 술어의 `MAX(updatedAt)`이다.
 응답에는 `projectId`와 원문 이메일이 없으며 행위자는 `actorLabel`의 마스킹을 지난 문자열만 나온다.
