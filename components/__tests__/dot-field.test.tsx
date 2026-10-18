@@ -203,7 +203,7 @@ describe("DotField follow=\"scroller\"", () => {
     sized();
     motion(true);
     const { scroller } = await mount();
-    const rows = () => [...new Set(lastDraw(calls).flatMap(([name, args]) => (name === "arc" ? [args[1]] : [])))];
+    const rows = () => [...new Set(lastDraw(calls).flatMap(([name, args]) => (name === "arc" && args[1] !== undefined ? [args[1]] : [])))];
     expect(Math.min(...rows())).toBe(0);
     await scrollTo(scroller, 4);
     expect(Math.min(...rows())).toBe(-4);
