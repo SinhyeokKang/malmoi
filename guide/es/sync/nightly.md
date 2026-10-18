@@ -10,7 +10,7 @@ Un proyecto debe estar activo, conectado a un repositorio y tener al menos una f
 
 ## Publicación automática {#nightly}
 
-Si hay alguna edición guardada sin enviar, la ejecución nocturna publica los cambios guardados del proyecto mediante una solicitud de cambios (un *pull request* en GitHub, o una *merge request* en GitLab). Si ya hay una abierta, se actualiza en lugar de abrir una segunda. Esa noche el proyecto no se actualiza desde el repositorio.
+Si hay alguna edición guardada sin enviar, o un cambio de idioma que aún no se ha publicado, la ejecución nocturna publica los cambios guardados del proyecto mediante una solicitud de cambios (un *pull request* en GitHub, o una *merge request* en GitLab). Si ya hay una abierta, se actualiza en lugar de abrir una segunda. Esa noche el proyecto no se actualiza desde el repositorio.
 
 Los valores guardados que no se pueden publicar permanecen en Malmoi. Si tus cambios no se publicaron durante la noche, revisa **Registros** y pregunta a un propietario del proyecto por cualquier fallo informado.
 
@@ -28,7 +28,7 @@ Si alguien guarda una traducción mientras se ejecuta la actualización nocturna
 La ejecución nocturna retiene la actualización — el proyecto no se actualiza y **Registros** muestra **Retenido** con el motivo — cuando:
 
 - Sigue abierto un pull request de Malmoi. Sus traducciones aún no están en el repositorio, así que una actualización las sobrescribiría. Fusiona o cierra el pull request; la siguiente ejecución nocturna recoge los cambios. La pestaña **Sincronizar** de Inicio muestra **Retenido** en su fila **Espera**, y la tarjeta Por enviar explica el motivo.
-- Una eliminación de idioma todavía no se ha publicado. Publícala o cancélala y la siguiente ejecución nocturna recoge los cambios. Consulta [Qué bloquea otras tareas](../setup/languages.md#blocks).
+- Alguien elimina un idioma mientras la actualización está en curso. Malmoi se detiene antes de la siguiente fuente, y la siguiente ejecución nocturna publica la eliminación. Consulta [Qué bloquea otras tareas](../setup/languages.md#blocks).
 - GitHub o GitLab no respondió si esa solicitud de cambios está abierta. Malmoi no adivina; Inicio muestra **Retenido** y la siguiente ejecución vuelve a comprobarlo.
 - El cambio es demasiado grande para una sincronización en el servidor. Las actualizaciones nocturnas usan el mismo presupuesto de archivos que la creación de un proyecto (consulta [Límites](../reference/limits.md#files)). Reduce el tamaño de los archivos o entrega el cambio con el workflow del repositorio.
 
