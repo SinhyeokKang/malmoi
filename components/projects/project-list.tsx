@@ -236,17 +236,25 @@ function ProjectRow({ row, q, now }: { row: ProjectListRow; q?: string; now: Dat
          * 자르는 수단이라 뗄 수 없으므로, 링을 안쪽으로 그린다.
          *
          * ⚠️ **한 행 = 한 줄이다** (project-row-redesign — 언어 막대가 Sources 소스 행으로 옮겨 갔다). 이름 칸이 세 줄(이름 · 리포 · 메타)이라
-         * 메타가 한 줄이면 행은 88이다(옛 두 줄 행 108). 순서는 DOM 그대로다(CSS `order`·두 벌 렌더 없음 — DESIGN §7, malmoi#82).
+         * 메타가 한 줄이면 행은 87.16이다(옛 두 줄 행 108). 순서는 DOM 그대로다(CSS `order`·두 벌 렌더 없음 — DESIGN §7, malmoi#82).
+         *
+         * ⚠️ **좁은 그릇(`@max-form`)에서는 메타 줄이 이름 칸을 나와 행 폭으로 선다** (2026-10-18 D16 · malmoi#299) — 긴 칩 옆 이름 칸이 57까지
+         * 줄어 메타가 8줄로 감기고 `sincronizado` 한 낱말도 칸을 넘었다. 같은 DOM을 grid로만 다시 놓는다: 이름 칸이 `contents`가 되어 이름·리포는
+         * 칩 묶음 옆 두 줄, 메타는 셋째 줄에서 이름 시작선부터 행 오른쪽 끝까지(칩 묶음 아래)다. 메타를 두 벌 그리지 않는다 — 링크의 접근 이름이 메타를
+         * 되풀이하면 안 된다. 넓은 그릇은 그대로 flex다.
          */
-        className="gap-4 pr-3.5 pl-3"
+        className="gap-4 pr-3.5 pl-3 @max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-0.5"
       >
-        <ProjectThumbnail name={row.name} src={row.image} />
+        {/* 좁은 그릇에서 썸네일은 이름·리포 두 줄의 가운데에 선다 — 프리미티브가 바깥 배치를 받지 않아 칸 하나로 감싼다. */}
+        <span className="flex shrink-0 @max-form:col-[1] @max-form:row-[1/3]">
+          <ProjectThumbnail name={row.name} src={row.image} />
+        </span>
 
         {/*
           ⚠️ **이름 칸이 유동이다**(`min-w-0 flex-1`). 긴 이름·리포는 말줄임되고 오른쪽 배지는 줄지 않는다(`shrink-0`) — 상태가 첫 줄에 남는다.
           메타 줄만 감긴다(정보라 자르지 않는다).
         */}
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents">
           {/*
             ⚠️ **보관은 이름까지 회색이다** (캔버스 `1c`의 `muted: true`) — 숨기지 않는 대신 훑는
             눈에서만 멀어진다. 배지 하나로는 그 행이 여전히 같은 무게로 읽힌다.
@@ -261,7 +269,7 @@ function ProjectRow({ row, q, now }: { row: ProjectListRow; q?: string; now: Dat
             ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포·메타 줄까지
             칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다. 칠하는 함수는 검색 Dialog와 같다(search-ux-unify C6).
           */}
-          <span className={cn("truncate text-base font-medium", archived && "text-gray-dim")}>
+          <span className={cn("truncate text-base font-medium @max-form:col-[2] @max-form:row-[1]", archived && "text-gray-dim")}>
             <Highlight segments={highlightSegments(row.name, searchTokens(q ?? ""))} />
           </span>
           {/*
@@ -274,7 +282,7 @@ function ProjectRow({ row, q, now }: { row: ProjectListRow; q?: string; now: Dat
             말줄임은 안쪽 글자 span이 든다 — 바깥이 `flex`라 `truncate`를 거기 두면 마크까지 잘리는 대신 줄임표가 안 선다.
           */}
           {/* 보조줄은 13이다 — 행 보조줄 한 벌(4-Y9 · `PanelRow`·`EventMeta`와 같다). */}
-          <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", archived ? "text-gray-dim" : "text-muted-foreground")}>
+          <span className={cn("flex min-w-0 items-center gap-1.5 text-xs @max-form:col-[2] @max-form:row-[2]", archived ? "text-gray-dim" : "text-muted-foreground")}>
             {/*
               리포 호스트 글리프(시안 G4a — 섞인 목록에서 정보가 된다). 글리프는 장식이라 호스트 이름이 접근 이름에 글자로 든다(글리프만으로 가르지 않는다).
               ⚠️ 긴 하위 그룹 주소는 **namespace가 먼저 줄어든다** — 리포 이름이 정보라 375에서 `group/sub/…`이 아니라 이름 끝까지 보이게 한다
@@ -291,7 +299,7 @@ function ProjectRow({ row, q, now }: { row: ProjectListRow; q?: string; now: Dat
         </span>
 
         {/* 배지 묶음은 줄지 않는다 — 이름이 먼저 말줄임된다. */}
-        <span className="flex shrink-0 items-center gap-3">
+        <span className="flex shrink-0 items-center gap-3 @max-form:col-[3] @max-form:row-[1/3]">
           {/*
             칩은 상태 키만 넘긴다 — variant·낱말은 `STATE`가 든다(DESIGN §2.4). ⚠️ **`host`를 넘기지 않는다** — 목록 칩 집합에 호스트로 갈리는
             낱말(PR 조회 실패)이 없다(project-row-redesign design §3). ⚠️ **보관도 덮개가 없다**(search-ux-unify D6) — 물러나는 것은 이름·리포·메타 셋이다.
@@ -312,8 +320,8 @@ function ProjectRow({ row, q, now }: { row: ProjectListRow; q?: string; now: Dat
  * 정본이고 행은 그 화면으로 가는 입구다.
  *
  * ⚠️ **감기고 숨지 않는다**(PRODUCT §4.1) — 칸은 **통째로** 다음 줄로 간다: flex 줄 나눔이 칸을 자기 글자 폭으로 놓으므로 줄은 칸 사이에서
- * 바뀌고 `synced 3 hours ago`가 찢기지 않는다. ⚠️ **칸 하나가 이름 칸보다 넓을 때만** 그 칸이 안에서 낱말 사이로 감긴다(`max-w-full` — 폭 상한이
- * 이름 칸, 하한은 가장 긴 낱말). `whitespace-nowrap`이던 때는 그런 칸이 375에서 칩 묶음 아래로 최대 95px 넘쳤다(malmoi#297). 가운뎃점은
+ * 바뀌고 `synced 3 hours ago`가 찢기지 않는다. ⚠️ **칸 하나가 메타 줄보다 넓을 때만** 그 칸이 안에서 낱말 사이로 감긴다(`max-w-full` — 폭 상한이
+ * 메타 줄, 하한은 가장 긴 낱말). 좁은 그릇에서는 메타 줄이 행 폭(이름 시작선 → 행 오른쪽 끝)이라 흔한 경우 1–2줄이고 낱말이 넘치지 않는다(D16 · #299). `whitespace-nowrap`이던 때는 그런 칸이 375에서 칩 묶음 아래로 최대 95px 넘쳤다(malmoi#297). 가운뎃점은
  * **앞 칸 끝에** 줄바꿈 없는 공백으로 붙는다 — 칸 안에서 감겨도 `·`가 줄 머리에 서지 않는다. 글리프·배지·sr-only 없이 글자뿐이다(POSTMORTEM 2026-10-13 #260 — 행마다 absolute 요소를 늘리지 않는다).
  *
  * ⚠️ **언어 0과 시각 없음(`null`·`"unrecorded"`)은 칸을 뺀다** — `0 languages`는 깨진 것으로 읽히고, `synced(null)`은 `not synced yet`이라
@@ -330,7 +338,7 @@ function RowMeta({ row, m, now, archived }: { row: ProjectListRow; m: Messages; 
     cells.push(<time dateTime={at.toISOString()} aria-label={m.home.cards.synced(formatMinute(at, style))}>{m.home.cards.synced(relativeTime(at, now, style.uiLocale))}</time>);
   }
   return (
-    <span data-row-meta className={cn("flex flex-wrap gap-x-1 text-xs", archived ? "text-gray-dim" : "text-muted-foreground")}>
+    <span data-row-meta className={cn("flex flex-wrap gap-x-1 text-xs @max-form:col-[2/4] @max-form:row-[3]", archived ? "text-gray-dim" : "text-muted-foreground")}>
       {cells.map((cell, i) => (
         <span key={i} className="max-w-full">{cell}{i < cells.length - 1 && "\u00a0·"}</span>
       ))}

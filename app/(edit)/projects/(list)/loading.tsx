@@ -81,28 +81,28 @@ export default async function ProjectsLoading() {
               */
               <li
                 key={i}
-                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
+                /* 좁은 그릇의 배치도 실물과 같은 grid다(D16 · #299) — 메타 자리가 이름 시작선부터 행 오른쪽 끝까지 셋째 줄이다. */
+                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 @max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-0.5 ${i > 0 ? "border-border border-t" : ""}`}
               >
                 {/* 모서리는 실물 `ProjectThumbnail`과 같은 8이다(POSTMORTEM 2026-09-17 — 같은 엔터티를 두 모서리로 그렸다). */}
-                <Skeleton className="size-7 shrink-0 rounded-sm" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <Skeleton size="md" className="h-4 w-48 max-w-full" />
+                <Skeleton className="size-7 shrink-0 rounded-sm @max-form:col-[1] @max-form:row-[1/3] @max-form:self-center" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents">
+                  <div className="@max-form:col-[2] @max-form:row-[1]"><Skeleton size="md" className="h-4 w-48 max-w-full" /></div>
                   {/* 리포·메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
-                  <Skeleton size="xs" className="h-3 w-40 max-w-full" />
+                  <div className="@max-form:col-[2] @max-form:row-[2]"><Skeleton size="xs" className="h-3 w-40 max-w-full" /></div>
                   {/*
-                    메타 줄 — 넓은 그릇은 한 줄, 좁은 그릇(`@max-form`)은 **세 줄**이다. 325 그릇에서 실물 메타는 대개 세 줄로 감긴다(en 실측 16행 중 13 —
-                    `1 source · 24 keys ·` / `3 languages ·` / `synced 4 days ago`, malmoi#298). 다른 줄 수인 행은 도착할 때 그만큼 바뀐다 — 골격은 길이를 모른다.
+                    메타 줄 — 넓은 그릇은 이름 칸의 셋째 줄 한 줄, 좁은 그릇(`@max-form`)은 행 폭의 셋째 줄 **두** 줄이다(D16 — 메타가 칩 묶음 아래까지 넓어져
+                    카드 325에서 실물 메타가 대개 두 줄이다 — en 18행 중 16 · es 18행 중 17, malmoi#299). 다른 줄 수인 행은 도착할 때 그만큼 바뀐다 — 골격은 길이를 모른다.
                     ⚠️ **막대들은 상자 하나 안의 줄이다** — 실물 메타 줄은 한 flex-wrap 상자 안이라 사이 gap이 없다. 이름 칸의 형제 줄로 두면 줄마다
                     `gap-0.5`(2)를 더 받아 골격이 실물보다 높았다(#298 — 106.48 vs 104.48).
                   */}
-                  <div>
+                  <div className="@max-form:col-[2/4] @max-form:row-[3]">
                     <Skeleton size="xs" className="h-3 w-70 max-w-full @max-form:w-[70%]" />
-                    <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[55%]" /></div>
                     <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>
                   </div>
                 </div>
                 {/* 칩 + chevron은 실물처럼 한 묶음(사이 12)이다 — 행의 형제로 두면 그 사이가 행 gap 16이 된다. */}
-                <span className="flex shrink-0 items-center gap-3">
+                <span className="flex shrink-0 items-center gap-3 @max-form:col-[3] @max-form:row-[1/3]">
                   <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
                   {/* chevron 자리 16 — 실물 행 오른쪽 끝의 `ChevronRight`다. 없으면 칩 자리가 16+12만큼 오른쪽에 선다. */}
                   <Skeleton className="size-4 shrink-0" />

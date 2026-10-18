@@ -392,7 +392,7 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     // #205 — 실물 `Card` 머리와 같은 불투명 선이다(첫 행 위 알파 선이 아니다).
     ["카드 헤더 아래 선", "border-divider flex min-h-12 items-center gap-2 border-b"],
     // 실물 `ProjectThumbnail`과 같은 8이다(POSTMORTEM 2026-09-17 — 옛 골격만 4였다).
-    ["행 썸네일 radius 8", '<Skeleton className="size-7 shrink-0 rounded-sm" />'],
+    ["행 썸네일 radius 8", '<Skeleton className="size-7 shrink-0 rounded-sm @max-form:col-[1] @max-form:row-[1/3] @max-form:self-center" />'],
     ["행 gap 16", "gap-4"],
     // 칩 + chevron이 실물처럼 한 묶음이다 — 따로 서면 행 gap 16이 그 사이에 들어 칩이 4만큼 왼쪽에 선다.
     ["우측 묶음 gap 12", "flex shrink-0 items-center gap-3"],
@@ -441,6 +441,9 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
  * 상태 배지 + chevron(`shrink-0`). 메타 줄만 감긴다 — 칸은 통째로 다음 줄로 가고, 이름 칸보다 넓은 칸만 그 안에서 낱말 사이로 감긴다(#297).
  * ⚠️ **DOM 순서가 보이는 순서다**(DESIGN §7, malmoi#82) — 썸네일 · 이름 · 메타 · 배지. 골격도 같은 한 줄이다(A-09).
  */
+/** 좁은 그릇(`@max-form`) 행 배치 — 실물(`project-list.tsx`)과 골격(`loading.tsx`)이 같은 철자를 든다(D16). */
+const NARROW_GRID = "@max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-0.5";
+
 describe("Projects 행 — 한 줄 · 메타 감김", () => {
   const BODY = LIST_AND_CARD;
   const ROW = /function ProjectRow\b[\s\S]*?\n}\n/.exec(code("components/projects/project-list.tsx"))?.[0] ?? "";
@@ -454,12 +457,12 @@ describe("Projects 행 — 한 줄 · 메타 감김", () => {
 
   it("이름 칸이 고정 420이 아니라 유동이다 — 배지는 줄지 않는다", () => {
     expect(BODY).not.toContain("w-[420px]");
-    expect(ROW).toContain('<span className="flex min-w-0 flex-1 flex-col gap-0.5">');
-    expect(ROW).toContain('<span className="flex shrink-0 items-center gap-3">');
+    expect(ROW).toContain('<span className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents">');
+    expect(ROW).toContain('<span className="flex shrink-0 items-center gap-3 @max-form:col-[3] @max-form:row-[1/3]">');
   });
 
   it("행이 한 줄 flex이고 둘째 줄·언어 막대가 없다", () => {
-    expect(ROW).toContain('className="gap-4 pr-3.5 pl-3"');
+    expect(ROW).toContain(`className="gap-4 pr-3.5 pl-3 ${NARROW_GRID}"`);
     expect(ROW).not.toContain("flex-col items-stretch");
     expect(BODY).not.toContain("LocaleMeter");
     expect(BODY).not.toContain("pl-11");
@@ -467,7 +470,7 @@ describe("Projects 행 — 한 줄 · 메타 감김", () => {
   });
 
   it("메타 줄이 감기고 칸은 찢기지 않는다", () => {
-    expect(META).toContain('"flex flex-wrap gap-x-1 text-xs"');
+    expect(META).toContain('"flex flex-wrap gap-x-1 text-xs @max-form:col-[2/4] @max-form:row-[3]"');
     expect(META).toContain('className="max-w-full"');
     expect(META).not.toContain("whitespace-nowrap");
   });
@@ -495,21 +498,37 @@ describe("Projects 행 — 한 줄 · 메타 감김", () => {
     expect(skeleton).not.toContain('<Skeleton className="h-9 w-64" />');
   });
 
-  it("골격도 한 줄이다 — 유동 이름 칸 세 줄 · 좁은 그릇 메타 세 줄 · chevron 자리", () => {
+  /**
+   * **좁은 그릇은 같은 DOM의 grid 배치다** (D16 · malmoi#299) — 이름 칸이 `contents`가 되어 이름·리포는 칩 묶음 옆 두 줄, 메타는 셋째 줄에서
+   * 이름 시작선부터 행 오른쪽 끝까지 선다. 메타를 두 벌 그리지 않는다(링크의 접근 이름이 메타를 되풀이하면 안 된다). 골격도 같은 배치다.
+   */
+  it("좁은 그릇은 실물·골격이 같은 grid 자리다 — 메타는 2열부터 끝까지 셋째 줄", () => {
+    const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
+    for (const source of [ROW + META, skeleton]) {
+      expect(source).toContain(NARROW_GRID);
+      expect(source).toContain("@max-form:contents");
+      expect(source).toContain("@max-form:col-[2/4] @max-form:row-[3]");
+      expect(source).toContain("@max-form:col-[3] @max-form:row-[1/3]");
+      expect(source).toContain("@max-form:col-[1] @max-form:row-[1/3]");
+    }
+    expect([...ROW.matchAll(/<RowMeta /g)]).toHaveLength(1);
+  });
+
+  it("골격도 한 줄이다 — 유동 이름 칸 세 줄 · 좁은 그릇 메타 두 줄 · chevron 자리", () => {
     const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
     expect(skeleton).not.toContain("w-[420px]");
     expect(skeleton).not.toContain("flex flex-col gap-2.5");
     expect(skeleton).not.toContain("pl-11");
-    expect(skeleton).toContain('className="flex min-w-0 flex-1 flex-col gap-0.5"');
+    expect(skeleton).toContain('className="flex min-w-0 flex-1 flex-col gap-0.5 @max-form:contents"');
     /*
       메타 막대는 **상자 하나 안의 줄**이다(#298) — 실물 메타 줄은 한 flex-wrap 상자 안이라 사이 gap이 없다. 막대를 이름 칸의 형제 줄로 두면
-      줄마다 `gap-0.5`(2)를 더 받아 골격이 그만큼 높았다. 좁은 그릇(325)은 실물에 가장 흔한 세 줄이다(en 실측 16행 중 13).
+      줄마다 `gap-0.5`(2)를 더 받아 골격이 그만큼 높았다. 좁은 그릇(325)은 메타가 행 폭이라(D16) 실물에 가장 흔한 두 줄이다(en 18행 중 16 · es 18행 중 17).
     */
-    expect(skeleton).toContain(`<div>
+    expect(skeleton).toContain(`<div className="@max-form:col-[2/4] @max-form:row-[3]">
                     <Skeleton size="xs" className="h-3 w-70 max-w-full @max-form:w-[70%]" />
-                    <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[55%]" /></div>
                     <div className="hidden @max-form:block"><Skeleton size="xs" className="h-3 w-[40%]" /></div>
                   </div>`);
+    expect(skeleton).not.toContain("w-[55%]");
     expect(skeleton).toContain('<Skeleton className="size-4 shrink-0" />');
     expect(skeleton).toContain("@container border-border");
     expect(skeleton).not.toContain("rounded-[4px]");

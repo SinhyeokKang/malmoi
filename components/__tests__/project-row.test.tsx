@@ -387,6 +387,17 @@ describe("대표 메타", () => {
     expect(time.getAttribute("title")).toBeNull();
   });
 
+  /** 좁은 그릇에서 메타는 이름 칸을 나와 행 폭으로 선다(D16 · #299) — 같은 DOM의 grid 배치라 메타는 한 벌이고 링크 이름에 한 번만 든다. */
+  it("메타는 한 벌이고 좁은 그릇에서 행의 2열부터 끝까지 셋째 줄에 선다", async () => {
+    const container = await draw({ sourceCount: 2, keyCount: 24, languageCount: 3, lastSync: "2026-10-18T00:00:00.000Z" });
+    const link = rowLink(container);
+    expect(link.querySelectorAll("[data-row-meta]")).toHaveLength(1);
+    expect(link.textContent?.split(en.translations.keys(24))).toHaveLength(2);
+    expect(link.classList).toContain("@max-form:grid");
+    expect(meta(container).parentElement?.classList).toContain("@max-form:contents");
+    for (const token of ["@max-form:col-[2/4]", "@max-form:row-[3]"]) expect(meta(container).classList).toContain(token);
+  });
+
   it("보관 행은 이름·리포·메타가 gray-dim이다", async () => {
     const container = await draw({ archivedAt: new Date("2026-09-01T00:00:00Z"), lastSync: "2026-08-01T00:00:00.000Z" });
     expect(meta(container).classList).toContain("text-gray-dim");
