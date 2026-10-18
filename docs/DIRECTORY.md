@@ -109,7 +109,8 @@ app/
                         ⚠️ 토큰이 토큰을 만들지 않는다 — MCP 도구에 발급·폐기가 없고 여기가 유일한 길이다.
                         ⚠️ 서버 URL은 이 요청의 origin이다 — preview에서 보면 preview 주소여야 조각을 그대로 쓴다
     inbox/              Inbox(`/inbox`, 2026-10-09 inbox-page). 사용자 축 한 장 — requireUser만 지난다(preferences/·mcp/와 같은 형 · layout.tsx가
-                        ContentPanel을 든다 · loading.tsx). page.tsx는 requireUser → 조회 전 now → loadAttentionInbox → InboxList + MarkSeen(now ISO).
+                        ContentPanel을 든다 · loading.tsx). page.tsx는 requireUser → 조회 전 now → loadAttentionInbox → 필터 선택지·실효 필터·filterInbox → InboxList(좁힌 결과, 원래 계획이 있는데 결과만 0건이면 NoMatch) + MarkSeen(now ISO).
+                        searchParams(kind·project·q)를 읽고 InboxFilters를 머리에 둔다. loading은 기본 필터 줄의 감김도 예약한다.
                         ⚠️ 렌더는 아무것도 쓰지 않는다 — 읽음은 마운트 뒤 섬이 Action으로 쓴다(prefetch가 본체를 실행해도 읽음이 되지 않게).
                         ⚠️ actions.ts가 여기 없다 — 공개 셸 헤더도 부르므로 app/inbox/actions.ts(괄호 밖)에 남는다. 두 디렉터리가 같은 세그먼트 /inbox로
                         풀리지만 page.tsx가 이쪽 하나라 충돌하지 않는다. 보호 경로라 isProtectedPath와 robots disallow 두 곳에 등재된다
@@ -326,7 +327,7 @@ components/
                         실제 retry 콜백을 호출하며 404·빈 결과는 alert 없는 EmptyState로 남는다
   ui/select-row.tsx     SelectRow — 선택 행 모양과 radio/checkbox 입력·expand/aside 슬롯을 공유한다.
                         RadioGroup·목록 역할·선택/확장 시점과 비활성 사유 연결은 실제 소비자가 소유한다
-  ui/filter-menu.tsx    FilterMenu — FieldTrigger + DropdownMenu 공통 껍데기. Logs·번역 화면이 쓰고 Inbox 필터 줄도 같은 형을 쓴다.
+  ui/filter-menu.tsx    FilterMenu — FieldTrigger + DropdownMenu 공통 껍데기. Logs·번역 화면·Inbox 필터 줄이 쓴다. className으로 긴 값의 폭을 제한하면 안쪽 span은 truncate, 접근 이름은 전체 값을 보존한다.
                         축을 포함한 접근 이름·크기·정렬·disabled·triggerRef·닫힘 포커스를 들며 항목은 children이 소유한다. 트리거를 감싸지 않는다
   ui/field-trigger.tsx  FieldTrigger — 필드형 드롭다운의 md36/sm28·active/disabled·뒤 글리프를 공유한다.
                         Radix 트리거의 asChild 자식으로 조립하며 슬롯·네이티브 속성은 실제 컨트롤에 남는다
@@ -517,7 +518,8 @@ components/
   inbox/                Inbox 조각(inbox-page, 2026-10-09). row-slots(attentionRowSlots — 주의 항목 한 줄의 **내용**(칩·문장·점·시각·Owner 안내)을
                         헤더 드롭다운·/inbox·Home 할 일 카드가 나눠 쓴다. 그릇은 각자(DropdownMenuRow · ListRow) · attentionItemKey(행 key — 드롭다운 로빙 포커스).
                         ⚠️ "use client"가 아니다 — 서버 페이지·Home도 쓴다, 그래서 m·uiLocale을 인자로 받는다. 권한을 판정하지 않는다(ownerRetries는 호출부)) ·
-                        inbox-list(서버 — 프로젝트마다 Card + ListRow, 빈 상태 EmptyState card) · mark-seen("use client" 섬 — 마운트 뒤
+                        inbox-list(서버 — 프로젝트마다 Card + ListRow, 빈 상태 EmptyState card) · inbox-filters("use client" — 종류 단일·프로젝트 다중 선택 + 검색,
+                        실효 필터를 URL로 조립한다. 선택지는 원래 계획, FilterMenu·DropdownMenuCheckboxItem·SearchInput 조립) · mark-seen("use client" 섬 — 마운트 뒤
                         markAttentionSeenAction, marked면 notifySeen. 아무것도 그리지 않는다)
   onboarding/new-project.tsx
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
@@ -1104,7 +1106,9 @@ lib/
                         검토 · 빈 언어)을 한 함수가 낸다. Inbox와 /projects 행 조립이 둘 다 쓴다 — 2026-10-18 project-row-redesign. 런타임 import는
                         lib/auth/permission 하나라 클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
                         unread-store(탭 안 안 읽음 수 store — 헤더·사이드바 배지가 같은 n을 읽고 /inbox 섬이 읽음 신호를 보낸다. Provider가 아닌 것은
-                        공개 셸 헤더도 같은 AttentionInbox라서다. ⚠️ 서버 스냅샷 0 · 렌더 중 setUnread 금지 — SSR에서 요청 간 공유되는 모듈 인스턴스다)
+                        공개 셸 헤더도 같은 AttentionInbox라서다. ⚠️ 서버 스냅샷 0 · 렌더 중 setUnread 금지 — SSR에서 요청 간 공유되는 모듈 인스턴스다) ·
+                        filter(순수 — parseInboxFilter·inboxQuery·inboxKindOf·inboxFilterOptions·effectiveInboxFilter·hasNarrowing·filterInbox.
+                        페이지 표시만 좁히며 로더·헤더 집계는 부르지 않는다. unsent·language_unsent는 publish 하나, 실패·일부 반영은 나눈다)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 UTF-16 역매핑을 강조·snippet·
@@ -1171,6 +1175,8 @@ lib/
                         cookie(server-only — setColorSchemeCookie, Server Action용 cookies().set. 속성은 device-cookies/spec). 로그인 동기화는 lib/device-cookies/. __tests__/helpers/는 대비 검사 전용
                         순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
                         theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
+  query-list.ts         ⚠️ 잎(import 0). 목록·글자 쿼리 파싱과 encodeList — events/filter·inbox/filter가 공유한다. 반복 파라미터 첫 값,
+                        trim·목록 정렬·중복 제거·50개 상한·글자 200자 상한을 한 벌로 둔다(inbox-filter-search, 2026-10-18)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
   viewport.ts           잎(타입 import 하나). 요청 UA → 루트 viewport(viewportFor) — iOS에만 maximumScale 1. 근거는 ARCHITECTURE §6.358.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
