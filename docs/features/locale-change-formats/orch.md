@@ -20,7 +20,7 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델/effort | 출시 차단·게이트 | 상태 |
 |---|---|---|---|---|---|---|
-| A | T1,T2,T3; T11 계약 선기록 | lib/adapters/**, lib/survey/one.ts·__tests__/classify.test.ts, messages/{en,ko,es}.tsx(writer 경고만), docs/ARCHITECTURE.md | 인테이크 | Codex gpt-6-astra/high — 생성 결정성·루트·AST 계약 | 차단. red→green, 계약 매트릭스, pnpm gate --base dev, 독립 리뷰 | 구현 완료·리뷰 중 |
+| A | T1,T2,T3; T11 계약 선기록 | lib/adapters/**, lib/survey/one.ts·__tests__/classify.test.ts, messages/{en,ko,es}.tsx(writer 경고만), docs/ARCHITECTURE.md | 인테이크 | Codex gpt-6-astra/high — 생성 결정성·루트·AST 계약 | 차단. red→green, 계약 매트릭스, pnpm gate --base dev, 독립 리뷰 | dev 통합·리뷰 통과 |
 | B | T4,T5,T6 | lib/locales/**, lib/pull/**, lib/publish/**, lib/import 테스트, lib/mcp 테스트, source-languages.test.tsx 비지원 fixture, messages/en.tsx MCP | A 통합 | Codex gpt-6-astra/medium — 미리보기·실행·관측 정합성 | 차단. T4–T6 원자 커밋, preview==execution, 격리 postgres 포함 gate, 독립 리뷰 | 대기 |
 | C | T7,T8,T9 | components/sources/**, components/ui/select.tsx, lib/sources/query.ts, 관련 DOM/순수 테스트·SourceDetail fixture, messages/{en,ko,es}.tsx languagesHelp 삭제 | B 통합 | Codex gpt-6.1-sol/high — 기존 UI·판정 변경 | 차단. 동작·포커스·300px 테스트, gate, 독립 리뷰 | 대기 |
 | D | T10,T11 최종 대조,T12,T12-1,T13 본문 | PRODUCT, ARCHITECTURE, DESIGN, CLAUDE/AGENTS 미러, guide en/ko/es, AUTHORING, README, DIRECTORY 영향 | C 통합 | Codex gpt-6.1-sol/high — 사실·번역 대조 | 차단. 문서별 커밋, guide 스킬, test·미러·문서 신선도 | 대기 |
@@ -56,3 +56,5 @@
 - A 자체 검증 보강 승인: 중첩 생성에서 KEY_SEP로 시작하는 키는 read 왕복 시 키가 바뀌어 `write-create-unsupported`로 차단한다. 평평한 파일은 그대로 보존한다(A4·불변식 9 근거, `msg_54a4353c1d4d`). JS 확장자 테스트에는 JS 유효 소스를 쓰고 as/satisfies는 TS 행에서 검증한다.
 
 - A 구현 완료: `195bd0d6..a987963e`, 6커밋. `pnpm gate --base dev` 성공(16,118 passed/2 skipped, build·미러), 어댑터+survey 897 passed. 의도된 red 21건과 앞 구분자 red 2건 확인. 기존 write 불변, 생성 테스트를 `create.test.ts`에 모은 편차는 R-A에서 판정. 구현 워커 release 후 독립 R-A 시작.
+
+- R-A `ctx_276bc664a02c`: 🔴0·🟡0, 직접 관련 테스트 400+경계 probe 3 통과. A 승인 편차 전부 타당. A dev 통합 `905ef2ad..f87e0d55`; 리뷰 워커 release. T2/T3 검증 명령에 공통 create.test.ts 추가.

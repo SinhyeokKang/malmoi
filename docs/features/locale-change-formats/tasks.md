@@ -7,14 +7,14 @@
 
 ## 커밋 1 — `feat(adapters): create new yaml-catalog and code-dict locale files`
 
-- [ ] T1. `Adapter.create?` 타입 + 새 오류 코드 `write-create-unsupported`(types.ts 목록·kind `failure` · `lib/survey/one.ts` 매핑 · 세 사전 writer 경고 문구) +
+- [x] T1. `Adapter.create?` 타입 + 새 오류 코드 `write-create-unsupported`(types.ts 목록·kind `failure` · `lib/survey/one.ts` 매핑 · 세 사전 writer 경고 문구) +
   `shared.ts`의 `nestEntries`·키 구조 관측(design §2.2·§2.2.1) + 계약 매트릭스에 "수술적만 `create`를 가진다", "새 파일 → 다음 write diff 0" 행 (red).
   검증: `pnpm exec vitest run lib/adapters` — 두 어댑터 행이 red, `nestEntries`(접두 충돌·정수 키 순서·`__proto__`·평평/중첩/혼합) green, 기존 "수술적 write는 원본 없으면 null" 행 green.
-- [ ] T2. `createYamlCatalogFile` — 루트 키(base 코드와 같을 때만) · 루트 오인 방어 · 키 구조 관측 · `flowString` 조립(`toString` 금지) · 표현(들여쓰기·CRLF·BOM) · 고정점 · `read` 왕복 (design §2.3).
-  검증: `pnpm exec vitest run lib/adapters/__tests__/yaml-catalog.test.ts` green — Rails형·misskey형 고정점, 루트 불일치·루트 오인(`nav:` 하나) 실패,
+- [x] T2. `createYamlCatalogFile` — 루트 키(base 코드와 같을 때만) · 루트 오인 방어 · 키 구조 관측 · `flowString` 조립(`toString` 금지) · 표현(들여쓰기·CRLF·BOM) · 고정점 · `read` 왕복 (design §2.3).
+  검증: `pnpm exec vitest run lib/adapters/__tests__/yaml-catalog.test.ts lib/adapters/__tests__/create.test.ts` green — Rails형·misskey형 고정점, 루트 불일치·루트 오인(`nav:` 하나) 실패,
   `no:` 루트·키 `"yes"`·값 `No`·`12:30`이 따옴표로 나감, 개행 값 큰따옴표, CRLF+들여쓰기 4. `rg -n 'doc\.toString|setIn\(' lib/adapters --glob '!**/__tests__/**'` 0건.
-- [ ] T3. `createCodeDictFile` — export 형태(default·같은 이름 named·언어 든 이름 실패·`const` 경유) · 키 구조 · 키 표기 · `__proto__` 실패 · 표현(BOM 없음·세미콜론 고정) · 고정점 · 왕복 (design §2.4).
-  검증: `pnpm exec vitest run lib/adapters/__tests__/code-dict.test.ts` green.
+- [x] T3. `createCodeDictFile` — export 형태(default·같은 이름 named·언어 든 이름 실패·`const` 경유) · 키 구조 · 키 표기 · `__proto__` 실패 · 표현(BOM 없음·세미콜론 고정) · 고정점 · 왕복 (design §2.4).
+  검증: `pnpm exec vitest run lib/adapters/__tests__/code-dict.test.ts lib/adapters/__tests__/create.test.ts` green.
 
 ## 커밋 2 — `feat(locales): add and remove languages for yaml-catalog and code-dict`
 
