@@ -59,8 +59,8 @@ export type LocaleAddPreview = { ok: true; action: "create" | "revive"; path: st
  * `delivered`는 그 언어의 파일 변경이 이미 PR/MR에 실렸나다. `approval`은 실행이 다시 대조할 서버 지문이다 — 승인은 항상 요구한다.
  */
 export type LocaleRemovalPreview =
-  /** `delivered: null` — 확인이 무효화 중이라 실렸는지 모른다. */
-  | { ok: true; kind: "request-removal" | "cancel-add"; path: string; translations: number; pendingCount: number; delivered: boolean | null; approval: string }
+  /** `delivered: null` — 확인이 무효화 중이라 실렸는지 모른다. `path: null` — 추가 취소에 언어별 파일 경로가 없다. */
+  | { ok: true; kind: "request-removal" | "cancel-add"; path: string | null; translations: number; pendingCount: number; delivered: boolean | null; approval: string }
   | { ok: false; error: LocaleChangeError };
 
 export type RemoveLocaleResult = { ok: true; kind: "request-removal" | "cancel-add"; discarded: number } | { ok: false; error: LocaleChangeError };

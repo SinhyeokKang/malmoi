@@ -479,6 +479,14 @@ describe("언어 변경 도구", () => {
     expect(await run("preview_locale_removal", subject("owner"), { ...S, localeCode: "fr" })).toMatchObject({ status: "ok", data: { change: "cancel-add", delivered: null } });
   });
 
+  it("추가 취소의 언어별 경로가 없으면 null을 그대로 전달한다(#303)", async () => {
+    h.core.mockResolvedValueOnce({ ok: true, kind: "cancel-add", path: null, translations: 1, pendingCount: 1, delivered: false, approval: "b".repeat(64) });
+    expect(await run("preview_locale_removal", subject("owner"), { ...S, localeCode: "es" })).toMatchObject({
+      status: "ok", data: { change: "cancel-add", path: null, translations: 1, unsentEdits: 1, delivered: false, approval: "b".repeat(64) },
+    });
+    expect(h.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("remove_locale — approval은 생략할 수 없다(null도 받지만 코어가 approval-required로 거부한다)", () => {
     const schema = TOOLS.find(t => t.name === "remove_locale")!.inputSchema;
     expect(schema.safeParse(L).success).toBe(false);

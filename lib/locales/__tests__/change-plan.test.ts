@@ -179,7 +179,7 @@ describe("planBaseLocaleCandidate", () => {
   });
 });
 
-// #303: ts-dict stores multiple locales in each namespace file, not {locale}.json.
+// #303: ts-dict는 네임스페이스 파일 하나에 여러 언어를 담아 {locale}.json 경로가 없다.
 describe("legacy ts-dict ADD cancellation", () => {
   const state: State = { locales: [...initial.locales, { code: "es", orphaned: false }], changes: [{ localeCode: "es", operation: "ADD" }] };
   const legacy = { ...surface, adapterName: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts" };

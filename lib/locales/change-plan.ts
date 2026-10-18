@@ -39,7 +39,7 @@ export type LocaleChangeInput = {
 export type LocaleTransition =
   | { kind: "add"; code: string; action: "create" | "revive"; path: string }
   | { kind: "request-removal"; code: string; path: string; discardPending: true }
-  | { kind: "cancel-add"; code: string; path: string; discardPending: true }
+  | { kind: "cancel-add"; code: string; path: string | null; discardPending: true }
   | { kind: "cancel-removal"; code: string };
 
 export type LocaleChangeRefusal =
@@ -90,14 +90,15 @@ export function planLocaleChange(input: LocaleChangeInput): LocaleChangeVerdict 
     if (locale === undefined || locale.orphaned) return { ok: false, error: "not-found" };
   }
   const path = input.surface.pathTemplate === null ? null : localeFilePath(input.surface.pathTemplate, request.code);
-  if (path === null) return { ok: false, error: "unsafe-path" };
+  // 취소는 파일을 만들거나 지우지 않는다. 다중 언어 파일의 glob에는 언어별 경로가 없다(#303).
+  if (!cancelAdd && path === null) return { ok: false, error: "unsafe-path" };
   if (input.approval === "missing") return { ok: false, error: "approval-required" };
   if (input.approval === "stale") return { ok: false, error: "stale-approval" };
   return {
     ok: true,
     transition: cancelAdd
       ? { kind: "cancel-add", code: request.code, path, discardPending: true }
-      : { kind: "request-removal", code: request.code, path, discardPending: true },
+      : { kind: "request-removal", code: request.code, path: path!, discardPending: true },
   };
 }
 

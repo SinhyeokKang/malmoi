@@ -278,7 +278,7 @@ describe("cancelAddDone — 보존 번역 수 0·1·2, 세 사전(#288)", () => 
   }
 });
 
-// #303: a shared namespace glob is not a file that cancellation will delete.
+// #303: 공유 네임스페이스 glob은 취소가 삭제할 파일이 아니다.
 it("legacy ts-dict cancellation omits an unavailable file and returns focus to Languages", async () => {
   const unsupported = { languageChangesSupported: false, connection: { adapterName: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts", format: "TypeScript dictionary" } };
   mocks.preview.mockResolvedValue(ready({ kind: "cancel-add", path: null, translations: 9, pendingCount: 1, delivered: false }));
