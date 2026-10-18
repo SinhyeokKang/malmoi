@@ -46,15 +46,15 @@ T4~T6은 한 커밋이다 — T4만 들어가면 Publish가 새 파일을 조용
 
 ## 커밋 4~ — 문서 (문서별 커밋)
 
-- [ ] T10. `docs(PRODUCT)`: §7.2 "지원 포맷"을 넷으로, `ts-dict`만 비지원. 비지원 포맷 동작 숨김 한 줄.
+- [x] T10. `docs(PRODUCT)`: §7.2 "지원 포맷"을 넷으로, `ts-dict`만 비지원. 비지원 포맷 동작 숨김 한 줄.
   검증: `rg -n "json-catalog.*chrome-locales|JSON catalog.*Chrome" docs/PRODUCT.md`에 낡은 "둘뿐" 문장 0건.
-- [ ] T11. `docs(ARCHITECTURE)`: §1.4 "`null`은 원본이 없을 때만"에 `create` 갈래 · §5.10 머리 포맷 목록 · "ADD의 새 파일 표현"에 수술적 `create`(빌리는 규약 넷 — 루트 키·키 구조·export 형태·표현,
+- [x] T11. `docs(ARCHITECTURE)`: §1.4 "`null`은 원본이 없을 때만"에 `create` 갈래 · §5.10 머리 포맷 목록 · "ADD의 새 파일 표현"에 수술적 `create`(빌리는 규약 넷 — 루트 키·키 구조·export 형태·표현,
   "구조는 빌리지 않는다"의 예외로 명시 · 값은 빌리지 않는다 · 실패는 blocking).
   검증: `rg -n "구조는 빌리지 않는다" docs/ARCHITECTURE.md` 히트 문장에 예외가 함께 있다. 같은 rg의 "둘뿐" 문장 0건.
-- [ ] T12. `docs(DESIGN)`: §6.66 "꺼진 동작은 숨기지 않는다" → B6 판정 기준 한 문장(§2.4 행 후보) · 우선순위 포맷 > 권한 · Inactive 띠 · 입력 선택 행에 yaml·code-dict ·
+- [x] T12. `docs(DESIGN)`: §6.66 "꺼진 동작은 숨기지 않는다" → B6 판정 기준 한 문장(§2.4 행 후보) · 우선순위 포맷 > 권한 · Inactive 띠 · 입력 선택 행에 yaml·code-dict ·
   §6.4 Select 행에 높이 상한 · §6.675 시간대 행의 "고정 상한이 아니다" 정정.
   검증: `rg -n "고정 상한이 아니다" docs/DESIGN.md` 0건, `rg -n "available-height" docs/DESIGN.md` 히트가 300 상한과 함께.
-- [ ] T12-1. `docs: CLAUDE.md` 언어 삭제 절의 "`json-catalog`·`chrome-locales`뿐" 정정 + `pnpm sync:agents`. 코드 주석 `lib/adapters/types.ts`(`representationSource`)·`lib/pull/locales.ts`(관측 주석)는 커밋 1·2에서 함께.
+- [x] T12-1. `docs: CLAUDE.md` 언어 삭제 절의 "`json-catalog`·`chrome-locales`뿐" 정정 + `pnpm sync:agents`. 코드 주석 `lib/adapters/types.ts`(`representationSource`)·`lib/pull/locales.ts`(관측 주석)는 커밋 1·2에서 함께.
   검증: `pnpm sync:agents:check` green.
 - [ ] T13. `/guide` — `setup/languages.md`(지원 포맷 목록 · "buttons are turned off too, and the card's description says why" 문장 정정)·`reference/formats.md`·
   `faq.md#languages`("keep their comments"에 새 파일 단서 · 새 파일 대가 둘)(en·ko·es 같은 커밋) · `guide/AUTHORING.md` · README에 언어 추가·제거 문장 새로 추가.
