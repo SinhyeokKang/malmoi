@@ -2645,6 +2645,7 @@ export const ko = {
     "duplicate-property": "키가 두 번 정의되어 있습니다. Malmoi는 편집 대상으로 삼은 값을 사용하고 다른 값은 그대로 둡니다.",
     "key-shadowed": "다른 키나 속성이 이 키를 가리고 있어 값을 안전하게 쓸 수 없습니다.",
     "write-parse-failed": "파일을 해석하지 못해 변경하지 않았습니다.",
+    "write-create-unsupported": "기준 언어 파일을 바탕으로 이 언어 파일을 만들 수 없습니다.",
     "write-no-default-export": "이 파일에 default export 객체가 없어 변경하지 않았습니다.",
     "write-locale-object-missing": "파일에 이 언어의 항목이 없어 번역을 쓰지 않았습니다.",
     "write-empty-unsupported": "이 형식에서는 빈 값을 보낼 수 없습니다. 값을 입력한 뒤 게시하세요.",

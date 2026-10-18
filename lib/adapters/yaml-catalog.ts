@@ -3,6 +3,9 @@ import { CST, isAlias, isMap, isScalar, isSeq, parseDocument, stringify, type Do
 import { KEY_SEP } from "./json-style";
 import {
   compareKeys,
+  keyStructure,
+  nestEntries,
+  type EntryTree,
   hasStrongLocale,
   looksLikeLocale,
   rankTemplateCandidates,
@@ -597,6 +600,67 @@ function locate(start: unknown, segments: readonly string[]): Located {
   return { kind: "found", node };
 }
 
+/** 원본 없는 ADD만 별도로 만든다. 기존 write에 빈 골격을 넘기면 중첩 경로가 점 리터럴로 바뀐다. */
+export function createYamlCatalogFile(
+  format: DetectedFormat,
+  input: WriteInput & { baseLocale: string },
+): { content: string | null; errors: AdapterError[] } {
+  const entries = input.entries.filter(e => !e.orphaned && e.message !== "").sort((a, b) => compareKeys(a.key, b.key));
+  if (entries.length === 0) return { content: null, errors: [] };
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
+  const unsupported = (detail: string) => ({ content: null, errors: [{ path, code: "write-create-unsupported" as const, detail }] });
+  const source = format.representationSource;
+  if (source === undefined) return unsupported("Base language file is missing");
+  try {
+    const doc = parseDocument(source, { ...PARSE_OPTS, keepSourceTokens: true });
+    if (doc.errors.length > 0) return { content: null, errors: [{ path, code: "write-parse-failed", detail: doc.errors[0]?.message }] };
+    const root = rootKeyOf(doc);
+    if (root !== undefined && root !== input.baseLocale) return unsupported("Root locale does not match the base language");
+    const map = root === undefined ? doc.contents : isMap(doc.contents) ? doc.contents.items[0]?.value : undefined;
+    if (map !== null && !isMap(map)) return unsupported("Base language file is not a mapping");
+    const keys = isMap(map) ? map.items.map(item => ({ key: isScalar(item.key) ? String(item.key.value) : "", map: isMap(item.value) })) : [];
+    const nested = keyStructure(keys, SEP) === "nested";
+    // 빈 최상위 이름은 read가 접두로 남기지 않으므로 .x가 x로 바뀐다.
+    if (nested && entries.some(e => e.key.startsWith(SEP))) return unsupported("Leading separator cannot roundtrip through a nested mapping");
+    const { tree, shadowed } = nested ? nestEntries(entries, SEP) : { tree: new Map(entries.map(e => [e.key, e.message])), shadowed: [] };
+    if (shadowed.length > 0) return { content: null, errors: shadowed.map(key => ({ path, code: "key-shadowed", key })) };
+    const indents: number[] = [];
+    const observeIndent = (node: YAMLMap): void => {
+      for (const item of node.items) {
+        const at = isScalar(item.key) ? item.key.range?.[0] : undefined;
+        if (at !== undefined) {
+          const prefix = source.slice(source.lastIndexOf("\n", at - 1) + 1, at);
+          if (/^ +$/.test(prefix)) indents.push(prefix.length);
+        }
+        if (isMap(item.value)) observeIndent(item.value);
+      }
+    };
+    if (isMap(doc.contents)) observeIndent(doc.contents);
+    const indent = " ".repeat(indents.length > 0 ? Math.min(...indents) : 2);
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    const types = insertionTypes(doc, null);
+    const lines: string[] = [];
+    const emit = (node: EntryTree, depth: number): void => {
+      for (const [key, value] of node) {
+        const name = flowString(key, doc, key.includes("\n") ? "QUOTE_DOUBLE" : types.key);
+        const prefix = indent.repeat(depth) + name + ":";
+        if (value instanceof Map) {
+          lines.push(prefix);
+          emit(value, depth + 1);
+        } else lines.push(prefix + " " + flowString(value, doc, value.includes("\n") ? "QUOTE_DOUBLE" : types.value));
+      }
+    };
+    if (root !== undefined) lines.push(flowString(input.locale, doc, types.key) + ":");
+    emit(tree, root === undefined ? 0 : 1);
+    const content = (source.startsWith("\uFEFF") ? "\uFEFF" : "") + lines.join(newline) + newline;
+    // read가 최상위 이름을 로케일로 벗기면 다음 적재에서 키가 달라진다.
+    if (root === undefined && rootKeyOf(parseDocument(content, PARSE_OPTS)) !== undefined) return unsupported("Created mapping would be read as a locale root");
+    return { content, errors: [] };
+  } catch (cause) {
+    return { content: null, errors: [{ path, code: "write-parse-failed", detail: causeMessage(cause) }] };
+  }
+}
+
 export const yamlCatalog: Adapter = {
   name: "yaml-catalog",
   layout: "per-locale",
@@ -606,4 +670,5 @@ export const yamlCatalog: Adapter = {
   read,
   write,
   writeWithErrors,
+  create: createYamlCatalogFile,
 };

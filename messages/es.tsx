@@ -2648,6 +2648,7 @@ export const es = {
     "duplicate-property": "La clave está definida dos veces. Malmoi usa la que edita y deja la otra como está.",
     "key-shadowed": "Otra clave o propiedad oculta el espacio de esta clave, por lo que no se puede escribir este valor de forma segura.",
     "write-parse-failed": "No se pudo analizar el archivo, así que se dejó sin tocar.",
+    "write-create-unsupported": "No se pudo crear este archivo de idioma a partir del archivo del idioma base.",
     "write-no-default-export": "Este archivo no tiene un objeto como export default, así que se dejó sin tocar.",
     "write-locale-object-missing": "Este idioma no está en el archivo, así que sus traducciones no se escribieron.",
     "write-empty-unsupported": "Este formato no permite publicar un valor vacío. Introduce un valor antes de publicar.",

@@ -4969,6 +4969,7 @@ export const en = {
     "duplicate-property": "The key is defined twice. Malmoi uses the one it edits and leaves the other as it is.",
     "key-shadowed": "The key's slot is obscured by another key or property, so this value can't be written safely.",
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
+    "write-create-unsupported": "This language file couldn't be created from the base language file.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",
     "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",
     "write-empty-unsupported": "This format doesn't support publishing an empty value. Enter a value before publishing.",

@@ -11,7 +11,7 @@ import {
 
 import { KEY_SEP } from "./json-style";
 import { dominantQuote, quoteLiteral, quoteOf, type Quote } from "./quote-style";
-import { compareKeys, hasStrongLocale, looksLikeLocale, rankCandidates } from "./shared";
+import { compareKeys, hasStrongLocale, looksLikeLocale, rankCandidates, keyStructure, nestEntries, type EntryTree } from "./shared";
 import type {
   Adapter,
   AdapterError,
@@ -563,6 +563,70 @@ function quoteName(name: string, quote: Quote, obj: ObjectLiteralExpression): st
   return PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote);
 }
 
+/** 새 파일에는 기준 파일의 규약만 쓰고 값·import·타입 주석은 복사하지 않는다. */
+export function createCodeDictFile(
+  format: DetectedFormat,
+  input: WriteInput & { baseLocale: string },
+): { content: string | null; errors: AdapterError[] } {
+  const entries = input.entries.filter(e => !e.orphaned && e.message !== "").sort((a, b) => compareKeys(a.key, b.key));
+  if (entries.length === 0) return { content: null, errors: [] };
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
+  const unsupported = (detail: string) => ({ content: null, errors: [{ path, code: "write-create-unsupported" as const, detail }] });
+  const source = format.representationSource;
+  if (source === undefined) return unsupported("Base language file is missing");
+  try {
+    const project = newProject();
+    const sf = project.createSourceFile(path, source, { overwrite: true });
+    const syntax = project.getProgram().getSyntacticDiagnostics(sf)[0];
+    if (syntax !== undefined) return { content: null, errors: [{ path, code: "write-parse-failed", detail: syntax.getMessageText().toString() }] };
+    const root = defaultExportObject(sf);
+    let header = "export default ";
+    if (root !== undefined) {
+      const defaultObject = sf.getExportAssignments().some(assignment => {
+        if (assignment.isExportEquals()) return false;
+        const expr = unwrap(assignment.getExpression());
+        return expr === root || (expr?.isKind(SyntaxKind.Identifier) && unwrap(sf.getVariableDeclaration(expr.getText())?.getInitializer()) === root);
+      });
+      if (!defaultObject) {
+        const decl = sf.getVariableDeclarations().find(decl => decl.getVariableStatementOrThrow().isExported() && unwrap(decl.getInitializer()) === root);
+        if (decl !== undefined) {
+          const normalize = (value: string) => value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+          if (normalize(decl.getName()).includes(normalize(input.baseLocale))) return unsupported("Named export contains the base language code");
+          header = `export const ${decl.getName()} = `;
+        }
+      }
+    }
+    const keys = root?.getProperties().flatMap(prop => {
+      if (!prop.isKind(SyntaxKind.PropertyAssignment)) return [];
+      const name = prop.getNameNode();
+      return [{ key: name.isKind(SyntaxKind.StringLiteral) ? name.getLiteralValue() : name.getText(), map: unwrap(prop.getInitializer())?.isKind(SyntaxKind.ObjectLiteralExpression) === true }];
+    }) ?? [];
+    const nested = keyStructure(keys, SEP) === "nested";
+    // 빈 최상위 이름은 read가 접두로 남기지 않으므로 .x가 x로 바뀐다.
+    if (nested && entries.some(e => e.key.startsWith(SEP))) return unsupported("Leading separator cannot roundtrip through a nested mapping");
+    // 인용해도 __proto__는 객체 리터럴의 setter다. 계산된 키는 기존 read 계약 밖이다.
+    if (entries.some(e => (nested ? e.key.split(SEP) : [e.key]).includes("__proto__"))) return unsupported("Object literal would set a prototype");
+    const { tree, shadowed } = nested ? nestEntries(entries, SEP) : { tree: new Map(entries.map(e => [e.key, e.message])), shadowed: [] };
+    if (shadowed.length > 0) return { content: null, errors: shadowed.map(key => ({ path, code: "key-shadowed", key })) };
+    const quote = dominantQuote(root === undefined ? [] : valueLiterals(root));
+    const text = sf.getFullText();
+    const indent = root?.getDescendantsOfKind(SyntaxKind.PropertyAssignment).map(prop => text.slice(text.lastIndexOf("\n", prop.getStart() - 1) + 1, prop.getStart())).find(prefix => /^[\t ]+$/.test(prefix)) ?? "  ";
+    const newline = root !== undefined && source.includes("\r\n") ? "\r\n" : "\n";
+    const trailing = root?.compilerNode.properties.hasTrailingComma === true;
+    const nameOf = (name: string) => root === undefined ? (PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote)) : quoteName(name, quote, root);
+    const emit = (node: EntryTree, depth: number): string => {
+      const lines = [...node].map(([key, value], i) => {
+        const rendered = value instanceof Map ? emit(value, depth + 1) : quoteLiteral(value, quote);
+        return indent.repeat(depth + 1) + nameOf(key) + ": " + rendered + (trailing || i < node.size - 1 ? "," : "");
+      });
+      return "{" + newline + lines.join(newline) + newline + indent.repeat(depth) + "}";
+    };
+    return { content: header + emit(tree, 0) + ";" + newline, errors: [] };
+  } catch (cause) {
+    return { content: null, errors: [{ path, code: "write-parse-failed", detail: causeMessage(cause) }] };
+  }
+}
+
 export const codeDict: Adapter = {
   name: "code-dict",
   layout: "per-locale",
@@ -572,4 +636,5 @@ export const codeDict: Adapter = {
   read,
   write,
   writeWithErrors,
+  create: createCodeDictFile,
 };

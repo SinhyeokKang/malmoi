@@ -45,8 +45,8 @@ export type DetectedFormat = {
 
   /**
    * **원본이 없는 새 파일의 표현 출처** (locale-add design §4) — 같은 소스의 기준 언어 파일 내용이다. 재생성 writer가 원본이 없을 때만
-   * 들여쓰기·줄바꿈·BOM·이스케이프·한 줄 컨테이너·필드 순서를 여기서 읽는다. **값·키 구조는 읽지 않는다** — 구조는 `nested`·`nestedByPath`가 정한다.
-   * 수술적 writer는 보지 않는다(치환할 원본이 아니다). 다음 Publish는 새 파일 자신을 원본으로 읽으므로 같은 표현이어야 diff가 0이다.
+   * 들여쓰기·줄바꿈·BOM·이스케이프·한 줄 컨테이너·필드 순서를 여기서 읽는다. 값은 읽지 않고 재생성의 구조는 `nested`·`nestedByPath`가 정한다.
+   * 수술적 `write`는 보지 않는다. 별도 `create`는 루트 로케일 키·키 구조·export 형태·표현을 읽는다. 다음 Publish는 새 파일 자신을 원본으로 읽어도 diff 0이어야 한다.
    */
   representationSource?: string;
 
@@ -164,6 +164,7 @@ export const ADAPTER_ERROR_CODES = [
   "key-shadowed",
   "write-parse-failed",
   "write-no-default-export",
+  "write-create-unsupported",
   "write-locale-object-missing",
   "write-slot-not-string-literal",
   "write-empty-unsupported",
@@ -196,7 +197,7 @@ const ERROR_KIND = {
   // code-dict·ts-dict — 코드 객체의 같은 키. JS 의미대로 마지막이 적재되고 write도 그 자리를 고친다(B7a r1, 2026-09-24 사용자 결정):
   // 잃는 번역이 없으므로 **대상 리포 CI를 red로 만들지 않는다**(docs/ACTIONS.md §3). 실패로도 unmanaged로도 세지 않는다.
   "duplicate-property": "warning",
-  "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-locale-object-missing": "failure",
+  "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-create-unsupported": "failure", "write-locale-object-missing": "failure",
   "write-empty-unsupported": "failure",
   "write-slot-not-string-literal": "failure", "write-slot-not-scalar": "failure", "write-slot-missing": "failure", "original-file-missing": "failure",
   "download-failed": "failure",
@@ -297,6 +298,8 @@ export type Adapter = {
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
   /** @returns 파일 내용. 낼 항목이 0개면 `null` — 호출부가 그 로케일을 트리에서 뺀다 (ARCHITECTURE §1.1). */
   write(format: DetectedFormat, input: WriteInput): string | null;
+  /** 원본 없는 ADD create·revive 전용. 재생성은 writeWithErrors가 만들고 ts-dict는 지원하지 않는다. 실패는 blocking 오류를 싣는다. */
+  create?(format: DetectedFormat, input: WriteInput & { baseLocale: string }): { content: string | null; errors: AdapterError[] };
   /**
    * `write`와 같되 **버린 항목을 에러로 함께 돌려준다.** 있는 어댑터만 구현한다.
    *
