@@ -3423,6 +3423,10 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
   `dvh`가 따르는 것은 브라우저 툴바이고, 키보드가 레이아웃 뷰포트를 줄이게 하는 것은 루트 `viewport`의 **`interactiveWidget: "resizes-content"`**(`app/layout.tsx`, D20)다.
   Chrome·Firefox Android가 따르고 **iOS Safari는 무시한다**(키보드가 레이아웃 뷰포트를 줄이지 않는다 — 비범위). 되돌리기는 그 한 줄이다.
   공개 Auth 표면에는 텍스트 입력이 0건이라 이 계약을 실제로 밟는 첫 소비자는 LargeModal 폼(앱)이다.
+- **iOS 포커스 자동 확대** (2026-10-18, POSTMORTEM) — 루트 viewport는 정적 export가 아니라 `generateViewport`이고 요청 UA를 순수 함수 `viewportFor`(`lib/viewport.ts`)에 넘긴다.
+  iPhone·iPad·iPod UA에만 `maximumScale: 1`을 더해 16px 미만 입력의 포커스 확대를 막는다 — iOS 10+ Safari는 사용자 핀치에는 이 값을 무시한다. ⚠️ **전역으로 걸지 않는다** — Android Chrome은 핀치까지 막는다(WCAG 1.4.4).
+  `userScalable: false`는 어떤 UA에도 내지 않는다. 헤더를 읽어도 렌더 방식은 그대로다 — 루트 레이아웃은 이미 `connection()`·쿠키로 요청마다 렌더하고, 동적 HTML은 캐시되지 않아 UA별 결과가 섞일 경로가 없다.
+  받아들인 대가: 인앱 WKWebView(`ignoresViewportScaleLimits` 기본 꺼짐 — 카카오톡·인스타그램 등)에서는 핀치도 막힐 수 있고, iPadOS 데스크톱 모드(UA = Mac)는 판정 밖이라 그 모드의 확대는 남는다.
 - **safe-area** — 시트 패널은 `env(safe-area-inset-top|bottom)` 패딩을 들지만 루트에 `viewport-fit=cover`가 없어 **지금은 0**이다(D18). 켜면 공개 셸 헤더·푸터·Docs 캡슐·앱 셸까지 safe-area를 받아야 한다.
 - **resize로 다시 마운트하지 않는다** — 본문 스크롤러·검색·Inbox는 폭 전환으로 재마운트되지 않고(폭에 따른 조건부 렌더 0), 폼 값·pending·에러가 초기화되지 않는다. 공개 스크롤러의 페이지별 재마운트(`key`)는 그대로다.
 - **포커스는 `body`로 빠지지 않는다**(POSTMORTEM 2026-09-24) — 넓어지며 트리거(메뉴 버튼·Docs 캡슐)가 숨으면 고정 내비의 대응 링크로, 좁아지며 넓은 링크(`WideOnly`·`DocsFixedNav`)가 숨으면
