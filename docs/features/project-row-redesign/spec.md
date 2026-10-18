@@ -66,7 +66,7 @@ Inbox 항목(`lib/inbox/plan.ts`)과 행 띠(`rowBanner`)가 따로 판정한다
 6. **Inbox 항목과 행의 띠가 같은 판정에서 나온다** — DB에서 정해지는 할 일(`needs_reconnect`·`import_failed`·`setup`·`unsent`·`review`·`never_filled`)을 순수 함수 하나가 내고, 행의 띠와 Inbox가 둘 다 그 결과를 쓴다. 표 테스트가 다음을 센다.
    - 행 띠가 DB 할 일이면 그 종류가 같은 프로젝트의 Inbox 항목에 있다. 역할 예외는 design.md §4의 표를 따른다.
    - 원격 신호 셋(`pr_open`·`pr_check_failed`·`repo_ahead`)은 행 띠 전용이다. Inbox·배지 경로는 호스트 API를 부르지 않는다.
-7. **Claude Design 시안이 있고 구현이 그것과 같다** — `/design-sync` 실측이 일치하고 리뷰 지적이 0건이다.
+7. **Claude Design 시안이 있고 구현이 그것과 같다** — `/design-sync` 실측이 일치하고 리뷰 지적이 0건이다. 시안: [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html)(2026-10-18 수령 — 시안이 정한 사실은 design §6).
 8. **기존 계약을 유지한다** — 각각 DOM 단언으로 확인한다.
    - 보관 행은 띠가 없고 이름·메타(새 메타 포함)가 `gray-dim`이다.
    - 행 전체가 링크이고, 띠는 링크 밖의 형제다.

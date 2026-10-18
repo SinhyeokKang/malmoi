@@ -10,6 +10,7 @@
 - [ ] **T0 — Claude Design 시안 수령.** `design-brief.md`를 넘기고 핸드오프를 받는다.
   - 검증(수동): `DesignSync list_files`에 핸드오프가 있고, 브리프 프레임 표의 번호마다 프레임이 그려져 있다.
   - 시안이 design.md의 판정(상태 표·메타 넷·띠 톤)과 다르면 **코드 전에 어느 쪽을 고칠지** 사용자에게 묻는다. 결정 5(PR 조회 실패 띠 문안)를 여기서 확정한다.
+  - 2026-10-18 수령: [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html) — 프레임 1–14가 다 있다. 시안이 정한 사실은 design §6에 옮겼다. 남은 확인: f 띠 문안 · n 띠 문안 · Inbox `needs_reconnect`의 EDITOR 목적지.
 
 ──
 
@@ -52,7 +53,7 @@
 ## 3. 목록 UI — 교체·삭제 (`/implement`, 시안 기준)
 - [ ] **T5 — 사전(목록)** (`/translate` 모드 ①). T6보다 먼저 한다.
   - 기존 키를 재사용한다: `sources.count`·`translations.keys`·`sources.languageCount`·`home.cards.synced`.
-  - 새 en 키를 세 사전에 같은 커밋으로 넣는다: `never_filled` 띠 문장·링크, PR 조회 실패 띠 문장(결정 5).
+  - 새 en 키를 세 사전에 같은 커밋으로 넣는다: `never_filled` 띠 문장, PR 조회 실패 띠 문장(결정 5). `never_filled` 띠 링크 라벨은 새 키가 아니라 기존 `sources.open`이다(design §6).
   - 소비자를 잃은 `projects.meter.note.*`·`onGitLab.meter`를 **세 사전에서 동시에** 지운다.
   - 새 낱말은 DESIGN §10.1 표와 대조한다.
   - 검증: `dictionary-consistency`·`host.test`(`:78-89,113-118`)·`terminology`·`gitlab-scope-sweep`가 green이다. `projects.banner.prCheckFailed`를 바꾸면 `cross-screen.test.ts:477`(칩 낱말 + "." 일치)과 `project-row.test.tsx:217`을 같이 고친다.
@@ -60,7 +61,7 @@
   - `planProjectRow` 하나를 읽는다. 행 전체가 `withRepoHost`를 지난다.
   - 둘째 줄(막대·상태 문장)을 없애고, 리포 줄 아래 메타 줄을 둔다(감김).
   - 상대 시각은 `<time dateTime aria-label={formatMinute}>`이고, `now`는 서버 prop으로 받는다.
-  - All set 띠는 muted로 둔다.
+  - All set 띠는 muted로 둔다. 띠 글리프는 `pr_check_failed` → CircleHelp, `never_filled` → Languages(design §6).
   - 지울 것: `rowChip`·`projectGroup`·`rowBanner`(export)·`meterSlot`·`rowLocaleProgress`·`ProjectListRow.meters`. `RowLocaleProgress` 타입(`lib/projects/list.ts:263`)도 지운다 — 사전 조건상 `LocaleMeter`는 이미 `LocaleMeterValue`를 받는다(design §5).
   - 주석에 남은 옛 이름도 고친다(T11 `rg`가 센다): `messages/en.tsx:1961`(띠 절 주석의 `rowBanner`) · `lib/keys/query.ts:223`(`rowBanner`·`meterSlot`)·`:496`(`rowLocaleProgress`) · `lib/projects/list.ts:231,376,442` · `lib/shell/switcher.ts:9`(`projectGroup`).
   - `components/locale-meter.tsx:10`의 머리 주석("두 목록이 같이 쓴다 — Projects 행 … Sources 소스 행")을 Sources 소스 행 하나로 고친다 — 이 기능이 Projects 소비자를 지운다.
@@ -83,7 +84,7 @@
     - `lib/surfaces/__tests__/counts.test.ts:2,11`
     - `meters: []` 픽스처 넷: `project-row.test.tsx:46` · `projects-list-links.test.tsx:24` · `state-links.test.tsx:91` · `projects-cards.test.tsx:44`
     - 검색 하이라이트 `projects-screen.test.ts:554`(변경 없이 green)
-- [ ] **T7 — 로딩 골격** (`app/(edit)/projects/(list)/loading.tsx`). 미터 줄을 지우고 메타 줄을 둔다. 썸네일 모서리를 `rounded-[4px]` → `ProjectThumbnail`과 같은 8로 고친다(POSTMORTEM 2026-09-17 부류).
+- [ ] **T7 — 로딩 골격** (`app/(edit)/projects/(list)/loading.tsx`). 미터 줄을 지우고 메타 줄을 둔다(`@max-form`에서 둘). chevron 자리 16을 새로 둔다. 썸네일 모서리를 `rounded-[4px]` → `ProjectThumbnail`과 같은 8(`rounded-sm`)로 고친다(POSTMORTEM 2026-09-17 부류). 치수는 design §6 골격.
   - 검증(자동): `projects-screen.test.ts:386-437,496-501` · `loading-parity.test.tsx:268-283` · `projects-list-links.test.tsx:81-86`이 green이다.
   - 검증(**수동**): `pnpm dev`에서 골격 행과 실물 행의 `getBoundingClientRect().height`를 견준다. 첫 적재 전 행과 정상 행 둘 다 같아야 한다.
 
@@ -92,6 +93,7 @@
 ## 4. Inbox
 - [ ] **T8 — Inbox를 `projectTodos`로** (`lib/inbox/load.ts` · Inbox 항목 렌더 · 사전).
   - `needs_reconnect` 항목의 문장과 링크(OWNER는 재연결 화면, EDITOR는 소유자에게 요청하라는 문장)를 세 사전에 넣는다. 배지 경로가 호스트 API를 부르지 않는다.
+  - 형은 design §6 "Inbox `needs_reconnect`" — 본문·꼬리는 `projects.banner.needsReconnect`를 `—`에서 나눈 두 조각, `IconTile` warning + Unplug, 보조줄 없음.
   - 검증: `lib/inbox/__tests__/*`와 Inbox DOM 테스트가 green이다. `needs_reconnect` 항목이 OWNER·EDITOR 둘 다에게 서고 문장이 갈린다. 원격 신호 종류가 Inbox 항목에 0이다. `loadAttentionBadgeAction` 경로에 `loadRemoteSignals` import가 0이다(소스 단언).
   - 같은 프로젝트 fixture에서 행 띠의 DB 할 일 종류가 Inbox 항목에 있다(spec 완료 조건 6 — 표 테스트).
 

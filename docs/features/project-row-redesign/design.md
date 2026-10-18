@@ -136,6 +136,43 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 - DESIGN §6.63 머리의 `LocaleMeter` 소비자 서술("Projects와 Sources")은 이 기능이 들어갈 때(T11) "Sources 소스 행(§6.66)"으로 고친다 — 그쪽 정본 갱신(B2)은 지금 사실(두 소비자)을 쓴다. 늦게 끝나는 쪽이 고친다는 규칙(그쪽 tasks T9)에 따른 결과다. 막대 자체(`components/ui/meter.tsx`)는 Sources 상세 모달도 쓰는 공유 프리미티브다.
 - 목록 골격(`app/(edit)/projects/(list)/loading.tsx`)의 미터 줄은 이 기능이 지운다. Sources 골격의 막대 줄은 그 기능이 이미 더했다(좁은 그릇에서는 막대 자리 하나 — 그쪽 orch D14).
 
+## 6. 행 시각 — 핸드오프에서 (T0, 2026-10-18)
+
+시안: [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html)(프레임 1–14 전부 있음). 시안이 치수를 옮겨 온 dev `4f51ccf8` 이후 인용 파일(`project-list.tsx`·`row-card.tsx`·`list-row.tsx`·`card.tsx`·`canon.ts`·`(list)/loading.tsx`)은 바뀌지 않았다(`86ce7a67`에서 확인). 아래는 시안이 정한 사실이고, 구현(T5–T8)과 `/design-sync`(T9)의 기준이다.
+
+**행**
+- 행이 한 줄 flex로 돌아간다 — `ListRow`의 `flex-col items-stretch gap-2.5`를 걷고 `items-center gap-4`. padding `13 14 13 12`·썸네일 28·우측 묶음(`shrink-0 gap-3` — 칩 + chevron 16)은 그대로다.
+- 이름 칸(`min-w-0 flex-1 flex-col gap-0.5`)이 세 줄이다 — 이름 15/22 · 리포 13/18 · 메타 13/18. 메타가 한 줄이면 행 높이는 **88**이다(지금 108 = 이름·리포 + `gap-2.5` + 미터 30).
+- 메타 줄: 13/18, 리포 줄과 같은 색(muted, 보관은 `gray-dim`). `flex flex-wrap` 가로 간격 4, 칸마다 `whitespace-nowrap`. 가운뎃점 ` ·`은 **앞 칸 끝에 붙는다** — 줄은 칸 사이에서만 바뀌고 한 칸(예: `synced 3 hours ago`)은 찢기지 않는다. 글리프·배지 없이 글자뿐이다.
+- 칩은 `StatusBadge state`만 넘기고 `host`는 넘기지 않는다(§3).
+- 첫 적재 전·연결 전 행도 메타 줄이 선다: k·l은 `1 source · 0 keys`, j는 `0 sources · 0 keys`(결정 2 — 소스 수는 늘 서고 키 수는 생략 조건이 없다). setup만 메타를 비우는 예외는 두지 않는다 — 행 높이가 상태마다 같아야 골격이 맞는다.
+- 보관 행: 이름·리포·메타가 `gray-dim`, 칩은 `soft-neutral` 그대로, 썸네일 색 그대로, `synced …`는 남긴다(생략 규칙만 따른다).
+- 검색 일치는 이름에서만 칠한다(지금 그대로).
+
+**띠**
+- 톤: All set 띠(b·c·d·e·f·n)는 전부 muted다 — `project-list.tsx:354`의 `review`·`pr_check_failed` warning 분기를 걷는다. warning·danger는 g·h·i만 든다. j(setup)는 지금처럼 muted다.
+- 글리프(14): `unsent` GitPullRequestArrow · `pr_open` GitPullRequest · `repo_ahead` GitMerge · `review` Eye · **`pr_check_failed` CircleHelp**(지금 TriangleAlert — muted 띠에 경고 삼각이 서면 톤과 모양이 어긋난다) · **`never_filled` Languages**(Inbox `TILE.never_filled`와 같다) · `needs_reconnect` Unplug · `import_failed` CircleX/TriangleAlert · `setup` CircleDashed. `CircleHelp`는 리포에서 이미 쓴다(`components/shell/user-menu.tsx:3`).
+- 링크 형은 지금 그대로다 — 앱 안은 muted + chevron 12, 새 탭 외부(`Open on GitHub`·`Review changes`)는 파랑, EDITOR 갈래(g·j)는 링크 대신 평문(`ownerOnly`), h는 EDITOR도 `View details` + `ownerRetries`.
+- 그릇 640 이상은 띠 문장이 한 줄 말줄임, 미만은 감긴다(`BannerLine` 지금 그대로).
+- `never_filled` 띠는 **하나만** 선다 — 빈 언어가 여럿이면 attention 정렬의 첫 항목이고 나머지는 Inbox가 든다. 링크는 Home Attention의 같은 항목과 같은 목적지(`attentionHref`의 `never_filled` — 그 소스·그 언어의 `Incomplete`)이고 라벨은 기존 `sources.open`(`Open translations` · es `Abrir traducciones`)이다. ⚠️ 시안은 언어를 코드(`ja`)로 그렸지만 Home 본문은 `Locale.name`을 쓴다(`attention-view.ts` `body`) — 행도 `name`을 쓴다.
+
+**폭** — 1280(+LNB) = 카드 920 · 768 = 704 · 375 = 325(`@max-form`).
+- 640 이상이면 메타가 한 줄에 든다(가장 긴 예가 약 300).
+- 325에서 메타는 1–3줄이다. 이름 칸은 `Sync failed` 칩이면 약 149, `Partially synced`면 약 115, es `Sincronización fallida`(약 140)면 약 90까지 준다. 칩은 줄지 않는다.
+- es 수는 `toLocaleString("es")`라 네 자리에 구분 기호가 없다(`1204 claves`) — 기존 es 사전 그대로다.
+
+**골격**(`(list)/loading.tsx`)
+- 행이 한 줄이다 — `flex-col gap-2.5`와 미터 줄을 걷는다.
+- 이름 칸 세 줄: 22 줄에 16 막대(w 192) · 18 줄에 12 막대(w 160) · 18 줄에 12 막대(w 280). `@max-form`에서는 메타 막대 둘(70% · 40%) — 325의 흔한 길이다.
+- 칩 자리 64×20 `rounded-full`, **chevron 자리 16을 새로 둔다**(지금 골격에 없다), 썸네일 `rounded-sm`(8 — `--radius-sm` = 12 − 4).
+
+**Inbox `needs_reconnect`**(프레임 14)
+- 형은 기존 항목 그대로다 — `IconTile` warning + Unplug, 굵은 본문 + 꼬리, 시각, 안 읽음 점.
+- 문장은 `projects.banner.needsReconnect`를 `—`에서 나눈 두 조각이다: 본문 `This repository is disconnected` · 꼬리 ` — syncs and publishes stop until it's reconnected.` 사전에는 Inbox 본문·꼬리 키로 둔다.
+- 보조줄(표면·로케일)이 없다 — `title()`이 `setup`처럼 `""`다.
+- EDITOR는 `askOwner.reconnect`를 둘째 줄에 둔다(`ownerRetries`와 같은 형 — 플래그는 `planInbox`가 정하고 `row-slots`는 판정하지 않는다).
+- 시각: GitLab 토큰 만료면 `gitlabTokenExpiresAt`, 연결 고정 누락이면 `null`이라 칸이 비고 그룹 안 맨 뒤로 간다(§4).
+
 ## 순수 함수 (`/tdd` 진입점)
 
 1. `planProjectRow` — 위 표 전 행 + 입력 축 전수 조합의 불변식(spec 완료 조건 3).

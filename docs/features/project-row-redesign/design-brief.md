@@ -2,6 +2,7 @@
 
 > ⚠️ **시안은 이 행을 다시 구현하는 동안만 SoT다.** 구현이 dev에 들어간 뒤로는 코드 + `docs/DESIGN.md` §6.63이 정본이고, 그 뒤의 새 시안은 변경 요청이다.
 > 기능 정의는 `spec.md`, 판정·데이터는 `design.md`가 정본이다. 이 문서는 **그릴 것만** 담는다.
+> 핸드오프(2026-10-18): [Project Row Redesign.dc.html](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Row+Redesign.dc.html) — 시안이 정한 사실은 design.md §6에 옮겼다.
 
 ## 한 줄
 
