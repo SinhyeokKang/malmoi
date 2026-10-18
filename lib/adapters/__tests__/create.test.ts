@@ -50,6 +50,11 @@ describe("새 파일 공유 계약", () => {
     expect(result.tree.get("__proto__")).toEqual(new Map([["x", "safe"]]));
     expect(result.shadowed).toEqual([]);
   });
+  it("중첩의 각 단계도 키 순서로 정렬한다", () => {
+    const { tree } = nestEntries([{ key: "a-b", message: "dash" }, { key: "a.z", message: "last" }, { key: "a.10", message: "ten" }, { key: "a.2", message: "two" }], ".");
+    expect([...tree.keys()]).toEqual(["a", "a-b"]);
+    expect(tree.get("a")).toEqual(new Map([["10", "ten"], ["2", "two"], ["z", "last"]]));
+  });
   it("접두 충돌은 깊은 키를 보존하고 얕은 키를 보고한다", () => {
     const values = [{ key: "a.b", message: "short" }, { key: "a.b.c", message: "deep" }];
     expect(nestEntries(values, ".")).toEqual({ tree: new Map([["a", new Map([["b", new Map([["c", "deep"]])]])]]), shadowed: ["a.b"] });
@@ -66,6 +71,12 @@ describe("새 파일 공유 계약", () => {
       fails(adapter, undefined);
       fails(adapter, adapter === yamlCatalog ? "x: [" : "export default { x: '", entries, "write-parse-failed");
       fails(adapter, adapter === yamlCatalog ? "en:\n  common:\n    ok: BASE_ONLY\n" : "export default { common: { ok: 'BASE_ONLY' } };", [{ key: "a.b", message: "short" }, { key: "a.b.c", message: "deep" }], "key-shadowed");
+    });
+    it(`${adapter.name}: 중첩에서 앞 점을 잃는 키는 차단하고 평평한 리터럴은 보존한다`, () => {
+      const nested = adapter === yamlCatalog ? 'common:\n  ok: BASE_ONLY\n".x": BASE_ONLY\n' : 'export default { common: { ok: "BASE_ONLY" }, ".x": "BASE_ONLY" };';
+      fails(adapter, nested, [{ key: ".x", message: "Value" }]);
+      const flat = adapter === yamlCatalog ? '".x": BASE_ONLY\n' : 'export default { ".x": "BASE_ONLY" };';
+      roundtrip(adapter, flat, [{ key: ".x", message: "Value" }]);
     });
     it(`${adapter.name}: 값 0개는 의도된 빈 결과다`, () => {
       expect(create(adapter, undefined, entries.slice(2))).toEqual({ content: null, errors: [] });
@@ -95,6 +106,10 @@ describe("YAML 새 언어 파일", () => {
     expect(out).toContain('clock: "12:30"');
     expect(parseDocument(out, { version: "1.1" }).toJS()).toEqual({ no: { clock: "12:30", on: "on", yes: "No" } });
   });
+  it("no 기준 루트·평평한 접두 키도 읽기와 쓰기가 같다", () => {
+    roundtrip(yamlCatalog, "no:\n  seed: BASE_ONLY\n", entries, "no");
+    roundtrip(yamlCatalog, "a.b: BASE_ONLY\n", [{ key: "a.b", message: "short" }, { key: "a.b.c", message: "deep" }]);
+  });
   it("작은따옴표 파일에서도 개행 값은 큰따옴표이고 프로토타입 키를 보존한다", () => {
     const out = roundtrip(yamlCatalog, "en:\n  seed: 'BASE_ONLY'\n", [{ key: "__proto__.x", message: "a\nb" }]);
     expect(out).toContain('x: "a\\nb"');
@@ -118,6 +133,20 @@ describe("code-dict 새 언어 파일", () => {
     expect(roundtrip(codeDict, "export const translations = { common: { ok: 'BASE_ONLY' } };")).toMatch(/^export const translations = /);
     for (const source of ["const x = { common: { ok: 'BASE_ONLY' } }; export default x;", "export default { common: { ok: 'BASE_ONLY' } } as const;", "export default ({ common: { ok: 'BASE_ONLY' } } satisfies Catalog);"]) {
       expect(roundtrip(codeDict, source)).toMatch(/^export default /);
+    }
+  });
+  it("확장자에 관계없이 같은 모듈이며 기존 write로 편집해도 다시 읽힌다", () => {
+    const source = "export const translations = { seed: 'BASE_ONLY' };";
+    const content = roundtrip(codeDict, source);
+    for (const ext of ["js", "mjs", "ts", "tsx"]) {
+      const fmt = { ...format(codeDict, source), pathTemplate: `locales/{locale}.${ext}` };
+      const result = codeDict.create!(fmt, { locale: "fr", baseLocale: "en", entries });
+      expect(result.content).toBe(content);
+      const files = [{ path: `locales/fr.${ext}`, content }];
+      const edited = [{ key: "common.ok", message: "New \"value\"\\path\nNext" }];
+      const written = codeDict.writeWithErrors!({ ...fmt, currentFiles: files }, { locale: "fr", entries: edited });
+      expect(written.errors).toEqual([]);
+      expect(codeDict.read(fmt, [{ ...files[0]!, content: written.content! }]).locales[0]?.entries).toContainEqual(edited[0]);
     }
   });
   it("기준 코드가 든 export 이름은 대소문자·구분자를 무시해 거부한다", () => {
