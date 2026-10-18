@@ -36,7 +36,7 @@ Se conservan. Si la clave vuelve en un commit posterior, sus traducciones vuelve
 
 ## ¿Puedo añadir o quitar un idioma en Malmoi? {#languages}
 
-Los propietarios del proyecto pueden, en catálogos JSON y mensajes de extensión de Chrome: Publicar crea o borra el archivo del idioma en una pull request (una merge request en GitLab), y las traducciones de un idioma quitado se quedan en Malmoi. En los demás formatos, cambia los archivos en el repositorio. Consulta [Añade y quita idiomas](setup/languages.md#languages).
+Los propietarios del proyecto pueden, en catálogos JSON y YAML, mensajes de extensiones de Chrome y diccionarios con un archivo por idioma: Publicar crea o borra el archivo del idioma en una pull request (una merge request en GitLab), y las traducciones de un idioma quitado se quedan en Malmoi. Un diccionario con todos los idiomas en un archivo requiere cambios en el repositorio. Los archivos nuevos de YAML y de código por idioma omiten comentarios, sentencias `import` y declaraciones de tipos; registra el idioma en tu aplicación cuando sea necesario y comprueba las inserciones posteriores de claves con puntos donde falten mapas padre. Consulta [Añade y quita idiomas](setup/languages.md#languages).
 
 ## ¿Tengo que añadir el workflow? {#workflow}
 
