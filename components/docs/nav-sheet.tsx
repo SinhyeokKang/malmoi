@@ -10,10 +10,10 @@ import { useNarrowHandoff } from "@/components/shell/narrow-handoff";
 import { WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 /**
- * 하단 캡슐 — 헤더 검색 캡슐(`FieldButton`)의 짝이다: 44 · radius full · 연한 윤곽 · 바탕 면 · hover·포커스는 흰 테두리 버튼 그대로(`Button` default).
- * 본문 위에 떠서 그림자만 한 단계 높고(`shadow-medium`), 폭은 라벨을 따른다(PT2a). 좌우 16/14 · List 16 + 제목 14/500(말줄임) + ChevronsUpDown 14 muted.
+ * 하단 캡슐 — 44 · radius full · **테마 교차 면**(`Button` primary — 라이트는 검정, 다크는 흰 면)이다. 본문과 같은 바탕 면이면 글 위에 떠도 묻혀서
+ * 면을 뒤집었다. 그림자는 `shadow-medium`, 폭은 라벨을 따른다(PT2a). 좌우 16/14 · List 16 + 제목 14/500(말줄임) + ChevronsUpDown 14(면 글자를 상속해 opacity 60 — 아이콘 색 허용 목록을 넓히지 않는다).
  */
-const CAPSULE = "pointer-events-auto h-11 max-w-full rounded-full border-border-subtle shadow-medium pr-3.5 pl-4";
+const CAPSULE = "pointer-events-auto h-11 max-w-full rounded-full shadow-medium pr-3.5 pl-4";
 
 /**
  * **좁은 폭(`lg` 미만)의 장 내비 — 하단 캡슐 + 전체 화면 시트** (responsive-public PT2a·PT2c · D1·D7·D14). 헤더 메뉴는 늘 글로벌 서랍이고
@@ -74,12 +74,12 @@ export function DocsNavSheet({ pages, label, title, closeLabel, children }: {
           ⚠️ **접근 이름은 aria-label이 아니라 내용이다**(WCAG 2.5.3) — aria-label `Docs`가 보이는 제목을 덮으면 음성 제어로 그 제목을 못 부르고
           스크린리더가 지금 페이지를 못 듣는다. 이름 = sr 접두 `Docs: ` + 보이는 제목. `data-docs-capsule`은 좁아지는 고정 내비가 포커스를 넘길 표식이다.
         */}
-        <Button ref={capsule} type="button" data-docs-capsule="" aria-haspopup="dialog" aria-expanded={open} className={CAPSULE}
+        <Button ref={capsule} type="button" variant="primary" data-docs-capsule="" aria-haspopup="dialog" aria-expanded={open} className={CAPSULE}
           onClick={() => { returnTo.current = capsule.current; setOpen(true); }}>
           <List aria-hidden className="size-4 shrink-0" />
           <span className="sr-only">{label}: </span>
           <span className="min-w-0 truncate">{current}</span>
-          <ChevronsUpDown aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+          <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 opacity-60" />
         </Button>
       </div>
       <LargeModal open={open} flush title={label} closeLabel={closeLabel} actions={null} onClose={() => setOpen(false)}
