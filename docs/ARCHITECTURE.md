@@ -2501,7 +2501,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 - **삭제 경로의 경계**: 소스의 `pathTemplate`로 서버가 계산한 정확한 경로 하나다(Action·MCP는 경로를 받지 않는다). 소유(다른 소스의 경로), 비정규 파일(모드 100644·100755 밖)·링크된 상위 디렉터리는 `renderProject`의 기존 파일 종류 가드(`GitFileKindError`)에 삭제 경로도 태워 거부한다.
   디렉터리·glob 삭제는 없고 Chrome의 같은 디렉터리 다른 파일은 건드리지 않는다. `renderProject` 진입에서 delete·create가 그 소스의 REMOVE·ADD 행 경로와 같은지 단언한다. 계획이 거부되면(`path-conflict`·`duplicate-path`·`unsafe-path`)
   **`locale-plan-refused`** 다 — 결정적이라 재시도 불가(`LocalePlanRefused`, 미리보기는 `refused`). ⚠️ base를 못 읽은 것은 파일 부재가 아니다 — 삭제·`no-changes`를 하지 않는다.
-- **ADD의 새 파일 표현**: 원본이 없으므로 그 소스의 **기준 언어 파일 하나**에서 **표현만**(들여쓰기·CRLF·BOM·이스케이프·한 줄 컨테이너·Chrome 필드 순서) 빌린다 — `DetectedFormat.representationSource`, 재생성 writer가 원본이 없을 때만 본다.
+- **ADD의 새 파일 표현**: 원본이 없으므로 그 소스의 **기준 언어 파일 하나**를 `DetectedFormat.representationSource`로 전달한다. 재생성 writer는 대상 원본이 없을 때 **표현만**(들여쓰기·CRLF·BOM·이스케이프·한 줄 컨테이너·Chrome 필드 순서) 빌린다. 수술적 `create`의 예외는 아래와 같다.
   재생성 어댑터는 **구조는 빌리지 않는다**(소스의 `nested`·`nestedByPath`가 정한다). 예외는 수술적 `yaml-catalog`·`code-dict`의 `Adapter.create?`다:
   기준 언어 파일에서 루트 로케일 키(기준 코드와 같을 때만)·키 구조(평평/중첩)·code-dict 내보내기 형태(default/같은 이름 named)·표현을 빌린다. **값·주석·import·타입 주석은 빌리지 않는다.**
   `create(format, input & { baseLocale })`는 ADD create·revive에서 대상 원본이 없을 때만 호출하며 기존 `writeWithErrors`와 `ts-dict`의 원본 부재 계약은 그대로다.
@@ -2509,7 +2509,8 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   YAML은 기준 코드와 다른 루트·생성 결과의 루트 오인을 거부하고 YAML 1.1 모호 토큰을 인용한다. CRLF·BOM·들여쓰기를 따른다.
   code-dict는 기준 코드가 든 named export 이름과 `__proto__` 프로퍼티를 거부한다. 값·키 인용과 끝 쉼표를 따르고 BOM은 쓰지 않으며 세미콜론은 고정한다.
   기준 파일 없음·지원하지 않는 생성 규약은 `write-create-unsupported`, 파싱 실패는 `write-parse-failed`다. **생성 실패는 `content: null`과 blocking 오류를 함께 내며 보류로 낮추지 않는다.** 값 0개만 `null`과 빈 오류를 낸다.
-  Chrome의 `placeholders`·`description`은 복사하지 않는다. 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  Chrome의 `placeholders`·`description`은 복사하지 않는다. 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 같은 DB 입력으로 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  **새 파일은 듬성할 수 있다** — 이후 값이 생긴 키의 부모 맵이 그 파일에 없으면 기존 수술적 삽입은 남은 경로를 점 리터럴 키(`"a.b.c"`)로 넣는다. 중첩 조회 런타임에서 그 키를 읽는지와 새 언어의 import·지원 언어 목록 등록은 대상 리포가 책임진다. PR 본문 안내는 기존 제거 안내를 유지한다.
   미전달 ADD의 경로가 이미 base에 있으면 **그 언어만** `proposal-path-exists`로 보류하고 나머지 편집은 나간다. **값 0개 ADD는 파일을 내지 않고** Publish 작업으로 세지 않는다(미리보기가 `empty`로 알린다).
 - **조기 종료 · 전부 보류**: 셀 편집 0·`maxUpdatedAt = null`이어도 언어 변경 작업이 있으면 실행하고(`at: null`이면 `lastPulledAt`을 쓰지 않는다), **번역이 전부 보류여도 안전한 삭제는 전달한다.**
   판정은 보류 ADD까지 센 `localeWorkOf`가 아니라 **전달 가능한 작업**(`deliverableLocaleWork` — 캡처 ≠ 전달인 소스 수)이 한다. 빈 ADD만 있으면 원격 쓰기가 0이다.
