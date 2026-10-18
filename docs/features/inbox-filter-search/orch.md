@@ -56,3 +56,6 @@
 - B 완료: `44d69dc4`, `12dd365b`; Node24 직렬 gate `ok`, 901 files / 16,004 passed / 2 skipped, build·미러 성공. 독립 리뷰 R1을 배치별 Dispatch로 나누어 B부터 시작한다(A/C는 최종 gate 중).
 - 범위 밖 미추적 `docs/features/locale-change-formats/` 발견: 이번 세션에서 편집·stage하지 않는다.
 - R1-B `ctx_e19c557e8bc3`: Astra medium 독립 리뷰 🔴0/🟡0, DOM 3파일 30건 재검증. B 통합 승인. 런타임 기하/포커스는 Q가 검증한다.
+- B 통합: `a6ec73f9`, `bc89b69c`. 추적 미커밋 0·git cherry +0 확인 후 워커 해제·워크트리 삭제. 인계는 main .scratch/inbox-filter-search에 복사. 후속 결함은 D 소유.
+- C 완료: `c8a06059`, `8723284f`; Node24 직렬 gate ok, 16,000 tests passed / 2 skipped, build·미러 성공. R1-C 시작. 한국어는 translate 스킬의 "gate green이면 통합하고 사용자가 /merge 전에 모아서 본다"에 따라 초안 검수표를 인계에 보존하며 dev 통합을 차단하지 않는다.
+- R1-C `ctx_51333267628f`: Astra medium 🔴0/🟡0, 독립 테스트 98 passed / 1 skipped 및 계약 34 assertions. C 통합 승인.
