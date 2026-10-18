@@ -348,9 +348,17 @@ describe("대표 메타", () => {
     const at = new Date("2026-10-18T00:00:00Z");
     const container = await draw({ sourceCount: 2, keyCount: 1204, languageCount: 3, lastSync: at.toISOString() });
     expect(cells(container)).toEqual([
-      `${en.sources.count(2)} ·`, `${en.translations.keys(1204)} ·`, `${en.sources.languageCount(3)} ·`, en.home.cards.synced("3 hours ago"),
+      // 가운뎃점 앞은 줄바꿈 없는 공백이다 — 칸 안에서 감겨도 `·`가 줄 머리에 서지 않는다(#297).
+      `${en.sources.count(2)}\u00a0·`, `${en.translations.keys(1204)}\u00a0·`, `${en.sources.languageCount(3)}\u00a0·`, en.home.cards.synced("3 hours ago"),
     ]);
-    for (const cell of meta(container).children) expect(cell.classList).toContain("whitespace-nowrap");
+    /*
+      칸은 통째로 다음 줄로 가고, 칸 하나가 이름 칸보다 넓을 때만 그 안에서 낱말 사이로 감긴다(malmoi#297 — `whitespace-nowrap` 칸이 375에서 칩 묶음 아래로
+      최대 95px 넘쳤다). 칸 폭 상한이 이름 칸이다.
+    */
+    for (const cell of meta(container).children) {
+      expect(cell.classList).toContain("max-w-full");
+      expect(cell.classList).not.toContain("whitespace-nowrap");
+    }
     expect(meta(container).classList).toContain("flex-wrap");
     // 리포 줄 아래 한 줄이다 — 이름 칸의 셋째 줄.
     expect(meta(container).previousElementSibling?.textContent).toContain("o/r");

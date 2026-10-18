@@ -438,7 +438,7 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 
 /**
  * **한 행 = 한 줄** (project-row-redesign — 언어 막대가 Sources 소스 행으로 옮겨 갔다). 썸네일 · 이름 칸(이름 · 리포 · 메타 세 줄, 유동 · 말줄임) ·
- * 상태 배지 + chevron(`shrink-0`). 메타 줄만 감긴다 — 칸마다 `whitespace-nowrap`이고 줄은 칸 사이에서만 바뀐다.
+ * 상태 배지 + chevron(`shrink-0`). 메타 줄만 감긴다 — 칸은 통째로 다음 줄로 가고, 이름 칸보다 넓은 칸만 그 안에서 낱말 사이로 감긴다(#297).
  * ⚠️ **DOM 순서가 보이는 순서다**(DESIGN §7, malmoi#82) — 썸네일 · 이름 · 메타 · 배지. 골격도 같은 한 줄이다(A-09).
  */
 describe("Projects 행 — 한 줄 · 메타 감김", () => {
@@ -468,7 +468,8 @@ describe("Projects 행 — 한 줄 · 메타 감김", () => {
 
   it("메타 줄이 감기고 칸은 찢기지 않는다", () => {
     expect(META).toContain('"flex flex-wrap gap-x-1 text-xs"');
-    expect(META).toContain('className="whitespace-nowrap"');
+    expect(META).toContain('className="max-w-full"');
+    expect(META).not.toContain("whitespace-nowrap");
   });
 
   it("DOM 순서 — 썸네일 · 이름 · 메타 · 배지", () => {

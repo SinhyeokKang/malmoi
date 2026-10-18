@@ -311,8 +311,10 @@ function ProjectRow({ row, q, now }: { row: ProjectListRow; q?: string; now: Dat
  * 대표 메타 한 줄 — `sources · keys · languages · synced` (project-row-redesign design §1). 운영 상세(연결·CI·브랜치·멤버)는 Home 메타 열이
  * 정본이고 행은 그 화면으로 가는 입구다.
  *
- * ⚠️ **감기고 숨지 않는다**(PRODUCT §4.1) — 칸마다 `whitespace-nowrap`이고 가운뎃점은 **앞 칸 끝에** 붙는다: 줄은 칸 사이에서만 바뀌고
- * `synced 3 hours ago`가 두 줄로 찢기지 않는다. 글리프·배지·sr-only 없이 글자뿐이다(POSTMORTEM 2026-10-13 #260 — 행마다 absolute 요소를 늘리지 않는다).
+ * ⚠️ **감기고 숨지 않는다**(PRODUCT §4.1) — 칸은 **통째로** 다음 줄로 간다: flex 줄 나눔이 칸을 자기 글자 폭으로 놓으므로 줄은 칸 사이에서
+ * 바뀌고 `synced 3 hours ago`가 찢기지 않는다. ⚠️ **칸 하나가 이름 칸보다 넓을 때만** 그 칸이 안에서 낱말 사이로 감긴다(`max-w-full` — 폭 상한이
+ * 이름 칸, 하한은 가장 긴 낱말). `whitespace-nowrap`이던 때는 그런 칸이 375에서 칩 묶음 아래로 최대 95px 넘쳤다(malmoi#297). 가운뎃점은
+ * **앞 칸 끝에** 줄바꿈 없는 공백으로 붙는다 — 칸 안에서 감겨도 `·`가 줄 머리에 서지 않는다. 글리프·배지·sr-only 없이 글자뿐이다(POSTMORTEM 2026-10-13 #260 — 행마다 absolute 요소를 늘리지 않는다).
  *
  * ⚠️ **언어 0과 시각 없음(`null`·`"unrecorded"`)은 칸을 뺀다** — `0 languages`는 깨진 것으로 읽히고, `synced(null)`은 `not synced yet`이라
  * 첫 적재 전 행의 칩을 되풀이한다. 소스·키는 0이어도 선다 — 메타 줄이 어느 행에서도 비지 않아야 행 높이가 상태마다 같다(골격이 그 높이다).
@@ -330,7 +332,7 @@ function RowMeta({ row, m, now, archived }: { row: ProjectListRow; m: Messages; 
   return (
     <span data-row-meta className={cn("flex flex-wrap gap-x-1 text-xs", archived ? "text-gray-dim" : "text-muted-foreground")}>
       {cells.map((cell, i) => (
-        <span key={i} className="whitespace-nowrap">{cell}{i < cells.length - 1 && " ·"}</span>
+        <span key={i} className="max-w-full">{cell}{i < cells.length - 1 && "\u00a0·"}</span>
       ))}
     </span>
   );
