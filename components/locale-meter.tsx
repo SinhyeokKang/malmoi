@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import type { LocaleMeterValue } from "@/lib/sources/meters";
 
 /**
- * 목록 행의 **로케일 Meter** (DESIGN §6.63). 시안 `1c`의 Meter 블록이 정본이고,
+ * 목록 행의 **로케일 Meter** (DESIGN §6.66 — Sources 소스 행의 언어 막대). 시안 `1c`의 Meter 블록이 정본이고,
  * 아래 치수는 그 캔버스의 인라인 스타일에서 그대로 인용했다.
  *
  * ⚠️ **소비자는 Sources 소스 행 하나다**(클라이언트 `sources-screen.tsx` — project-row-redesign이 Projects 행에서 막대를 걷었다). 상태도
@@ -33,7 +33,7 @@ export function LocaleMeter({ locale }: { locale: LocaleMeterValue }) {
         {/*
           ⚠️ **`LocaleFlag`를 그대로 쓴다** — `public/flags/`에 253개가 이미 커밋돼 있고 매핑은
           `flagFor`(잎)다. 치수·radius가 시안과 이미 같으므로 **결정할 것이 없다**: 새 자산도,
-          새 매핑도, `rounded-[2px]`도 만들지 않는다 (DESIGN §6.63).
+          새 매핑도, `rounded-[2px]`도 만들지 않는다 (DESIGN §6.66).
 
           ⚠️ **국기 폭을 예약하지 않는다** — 매핑이 없으면(`es`·`pt`·`ar` 등) 그 자리가 통째로 비고,
           `gap-1.5`로 코드가 왼쪽으로 붙는다. 틀린 국기는 없는 것보다 나쁘다는 판정의 연장이다.
