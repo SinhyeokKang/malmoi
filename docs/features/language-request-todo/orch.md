@@ -39,3 +39,5 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 
 ## 진행 기록
 
+- 2026-10-18 Run `run_a8efa5c8272a`. A = 워크트리 `lrt-a` · Dispatch `ctx_41d443eb1de7` · `term_ddaf926f`. B = 워크트리 `lrt-b` · Dispatch `ctx_4616264251f2` · `term_b24799fd`. 브리프는 main 체크아웃 `.scratch/orch-language-request-todo/brief-{A,B}.md`.
+
