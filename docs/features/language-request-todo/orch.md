@@ -56,5 +56,6 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 - 리뷰 B: 🔴 0 · 🟡 2(사본 `handoffs/review-B.md`). Y1 일괄 값 수가 프로젝트 사이 ADD 코드를 섞는다 → B fix1(Dispatch `ctx_14a7f47f46f8`). Y2 호출 수는 ADD 유무로 2/3 → C 브리프.
 - **A 통합(로컬, 미push)** `fda8ddfc..b371e8a8`. 게이트는 B fix1 통합 뒤 K·A·B를 한 번에 돈다.
 - B fix1 `worker_done` — 626d1631(프로젝트별 ADD 표면×코드로 값 수를 좁힘, 시드 줄로 red 확인), `gate: ok`. **B 통합(로컬)** `d0c27b29..88de295d`. B release + `lrt-b` 삭제. main 게이트(K·A·B) 실행. C Dispatch `ctx_3b6dd8f93c4b`(A 터미널, 브리프 `brief-C.md`).
-- main 게이트(K·A·B) `gate: ok`(15972 + 격리 PG 898). **push** `1191e41b..b269cbc8` — 중간 지점(A는 로더 미배선이라 화면 변화는 K뿐). CI run 39120572205.
+- main 게이트(K·A·B) `gate: ok`(15972 + 격리 PG 898). **push** `1191e41b..b269cbc8` — 중간 지점(A는 로더 미배선이라 화면 변화는 K뿐). CI run 39120572205 → success.
+- C `worker_done` — 5b27bfee · 1d5363e8, `gate: ok`(15998 + 격리 PG 898). O2 넷 모두 배선, 되돌리면 red. 리뷰 C: 🔴 0 · 🟡 1 · ⚪ 5 — Y1 목록 로더 1 vs N 호출 수 테스트 없음 → C fix1(Dispatch `ctx_d066d4119b94`, 테스트만). **C 통합(로컬)** `b5485ab1..227a2c01`, main 게이트 실행 → green이면 DS 시작(C fix1은 테스트만이라 DS 뒤에 통합).
 
