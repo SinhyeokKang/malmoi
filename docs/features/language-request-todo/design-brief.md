@@ -55,6 +55,14 @@
 - Inbox 항목을 열면 읽음 처리는 기존 규칙 그대로다(`attentionSeenAt` 워터마크).
 - 키보드·포커스는 기존 형 그대로다(행 링크 `ring-inset`, 띠는 링크 밖 형제).
 
+## 시안 수령 뒤 결정 (2026-10-18)
+
+시안은 `Language Request Todo.dc.html`(프레임 1–8 · 5b)이다. 1차 검토의 지적 셋을 Claude Design에 돌려보냈고, 고친 판을 받았다.
+
+- **Inbox ② 항목은 읽음이다**(프레임 4 · 5 · 5b · 8). 거둘 것만 남아 `at`이 없고, 워터마크가 있으면 `isUnread`(`lib/inbox/plan.ts:27`)가 읽음으로 판정한다(spec 비목표 · design D11). 안 읽은 항목이 있는 묶음이 먼저 서므로 docs-site 묶음은 mobile 아래로 내려간다. 5b 시트의 머리 카운트는 1이다.
+- **es ② 문구는 `sin enviar`다**(프레임 3). `sin publicar`는 금지어(`lib/i18n/__tests__/helpers/banned-terms.ts:95`)다. 시안의 es 값은 제안이고, 최종 값은 DESIGN §10.1 "언어 변경 미전달" 행이 정한다(T1). es ①의 `por publicar`는 기존 힌트(`messages/es.tsx:1762`)와 같은 형이라 금지어가 아니다.
+- **Home ②의 보조 줄과 `Held`는 첫 렌더에 선다**(프레임 6). 언어 보류 판정이 PR 조회보다 앞에 서므로 `HoldLater`·`LateHold`를 거치지 않는다(design §5).
+
 ## 그리지 않는 것
 
 - 어느 언어가 추가·제거 중인지(코드·이름) — Sources Languages 카드가 든다. 띠·Inbox·카드는 수와 다음 수만 말한다.

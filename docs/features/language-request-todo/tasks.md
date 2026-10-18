@@ -5,7 +5,7 @@
 > 사전을 순수 판정 **앞**에 둔다 — 새 할 일 종류·보류 사유가 `TILE` Record · `homeLate`·`sublineText` switch · `m.home.cards.held`를 깨므로, 사전이 먼저 있어야 판정 커밋이 green이다(design §7).
 
 ## 0. 시안
-- [ ] **T0 — Claude Design 시안 수령.** `design-brief.md`를 넘기고 핸드오프를 받는다.
+- [x] **T0 — Claude Design 시안 수령.** `design-brief.md`를 넘기고 핸드오프를 받는다. 2026-10-18 `Language Request Todo.dc.html` 수령 — 1차 검토 지적 셋을 반영한 판이다(design-brief "시안 수령 뒤 결정"). design.md와 다른 곳은 남지 않았다.
   - 검증(수동): `DesignSync list_files`에 핸드오프가 있고, 브리프 프레임 표의 번호마다 프레임이 있다. 시안이 design.md(문장·형·우선순위)와 다르면 **코드 전에** 어느 쪽을 고칠지 사용자에게 묻는다.
 
 ──
