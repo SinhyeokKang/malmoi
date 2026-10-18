@@ -57,6 +57,8 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
       slug: project.slug, name: project.name, image: project.image, role: row.role,
       status: projectStatus({ ...project, gitlabTokenExpiresAt: project.gitlabConnection?.expiresAt ?? null }), createdAt: project.createdAt, attention,
       unsent: count > 0 && surfaceSlug !== undefined ? { count, surfaceSlug, at: aggregates.unsentAt.get(project.id) ?? null } : null,
+      // language-request-todo O2 — 일괄 상태 읽기 배선은 T6(배치 C)이 한다. 그때까지 언어 변경 항목을 내지 않는다.
+      language: null,
     };
   }) });
 }

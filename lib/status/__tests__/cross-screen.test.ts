@@ -105,7 +105,7 @@ function bannerKey(banner: RowBanner): StateKey | null {
     case "unsent": return "unsent";
     case "pr_open": return "prOpen";
     case "pr_check_failed": return "prCheckFailed";
-    case "repo_ahead": case "review": case "never_filled": return null;
+    case "repo_ahead": case "review": case "never_filled": case "language_unsent": return null;
   }
 }
 

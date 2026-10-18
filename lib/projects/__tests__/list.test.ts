@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { stateLabel } from "@/lib/status/canon";
 import { projectTodos } from "@/lib/inbox/project-todos";
+import type { LanguageTodo } from "@/lib/locales/todo";
 import { en } from "@/messages/en";
 
 import {
@@ -497,7 +498,7 @@ describe("listBody — 아트보드 넷과 1:1", () => {
 describe("planProjectRow — 건강과 할 일", () => {
   const at = new Date("2026-10-01T00:00:00Z");
   const blank = { kind: "never_filled" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 5, ownerRetries: false };
-  const todos = (input: ReturnType<typeof row>, neverFilled = false) => projectTodos({
+  const todos = (input: ReturnType<typeof row>, neverFilled = false, language: LanguageTodo | null = null) => projectTodos({
     status: projectStatus(input), role: "OWNER", createdAt: at,
     connectionPinned: input.repositoryId !== null && (input.repoHost === "gitlab" ? input.gitlabConnectionId !== null : input.installationId !== null),
     gitlabTokenExpiresAt: input.gitlabTokenExpiresAt,
@@ -507,6 +508,7 @@ describe("planProjectRow — 건강과 할 일", () => {
       ...(neverFilled ? [blank] : []),
     ],
     unsent: input.unsent > 0 ? { count: input.unsent, surfaceSlug: "web", at } : null,
+    language,
   });
 
   it.each([
@@ -533,7 +535,7 @@ describe("planProjectRow — 건강과 할 일", () => {
   it.each(["github", "gitlab"])("%s EDITOR의 연결·설정과 빈 언어도 같은 판정이다", repoHost => {
     const input = row({ repoHost, gitlabConnectionId: "connection" });
     const todo = projectTodos({ status: "active", role: "EDITOR", createdAt: at, connectionPinned: true,
-      gitlabTokenExpiresAt: null, attention: [blank], unsent: null });
+      gitlabTokenExpiresAt: null, attention: [blank], unsent: null, language: null });
     // 띠는 그리는 데 쓰는 필드만 싣는다 — 할 일의 시각·역할 플래그는 Inbox 몫이다.
     expect(planProjectRow(input, todo)).toEqual({ chip: "active", group: "all_set",
       banner: { kind: "never_filled", surfaceSlug: "web", code: "ko", name: "Korean", keys: 5 } });
@@ -576,7 +578,24 @@ describe("planProjectRow — 건강과 할 일", () => {
     expect(Object.keys(row())).not.toContain("role");
   });
 
-  it("입력 축 2,880조합에서 불변식 넷과 띠 우선순위를 센다", () => {
+  /**
+   * 언어 변경 띠(language-request-todo design §4) — 미발송 다음, 열린 PR·PR 조회 실패 앞이다. 같은 [Publish] 한 번이 미발송과 함께 보내므로
+   * 미발송 띠가 이기고, 언어 변경이 미전달이면 열린 PR에도 아직 없으니 다음 수는 Publish다. 칩·그룹은 바뀌지 않는다(보류여도 건강이 아니다).
+   */
+  it.each([
+    ["미발송 > 언어 변경", { unsent: 3 }, false, "unsent"],
+    ["언어 변경 > 열린 PR", { openPr: { number: 4, url: "https://example.com/4" } }, false, "language_unsent"],
+    ["언어 변경 > PR 조회 실패", { openPr: undefined }, true, "language_unsent"],
+    ["언어 변경 > 리포 앞섬 · 검토", { repoAheadFiles: 2, review: 5 }, false, "language_unsent"],
+    ["끊김이 언어 변경을 이긴다", { repositoryId: null }, true, "needs_reconnect"],
+  ] as const)("%s", (_label, over, held, banner) => {
+    const input = row(over);
+    const plan = planProjectRow(input, todos(input, false, { count: 2, surfaceSlug: "web", at, held }));
+    expect(plan.banner?.kind).toBe(banner);
+    if (banner === "language_unsent") expect(plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "language_unsent", count: 2, held } });
+  });
+
+  it("입력 축 8,640조합에서 불변식 넷과 띠 우선순위를 센다", () => {
     let cases = 0;
     const seen = new Map<string, number>();
     for (const archived of [false, true])
@@ -587,26 +606,27 @@ describe("planProjectRow — 건강과 할 일", () => {
     for (const unsent of [0, 2])
     for (const repoAheadFiles of [0, 2])
     for (const review of [0, 2])
-    for (const neverFilled of [false, true]) {
+    for (const neverFilled of [false, true])
+    for (const language of [null, { count: 2, surfaceSlug: "web", at, held: false }, { count: 1, surfaceSlug: "web", at: null, held: true }]) {
       const input = row({ archivedAt: archived || status === "archived" ? at : null,
         installationId: status === "setup" ? null : "i", repositoryId: status === "needs_reconnect" ? null : "r",
         surfaces: [{ ...S, lastCommitSha: status === "awaiting_first_sync" ? null : "s", importError: failure, importing }],
         openPr, unsent, repoAheadFiles, review });
       // 축이 의도한 상태에 실제로 닿는다 — 기본값이 바뀌어 상태가 접히면 아래 불변식이 공허하게 green이 된다(RA 🟢1).
       expect(projectStatus(input)).toBe(archived ? "archived" : status);
-      const plan = planProjectRow(input, todos(input, neverFilled));
+      const plan = planProjectRow(input, todos(input, neverFilled, language));
       const kind = plan.banner?.kind;
       seen.set(kind ?? "none", (seen.get(kind ?? "none") ?? 0) + 1);
       if (kind && ["needs_reconnect", "import_failed", "setup"].includes(kind)) expect(plan.group).toBe("needs_attention");
-      if (kind && ["unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"].includes(kind)) expect([plan.chip, plan.group]).toEqual(["active", "all_set"]);
+      if (kind && ["unsent", "language_unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"].includes(kind)) expect([plan.chip, plan.group]).toEqual(["active", "all_set"]);
       expect(plan.chip === "active").toBe(plan.group === "all_set");
       if (input.archivedAt !== null) expect(plan.banner).toBeNull();
-      if (plan.chip === "active") expect(kind ?? null).toBe(unsent ? "unsent" : openPr === undefined ? "pr_check_failed" : openPr ? "pr_open" : repoAheadFiles ? "repo_ahead" : review ? "review" : neverFilled ? "never_filled" : null);
+      if (plan.chip === "active") expect(kind ?? null).toBe(unsent ? "unsent" : language ? "language_unsent" : openPr === undefined ? "pr_check_failed" : openPr ? "pr_open" : repoAheadFiles ? "repo_ahead" : review ? "review" : neverFilled ? "never_filled" : null);
       cases++;
     }
-    expect(cases).toBe(2880);
+    expect(cases).toBe(8640);
     // 띠 종류 열(없음 포함)이 전부 나오고 각각 여러 조합에서 나온다 — 한 갈래만 도는 표는 불변식을 재지 못한다.
-    for (const kind of ["none", "needs_reconnect", "import_failed", "setup", "unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"]) {
+    for (const kind of ["none", "needs_reconnect", "import_failed", "setup", "unsent", "language_unsent", "pr_open", "pr_check_failed", "repo_ahead", "review", "never_filled"]) {
       expect(seen.get(kind) ?? 0, kind).toBeGreaterThanOrEqual(2);
     }
   });

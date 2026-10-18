@@ -442,6 +442,8 @@ export function assembleProjectListRows(
       connectionPinned: repoConnectionPinned(row), gitlabTokenExpiresAt: row.gitlabTokenExpiresAt,
       attention, unsent: row.unsent > 0 && row.unsentSurfaceSlug !== null
         ? { count: row.unsent, surfaceSlug: row.unsentSurfaceSlug, at: aggregates.unsentAt.get(r.project.id) ?? null } : null,
+      // language-request-todo O2 — 일괄 상태 읽기 배선은 T6(배치 C)이 한다. 그때까지 언어 변경 띠를 내지 않는다.
+      language: null,
     });
     return { ...row, plan: planProjectRow(row, todos) };
   });

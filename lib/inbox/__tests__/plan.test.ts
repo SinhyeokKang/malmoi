@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { badgeLabel, clampSeenAt, isUnread, planInbox, type InboxProject } from "../plan";
 const at = new Date("2026-10-01T00:00:00Z");
 const failed = { kind: "import_failed" as const, at, surfaceSlug: "web", reason: "parse-failed" as const };
-const project: InboxProject = { connectionPinned: true, gitlabTokenExpiresAt: null, slug: "demo", name: "Demo", image: null, role: "OWNER", status: "active", createdAt: at, attention: [failed], unsent: null };
+const project: InboxProject = { connectionPinned: true, gitlabTokenExpiresAt: null, slug: "demo", name: "Demo", image: null, role: "OWNER", status: "active", createdAt: at, attention: [failed], unsent: null, language: null };
 it.each([null, new Date(at.getTime() - 1), at, new Date(at.getTime() + 1)])("읽음 경계와 검토 제외: %s", seenAt => {
   expect(isUnread("import_failed", at, seenAt)).toBe(seenAt === null || at > seenAt);
   expect(isUnread("import_failed", null, seenAt)).toBe(seenAt === null);
@@ -94,4 +94,17 @@ it.each([
 it("시각 없는 재연결은 그룹 안 맨 뒤다 — 시각 있는 항목이 앞선다", () => {
   const result = planInbox({ projects: [{ ...project, status: "needs_reconnect", connectionPinned: false, attention: [failed] }], seenAt: null });
   expect(result.groups[0]?.items.map(item => item.kind)).toEqual(["import_failed", "needs_reconnect"]);
+});
+
+/** 언어 변경 항목은 미발송과 같은 급(rank 1)이다 — 동시각이면 프로젝트 항목 다음, 표면·로케일 항목 앞이고 미발송과는 넣은 순서다. */
+it("동시각 언어 변경 항목은 미발송과 같은 급이다", () => {
+  const result = planInbox({ projects: [{ ...project, status: "setup", unsent: { count: 2, surfaceSlug: "z", at },
+    language: { count: 1, surfaceSlug: "a", at, held: false }, attention: [failed] }], seenAt: null });
+  expect(result.groups[0]?.items.map(i => i.kind)).toEqual(["setup", "unsent", "language_unsent", "import_failed"]);
+});
+/** 거둘 것만 남은 항목은 시각이 없다(D11) — 워터마크가 있으면 안 읽음으로 세지 않고 그룹 안 맨 뒤다. */
+it("시각 없는 언어 변경 항목은 읽음이고 맨 뒤다", () => {
+  const result = planInbox({ projects: [{ ...project, language: { count: 1, surfaceSlug: "web", at: null, held: false } }], seenAt: at });
+  expect(result.groups[0]?.items.map(i => [i.kind, i.unread])).toEqual([["import_failed", false], ["language_unsent", false]]);
+  expect(result.unread).toBe(0);
 });

@@ -183,6 +183,8 @@ export type RowBanner =
   | { kind: "setup" }
   /** F: 역할로 갈리지 않는다. */
   | { kind: "unsent"; count: number }
+  /** 언어 변경만 Publish되지 않았다(language-request-todo). `held`면 전달 전 제거가 CI 적재를 보류한다 — 칩은 그대로 `Active`다. */
+  | { kind: "language_unsent"; count: number; held: boolean }
   | { kind: "pr_open"; number: number; url: string }
   /** 열린 PR을 확인하지 못했다 — 같은 신호의 모름이라 `pr_open` 자리에 선다(ux-drift-unify Q6). */
   | { kind: "pr_check_failed" }
@@ -226,10 +228,13 @@ export function planProjectRow(row: RowInput, todos: readonly ProjectTodo[]): Pr
   if (status === "awaiting_first_sync") return { chip: row.surfaces.some(surface => surface.importing) ? "syncing" : "notSyncedYet",
     group: "needs_attention", banner: null };
   const unsent = todos.find(todo => todo.kind === "unsent");
+  const language = todos.find(todo => todo.kind === "language_unsent");
   const review = todos.filter(todo => todo.kind === "review").reduce((sum, todo) => sum + todo.count, 0);
   const blank = todos.find(todo => todo.kind === "never_filled");
   // E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다.
+  // 언어 변경은 미발송 다음이다 — 같은 [Publish]가 둘을 함께 보낸다. 열린 PR보다 앞이다 — 미전달 언어 변경은 그 PR에 아직 없다(language-request-todo §4).
   const banner: RowBanner = unsent ? { kind: "unsent", count: unsent.count }
+    : language ? { kind: "language_unsent", count: language.count, held: language.held }
     : row.openPr === undefined ? { kind: "pr_check_failed" }
     : row.openPr !== null ? { kind: "pr_open", number: row.openPr.number, url: row.openPr.url }
     : row.repoAheadFiles > 0 ? { kind: "repo_ahead", files: row.repoAheadFiles }

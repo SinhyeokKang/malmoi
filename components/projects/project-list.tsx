@@ -376,6 +376,7 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
       {banner.kind === "review" && m.projects.banner.review(banner.count)}
       {banner.kind === "never_filled" && m.projects.banner.neverFilled(banner.name, banner.surfaceSlug, banner.keys)}
       {banner.kind === "unsent" && m.projects.banner.unsent(banner.count)}
+      {banner.kind === "language_unsent" && (banner.held ? m.projects.banner.languageRemovalHeld : m.projects.banner.languageChanges(banner.count))}
       {banner.kind === "pr_open" && m.projects.banner.prOpen(banner.number)}
       {banner.kind === "pr_check_failed" && m.projects.banner.prCheckFailed}
       {banner.kind === "repo_ahead" && m.projects.banner.repoAhead(banner.files, row.baseBranch)}
@@ -403,6 +404,8 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
     import_failed: { glyph: banner.kind === "import_failed" && importFailureTone(banner.reason) === "danger" ? CircleX : TriangleAlert, tone: "" },
     setup: { glyph: CircleDashed, tone: "" },
     unsent: { glyph: GitPullRequestArrow, tone: "" },
+    // 미발송과 같은 글리프다 — 같은 다음 수(Publish)는 같은 모양이고 무엇이 남았는지는 문장이 가른다(language-request-todo Q2).
+    language_unsent: { glyph: GitPullRequestArrow, tone: "" },
     pr_open: { glyph: GitPullRequest, tone: "" },
     // 확인 못 한 열린 PR — "모름"의 글리프다. muted 띠에 경고 삼각이 서면 톤과 모양이 어긋난다(project-row-redesign design §6).
     pr_check_failed: { glyph: CircleHelp, tone: "" },
@@ -453,6 +456,9 @@ function BannerAction({
     case "unsent":
       // ⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼으로 데려갈 뿐이다. 보낼 편집만 걸러 보인다.
       return row.unsentSurfaceSlug === null ? null : internal(bannerTranslationsHref(row.slug, row.unsentSurfaceSlug, "unsent"), m.projects.banner.action.send);
+    case "language_unsent":
+      // 언어 변경은 번역 화면의 셀 목록에 없다 — [Publish]가 있는 프로젝트 Home으로 간다(language-request-todo Q1, Inbox 항목과 같다).
+      return internal(routes.project(row.slug), m.projects.banner.action.send);
     case "never_filled":
       // Home Attention·Inbox의 같은 항목과 같은 목적지다 — 그 소스·그 언어의 `Incomplete`. 라벨은 상세 모달의 같은 목적지 버튼 이름이다.
       return internal(neverFilledHref(row.slug, banner.surfaceSlug, banner.code), m.sources.open);

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { CircleX, TriangleAlert } from "lucide-react";
+import { CircleX, GitPullRequestArrow, TriangleAlert } from "lucide-react";
 import { collectAttention, neverFilledLocales } from "../attention";
 import { attentionHref, attentionTile, body, tail, title } from "../attention-view";
 import { routes, ALL_NAMESPACES, bannerTranslationsHref } from "@/lib/routes";
@@ -59,4 +59,23 @@ it("프로젝트 항목도 목록 띠와 같은 링크와 문장을 쓴다", () 
   expect(tail(en, unsent)).toBe("");
   expect(attentionTile(setup).tone).toBe("muted");
   expect(attentionTile(unsent).tone).toBe("muted");
+});
+
+/**
+ * 언어 변경 항목(language-request-todo design §4·§6) — 목적지는 프로젝트 Home(Q1), 글리프·톤은 미발송과 같다(Q2). 보류 아님은 띠 문장을 통째로,
+ * 보류는 띠 문장을 `—`에서 나눈 두 조각이다(D4 — `needs_reconnect` 선례).
+ */
+it("언어 변경 항목은 Home으로 가고 띠와 같은 문장을 쓴다", () => {
+  const open = { kind: "language_unsent" as const, at, count: 3, surfaceSlug: "web", held: false };
+  const held = { ...open, count: 1, held: true };
+  for (const item of [open, held]) {
+    for (const reconnect of ["settings", "home"] as const) expect(attentionHref("demo", item, reconnect)).toBe(routes.project("demo"));
+    expect(attentionTile(item)).toEqual({ icon: GitPullRequestArrow, tone: "muted" });
+    expect(title(en, item)).toBe("web");
+  }
+  expect(body(en, open)).toBe(en.projects.banner.languageChanges(3));
+  expect(tail(en, open)).toBe("");
+  expect(body(en, held)).toBe(en.inbox.languageRemovalHeld.body);
+  expect(tail(en, held)).toBe(en.inbox.languageRemovalHeld.tail);
+  expect(body(en, held) + tail(en, held)).toBe(en.projects.banner.languageRemovalHeld);
 });

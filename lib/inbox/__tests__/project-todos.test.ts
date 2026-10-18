@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { neverFilledLocales } from "@/lib/home/attention";
 import { planProjectRow, projectStatus, type RowInput } from "@/lib/projects/list";
 import { planInbox } from "../plan";
@@ -6,7 +6,7 @@ import { projectTodos, type ProjectTodoInput } from "../project-todos";
 
 const at = new Date("2026-10-01T00:00:00Z");
 const input: ProjectTodoInput = { status: "active", role: "OWNER", createdAt: at,
-  connectionPinned: true, gitlabTokenExpiresAt: null, attention: [], unsent: null };
+  connectionPinned: true, gitlabTokenExpiresAt: null, attention: [], unsent: null, language: null };
 const failed = { kind: "import_failed" as const, at, surfaceSlug: "web", reason: "parse-failed" as const };
 
 it("DB 할 일을 모두 보존하고 원격 종류를 만들지 않는다", () => {
@@ -66,7 +66,7 @@ it.each([["OWNER", "settings", false], ["EDITOR", "home", true]] as const)("%s�
  * 원격 신호 셋(열린 PR · PR 조회 실패 · 리포 앞섬)은 행 전용이라 Inbox 종류에 없다.
  */
 it("행 띠의 DB 할 일 종류가 같은 프로젝트의 Inbox 항목에 있다 — 표", () => {
-  const DB = new Set(["needs_reconnect", "import_failed", "setup", "unsent", "review", "never_filled"]);
+  const DB = new Set(["needs_reconnect", "import_failed", "setup", "unsent", "language_unsent", "review", "never_filled"]);
   const REMOTE = new Set(["pr_open", "pr_check_failed", "repo_ahead"]);
   const surface = { archivedAt: null, lastCommitSha: "s", importError: null, importing: false };
   let checked = 0;
@@ -76,7 +76,8 @@ it("행 띠의 DB 할 일 종류가 같은 프로젝트의 Inbox 항목에 있�
   for (const unsent of [0, 2])
   for (const review of [0, 2])
   for (const blank of [false, true])
-  for (const openPr of [null, undefined, { number: 1, url: "https://example.com/1" }]) {
+  for (const openPr of [null, undefined, { number: 1, url: "https://example.com/1" }])
+  for (const language of [null, { count: 2, surfaceSlug: "web", at, held: false }, { count: 1, surfaceSlug: "web", at: null, held: true }]) {
     const row: RowInput = { repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null,
       installationId: status === "setup" ? null : "i", repositoryId: status === "needs_reconnect" ? null : "r",
       archivedAt: status === "archived" ? at : null,
@@ -88,7 +89,7 @@ it("행 띠의 DB 할 일 종류가 같은 프로젝트의 Inbox 항목에 있�
       ...(review > 0 ? [{ kind: "review" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", count: review, who: null }] : []),
       ...(blank ? [{ kind: "never_filled" as const, at, surfaceSlug: "web", code: "es", name: "Spanish", keys: 4 }] : []),
     ];
-    const project = { ...input, role, status, attention, unsent: unsent > 0 ? { at, count: unsent, surfaceSlug: "web" } : null };
+    const project = { ...input, role, status, attention, unsent: unsent > 0 ? { at, count: unsent, surfaceSlug: "web" } : null, language };
     const band = planProjectRow(row, projectTodos(project)).banner?.kind ?? null;
     const inbox = planInbox({ seenAt: null, projects: [{ ...project, slug: "demo", name: "Demo", image: null }] })
       .groups.flatMap(group => group.items.map(item => item.kind));
@@ -100,4 +101,26 @@ it("행 띠의 DB 할 일 종류가 같은 프로젝트의 Inbox 항목에 있�
   }
   // 띠가 DB 할 일인 조합이 실제로 여럿 돈다 — 공허한 통과가 아니다.
   expect(checked).toBeGreaterThan(100);
+});
+
+/**
+ * 언어 변경 작업(language-request-todo design §4) — Publish가 `translation:write`라 두 역할 모두의 일이다. 끊긴 프로젝트에서도 미발송처럼 선다(D7).
+ * 값 있는 ADD는 미발송과 항목 둘이다(D8 — 셀 값과 파일 집합은 다른 사실이다).
+ */
+describe("language_unsent", () => {
+  const language = { count: 2, surfaceSlug: "web", at, held: false };
+  it.each(["OWNER", "EDITOR"] as const)("%s에게 선다", role => {
+    expect(projectTodos({ ...input, role, language })).toEqual([{ kind: "language_unsent", ...language, ownerRetries: false }]);
+  });
+  it("작업 0이면 서지 않는다 · 보관이면 서지 않는다", () => {
+    expect(projectTodos({ ...input, language: { ...language, count: 0 } })).toEqual([]);
+    expect(projectTodos({ ...input, status: "archived", language })).toEqual([]);
+  });
+  it("끊긴 프로젝트에서도 미발송과 같이 선다", () => {
+    expect(projectTodos({ ...input, status: "needs_reconnect", language }).map(t => t.kind)).toEqual(["needs_reconnect", "language_unsent"]);
+  });
+  it("미발송과 함께면 둘 다 선다 — 미발송이 먼저다", () => {
+    expect(projectTodos({ ...input, unsent: { at, count: 3, surfaceSlug: "web" }, language: { ...language, held: true } }).map(t => t.kind))
+      .toEqual(["unsent", "language_unsent"]);
+  });
 });

@@ -18,6 +18,8 @@ const TILE: Record<InboxItem["kind"], { icon: ComponentType<{ className?: string
   needs_reconnect: { icon: Unplug, tone: "warning" },
   setup: { icon: CircleDashed, tone: "muted" },
   unsent: { icon: GitPullRequestArrow, tone: "muted" },
+  // 미발송과 같은 글리프·톤이다 — 같은 다음 수(Publish)는 같은 모양이고, 무엇이 남았는지는 문장이 가른다(language-request-todo Q2).
+  language_unsent: { icon: GitPullRequestArrow, tone: "muted" },
 };
 
 /** 일부 반영은 경고 칸 + `TriangleAlert`다 — 실패 원을 빌리지 않는다(🔴 A2 · §2.4 글리프 열). */
@@ -46,6 +48,8 @@ export function attentionHref(slug: string, item: InboxItem, reconnect: Reconnec
   if (item.kind === "needs_reconnect") return reconnect === "settings" ? routes.settings(slug) : routes.project(slug);
   if (item.kind === "setup") return routes.settings(slug);
   if (item.kind === "unsent") return bannerTranslationsHref(slug, item.surfaceSlug, "unsent");
+  // 언어 변경은 번역 화면의 셀 목록에 없다 — [Publish]가 있는 프로젝트 Home으로 간다(language-request-todo Q1, 목록 띠와 같다).
+  if (item.kind === "language_unsent") return routes.project(slug);
   if (item.kind === "import_failed") return routes.sources(slug);
   // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
   if (item.kind === "review") return routes.surfaceTranslations(slug, item.surfaceSlug, { ns: ALL_NAMESPACES, state: "review", language: item.code });
@@ -59,7 +63,7 @@ export function attentionTile(item: InboxItem) {
 export function title(m: Messages, item: InboxItem): string {
   // 프로젝트 단위 항목은 보조줄(표면 · 로케일)이 없다 — 그룹 머리가 이미 프로젝트 이름이다.
   if (item.kind === "setup" || item.kind === "needs_reconnect") return "";
-  if (item.kind === "unsent") return item.surfaceSlug;
+  if (item.kind === "unsent" || item.kind === "language_unsent") return item.surfaceSlug;
   if (item.kind === "import_failed") return m.home.attention.importFailed.title(item.surfaceSlug);
   const label = item.kind === "review" ? m.home.attention.review : m.home.attention.neverFilled;
   return label.title(item.surfaceSlug, item.name);
@@ -69,6 +73,8 @@ export function body(m: Messages, item: InboxItem): string {
   if (item.kind === "needs_reconnect") return m.inbox.needsReconnect.body;
   if (item.kind === "setup") return m.projects.banner.setup;
   if (item.kind === "unsent") return m.projects.banner.unsent(item.count);
+  // 보류 아님은 띠 문장 통째로, 보류는 띠 문장을 `—`에서 나눈 굵은 사실 + 꼬리다(design D4 — `needs_reconnect`와 같은 형).
+  if (item.kind === "language_unsent") return item.held ? m.inbox.languageRemovalHeld.body : m.projects.banner.languageChanges(item.count);
   // 일부만 반영된 표면은 실패 문장을 빌리지 않는다(DESIGN §2.4 — 데이터는 들어갔다).
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.body : m.home.attention.importFailed.body;
   if (item.kind === "review") return m.home.attention.review.body(item.count);
@@ -83,6 +89,7 @@ export function body(m: Messages, item: InboxItem): string {
 export function tail(m: Messages, item: InboxItem): string {
   if (item.kind === "needs_reconnect") return m.inbox.needsReconnect.tail;
   if (item.kind === "setup" || item.kind === "unsent") return "";
+  if (item.kind === "language_unsent") return item.held ? m.inbox.languageRemovalHeld.tail : "";
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.tail : m.home.attention.importFailed.tail;
   if (item.kind === "review") return item.who === null ? "." : m.home.attention.review.tail(item.who);
   return m.home.attention.neverFilled.tail(item.keys);
