@@ -154,3 +154,20 @@ it("필터는 페이지 전용이며 계획·조회·헤더 Inbox에는 들어�
     expect(readFileSync(file, "utf8"), file).not.toMatch(/filterInbox|inbox\/filter/);
   }
 });
+
+
+it("빈 계획도 필터 둘을 열 수 있고 프로젝트 메뉴에는 가짜 항목이 없다", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<InboxFilters filter={initial} options={{ kinds: [], projects: [] }} />);
+  const project = button(container, en.inbox.filters.axis.project);
+  expect(project.disabled).toBe(false);
+  await act(async () => { project.focus(); await user.keyboard("{Enter}"); });
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
+  expect(document.querySelectorAll('[role^="menuitem"]')).toHaveLength(0);
+  await act(async () => { await user.keyboard("{Escape}"); });
+  expect(document.activeElement).toBe(project);
+  const kind = button(container, en.logs.filters.axis.kind);
+  await act(async () => { await user.click(kind); });
+  expect([...document.querySelectorAll('[role="menuitemradio"]')].map(node => node.textContent)).toEqual([en.inbox.filters.all]);
+  expect(mocks.push).not.toHaveBeenCalled();
+});

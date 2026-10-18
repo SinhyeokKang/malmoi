@@ -35,7 +35,7 @@ beforeEach(() => {
   mocks.open.mockReset();
   mocks.mark.mockReset();
 });
-afterEach(() => { setUnread(0); });
+afterEach(() => { setUnread(0); vi.useRealTimers(); });
 
 const headerBadge = () => document.querySelector<HTMLElement>('button[aria-haspopup="menu"] [data-inbox-badge]');
 const sidebarBadge = () => document.querySelector<HTMLElement>(`a[href="${routes.inbox()}"] .rounded-full [aria-hidden]`);
@@ -97,9 +97,10 @@ it("헤더 메뉴를 열어 읽음이 기록되면 닫는 순간 헤더·사이�
 
 
 it("좁힌 URL 방문도 전역 두 배지를 끄고 첫 방문 점은 필터를 바꾼 새 방문에서 사라진다", async () => {
+  vi.useFakeTimers({ now: new Date("2026-10-18T12:00:00Z"), toFake: ["Date"] });
   const createdAt = new Date("2026-10-18T00:00:00Z");
   const projects: InboxProject[] = ["web", "docs"].map(slug => ({
-    slug, name: slug, image: null, role: "OWNER", status: "ready",
+    slug, name: slug, image: null, role: "OWNER", status: "active",
     connectionPinned: true, gitlabTokenExpiresAt: null, createdAt,
     attention: [], unsent: { count: 1, surfaceSlug: "main", at: createdAt }, language: null,
   }));
@@ -127,6 +128,7 @@ it("좁힌 URL 방문도 전역 두 배지를 끄고 첫 방문 점은 필터를
     await user.click([...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(node => node.textContent === en.inbox.filters.kinds.publish)!);
   });
   expect(mocks.push).toHaveBeenCalledExactlyOnceWith(routes.inbox({ kind: "publish", project: "web" }));
+  vi.setSystemTime(new Date("2026-10-18T12:00:01Z"));
   await view.rerender(node(await InboxPage({ searchParams: Promise.resolve({ project: "web", kind: "publish" }) })));
   expect(view.container.querySelectorAll("[data-unread-dot]")).toHaveLength(0);
   expect(headerBadge()).toBeNull();
@@ -134,4 +136,5 @@ it("좁힌 URL 방문도 전역 두 배지를 끄고 첫 방문 점은 필터를
   expect(mocks.badge).toHaveBeenCalledOnce();
   expect(mocks.open).not.toHaveBeenCalled();
   expect(mocks.load).toHaveBeenCalledTimes(2);
+  expect(mocks.mark.mock.calls.map(call => call[0])).toEqual(["2026-10-18T12:00:00.000Z", "2026-10-18T12:00:01.000Z"]);
 });

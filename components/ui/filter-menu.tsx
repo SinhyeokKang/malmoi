@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode, type RefObject } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./dropdown-menu";
 import { FieldTrigger } from "./field-trigger";
 
@@ -13,13 +15,15 @@ import { FieldTrigger } from "./field-trigger";
  * 없는 id를 가리킨다(`undefined`도 덮는다). 포커스 복귀는 ref가 든다.
  * ⚠️ 트리거를 감싸지 않는다 — 필터 줄의 직속 버튼 기하를 보존한다.
  */
-export function FilterMenu({ axis, label, on, size = "md", align = "start", disabled = false, triggerRef, onCloseAutoFocus, children }: {
+export function FilterMenu({ axis, label, on, size = "md", align = "start", disabled = false, triggerRef, onCloseAutoFocus, className, children }: {
   axis: string;
   label: string;
   on: boolean;
   size?: "md" | "sm";
   align?: "start" | "end";
   disabled?: boolean;
+  /** 긴 값의 폭을 제한하면 안쪽 span이 말줄임을 맡고 접근 이름은 전체를 보존한다. */
+  className?: string;
   triggerRef?: RefObject<HTMLButtonElement | null>;
   onCloseAutoFocus?: (event: Event) => void;
   children: ReactNode;
@@ -28,8 +32,8 @@ export function FilterMenu({ axis, label, on, size = "md", align = "start", disa
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <FieldTrigger ref={triggerRef} aria-label={`${axis}: ${label}`} size={size} active={on} disabled={disabled} className="shrink-0">
-          {label}
+        <FieldTrigger ref={triggerRef} aria-label={`${axis}: ${label}`} size={size} active={on} disabled={disabled} className={cn("shrink-0", className)}>
+          {className === undefined ? label : <span className="truncate">{label}</span>}
         </FieldTrigger>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="min-w-53" onCloseAutoFocus={onCloseAutoFocus}>{children}</DropdownMenuContent>

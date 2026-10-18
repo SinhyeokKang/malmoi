@@ -1,10 +1,17 @@
+import { RotateCcw } from "lucide-react";
+
+import { InboxFilters } from "@/components/inbox/inbox-filters";
 import { InboxList } from "@/components/inbox/inbox-list";
 import { MarkSeen } from "@/components/inbox/mark-seen";
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { ButtonLink } from "@/components/ui/button";
+import { NoMatch } from "@/components/ui/empty-state";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { getMessages, getUiLocale } from "@/lib/i18n/server";
+import { effectiveInboxFilter, filterInbox, inboxFilterOptions, parseInboxFilter, type InboxSearchParams } from "@/lib/inbox/filter";
 import { loadAttentionInbox } from "@/lib/inbox/load";
+import { routes } from "@/lib/routes";
 
 /**
  * **Inbox** (`/inbox` — inbox-page). 헤더 드롭다운과 같은 목록을 URL이 있는 한 장으로 본다. 제목 = 사이드바 라벨(`m.common.nav.inbox`).
@@ -13,19 +20,29 @@ import { loadAttentionInbox } from "@/lib/inbox/load";
  * ⚠️ **렌더는 아무것도 쓰지 않는다** — 읽음은 마운트 뒤 `MarkSeen`이 기록한다(D1). 조회 실패는 `(edit)/error.tsx` 경계로 간다.
  * ⚠️ **`now`는 조회 전에 잡는다** — 그보다 늦게 생긴 항목을 보지도 않고 읽었다고 기록하지 않는다(열기 Action과 같은 계약). ISO 문자열로 넘긴다.
  */
-export default async function InboxPage() {
+export default async function InboxPage({ searchParams }: { searchParams: Promise<InboxSearchParams> }) {
   const { userId } = await requireUser();
   const now = new Date();
   const plan = await loadAttentionInbox(getPrisma(), userId);
+  const options = inboxFilterOptions(plan);
+  const filter = effectiveInboxFilter(parseInboxFilter(await searchParams), options);
+  const visible = filterInbox(plan, filter);
   const [m, uiLocale] = await Promise.all([getMessages(), getUiLocale()]);
 
   return (
     <>
       <PanelHeader>
-        <h1 className="flex items-center text-lg font-medium">{m.common.nav.inbox}</h1>
+        <div className={PANEL_HEAD_ROW}>
+          <h1 className="flex items-center text-lg font-medium">{m.common.nav.inbox}</h1>
+        </div>
+        <InboxFilters filter={filter} options={options} />
       </PanelHeader>
       <PanelBody className="space-y-4">
-        <InboxList plan={plan} now={now} m={m} uiLocale={uiLocale} />
+        {plan.groups.length > 0 && visible.groups.length === 0 ? (
+          <NoMatch placement="card" title={filter.q === null ? m.inbox.noMatch.title : m.inbox.noMatch.query(filter.q)} action={
+            <ButtonLink href={routes.inbox()}><RotateCcw aria-hidden />{m.inbox.filters.clear}</ButtonLink>
+          } />
+        ) : <InboxList plan={visible} now={now} m={m} uiLocale={uiLocale} />}
       </PanelBody>
       <MarkSeen at={now.toISOString()} />
     </>

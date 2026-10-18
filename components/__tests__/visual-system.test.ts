@@ -359,7 +359,7 @@ describe("같은 행동은 같은 variant다 (audit #50)", () => {
    * "다시 하기"·"새로 만들기"가 한 모양이었다. Sync의 [Try again]은 Sync의 글리프(`ArrowDownToLine`)를, 재발급은 MCP Rotate처럼 글리프 없이 선다.
    */
   it("`RotateCcw`를 그리는 자리는 Clear filters뿐이다", () => {
-    const CLEAR = ["app/(edit)/projects/[slug]/logs/page.tsx", "components/logs/log-filters.tsx", "components/projects/empty-projects.tsx", "components/translations/workspace/workspace.tsx"];
+    const CLEAR = ["app/(edit)/inbox/page.tsx", "app/(edit)/projects/[slug]/logs/page.tsx", "components/inbox/inbox-filters.tsx", "components/logs/log-filters.tsx", "components/projects/empty-projects.tsx", "components/translations/workspace/workspace.tsx"];
     const drawn = SOURCES.filter(({ source }) => source.includes("<RotateCcw")).map(({ path }) => path).sort();
     expect(drawn).toEqual(CLEAR);
   });
