@@ -2987,3 +2987,12 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 테스트: `lib/__tests__/viewport.test.ts`가 iOS UA 일곱(Safari·CriOS·FxiOS·카카오톡·인스타그램·iPad·iPod)에서만 `maximumScale: 1`, Android·Windows·Mac·UA 없음에서는 없음, 어떤 UA에서도 `userScalable` 없음, 모든 UA에서 `interactiveWidget: "resizes-content"`를 고정한다. `signin-screen.test.ts`가 레이아웃이 정적 `viewport` 대신 `generateViewport` → `viewportFor`를 쓰는지 본다.
   - grep: `rg -n "maximumScale|userScalable|maximum-scale|user-scalable" app lib components` — `lib/viewport.ts` 밖에 생기면 Android 핀치를 막는 전역 설정이 아닌지 본다. 2026-10-18 실행: `lib/viewport.ts` 하나.
   - 규칙: 처음 열 때 입력에 포커스를 주는 표면(Dialog `data-initial-focus` · Combobox `initialFocus`)은 iOS에서 이 판정에 기댄다 — 입력 글자 크기를 16 미만으로 유지하는 한 `viewportFor`의 iOS 갈래를 지우지 않는다.
+
+
+### 2026-10-18 — 긴 프로젝트 이름의 Inbox 메뉴가 375px 화면 밖으로 잘렸다 (#301)
+
+- **영역**: `components/ui/dropdown-menu.tsx`(`DropdownMenuContent`) · `components/inbox/inbox-filters.tsx`(Project 필터).
+- **증상**: QA가 dev `d6df61b3`의 375×900 화면에서 긴 UMT 프로젝트 이름 두 개로 Project 메뉴를 열었다. 메뉴는 x=8·폭448·오른쪽456으로 화면을81px 넘었고 문서 폭은375여서 스크롤로도 잘린 부분을 볼 수 없었다. 트리거의240px 말줄임과 전체 접근 이름은 정상이라 메뉴 자체의 결함이었다.
+- **근본 원인**: Radix의 `collisionPadding=8`은 위치를 밀거나 뒤집고 가용 폭을 CSS 변수로 내지만, 콘텐츠의 최대 폭을 대신 제한하지 않는다. 공용 Content는 가용 **높이**만 CSS 상한으로 쓰고 최대 **폭**은 `max-w-md`(28rem)로 고정했다. 긴 이름이 그 상한까지 메뉴를 넓히면 충돌 회피가 왼쪽을8px에 맞춰도 오른쪽은 화면을 넘었다.
+- **그물**: 잡은 것은 긴 실제 프로젝트 이름과375px 뷰포트를 함께 쓴 브라우저 QA다. 놓친 것은 기존 DOM 테스트·typecheck·빌드·정적 리뷰였다. 기존 DOM 검사는 트리거의 말줄임·전체 접근 이름·키보드 연속 선택을 검사했지만 메뉴의 CSS 폭 상한은 검사하지 않았고 jsdom은 레이아웃을 계산하지 않는다. 새 `dropdown-menu-width.test.tsx`5건은 실제 열린 기본/FilterMenu의 유틸을 Tailwind로 컴파일해 최대 폭이 `min(기존 28rem, Radix 가용 폭)`인지, 소비자의240·256·360px 폭이 남는지 검사한다(수정 전5건 red, 수정 후 관련9파일175건 green). 실제 브라우저의 수정 후 경계·말줄임 재측정은 아직 남아 있다.
+- **재발 방지**: `rg -n 'max-w-.*radix.*available-width|max-w-md|content-available-height' components/ui -g '*.tsx'`와 `rg -n '<DropdownMenuContent' app components -g '!**/__tests__/**'`를 실행했다. 공용 DropdownMenuContent를 쓰는6개 직접 소비자(FilterMenu·헤더 Inbox·프로젝트 스위처·사용자 메뉴·언어 스위처·테마 스위처)는 같은 폭 경계를 받는다. Select는 트리거 폭을 최소 폭으로 쓰고 Combobox는 트리거 폭으로 고정하므로 같은 변경을 복사하지 않았다. 새 메뉴 검증에서는 긴 사용자 데이터와 좁은 뷰포트를 함께 열어 `getBoundingClientRect()`의 좌우 경계와 문서 폭을 비교한다. CSS/DOM 통과를 실제 픽셀 경계 확인으로 대신하지 않는다.
