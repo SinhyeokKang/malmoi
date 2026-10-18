@@ -17,6 +17,7 @@ import { bannerTranslationsHref } from "@/lib/routes";
 import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/cards";
 import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
 import { loadAttentionInbox } from "@/lib/inbox/load";
+import { countLocaleWork } from "@/lib/locales/work";
 import type { RemoteTarget } from "@/lib/projects/remote";
 import { reviewByLocale, summaryQueue } from "@/lib/projects/list";
 import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
@@ -1111,15 +1112,22 @@ it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 
   const load = () => loadProjectList(counted, "owner", { loadRemote });
   const { rows: [row] } = await load();
   if (row === undefined) throw new Error("no row");
-  expect(queries).toBe(6); // 멤버십 하나 + 기존 집계 다섯.
+  // 멤버십 하나 + 기존 집계 다섯 + 언어 변경 일괄 읽기 셋(요청 행 · 확인 행 · ADD가 있어 값 수 raw — language-request-todo design §2, D13).
+  expect(queries).toBe(9);
 
   expect(row).toMatchObject({ sourceCount: 3, keyCount: 4, languageCount: 3, lastSync: AFTER.toISOString(), review: 1, unsent: 0 });
-  // 행의 `review` 합과 띠의 검토 수가 같은 접기에서 나온다(RA 🟡) — 행은 판정 결과만 싣는다(RA 🟢3).
-  expect(row.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "review", count: 1 } });
+  /*
+    언어 변경 작업이 검토보다 앞선다(language-request-todo §4) — `default`의 ko 제거(미전달 → 보류)와 `second`의 값 있는 fr 추가가 둘이다. 값 0개 es 추가와
+    보관 소스의 fr 추가는 작업이 아니다. 행 띠 · Inbox 항목 · `countLocaleWork`가 같은 수를 센다(spec 완료 조건 6).
+  */
+  expect(row.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "language_unsent", count: 2, held: true } });
   expect("todos" in row).toBe(false);
   const inbox = await loadAttentionInbox(prisma, "owner");
   const inboxItems = inbox.groups.flatMap(group => group.items);
-  expect(inboxItems.map(item => item.kind).sort()).toEqual(["never_filled", "review"]);
+  expect(inboxItems.map(item => item.kind).sort()).toEqual(["language_unsent", "never_filled", "review"]);
+  const language = inboxItems.find(item => item.kind === "language_unsent");
+  expect(language).toMatchObject({ count: 2, held: true, surfaceSlug: "default" });
+  expect(await countLocaleWork(prisma, "p1")).toBe(2);
   expect(inboxItems.filter(item => item.kind === "review").map(item => item.code)).toEqual(["fr"]);
   expect(inboxItems.filter(item => item.kind === "never_filled").map(item => item.code)).toEqual(["es"]);
   const targets = loadRemote.mock.calls[0]?.[0];
@@ -1127,6 +1135,12 @@ it("목록 메타·할 일이 같은 작업 언어를 센다 — REMOVE 제외, 
   expect(targets?.[0]?.surfaces.find(surface => surface.pathTemplate === "i18n/{locale}.json")?.storedLocales).toEqual(expect.arrayContaining(["en", "ko", "es", "gone"]));
 
   await prisma.translation.updateMany({ where: { projectId: "p1", surfaceId: "second", localeCode: "fr" }, data: { needsReview: false } });
+  // 언어 변경을 전달한 것으로 확인한다 — 확인 실행이 요청보다 뒤라 요청의 효과가 전달로 세어진다(`deliveredForRequests`). 그러면 띠가 빈 언어로 내려간다.
+  const run = await prisma.syncRun.create({ data: { projectId: "p1", status: "SUCCEEDED", trigger: "MANUAL", startedAt: new Date("2099-01-01T00:00:00Z") } });
+  for (const [surfaceId, delivered] of [["surface-p1", [{ localeCode: "ko", effect: "delete" }]], ["second", [{ localeCode: "fr", effect: "create" }]]] as const) {
+    await prisma.deliveryConfirmation.create({ data: { projectId: "p1", surfaceId, revision: `rev-${surfaceId}`, syncRunId: run.id, contextFingerprint: "ctx", deliveredLocaleChanges: delivered } });
+  }
+  expect(await countLocaleWork(prisma, "p1")).toBe(0);
   const { rows: [emptyLanguageRow] } = await load();
   if (emptyLanguageRow === undefined) throw new Error("no row");
   expect(emptyLanguageRow.plan.banner).toEqual({ kind: "never_filled", surfaceSlug: "default", code: "es", name: "Spanish", keys: 3 });

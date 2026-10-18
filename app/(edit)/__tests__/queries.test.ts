@@ -499,6 +499,30 @@ describe("loadProjectList", () => {
   });
 
   /**
+   * **언어 변경 작업이 행 띠까지 닿는다** (language-request-todo T6 · review-A Y3) — 로더가 `language: null`을 넘기면 판정 표는 green인 채 띠가 사라진다.
+   * 일괄 읽기는 비보관 id만 받는다(D6) — 보관 프로젝트는 할 일이 없어 읽을 이유가 없다.
+   */
+  it("전달 전 언어 제거를 행 띠로 싣고 보관 프로젝트는 읽지 않는다", async () => {
+    const base = seed();
+    const h = createHarness({
+      ...base,
+      projects: [
+        { id: "p1", slug: "acme", name: "Acme", installationId: "i", repositoryId: "r", lastCommitSha: "sha" },
+        { id: "p3", slug: "old", name: "Old", installationId: "i", repositoryId: "r", lastCommitSha: "sha", archivedAt: new Date("2026-09-01T00:00:00Z") },
+      ],
+      members: [{ projectId: "p1", userId: "u1", role: "OWNER" }, { projectId: "p3", userId: "u1", role: "OWNER" }],
+      keys: [], translations: [],
+    });
+    vi.mocked(h.prisma.localeChange.findMany).mockResolvedValue([
+      { projectId: "p1", surfaceId: "surface-p1", localeCode: "ko", operation: "REMOVE", requestedAt: new Date("2026-10-01T00:00:00Z"), locale: { orphaned: false } },
+    ] as never);
+    const { rows } = await loadProjectList(h.prisma, "u1", { loadRemote: async () => new Map() });
+    expect(rows.find((r) => r.slug === "acme")?.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "language_unsent", count: 1, held: true } });
+    expect(h.prisma.localeChange.findMany).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ where: expect.objectContaining({ projectId: { in: ["p1"] } }) }));
+    expect(h.prisma.deliveryConfirmation.findMany).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ where: expect.objectContaining({ projectId: { in: ["p1"] } }) }));
+  });
+
+  /**
    * ⚠️ **셸이 이 집계를 물지 않는다.** 두 로더가 같은 테이블을 읽는 것이 중복처럼 보이지만,
    * 합치는 순간 `(edit)` 아래 **모든** 페이지가 `_count` 서브쿼리를 돈다.
    */

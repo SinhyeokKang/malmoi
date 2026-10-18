@@ -12,6 +12,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { Role } from "@/lib/auth/permission";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { loadRemoteSignals, type RemoteSignals } from "@/lib/projects/remote";
+import { languageTodo } from "@/lib/locales/todo";
+import { readLocaleStatesByProject, type SurfaceLocaleState } from "@/lib/locales/work";
 import {
   planProjectRow,
   projectStatus,
@@ -333,7 +335,7 @@ export async function loadProjectList(
    *
    * ⚠️ **원격은 실패해도 목록을 죽이지 않는다** — 그 함수가 실패를 값으로 접는다.
    */
-  const [aggregates, remote] = await Promise.all([
+  const [aggregates, remote, languages] = await Promise.all([
     loadProjectListAggregates(prisma, ids),
     (options.loadRemote ?? loadRemoteSignals)(
       rows.map((r) => ({
@@ -349,8 +351,13 @@ export async function loadProjectList(
         archived: r.project.archivedAt !== null,
       })),
     ),
+    /*
+      언어 변경 작업(language-request-todo design §2) — `projectId in ids` 일괄 읽기라 프로젝트 수와 무관하게 Prisma 2–3회다. ⚠️ **보관 프로젝트는 넘기지 않는다**
+      (D6) — `projectTodos`가 보관이면 빈 목록이라 쓸 곳이 없다. 같은 라운드라 직렬 홉이 늘지 않는다(D13).
+    */
+    readLocaleStatesByProject(prisma, rows.flatMap((r) => (r.project.archivedAt === null ? [r.project.id] : []))),
   ]);
-  return { rows: assembleProjectListRows(rows, aggregates, remote) };
+  return { rows: assembleProjectListRows(rows, aggregates, remote, languages) };
 }
 
 /** `loadProjectList`의 멤버십 select 한 행 — 조립 함수의 입력이다(쓰는 필드만). */
@@ -378,6 +385,8 @@ export function assembleProjectListRows(
   rows: readonly ProjectListMemberRow[],
   aggregates: ProjectListAggregates,
   remote: ReadonlyMap<string, RemoteSignals>,
+  /** 프로젝트별 언어 변경 상태(`readLocaleStatesByProject`) — 없는 id는 작업 0이다. */
+  languages: ReadonlyMap<string, readonly SurfaceLocaleState[]>,
 ): ProjectListView["rows"] {
   // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCells`가 한다. 행의 `review` 합과 띠의 검토 할 일이 이 한 결과를 읽는다.
   const reviewCells = rowReviewCells(aggregates.locales, aggregates.cells);
@@ -442,8 +451,8 @@ export function assembleProjectListRows(
       connectionPinned: repoConnectionPinned(row), gitlabTokenExpiresAt: row.gitlabTokenExpiresAt,
       attention, unsent: row.unsent > 0 && row.unsentSurfaceSlug !== null
         ? { count: row.unsent, surfaceSlug: row.unsentSurfaceSlug, at: aggregates.unsentAt.get(r.project.id) ?? null } : null,
-      // language-request-todo O2 — 일괄 상태 읽기 배선은 T6(배치 C)이 한다. 그때까지 언어 변경 띠를 내지 않는다.
-      language: null,
+      // 대표 slug는 비보관 소스에서 고른다 — Inbox 로더와 같은 재료다(행 띠와 Inbox 항목이 같은 판정에서 나온다).
+      language: languageTodo(languages.get(r.project.id) ?? [], new Map(surfaces.map((surface) => [surface.id, surface.slug]))),
     });
     return { ...row, plan: planProjectRow(row, todos) };
   });

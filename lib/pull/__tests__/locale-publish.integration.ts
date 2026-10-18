@@ -684,12 +684,12 @@ describe.each(["github", "gitlab"] as const)("미머지 종료 뒤 만료 전 Pu
     fake(files);
     expect(await publish()).toMatchObject({ status: "committed" });
     await ageRuns();
-    expect(await readLocaleWork(prisma, "p")).toEqual({ work: 0, awaiting: true });
+    expect(await readLocaleWork(prisma, "p")).toMatchObject({ work: 0, awaiting: true });
     fake(files);
     const preview = await readPublishPreview(prisma, "p", "fixture");
     fake(files);
     expect(await publish(preview.fingerprint)).toMatchObject({ status: "skipped", reason: "no-edits", expired: [{ localeCode: "fr", presence: "orphan" }] });
-    expect(await readLocaleWork(prisma, "p")).toEqual({ work: 0, awaiting: false });
+    expect(await readLocaleWork(prisma, "p")).toMatchObject({ work: 0, awaiting: false });
   });
 
   /** fix1 R2 변형 — 버려질 언어에 전달 뒤 편집이 더 있다. 만료 뒤 그 편집은 비활성 언어의 셀이라 나가지 않는다 — 미리보기가 보낼 수로 세지 않는다. 보류도 아니라 웹은 요청을 닫았다 틀이다(#289). */

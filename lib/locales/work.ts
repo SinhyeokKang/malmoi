@@ -248,8 +248,11 @@ export function awaitsResolution(surfaces: readonly { rows: readonly unknown[]; 
   return surfaces.some(surface => surface.rows.length > 0 && (surface.delivered?.length ?? 0) > 0);
 }
 
-/** 버튼의 DB 판정 두 값 — 작업 수(`countLocaleWork`와 같다)와 `awaitsResolution`. 같은 읽기 한 번에서 낸다. */
-export async function readLocaleWork(db: Db, projectId: string): Promise<{ work: number; awaiting: boolean }> {
+/**
+ * 버튼의 DB 판정 두 값 — 작업 수(`countLocaleWork`와 같다)와 `awaitsResolution`. 같은 읽기 한 번에서 낸다. `states`는 그 읽기 그대로다 — Home이 같은 결과로
+ * 언어 게이트(`planLocaleImportGate`)를 판정한다(language-request-todo design §5 — 새 조회 없이).
+ */
+export async function readLocaleWork(db: Db, projectId: string): Promise<{ work: number; awaiting: boolean; states: SurfaceLocaleState[] }> {
   const states = await readLocaleStates(db, projectId);
-  return { work: states.reduce((sum, state) => sum + state.work.length, 0), awaiting: awaitsResolution(states) };
+  return { work: states.reduce((sum, state) => sum + state.work.length, 0), awaiting: awaitsResolution(states), states };
 }

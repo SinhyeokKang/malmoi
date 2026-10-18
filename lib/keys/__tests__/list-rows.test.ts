@@ -21,7 +21,7 @@ const member = (surfaces: ProjectListMemberRow["project"]["surfaces"], over: Par
   },
 });
 const assemble = (row: ProjectListMemberRow) => {
-  const [assembled] = assembleProjectListRows([row], EMPTY, new Map());
+  const [assembled] = assembleProjectListRows([row], EMPTY, new Map(), new Map());
   if (assembled === undefined) throw new Error("no row");
   return assembled;
 };
@@ -68,18 +68,18 @@ describe("assembleProjectListRows — 열린 PR 삼상태", () => {
     ["없음", { openPr: null, repoAheadFiles: 0 }, null],
     ["열림", { openPr: PR, repoAheadFiles: 0 }, PR],
   ] as const)("%s를 그대로 싣는다", (_label, signals, expected) => {
-    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", signals]]));
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", signals]]), new Map());
     expect(row?.openPr).toEqual(expected);
     expect(row !== undefined && "openPr" in row).toBe(true);
   });
 
   it("원격 결과에 행이 없으면 없음이다", () => {
-    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map());
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map(), new Map());
     expect(row?.openPr).toBeNull();
   });
 
   it("모름이면 띠가 Couldn't check다", () => {
-    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", { openPr: undefined, repoAheadFiles: 0 }]]));
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", { openPr: undefined, repoAheadFiles: 0 }]]), new Map());
     if (row === undefined) throw new Error("no row");
     expect(row.plan).toEqual({ chip: "active", group: "all_set", banner: { kind: "pr_check_failed" } });
   });
@@ -101,7 +101,7 @@ describe("assembleProjectListRows — 대표 메타", () => {
         { projectId: "p2", surfaceId: "other-project", surfaceSlug: "else", code: "fr", isBase: false },
       ],
     };
-    const [row] = assembleProjectListRows([member(surfaces)], aggregates, new Map());
+    const [row] = assembleProjectListRows([member(surfaces)], aggregates, new Map(), new Map());
     expect(row).toMatchObject({ sourceCount: 2, keyCount: 6, languageCount: 3 });
   });
 
@@ -121,7 +121,7 @@ describe("assembleProjectListRows — 대표 메타", () => {
       ...EMPTY, keyTotals: new Map([["s1", 2]]),
       locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "added", isBase: false }],
       cells: [{ projectId: "p1", surfaceId: "s1", localeCode: "orphaned", needsReview: true, count: 9 }],
-    }, new Map());
+    }, new Map(), new Map());
     expect(row).toMatchObject({ keyCount: 2, languageCount: 1, review: 0 });
   });
 });
@@ -136,7 +136,7 @@ describe("assembleProjectListRows — DB 할 일", () => {
     const [row] = assembleProjectListRows([member([surface({ id: "s1", locales })])], {
       ...EMPTY, keyTotals: new Map([["s1", 2]]),
       locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false }],
-    }, new Map());
+    }, new Map(), new Map());
     // 행은 판정 결과만 싣는다(RA 🟢3) — 할 일 목록 전체가 아니라 띠 하나다.
     expect(row?.plan.banner).toEqual({ kind: "never_filled", surfaceSlug: "web", code: "ko", name: "Korean", keys: 2 });
     expect(row !== undefined && "todos" in row).toBe(false);
@@ -147,7 +147,7 @@ describe("assembleProjectListRows — DB 할 일", () => {
       locales: [{ projectId: "p1", surfaceId: "s1", surfaceSlug: "web", code: "ko", isBase: false }],
       cells: [{ projectId: "p1", surfaceId: "s1", localeCode: "ko", needsReview: true, count: 2 },
         { projectId: "p1", surfaceId: "s1", localeCode: "es", needsReview: true, count: 9 }],
-    }, new Map());
+    }, new Map(), new Map());
     expect(row?.review).toBe(2);
     expect(row?.plan.banner).toEqual({ kind: "review", count: 2 });
   });
@@ -178,13 +178,13 @@ describe("assembleProjectListRows — 검토 띠의 목적지", () => {
         // `admin`의 `ja`는 작업 언어가 아니다(orphaned·제거 예정) — 수에도 목적지에도 들지 않는다.
         { projectId: "p1", surfaceId: "s3", localeCode: "ja", needsReview: true, count: 9 },
       ],
-    }, new Map());
+    }, new Map(), new Map());
     expect(row).toMatchObject({ review: 2, reviewSurfaceSlug: "web" });
     expect(row?.plan.banner).toEqual({ kind: "review", count: 2 });
   });
 
   it("검토가 없으면 목적지도 없다", () => {
-    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map());
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map(), new Map());
     expect(row?.reviewSurfaceSlug).toBeNull();
   });
 });

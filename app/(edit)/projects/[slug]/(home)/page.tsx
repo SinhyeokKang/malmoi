@@ -45,6 +45,7 @@ import { repoWebUrl } from "@/lib/projects/repo-web";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
 import { readLocaleWork } from "@/lib/locales/work";
+import { planLocaleImportGate } from "@/lib/push/locale-gate";
 import { planSettleLookup } from "@/lib/publish/plan";
 
 /**
@@ -261,8 +262,11 @@ export default async function ProjectHomePage({
     return undefined;
   });
   const hold = planHomeHold(
-    // language-request-todo O2 — 언어 보류(`localeHeld`)의 실제 배선은 T6(배치 C)이 `readLocaleWork`를 넓혀 한다.
-    { pending: counts.toSend, localeHeld: false, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
+    /*
+      전달 전 언어 제거 — CI 게이트와 **같은 함수**를 같은 읽기(`readLocaleWork`의 `states`)에 부른다(language-request-todo design §5). ⚠️ `languageTodo(...)?.held`로
+      접지 않는다 — 그쪽은 slug를 아는 소스가 없으면 `null`이라 보류가 slug 해석에 묶인다. 게이트는 slug를 보지 않는다(review-A Y2).
+    */
+    { pending: counts.toSend, localeHeld: planLocaleImportGate(localeWork.states).action === "defer", gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
     lookupOpenPr,
   );
   const heldNow = hold instanceof Promise ? null : hold;
@@ -373,8 +377,8 @@ export default async function ProjectHomePage({
                 lastSyncAt,
                 reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
                 hold: heldNow,
-                // language-request-todo O2 — 언어 변경 보조 줄의 실제 배선은 T6(배치 C)이 한다.
-                languageChanges: 0,
+                // [Publish]를 켜는 같은 수다 — 셀 0 · 언어 변경만 남으면 `nothing to send`가 아니라 그 수를 말한다(language-request-todo design §5).
+                languageChanges: languageWork,
               })}
               slug={slug}
               // 카드마다 그 수가 있는 첫 소스로 — 번역 화면의 범위가 트리 위치라 기본 소스로 가면 0건일 수 있다(translation-tree-range §5).

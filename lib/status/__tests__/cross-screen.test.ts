@@ -140,7 +140,7 @@ function observe(f: Fixture, J: Judgments): Observed {
   };
   // ⑤의 수와 소스는 같은 쿼리에서 함께 온다 — 수만 주면 미발송 할 일이 소스 없이 서지 않는다.
   const unsent = f.pending > 0 ? { unsent: new Map([["p1", f.pending]]), unsentSurfaces: new Map([["p1", f.surfaces[0]?.slug ?? "web"]]) } : {};
-  const [row] = assembleProjectListRows([member], { ...EMPTY, ...unsent }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
+  const [row] = assembleProjectListRows([member], { ...EMPTY, ...unsent }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]), new Map());
   if (row === undefined) throw new Error("no row");
   // 칩·띠는 조립이 `planProjectRow`로 판정해 싣는 그 값이다 — 화면은 `row.plan.chip`을 `StatusBadge`에 그대로 넘긴다.
   const list = { chip: row.plan.chip, banner: bannerKey(row.plan.banner) };
