@@ -61,7 +61,10 @@ export function planInbox(input: { projects: readonly InboxProject[]; seenAt: Da
       }),
     }];
   });
+  // 안 읽은 항목이 있는 묶음이 먼저다 — 최신 항목이 검토(늘 읽음)인 묶음이 안 읽은 실패보다 위에 서지 않게.
   groups.sort((a, b) => {
+    const unreadDelta = Number(b.items.some(item => item.unread)) - Number(a.items.some(item => item.unread));
+    if (unreadDelta !== 0) return unreadDelta;
     const left = a.items[0]?.at?.getTime() ?? -Infinity;
     const right = b.items[0]?.at?.getTime() ?? -Infinity;
     if (left !== right) return left > right ? -1 : 1;
