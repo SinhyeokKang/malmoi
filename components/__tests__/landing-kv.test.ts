@@ -29,6 +29,25 @@ describe("랜딩 배경 — 구조", () => {
     );
   });
 
+  /**
+   * R3 — 둘째 자식이 스크롤러 한 화면짜리 sticky 캔버스다. 높이와 같은 값의 음수 margin이 스테이지의 `--landing-stage-h`라 흐름에서 자리를 차지하지 않는다.
+   * 98 폴백은 JS 전에만 쓰인다(`stage.tsx` 주석).
+   */
+  it("둘째 자식이 `follow=\"scroller\"` 점 격자이고 높이·음수 margin이 `--landing-stage-h`다", () => {
+    expect(page).toMatch(
+      /<div aria-hidden className="absolute inset-0 bg-gradient-to-b from-auth-hero-from to-auth-hero-to" \/>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<DotField\s+follow="scroller"\s+className="pointer-events-none sticky top-0 block w-full h-\[var\(--landing-stage-h,calc\(100svh-98px\)\)\] -mb-\[var\(--landing-stage-h,calc\(100svh-98px\)\)\]"\s*\/>/,
+    );
+    expect([...page.matchAll(/<DotField\b/g)]).toHaveLength(1);
+  });
+
+  /** 로그인 KV는 지금 동작 그대로다 — `follow`를 넘기면 스크롤러 경로를 찾으러 간다. */
+  it("`/signin`의 점 격자는 `follow` 없이 선다", () => {
+    const auth = read("components/signin/auth-layout.tsx");
+    const uses = [...auth.matchAll(/<DotField\b[^>]*\/>/g)].map((match) => match[0]);
+    expect(uses).toHaveLength(1);
+    expect(uses[0]).not.toMatch(/\bfollow\b/);
+  });
+
   /** 래퍼가 히어로와 스테이지(마무리 CTA 포함)를 함께 감싼다 — 닫는 태그가 히어로 뒤로 올라가면 그라디언트가 히어로 길이에서 끝난다. */
   it("래퍼가 히어로와 `<Stage>`를 둘 다 감싼다", () => {
     const close = page.match(/<\/div>\s*<\/PublicShell>/)?.index ?? -1;

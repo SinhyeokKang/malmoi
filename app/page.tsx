@@ -7,6 +7,7 @@ import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { GithubIcon } from "@/components/signin/brand-icons";
+import { DotField } from "@/components/signin/dot-field";
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
 import { appVersion } from "@/lib/app-version";
@@ -64,6 +65,15 @@ export default async function Root() {
       */}
       <div data-landing-kv="" className="relative">
         <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-auth-hero-from to-auth-hero-to" />
+        {/*
+          점 격자(R3) — 스크롤러 한 화면짜리 sticky 캔버스이고, 같은 높이의 음수 margin으로 흐름에서 자리를 차지하지 않는다. 높이는 스테이지가
+          스크롤러에 쓰는 `--landing-stage-h`다(98 폴백은 JS 전뿐 — `stage.tsx` 주석). ⚠️ 스크롤러 안이어야 `follow="scroller"`가 탄다 — 밖이면
+          조용히 로그인 경로로 떨어진다. ⚠️ 격자 오프셋은 래퍼가 스크롤러의 첫 자식이라는 전제다(`dot-field.tsx` R6).
+        */}
+        <DotField
+          follow="scroller"
+          className="pointer-events-none sticky top-0 block w-full h-[var(--landing-stage-h,calc(100svh-98px))] -mb-[var(--landing-stage-h,calc(100svh-98px))]"
+        />
         <section aria-labelledby="landing-hero" className="relative flex flex-col items-center px-8 pt-16 text-center lg:pt-30">
           {/*
             최신 릴리스 알약(2026-09-30 사용자) — 버전은 빌드가 박은 `APP_VERSION`이다. ⚠️ GitHub Releases를 부르지 않는다 — 랜딩 첫 진입이
