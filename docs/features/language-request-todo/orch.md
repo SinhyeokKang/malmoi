@@ -58,4 +58,5 @@ T0(완료) · T1 A · T2 B · T3 A · T4 A · T5 A · T6 C · T7 C · T8 DS · T
 - B fix1 `worker_done` — 626d1631(프로젝트별 ADD 표면×코드로 값 수를 좁힘, 시드 줄로 red 확인), `gate: ok`. **B 통합(로컬)** `d0c27b29..88de295d`. B release + `lrt-b` 삭제. main 게이트(K·A·B) 실행. C Dispatch `ctx_3b6dd8f93c4b`(A 터미널, 브리프 `brief-C.md`).
 - main 게이트(K·A·B) `gate: ok`(15972 + 격리 PG 898). **push** `1191e41b..b269cbc8` — 중간 지점(A는 로더 미배선이라 화면 변화는 K뿐). CI run 39120572205 → success.
 - C `worker_done` — 5b27bfee · 1d5363e8, `gate: ok`(15998 + 격리 PG 898). O2 넷 모두 배선, 되돌리면 red. 리뷰 C: 🔴 0 · 🟡 1 · ⚪ 5 — Y1 목록 로더 1 vs N 호출 수 테스트 없음 → C fix1(Dispatch `ctx_d066d4119b94`, 테스트만). **C 통합(로컬)** `b5485ab1..227a2c01`, main 게이트 실행 → green이면 DS 시작(C fix1은 테스트만이라 DS 뒤에 통합).
+- main 게이트(C) `gate: ok`(15998 + 898). DS 시작 — Dispatch `ctx_9925b2e6b622` · `term_7ab6ac96`(main 체크아웃). C fix1 `worker_done` — a4f1837b(`it.each([1, 5])` 목록 로더 호출 수, 프로젝트별 읽기로 바꾸면 5 사례만 red) + ⚪1–3, `gate: ok`. DS 뒤 통합. A 터미널은 DS 결함 대비로 유지.
 
