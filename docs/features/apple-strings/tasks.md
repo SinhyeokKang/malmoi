@@ -49,14 +49,14 @@ M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없�
 
 ## 4. Apple `.xcstrings` (`apple-xcstrings`)
 
-- [ ] **T4.0 서식 실측** — 실제 xcstrings 3개(코퍼스)로 Xcode 출력 서식(들여쓰기·`" : "`·키 정렬·끝 개행·빈 객체)을 골든 픽스처로 채록.
+- [x] **T4.0 서식 실측** — 실제 xcstrings 3개(코퍼스)로 Xcode 출력 서식(들여쓰기·`" : "`·키 정렬·끝 개행·빈 객체)을 골든 픽스처로 채록.
       검증: 픽스처가 원본과 바이트 같다. 커밋은 T4.2에 합친다.
-- [ ] **T4.1 테스트** — `sourceLanguage` 기준 언어 · 값 치환 범위 · 없는 로케일 블록 삽입 위치·서식 · `state` 규칙 · `shouldTranslate:false`·`variations`
+- [x] **T4.1 테스트** — `sourceLanguage` 기준 언어 · 값 치환 범위 · 없는 로케일 블록 삽입 위치·서식 · `state` 규칙 · `shouldTranslate:false`·`variations`
       보존 · **원문 셀 없는 키는 키를 기준 값으로 읽고, 기준 값 = 키면 기준 셀을 쓰지 않음 · 다르면 원문 셀 삽입 · 다음 read가 삽입 셀 값을 읽음** ·
       **셀 삽입 가능 판정**: `fr`이 다른 키에는 있고 `foo.fr`만 없을 때 경로 선택(`lib/pull/run.ts:388-401`)·미리보기(`lib/publish/read.ts:153-156`)·렌더·
       미전달 토큰 해제가 모두 "전달"로 일치(통합 테스트), ts-dict 보류는 그대로 · `__proto__` 키 · 언어 추가·제거 비지원
       (`SUPPORTED_ADAPTERS`에 없음, `write-create-unsupported`) · 비울 수 없음(불변식 3 수술적 규칙). 검증: red.
-- [ ] **T4.2 구현 + 배선** — arb T1.3 손 목록 + "실측 정정"(`SUPPORTED_ADAPTERS`에는 넣지 않는다 — 그래서 `unsupported-format`·MCP `add_locale` 나열에도 넣지 않는다, 사전 라벨 "Apple String Catalog" 형).
+- [x] **T4.2 구현 + 배선** — arb T1.3 손 목록 + "실측 정정"(`SUPPORTED_ADAPTERS`에는 넣지 않는다 — 그래서 `unsupported-format`·MCP `add_locale` 나열에도 넣지 않는다, 사전 라벨 "Apple String Catalog" 형).
       기준 언어는 `sourceLanguage`를 `DetectedFormat.templateLocale`로 싣는다(design §2.3). 화면 비지원 분기는
       `supportsLocaleChanges`에서 파생되므로 만들지 않는다. 검증: `pnpm test` green → 껍데기 테스트 → `pnpm gate` green.
       커밋: `feat(adapters): add Apple xcstrings adapter`
