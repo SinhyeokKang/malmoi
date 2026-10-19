@@ -9,21 +9,9 @@
 - **(수동)** 표시는 사람·로컬 도구가 필요한 검증이다(e2e 프레임워크가 없다). 도구가 없으면 통과로 취급하지 않고 미완으로 보고한다.
 - 테스트 태스크는 따로 커밋하지 않고 바로 다음 구현 태스크의 커밋에 합친다.
 
-## 0. 공통 (모바일 세 스펙 공용)
+## 0. 사전 작업
 
-- [ ] **T0.0 기준선 보고서** — 변경 전 dev HEAD로 학습·홀드아웃 survey를 `--json --out`으로 떠 `.scratch/adapter-survey-baseline/`에 둔다.
-      25차 표는 집계값뿐이라 리포별 1순위를 견줄 수 없다. 이후 모든 재측정의 "기존 리포 1순위 불변"은 이 보고서와의 리포별 1순위 경로 diff 0이다.
-      ⚠️ survey는 매번 외부 리포의 최신 HEAD를 clone하고 지운다(`lib/survey/run.ts:31·37·51·75`) — 상류 변경만으로 diff가 난다. 기준선 때 **리포별 SHA를
-      기록하고 이후 재측정이 같은 SHA로 돌게** 한다(survey에 SHA 고정 입력이 없으면 그 배선이 이 태스크다 — 테스트 먼저, `pnpm gate` green,
-      커밋 `feat(survey): pin corpus repos to recorded commits`). 25차 표와의 차이는 상류 변경으로 따로 설명하고, 새 기준선이 회귀 비교의 기준이다.
-      검증: 같은 SHA로 두 번 돌린 보고서가 리포별로 같다. 보고서 자체는 커밋 없음(`.scratch/`).
-- [ ] **T0.1 모바일 코퍼스** — 2026-10-19 표본에서 **보유 기준**(그 포맷 파일을 가진 리포 — spec의 "순증"과 다르다) ARB 9 · Apple 35 · Android 24 리포를
-      후보로, 학습/홀드아웃을 나눠 `docs/adapter-survey/`에 `repos-mobile.txt`·`repos-mobile-heldout.txt`·판정 JSON을 만든다. 정답 경로는 사람이
-      원문을 보고 판정한다(23차 관행). Android 정답은 템플릿(`values-{locale}`)과 `basePath`(`values/`)의 쌍이라 판정 JSON에 `basePath` 필드를 둔다
-      (survey 비교 배선은 android-strings T3.2). 함께 센다: UTF-16 `.strings` 리포 수, `Base.lproj/Localizable.strings` 리포 수, xcstrings 원문 셀 없는 키 비율.
-      apple-strings·android-strings가 같은 코퍼스를 쓴다.
-      검증: `pnpm adapter-survey docs/adapter-survey/repos-mobile.txt` 가 clone 실패 0으로 돈다(새 어댑터 전이라 탐지 0이 정상), 세 건수가 기록됐다.
-      커밋: `docs(adapter-survey): add mobile corpus`
+기준선(SHA 고정)·모바일 코퍼스는 **mobile-strings** M0·M1이 만든다. 이 스펙은 그것이 끝난 뒤 착수한다.
 
 ## 1. ARB (`arb-catalog`)
 
@@ -39,7 +27,7 @@
       `detect-candidates.test.ts` `cases` · 아이콘 분기(`components/sources/sources-screen.tsx:130`) · `lib/openapi` 스냅숏(adapter enum이 실렸으면) ·
       사전 3벌 `newProject.formats` 라벨·예시(`/translate` 모드 ① — 기존 라벨 형, 내부 이름 미노출) · `unsupported-format` 문구(`messages/en.tsx:4528` 지원 포맷 나열).
       검증: 껍데기 테스트가 `.arb`를 내려받는다, `pnpm gate` green(`banned-terms`·`dictionary-consistency` 포함). 커밋: `feat(adapters): wire the ARB adapter`
-- [ ] **T1.4 재측정** — 모바일 + 기존 2코퍼스. 검증: 기존 표 회귀 0 · T0.0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
+- [ ] **T1.4 재측정** — 모바일 + 기존 2코퍼스. 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
       `resource-limit` 거부 수 보고. 커밋 없음(결과는 T5.2에 기록).
 - [ ] **T1.5 실물 (수동)** — `/roundtrip`으로 폐기용 Flutter 리포 왕복. 전제: Flutter SDK 설치, 폐기용 리포는 roundtrip 전제 조건 1의 목록에 없으면 새로 만든다.
       검증: 첫 Publish는 고친 셀 + 허용 정규화(spec 완료 조건 1) 외 diff 0, 두 번째 Publish는 고친 셀 외 diff 0, `flutter gen-l10n` 통과.
@@ -50,7 +38,7 @@
 - [ ] **T5.2 `docs(ARCHITECTURE)`** — §1.9에 재측정 표·판정, 값 표현(design §3), §0 불변식 2·4에 "소스 키 메타데이터(ARB `@key`)도 원본이 준다",
       `contract.ts` 표 예외 행의 근거. 같은 커밋 밖에서 CLAUDE.md 코어 원칙 문구도 맞춘다(`docs(CLAUDE)`, 미러 `pnpm sync:agents`).
 - [ ] **T5.3 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록.
-- 폴더 정리는 이 스펙에서 하지 않는다 — apple-strings·android-strings가 T0.0·T0.1·T1.3·표기 규칙을 계속 참조한다. 세 폴더를 android-strings T5.5에서 함께 지운다.
+- 폴더 정리는 이 스펙에서 하지 않는다 — apple-strings·android-strings가 T1.3·표기 규칙을 계속 참조한다. 네 폴더를 android-strings T5.5에서 함께 지운다.
 - T5 공통 검증: `pnpm test`(가이드 게이트·`no-korean-ui`) green · `pnpm sync:agents:check` green.
 - action·GitLab CI 원본 태그 릴리스는 이 스펙에서 하지 않는다 — android-strings T5에서 세 스펙 합동으로 처리한다(기능 머지 → 새 태그 → SHA 후속 패치).
 

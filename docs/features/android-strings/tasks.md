@@ -2,20 +2,12 @@
 
 모바일 세 스펙의 마지막이다(arb → apple-strings → android-strings). 순서: `basePath` → 파서 → 어댑터 → 기준 언어 입력·변경 거부·언어 추가 철자 →
 저장 검증 → 합동 출시. 배치마다 `pnpm gate` green + 학습·홀드아웃 **둘 다** 재측정(ARCHITECTURE §1.9 재측정 트리거)으로 닫는다.
-모바일 코퍼스·기준선은 arb T0.0·T0.1이 만든다. 표기 규칙("검증: red"·(수동)·테스트 커밋 합치기)은 arb tasks 머리와 같다.
+모바일 코퍼스·기준선은 mobile-strings M0·M1이 만든다. 표기 규칙("검증: red"·(수동)·테스트 커밋 합치기)은 arb tasks 머리와 같다.
 design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(design §3.2).
 
 ## 3. Android (`android-strings`)
 
-- [ ] **T3.0a base 경로 자리 전수 + 테스트** (`/tdd`) — design §2.3의 읽는 자리·쓰는 자리·지문 자리를 grep으로 확정해 목록을 고정하고,
-      `baseFilePath`(`basePath ?? 치환`) 단위 테스트 + "basePath 표면에서 base를 치환으로 만드는 자리 0" 소스 테스트 + "쓰는 자리가 `basePath`를 기록" 테스트 +
-      옛 CLI 페이로드(`basePath` 없음)가 기존 4포맷 표면에서 `format mismatch`가 아님(null 대 undefined) + 언어 제거가 `basePath`를 delete로 만들지 않음.
-      검증: red(새 테스트만, 확정 목록 N개를 소스 테스트가 정확히 고정).
-- [ ] **T3.0b `basePath` 스키마** (`/db`) — `TranslationSurface.basePath String?` additive. SELF-HOSTING §3 체크리스트(버전 건너뛴 업그레이드 안전).
-      검증: `pnpm db:status` clean, dev `has_schema_privilege` false. prod 반영은 T5.6(`/merge` 1단계). 커밋: `feat(db): add translation surface base path`
-- [ ] **T3.0c `basePath` 배선** — `DetectedFormat.basePath`, push 스키마(zod)·`checkFormat` 비교·경로 안전 두 경계, T3.0a의 자리들. 기존 어댑터는 null이라
-      동작 변화 0. 검증: `pnpm gate` green(격리 postgres 스위트 포함), 기존 2코퍼스 25차 표와 같고 arb T0.0 기준선과 리포별 1순위 diff 0.
-      커밋: `feat(sources): carry an explicit base file path`
+- `basePath` 컬럼·배선은 **mobile-strings** M2가 든다. 아래는 그 위의 Android 작업이다.
 - [ ] **T3.0d `@xml-tools/parser` 도입·실측** — exact 버전 고정, SELF-HOSTING §3 체크리스트, `minimumReleaseAge`·빌드 스크립트 확인, offset 단위(JS 문자열
       인덱스 여부·BOM·CRLF)·주석·CDATA·self-closing 노드 위치를 `.scratch/`에서 실측. 검증: 실측 결과를 design §2.1에 기록. 의존성 추가는 쓰는 곳이 생기는
       T3.2 커밋에 합친다(쓰는 곳 없는 의존성만 dev에 나가지 않게).
@@ -28,7 +20,7 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       왕복(렌더 + `undeliverable` 분류에서 blocking 없음) ·
       `contract.ts` 매트릭스 편입. 검증: red.
 - [ ] **T3.2 구현 + 배선** — arb T1.3 손 목록(`SUPPORTED_ADAPTERS` 추가, 사전 라벨) + `languageName`·`flagFor`의 `-r` 정규화 + survey 판정 비교가 `basePath`를 읽음
-      (arb T0.1 판정 JSON). 검증: `pnpm test` green → 껍데기 테스트가 `values/`·`values-*/strings.xml`을 내려받는다 → `pnpm gate` green.
+      (mobile-strings M1 판정 JSON). 검증: `pnpm test` green → 껍데기 테스트가 `values/`·`values-*/strings.xml`을 내려받는다 → `pnpm gate` green.
       커밋: `feat(adapters): add Android strings adapter`
 - [ ] **T3.2b 기준 언어 코드 입력** — `BaseLocaleState`와 두 소비자(온보딩 ③ · Add sources 모달 `components/sources/add-sources-modal.tsx:195-198`)에 Android
       base 행 + 코드 입력(`manual.baseLocale` Input 재사용, `isLocaleShaped`·관측 코드 중복 거부),
@@ -42,7 +34,7 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
 - [ ] **T3.3 저장 검증** — `lib/keys/save.ts` 코어에서 인라인 태그 불일치 거부(design §3.1): `KeySavePlan` 새 코드, 워크스페이스 footer Alert·셀 `aria-invalid`,
       사전 3벌, MCP 영어 응답. 검증: 순수 함수 테스트 + 코어 테스트(웹·MCP 두 껍데기) + `pnpm gate` green + `/runtime-test`로 거부 표시 확인 **(수동)**.
       커밋: `feat(translations): reject saves that break Android inline tags`
-- [ ] **T3.4 재측정** — 검증: 기존 표 회귀 0 · arb T0.0 기준선과 리포별 1순위 diff 0 · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
+- [ ] **T3.4 재측정** — 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
       `resource-limit` 거부 수 보고. 커밋 없음.
 - [ ] **T3.5 실물 (수동)** — `/roundtrip`. 전제: Android SDK·JDK, 폐기용 리포. 검증: 고친 셀 외 diff 0, Gradle `assembleDebug` 통과.
 
@@ -59,8 +51,8 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       CLAUDE.md 스택 표에 `@xml-tools/parser`(읽기·offset 전용) 함정(`docs(CLAUDE)`, 미러 `pnpm sync:agents`).
 - [ ] **T5.4 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록, Android `base-locale` 필수,
       인라인 태그 안내("기준 언어의 태그를 그대로 두고 그 사이 글만 번역한다").
-- [ ] **T5.5 정리** — 세 스펙의 결론이 정본에 올라갔는지 확인한 뒤 `docs/features/arb/`·`apple-strings/`·`android-strings/`를 **함께** 삭제한다
-      (arb·apple-strings가 공통 태스크·표기 규칙을 서로 참조하므로 따로 지우지 않는다). 커밋: `docs(feature): remove mobile specs after promotion`
+- [ ] **T5.5 정리** — 네 스펙의 결론이 정본에 올라갔는지 확인한 뒤 `docs/features/mobile-strings/`·`arb/`·`apple-strings/`·`android-strings/`를 **함께** 삭제한다
+      (서로 참조하므로 따로 지우지 않는다). 커밋: `docs(feature): remove mobile specs after promotion`
 - [ ] **T5.6 기능 `/merge`** — 세 스펙이 모두 dev에 들어간 뒤 한 번. GitHub 생성기는 이미 `@malmoi-i18n-push-v4`를 가리킨다. 1단계에서 `basePath` 마이그레이션
       prod 반영(`pnpm db:deploy` + prod `has_schema_privilege` false).
 - [ ] **T5.7 GitLab SHA 후속 패치** — T5.1 태그 커밋의 40자 SHA를 `GITLAB_CI_RELEASE`(tag `-gitlab-v3`·sha)와 ACTIONS §5 `<!-- gitlab-ci -->` 블록에 함께 넣고

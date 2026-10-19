@@ -49,43 +49,8 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 
 ### 2.3 기준 언어 경로 — `basePath` 컬럼
 
-기준 언어 파일은 `values/strings.xml`이라 `{locale}` 치환으로 표현되지 않는다. `pathTemplate.replaceAll("{locale}", code)`가 `lib/` 비테스트
-소스 **22줄**에 흩어져 있다(2026-10-19 grep `replace(All)?("{locale}"`).
-
-- **(결정 2026-10-19 사용자, `/feature-review`에서 재확인) Android base만 별도 필드** — `DetectedFormat.basePath`(탐지가 관측한 base 파일 경로, 예
-  `app/src/main/res/values/strings.xml`)와 additive 컬럼 `TranslationSurface.basePath String?`. 다른 어댑터는 항상 null이다.
-  기존 22줄의 `{locale}` 치환은 그대로 두고, **base 로케일 경로가 들어가는 자리를** `basePath ?? 치환`으로 분기한다.
-- ⚠️ 22줄 대부분은 "모든 로케일" 루프이고 그 안에 기준 언어가 들어 있다 — 기준 언어 전용 자리만 고치면 빠진다. 분기가 필요한 자리는
-  리뷰(2026-10-19 CTO)가 찾은 아래 목록이고, T3.0a가 grep으로 확정해 소스 테스트가 센다(**basePath 표면에서 base 경로를 치환으로 만드는 자리가
-  남으면 red**). 하나라도 빠지면 기준 경로가 `values-en/strings.xml`로 계산된다 — import는 `base-locale-missing`, Publish 미리보기는
-  `PreviewBaseFileMissing`, 최악은 Publish가 없던 `values-en/`에 새 파일을 만든다.
-  - **읽는 자리(경로 계산)**: `resolveLocalePaths`(`lib/pull/plan.ts:143` — 호출자 6곳 + Publish 미리보기 `lib/publish/read.ts:94`) ·
-    `selectLocaleFiles`(`lib/push/payload.ts:45`) · `templatePaths`·`localeOfTemplatePath`(`lib/onboarding/confirm.ts:22-49` — 기대는 쪽
-    `lib/import/surface.ts:33`·`lib/import/locales.ts:18`·`lib/onboarding-run/add.ts:86`·`lib/import/empty.ts`, 온보딩 샘플 확인 `planConfirmedFormat`) ·
-    `probeTargets`(`lib/onboarding/detect.ts:48`) · `verifySamples`(`lib/adapters/shared.ts:365`) · `loadCandidateSample`(`app/(edit)/projects/actions.ts:535`) ·
-    `lib/projects/remote-plan.ts:39`(빠지면 가장 흔한 변경인 `values/strings.xml` 편집이 0으로 집계된다) · `foreignPaths`·`surfacePaths`
-    (`lib/pull/locales.ts:80`·`lib/locales/change.ts:138` — 빠지면 다중 표면 겹침을 놓친다) · `planLocalePublish`의 `path-conflict`(basePath도 소유 경로) ·
-    `observeLocaleFiles`(`lib/pull/locales.ts:241`) · `scripts/ingest.ts:122` · survey 다섯 줄(`lib/survey/one.ts:438` 등) ·
-    화면 `components/onboarding/steps/base-locales.tsx:171`(③ 근거 경로) · ③ `naming.info`(`naming.tsx:66`·`new-project.tsx:700-702`) ·
-    Sources "Path pattern"(`source-detail-modal.tsx:128`·`sources-screen.tsx:144`).
-  - **쓰는 자리(컬럼 기록)**: `applyPush`(`lib/push/apply.ts:465`) · 소스 추가(`lib/surfaces/create.ts:100-114`) · 온보딩 생성(`lib/onboarding-run/create.ts:306`) ·
-    제거된 소스 재추가 첫 적재(§5.9 — 재탐지값으로 갱신) · MCP `attach_source` 계열 — POSTMORTEM 2026-09-15(쓰는 자리를 전수로 안 셌다).
-  - **지문·대조에 드는 자리**: `lib/locales/fingerprint.ts:36` · `lib/publish/fingerprint.ts:43` · `lib/protection/fingerprint.ts:55` ·
-    `lib/translations/context.ts:44` · 야간 CAS(`lib/nightly/run.ts:183-187`) · 온보딩 서명(`lib/onboarding/sample-confirmation.ts:11`) ·
-    `lib/mcp/confirm.ts:41` · `plan-revival`(`lib/surfaces/plan-revival.ts:16`)의 일치 판정.
-- 외부 계약: CLI가 리포에서 다시 탐지하므로 `basePath`도 CLI 탐지가 내고 `checkFormat` 비교 항목에 든다 — 등록된 값과 다르면
-  `format mismatch`(경로 이전과 같은 취급). action 입력은 늘리지 않는다(`path-template`만으로 후보를 고르고 basePath는 그 후보에 딸려 온다).
-  ⚠️ 옛 CLI가 `basePath` 없이 보낸 페이로드가 기존 4포맷 표면에서 `format mismatch`가 되지 않아야 한다(null 대 undefined).
-- 경로 안전: `basePath`에도 `isPathSafeRepoPath`를 push 스키마·`resolveLocalePaths` 두 경계에서 건다(POSTMORTEM 2026-09-09).
-- 언어 제거: 삭제 경로는 `localeFilePath(template)`이 정하고 기준 언어는 `change-plan.ts:87-89`가 거부하므로 `values/strings.xml`은 지금 구조상 안전하다.
-  `basePath` 도입 뒤에도 그 성질을 회귀 테스트로 고정한다(REMOVE가 `basePath`를 delete로 만들지 않음, `values-en/`과 `values/`가 공존하고 base가 en인 경우).
-- 마이그레이션: nullable 컬럼 추가 하나라 버전을 건너뛴 업그레이드에서도 안전하다(SELF-HOSTING §3). `/db`가 dev(`/push` 전) → `/merge` 1단계가
-  prod(`pnpm db:deploy` + prod `has_schema_privilege` false). `prisma/migrations/`·`lib/pull/`·`lib/locales/`는 gate-plan의 격리 postgres 스위트 트리거다
-  (`scripts/gate-plan.ts:81`) — 그 배치의 `pnpm gate`가 더 오래 돈다.
-- (기각) 22줄을 `localePath` 하나로 모으기 — 분기가 한 곳이지만 이관 범위가 넓다(사용자 선택).
-- (기각) `values-{locale}` → `values` 유도로 컬럼 없애기 — 리뷰 제안, 사용자가 컬럼 유지를 골랐다(2026-10-19).
-- (기각) 디렉터리 이름 전체를 로케일 코드로(`values-ko`) — `isLocaleShaped`(`lib/locale-code.ts`)가 거부한다. 보안 경계를 풀어야 한다.
-- (기각) `values{locale}` + 코드 `-ko`·`""` — 빈 코드가 `isPathSafeLocale`에 걸린다.
+사전 작업 스펙 **mobile-strings** design §2가 정본이다(컬럼·읽는 자리·쓰는 자리·지문 자리·외부 계약·경로 안전·마이그레이션). 이 스펙은 그 위에서
+Android 어댑터가 `DetectedFormat.basePath`를 채우고, 언어 제거·화면 표시가 그 값을 쓴다.
 
 ### 2.4 기준 언어 코드
 
@@ -173,7 +138,7 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 
 | 함수 | 위치(안) | 계약 |
 |---|---|---|
-| `baseFilePath(format, baseLocale)` | `lib/adapters/shared.ts` 인근 | `basePath ?? 치환` — base 경로가 들어가는 자리 전용 |
+| `baseFilePath` | mobile-strings M2 | 이 스펙은 소비만 한다 |
 | `tokenizeAndroid` / `decodeAndroidValue` / `encodeAndroidValue` | `lib/adapters/android-strings.ts` | 범위·왕복·태그 보존·따옴표 형 유지·공백 규칙 |
 | `androidInlineTagsMatch(base, value)` | 같은 파일(판정) + `lib/keys/save.ts`(호출) | 저장 검증(§3.1) |
 | `-r` 지역 정규화 | `languageName`·`flagFor` 안 | `zh-rCN` → `zh-CN` 해석(표시·방향 전용) |
@@ -183,7 +148,7 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 
 ## 7. 스키마 · 환경변수 · 패키지
 
-- 스키마: **additive 하나** — `TranslationSurface.basePath String?`(Android만 채운다).
+- 스키마: 없음 — `TranslationSurface.basePath`는 mobile-strings M2가 더한다(이 어댑터만 채운다).
 - 환경변수: 없음.
 - 패키지: **`@xml-tools/parser` 하나**(+ 전이 `chevrotain`) → SELF-HOSTING §3 체크리스트, `pnpm-workspace.yaml`의 `minimumReleaseAge`(24시간 지난 버전)·
   `onlyBuiltDependencies`(빌드 스크립트가 없으면 목록에 넣지 않는다 — 설치 전에 둘 다 확인). 버전은 명시해 exact로 깐다.

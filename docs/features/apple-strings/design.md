@@ -42,34 +42,10 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add(creat
 - `Base.lproj`는 로케일 코드가 아니다 — Localizable.strings는 보통 `en.lproj`에 있으므로 `Base`를 후보 로케일에서 뺀다. `Base.lproj`가 기준인 리포는
   비목표다(spec).
 
-### 2.2 파일 인코딩 경로 (`.strings`에 딸린 경계 변경, 독립 배치)
+### 2.2 파일 인코딩 경로
 
-지금 블롭은 무조건 UTF-8로 읽고 쓴다.
-
-- 읽기: GitHub `lib/github.ts:322·409` · GitLab `lib/gitlab/plan.ts:93` · CLI(push:local·CI) `scripts/format.ts:25` `fileProbe`의 `readFileSync(…, "utf8")` ·
-  survey `lib/survey/run.ts:63`(NUL 바이트 파일을 **건너뛴다** — 그대로 두면 UTF-16을 한 번도 재지 않고 완료 조건이 green이 된다).
-  ⚠️ `lib/cli/walk.ts`는 사용처 스캔(`refs`) 소스를 읽는 곳이라 대상이 아니다.
-- 쓰기: GitHub은 트리 API에 내용을 인라인으로 싣는다(`lib/github.ts:415-418` `buildTreePayload`) · GitLab commit `encoding: "text"`(`lib/gitlab/plan.ts:20`).
-- 해시: `lib/githash.ts` `blobSha(content)`(UTF-8 바이트로 잰다). 호출자 `lib/pull/plan.ts:266` · `scripts/ingest.ts:147`, 테스트 `contract.test.ts:226`(git hash-object 일치).
-
-UTF-16 파일을 그대로 두면 깨진 문자열을 파싱하고(CI push는 strict 덮어쓰기라 DB 값이 오염된다), 쓴 파일은 UTF-8로 바뀌어 **파일 전체가 diff**가 된다.
-
-- **범위: 경로가 `.strings`로 끝나는 파일에만 UTF-16 판별을 건다**(결정 2026-10-19 사용자). 리더는 어댑터를 몰라도 경로로 판정할 수 있고,
-  기존 4포맷 파일의 회귀 면적이 0이다. 그 밖의 파일은 지금처럼 UTF-8이다.
-- 순수 함수 둘: `decodeFileBytes(path, bytes) → { content, encoding }`(`.strings`면 BOM 우선, BOM 없으면 NUL 바이트 패턴으로 UTF-16 판별, 그 밖은 UTF-8)와
-  `encodeFileContent(content, encoding) → bytes`(원본 BOM 유무 포함). `encoding`은 `"utf-8" | "utf-16le" | "utf-16le-bom" | "utf-16be" | "utf-16be-bom"`.
-  ⚠️ 지금 UTF-8 BOM은 문자열 안의 `﻿`로 어댑터가 다룬다(`json-style.ts:57-62·142`·B7a) — **기존 동작을 바꾸지 않도록** UTF-8은 지금처럼 BOM을
-  문자열에 남긴다. `encodeFileContent(s, "utf-8")`은 `Buffer.from(s, "utf8")`와 바이트까지 같아야 한다(테스트 이름으로 고정).
-- **유효한 인코딩만 왕복을 보장한다.** UTF-16 판별 신호가 없는 입력(BOM 없는 짧은 ASCII 등)은 지금처럼 UTF-8이다. UTF-16 신호는 있는데
-  무손실로 디코드되지 않는 입력(BOM + 짝 없는 서로게이트 `FF FE 00 D8`, BOM 뒤 홀수 바이트 길이)과 유효하지 않은 UTF-8은 **명시 실패**로 적재·쓰기를
-  막는다(`parse-failed` 부류) — UTF-8로 대신 읽으면 U+FFFD로 바뀌어 원본 바이트·`blobSha` 보존과 동시에 성립할 수 없다(Codex 피어 검수, 2026-10-19 사용자).
-- `AdapterFile`에 `encoding?`(없으면 UTF-8)을 싣는다. 리더 넷(GitHub ×2·GitLab·`scripts/format.ts`)과 survey가 `decodeFileBytes`를 지나고, 렌더 출력은
-  그 파일의 원본 인코딩을 물려받는다(새 파일은 기준 언어 파일 인코딩 — 불변식 4의 "표현은 기준 언어 파일 하나에서만 빌린다").
-- 쓰기: GitHub은 UTF-16 파일만 `POST /git/blobs`(base64)로 blob을 먼저 만들고 트리에서 sha로 참조한다 — **UTF-16 파일 하나당 API 호출 하나가 늘어난다**
-  (ARCHITECTURE §3.1 API 예산에 기록). GitLab은 그 파일만 `encoding: "base64"`. **`blobSha`는 인코딩한 바이트로 잰다** — 문자열로 재면
-  변경 감지(`lib/pull/plan.ts:266`)가 매번 "변경됨"을 뱉는다(불변식 4·CLAUDE.md "export는 결정적"). 변경 없는 UTF-16 파일은 API 호출 0이다.
-- 어댑터는 문자열만 본다 — 인코딩은 I/O 경계의 일이다.
-- 결정성 테스트: 모든 인코딩에서 `encode(decode(b)) === b`, 같은 DB + 같은 원본 → 같은 바이트 · 같은 `blobSha`.
+사전 작업 스펙 **mobile-strings** design §3이 정본이다(`.strings` 경로에만 UTF-16 판별, 리더·쓰기·`blobSha`, 비가역 입력 명시 실패).
+이 스펙의 어댑터는 문자열만 보고, create는 기준 언어 파일의 인코딩을 물려받는다.
 
 ### 2.3 Apple `.xcstrings` (마지막 배치)
 
