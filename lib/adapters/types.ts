@@ -24,6 +24,11 @@ export type DetectedFormat = {
    */
   basePath?: string;
   /**
+   * **탐지가 관측한 기준 언어 힌트** — Flutter `l10n.yaml`의 `template-arb-file`이 가리키는 로케일(arb design §2 · 리뷰 R3). 그 파일이 후보의
+   * 파일 중에 있을 때만 싣는다. 온보딩 요약이 기본 기준 언어로 쓰고(`defaultBaseLocale`), 확정은 사용자가 고른 값을 따른다. 없으면 공용 추정(en 우선)이다.
+   */
+  templateLocale?: string;
+  /**
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
    * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.

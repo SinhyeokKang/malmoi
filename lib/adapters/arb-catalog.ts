@@ -215,7 +215,17 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
   const config = probe !== undefined && paths.includes(L10N_CONFIG) ? readL10nConfig(probe(L10N_CONFIG)) : undefined;
   const ordered = config === undefined ? verified
     : [...verified.filter((g) => matchesConfig(g.pathTemplate, config)), ...verified.filter((g) => !matchesConfig(g.pathTemplate, config))];
-  return ordered.map((g) => ({ adapter: "arb-catalog" as const, pathTemplate: g.pathTemplate, locales: [...g.locales] }));
+  return ordered.map((g) => {
+    const templateLocale = config === undefined ? undefined : templateLocaleOf(g, config);
+    return { adapter: "arb-catalog" as const, pathTemplate: g.pathTemplate, locales: [...g.locales], ...(templateLocale === undefined ? {} : { templateLocale }) };
+  });
+}
+
+/** 설정이 가리키는 후보의 `template-arb-file` 로케일 — 그 파일이 후보의 파일 중에 있을 때만(`locales`는 실재하는 경로에서 왔다). */
+function templateLocaleOf(group: { pathTemplate: string; locales: ReadonlySet<string> }, config: L10nConfig): string | undefined {
+  if (config.templateFile === undefined || !matchesConfig(group.pathTemplate, config)) return undefined;
+  const locale = localeFromPath(group.pathTemplate, `${config.arbDir === "" ? "" : `${config.arbDir}/`}${config.templateFile}`);
+  return locale !== undefined && group.locales.has(locale) ? locale : undefined;
 }
 
 function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {

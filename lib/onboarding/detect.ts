@@ -81,6 +81,11 @@ export function formatLabel(m: Messages, adapter: AdapterName): { label: string;
   return formats[adapter];
 }
 
+/** 요약의 기본 기준 언어 — 탐지가 관측한 템플릿 로케일(`l10n.yaml`)이 공용 추정(en 우선)을 이긴다. 사용자가 라디오로 바꾼다(PRODUCT §7.3). */
+export function defaultBaseLocale(format: DetectedFormat): string | undefined {
+  return format.templateLocale ?? pickBaseLocale(format.locales);
+}
+
 export type KeyCount = { status: "counted"; count: number } | { status: "key-count-failed" };
 
 export type CandidateSummary = {
@@ -153,7 +158,7 @@ export function sampleRows(
   limit: number = SAMPLE_ROWS,
 ): { rows: SampleRow[]; total: number } {
   // 기준 언어는 탐지 요약과 같은 추정이다(`summarizeCandidates`) — basePath 포맷에서 그 언어만 basePath를 읽는다.
-  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale, pickBaseLocale(format.locales) ?? locale), locale), limit);
+  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale, defaultBaseLocale(format) ?? locale), locale), limit);
 }
 
 /**
@@ -170,7 +175,7 @@ export function summarizeCandidates(
   const out: Omit<CandidateSummary, "outputPaths">[] = [];
   for (const c of candidates) {
     // 탐지는 로케일 1개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
-    const baseLocale = pickBaseLocale(c.locales);
+    const baseLocale = defaultBaseLocale(c);
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);
     const locales = c.locales.slice().sort(compareKeys);

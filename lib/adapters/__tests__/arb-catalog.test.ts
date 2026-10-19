@@ -442,6 +442,23 @@ describe("arb-catalog detect", () => {
       .toEqual(["lib/l10n/app_{locale}.arb", "example/lib/l10n/app_{locale}.arb"]);
   });
 
+  /** 리뷰 R3 — `template-arb-file`이 gen-l10n의 기준 언어다. 요약의 기본 기준 언어가 그것이어야 한다(en이 있다는 것은 en이 템플릿이라는 증거가 아니다). */
+  it.each([
+    ["app_ko.arb", "ko"],
+    // 템플릿 파일이 후보의 파일에 없으면 힌트를 버리고 공용 추정(en 우선)으로 떨어진다.
+    ["app_fr.arb", "en"],
+  ])("`template-arb-file: %s` → 요약의 기준 언어 %s", async (templateFile, base) => {
+    const { summarizeCandidates } = await import("@/lib/onboarding/detect");
+    const files: Record<string, string> = {
+      "l10n.yaml": `arb-dir: lib/l10n\ntemplate-arb-file: ${templateFile}\n`,
+      "lib/l10n/app_en.arb": '{"a":"A"}',
+      "lib/l10n/app_ko.arb": '{"a":"가","b":"나"}',
+    };
+    const blobs = new Map(Object.entries(files));
+    const found = detectCandidatesAcross(Object.keys(files), (p) => files[p]);
+    expect(summarizeCandidates(found, blobs)).toMatchObject([{ adapter: "arb-catalog", baseLocale: base }]);
+  });
+
   it("`arbProbePaths`가 루트 `l10n.yaml`을 내려받을 파일로 고른다", () => {
     expect(arbProbePaths(["l10n.yaml", "lib/l10n/app_en.arb"])).toEqual(["l10n.yaml"]);
     expect(arbProbePaths(["packages/x/l10n.yaml", "lib/l10n/app_en.arb"])).toEqual([]);
