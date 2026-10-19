@@ -164,13 +164,14 @@ collects code references, so each key shows where your code uses it.
 | Apple String Catalog | `ios/App/Localizable.xcstrings` |
 
 Existing YAML catalogs, code dictionaries, and Apple strings files keep comments, blank lines, and key order;
-Apple String Catalogs change only the edited cells, in Xcode's layout;
+Apple String Catalogs change only the edited cells, in Xcode's layout, and read keys without a source-language entry as their own source text;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Flutter ARB files also keep each key's `@key` metadata and the `@@` entries from your file;
 ICU messages (plurals, selects) are shown and saved as whole strings. Apple strings files stay in their UTF-8 or UTF-16 encoding;
 `.stringsdict` plurals and String Catalog variations are kept as they are, not edited. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
 sends them in one pull request (one merge request on GitLab).
-New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed.
+New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed — for Apple strings files, add the new `.lproj` to your Xcode project (and remove it there when you remove a language).
+A single file larger than 2 MB, such as a large String Catalog, can't be loaded.
 [Limits →](https://mal-moi.com/docs/reference/limits)
 
 ## What Malmoi doesn't do
