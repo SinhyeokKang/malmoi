@@ -233,7 +233,10 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
  * 엔트리는 `orderedEntries` 순서로 DB에서, `@key`는 그 키 바로 뒤에, 나머지(`@@*`·문자열이 아닌 엔트리 값)는 원본에서 바로 앞에 있던
  * **출력되는** 엔트리 뒤에(없으면 맨 앞) 원본 텍스트 그대로 놓는다. 출력이 다시 원본이 되면 같은 배치를 낳는다(고정점).
  *
- * - `@key`는 짝 키를 출력할 때만 낸다 — orphaned·미번역·짝 없는 `@key`는 버린다(arb design §2).
+ * - `@key`는 짝 키를 출력할 때 그 바로 뒤에 낸다. 짝 키가 **표면에 살아 있는데 이 로케일만 값이 없으면**(`input.untranslated`) 값 없이
+ *   그 키가 설 자리에 `@key`만 남긴다(2026-10-19 사용자 결정 — Weblate류가 비-base 파일마다 복제해 둔 메타데이터를 첫 Publish가 수천 줄 지웠다).
+ *   **표면에 아예 없는 이름**의 `@x`는 개발자 주석으로 보고 `@@*`처럼 원본 위치에 남긴다(fix1 지휘자 결정). **orphaned 키**(`input.orphaned`)의
+ *   `@key`만 버린다 — 코드가 지운 키의 메타데이터다.
  * - `@@locale`은 **원본에 그 항목이 있을 때만** 경로의 코드로 낸다 — 원본 값과 견주지 않는다. 원본이 없는 새 파일에는 맨 앞에 늘 낸다.
  *   표현 출처(기준 언어 파일)의 `@key`·`@@*`는 싣지 않는다 — 그 파일의 것이지 새 언어의 것이 아니다.
  */
@@ -253,6 +256,13 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
     for (const e of usable) lines.push(member(e.key, quote(e.message, style)));
   } else {
     const written = new Set(usable.map((e) => e.key));
+    // 미번역 키는 엔트리 줄 없이 자리만 갖는다. 렌더가 넘긴 `untranslated`와, 직접 호출이 실은 빈 값 엔트리(값을 지운 셀) 둘 다다.
+    const missing = [
+      ...(input.untranslated ?? []),
+      ...input.entries.filter((e) => e.orphaned !== true && !written.has(e.key)).map((e) => ({ key: e.key, ...(e.order === undefined ? {} : { order: e.order }) })),
+    ].filter((u) => !written.has(u.key));
+    const ghosts = new Set(missing.map((u) => u.key));
+    const orphaned = new Set([...(input.orphaned ?? []), ...input.entries.filter((e) => e.orphaned === true).map((e) => e.key)]);
     const meta = new Map<string, string>();
     /** 앞선 출력 엔트리 → 그 뒤에 붙는 항목들. `null`은 맨 앞이다. */
     const after = new Map<string | null, string[]>();
@@ -261,7 +271,9 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
     for (const m of lastWins(parseArb(original) ?? [])) {
       const metaKey = metaKeyOf(m.name);
       if (metaKey !== undefined) {
-        meta.set(metaKey, m.value);
+        if (written.has(metaKey) || ghosts.has(metaKey)) meta.set(metaKey, m.value);
+        // 표면에 아예 없는 이름의 `@x`는 개발자 주석이다(smooth-app의 구획 주석) — `@@*`처럼 원본 위치에 남긴다. orphaned 키의 것만 버린다.
+        else if (!orphaned.has(metaKey)) (after.get(anchor) ?? after.set(anchor, []).get(anchor)!).push(member(m.name, m.value));
         continue;
       }
       if (written.has(m.name)) {
@@ -274,7 +286,14 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
       (after.get(anchor) ?? after.set(anchor, []).get(anchor)!).push(member(m.name, value));
     }
     lines.push(...(after.get(null) ?? []));
-    for (const e of usable) {
+    // `orderedEntries`가 정한 순서에 끼우려고 미번역 키에 빈 값이 아닌 자리표를 싣는다(메시지는 쓰지 않는다).
+    const slots = orderedEntries([...usable, ...[...new Map(missing.map((u) => [u.key, u])).values()].map((u) => ({ ...u, message: "-" }))]);
+    for (const e of slots) {
+      if (ghosts.has(e.key)) {
+        const m = meta.get(e.key);
+        if (m !== undefined) lines.push(member(`@${e.key}`, m));
+        continue;
+      }
       lines.push(member(e.key, quote(e.message, style)));
       const m = meta.get(e.key);
       if (m !== undefined) lines.push(member(`@${e.key}`, m));

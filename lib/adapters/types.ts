@@ -250,6 +250,19 @@ export type ReadResult = {
 export type WriteInput = {
   locale: string;
   entries: readonly LocaleEntry[];
+  /**
+   * **표면에 살아 있는데(orphaned 아님) 이 로케일만 값이 없는 키** — 위치(`order`)와 함께. 비-base 로케일에서만 렌더(`renderLocaleFiles`)가
+   * 싣는다. `entries`는 값이 없는 키를 빼므로 writer가 "이 키가 살아 있는가"를 알 길이 따로 없다.
+   *
+   * `arb-catalog`만 읽는다 — 그 키의 `@key` 메타데이터를 원본 그대로 남긴다(2026-10-19 사용자 결정). 나머지 writer에게는 값이 없는 키라
+   * 쓸 것이 없다. 없으면 "모른다"이고 그 `@key`는 버려진다.
+   */
+  untranslated?: readonly { key: string; order?: number }[];
+  /**
+   * **표면에 있지만 코드에서 사라진(orphaned) 키** — 렌더가 싣는다. `entries`는 orphaned 키를 빼므로 writer가 "사라진 키"와 "처음부터 키가
+   * 아닌 이름"을 가를 길이 따로 없다. `arb-catalog`만 읽는다 — orphaned 키의 `@key`는 버리고, 표면에 없는 이름의 `@x`(개발자 주석)는 남긴다.
+   */
+  orphaned?: readonly string[];
 };
 
 export type Adapter = {

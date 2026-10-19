@@ -73,6 +73,12 @@ export function rowsForLocale(
  *
  * @param current 경로 → 원본 내용. 수술적 치환 어댑터만 쓴다 (재생성은 빈 맵이어도 된다).
  */
+/** 표면에 살아 있는데 이 로케일만 값이 없는 키(`WriteInput.untranslated`) — 그 위치는 base 순서(`sortIndex`)다. */
+function untranslatedOf(rows: readonly PullRow[], entries: readonly LocaleEntry[]): NonNullable<WriteInput["untranslated"]> {
+  const written = new Set(entries.map((e) => e.key));
+  return rows.filter((r) => !r.orphaned && !written.has(r.key)).map((r) => ({ key: r.key, ...(r.sortIndex === undefined ? {} : { order: r.sortIndex }) }));
+}
+
 /** 수술적 어댑터가 원본 없이 파일을 안 낼 때의 보고. 값을 잃은 것은 아니지만 **빠졌다는 사실**은 알려야 한다. */
 const missingOriginal = (path: string, locale?: string): RenderError => ({ path, code: "original-file-missing", ...(locale === undefined ? {} : { locale }) });
 /** 오류에 그 write 호출의 로케일을 붙인다 — 어댑터 오류는 파일 좌표만 들고, 로케일은 렌더만 안다. */
@@ -175,11 +181,17 @@ export function renderLocaleFiles(
       const isBase = locale === baseLocale;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
-      const fromDb = buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase });
+      const rows = rowsForLocale(keys, locale, { isBase });
+      const fromDb = buildWriteEntries(rows, { isBase });
       const owned = isBase && original !== undefined ? baseOwnedByOriginal(adapter, writeFormat, p.path, original, locale, fromDb) : { entries: fromDb };
       if ("error" in owned) return { path: p.path, locale, content: null, errors: [owned.error] };
       const { entries } = owned;
-      const { content, errors } = write(writeFormat, { locale, entries });
+      // 비-base만 — base는 값이 없어도 원문으로 폴백해 키가 늘 나간다. B3.4가 뺀 DB 전용 키를 "미번역"으로 부르면 거짓이다.
+      const untranslated = isBase ? [] : untranslatedOf(rows, entries);
+      const orphaned = rows.filter((r) => r.orphaned).map((r) => r.key);
+      const { content, errors } = write(writeFormat, {
+        locale, entries, ...(untranslated.length === 0 ? {} : { untranslated }), ...(orphaned.length === 0 ? {} : { orphaned }),
+      });
       return { path: p.path, locale, content, ...(errors.length === 0 ? {} : { errors: tagged(errors, locale) }) };
     });
   }

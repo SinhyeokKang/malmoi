@@ -17,8 +17,8 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  * | `order`가 없으면 코드 유닛 순 | 검사 | **비적용** |
  * | orphaned | 출력에서 뺀다 | **원본 값이 남는다** (지우면 코드가 참조하는 키가 사라진다) |
  * | 빈 값 | 어댑터가 뺀다 — **`writeEmpty` 표시가 있으면 `""`로 쓴다** (L4.10) | **호출부 계약** — 표시가 있어도 원본 값이 남는다 |
- * | 원본에서 가져오는 것 | 표현만 — **`arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간을 바이트 그대로**(값이 아니라 코드가 소유하는 메타데이터라 병합이 아니다 — arb design §0) | 원본 전체(값만 갈아끼운다) |
- * | 원본이 있는데 쓸 값 0개 | `{}` — **`arb-catalog`만 예외로 원본의 `@@*`만 남은 객체**(전역 항목은 번역이 아니다) | 원본 그대로 |
+ * | 원본에서 가져오는 것 | 표현만 — **`arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간을 바이트 그대로**(값이 아니라 코드가 소유하는 메타데이터라 병합이 아니다 — arb design §0). `@key`는 짝 키가 **orphaned일 때만** 버린다 — 이 로케일만 미번역이면 그 키 자리에, 표면에 없는 이름(주석)이면 원본 위치에 남는다(fix1, 2026-10-19 사용자·지휘자 결정) | 원본 전체(값만 갈아끼운다) |
+ * | 원본이 있는데 쓸 값 0개 | `{}` — **`arb-catalog`만 예외로 원본의 `@@*`·주석 `@x`만 남은 객체**(번역이 아니다) | 원본 그대로 |
  * | **배열 위치가 아니라 `order`에만** 의존·재실행 동일 | 검사 | 검사 |
  * | ADD 새 파일 → 다음 write diff 0 | 원본 없는 write로 검사 | per-locale create로 검사(ts-dict 제외) |
  * | create 보유 | 없음 | per-locale만 보유 |
@@ -203,9 +203,10 @@ function fourSpaceDonor(adapter: Adapter): DetectedFormat | undefined {
   const body =
     adapter.name === "chrome-locales"
       ? `{\n    "donor": {\n        "message": ${JSON.stringify(STYLE_DONOR_VALUE)}\n    }\n}\n`
-      // ARB는 원본의 `@@*`·`@key`를 나른다 — 기증자가 둘 다 들어야 "낼 것 0개"의 예외 행과 "출력하지 않는 키의 `@key`는 버린다"를 밟는다.
+      // ARB는 원본의 `@@*`·`@x`를 나른다 — 기증자가 둘 다 들어야 "낼 것 0개"의 예외 행을 밟는다. `donor`는 DB에 없는 이름이라 그 `@donor`는
+      // 개발자 주석으로 남는다(fix1) — 값이 아니라 센티넬을 넣지 않는다. 값 `donor`의 센티넬은 여전히 새면 안 된다.
       : adapter.name === "arb-catalog"
-        ? `{\n    "@@locale": "en",\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)},\n    "@donor": {\n        "description": ${JSON.stringify(STYLE_DONOR_VALUE)}\n    }\n}\n`
+        ? `{\n    "@@locale": "en",\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)},\n    "@donor": {\n        "description": "D"\n    }\n}\n`
         : `{\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)}\n}\n`;
   return { ...fmt, currentFiles: [{ path, content: body }] };
 }
@@ -462,8 +463,8 @@ export function writerContractViolations(adapter: Adapter): string[] {
     // ⚠️ **writer 계약이지 파일 결과가 아니다** — writer는 `isBase`를 모르고, **base 파일은 `renderLocaleFiles`가 `null`로 접는다**(B3 r1 —
     // base 키 집합은 코드가 진실이라 `{}`가 코드 소유 키를 지운다). 짝은 `lib/pull/__tests__/delivery-verified.test.ts`.
     const emptied = adapter.write(donor, { locale, entries: [{ key: "only", message: "" }] });
-    // ⚠️ **ARB 예외 행** — 원본의 `@@*` 전역 항목은 번역이 아니라 파일의 것이라 낼 값이 0개여도 남는다(arb design §2). 그 밖은 `{}`다.
-    const emptyShape = adapter.name === "arb-catalog" ? '{"@@locale":"en"}' : "{}";
+    // ⚠️ **ARB 예외 행** — 원본의 `@@*` 전역 항목과 표면에 없는 이름의 `@x`(주석)는 번역이 아니라 파일의 것이라 낼 값이 0개여도 남는다(arb design §2 · fix1). 그 밖은 `{}`다.
+    const emptyShape = adapter.name === "arb-catalog" ? '{"@@locale":"en","@donor":{"description":"D"}}' : "{}";
     if (emptied === null) {
       bad.push("원본이 있는데 낼 항목이 0개라고 null을 냈다 — 파일에 옛 값이 남는다 (빈 객체를 내야 한다)");
     } else if (emptied.includes(STYLE_DONOR_VALUE) || emptied.replace(/\s/g, "") !== emptyShape) {

@@ -127,7 +127,16 @@ describe("arb-catalog write", () => {
     expectFixedPoint("en", list, out);
   });
 
-  it("출력하지 않는 키의 `@key`는 버린다 — orphaned 키·짝 없는 `@key`가 남지 않는다", () => {
+  it("`untranslated`로 받은 키의 `@key`는 값 없이 그 키 자리에, `orphaned`로 받은 키의 `@key`는 버린다", () => {
+    const original = '{\n  "@b": {},\n  "a": "A",\n  "@a": {},\n  "@gone": {}\n}\n';
+    const list = entries([["a", "A1"]]);
+    const input = { locale: "ko", entries: list, untranslated: [{ key: "b", order: 1 }], orphaned: ["gone"] };
+    const kept = arbCatalog.write(format({ ko: original }), input);
+    expect(kept).toBe('{\n  "a": "A1",\n  "@a": {},\n  "@b": {}\n}\n');
+    expect(arbCatalog.write(format({ ko: kept! }), input)).toBe(kept);
+  });
+
+  it("orphaned 키의 `@key`만 버린다 — 미번역 키의 `@key`는 그 자리에, 표면에 없는 키의 `@x`(주석)는 원본 위치에 남는다", () => {
     const original = [
       "{",
       '  "title": "Hello",',
@@ -146,7 +155,8 @@ describe("arb-catalog write", () => {
       { key: "blank", message: "", order: 2 },
     ];
     const out = write("en", list, original);
-    expect(out).toBe('{\n  "title": "Hi",\n  "@title": {}\n}\n');
+    expect(out).toBe('{\n  "title": "Hi",\n  "@title": {},\n  "@stray": { "description": "no key" },\n  "@blank": {}\n}\n');
+    expectFixedPoint("en", list, out);
   });
 
   it("`@@*`·`@@x-*`는 원본 위치와 순서를 지킨다 — 앞 키가 빠지면 그 앞의 출력 키(없으면 맨 앞)에 붙는다", () => {
@@ -212,7 +222,8 @@ describe("arb-catalog write", () => {
   });
 
   it("낼 값이 0개면 원본의 `@@*`만 남은 객체다 — `{}`·`@@locale`만 남은 파일도 다음 read·write로 왕복한다", () => {
-    const none: LocaleEntry[] = [{ key: "a", message: "" }];
+    // 남은 키가 orphaned뿐이다 — 미번역(빈 값)이면 살아 있는 키라 `@a`가 남는다(위 fix1 테스트).
+    const none: LocaleEntry[] = [{ key: "a", message: "A", orphaned: true }];
     const bare = write("en", none, '{\n  "a": "A",\n  "@a": {}\n}\n');
     expect(bare).toBe("{}\n");
     expect(read("en", bare!).errors).toEqual([]);
@@ -250,6 +261,93 @@ describe("arb-catalog — base 파일의 원본에만 있는 키 (B3.4)", () => 
     const fmt: DetectedFormat = { adapter: "arb-catalog", pathTemplate: TEMPLATE, locales: ["en"] };
     const [out] = renderLocaleFiles(fmt, "per-locale", [{ path: pathOf("en"), locale: "en" }], keys, "en", new Map([[pathOf("en"), base]]));
     expect(out?.content).toBe(base.replace('"S_keep"', '"DB_keep"'));
+  });
+});
+
+/**
+ * **살아 있는 키의 `@key`는 그 로케일만 값이 없어도 남는다** (2026-10-19 사용자 결정 — fix1). Weblate류가 비-base 파일마다 `@key`를 복제해
+ * 두는 리포(fluffychat 5,251개)에서 첫 Publish가 수천 줄을 지웠다. 버리는 것은 orphaned 키와 표면에 없는 키의 `@key`뿐이다.
+ * 진입점은 pull 렌더(`renderLocaleFiles`)다 — writer 단위만 보면 렌더가 그 키 집합을 넘기는지 모른다.
+ */
+describe("arb-catalog — 미번역 살아 있는 키의 `@key` (렌더 경로)", () => {
+  const keys: RenderKey[] = [
+    { id: "k1", key: "a", sourceText: "A", sortIndex: 0, orphaned: false, cells: { en: { value: "A" }, fr: { value: "A_fr" } } },
+    { id: "k2", key: "b", sourceText: "B", sortIndex: 1, orphaned: false, cells: { en: { value: "B" } } },
+    { id: "k3", key: "c", sourceText: "C", sortIndex: 2, orphaned: false, cells: { en: { value: "C" }, fr: { value: "C_fr" } } },
+    { id: "k4", key: "gone", sourceText: "G", sortIndex: 3, orphaned: true, cells: { en: { value: "G" }, fr: { value: "G_fr" } } },
+  ];
+  const fmt: DetectedFormat = { adapter: "arb-catalog", pathTemplate: TEMPLATE, locales: ["en", "fr"] };
+  const base = '{\n  "a": "A",\n  "@a": {},\n  "b": "B",\n  "@b": {\n    "description": "bee"\n  },\n  "c": "C"\n}\n';
+  // fr 원본: 미번역 `b`의 `@b`가 맨 앞에 있고, orphaned `gone`과 표면에 없는 `stray`의 `@key`가 섞여 있다.
+  const fr = [
+    "{",
+    '  "@b": {',
+    '    "description": "bee"',
+    "  },",
+    '  "a": "A_old",',
+    '  "@a": {},',
+    '  "@gone": { "description": "orphan" },',
+    '  "@stray": { "description": "not a key" },',
+    '  "c": "C_old"',
+    "}",
+    "",
+  ].join("\n");
+  const render = (current: ReadonlyMap<string, string>) =>
+    renderLocaleFiles(fmt, "per-locale", [{ path: pathOf("en"), locale: "en" }, { path: pathOf("fr"), locale: "fr" }], keys, "en", current);
+
+  it("미번역 키의 `@key`는 그 키가 설 자리(base 순서)에 바이트 그대로 남고, orphaned 키의 `@key`만 버린다", () => {
+    const out = render(new Map([[pathOf("en"), base], [pathOf("fr"), fr]])).find((f) => f.locale === "fr")?.content;
+    expect(out).toBe([
+      "{",
+      '  "a": "A_fr",',
+      '  "@a": {},',
+      // 표면에 없는 키의 `@stray`는 주석이다 — 원본에서 바로 앞이던 출력 키(`a`) 뒤에 남는다. orphaned `gone`의 `@gone`만 빠진다.
+      '  "@stray": { "description": "not a key" },',
+      '  "@b": {',
+      '    "description": "bee"',
+      "  },",
+      '  "c": "C_fr"',
+      "}",
+      "",
+    ].join("\n"));
+  });
+
+  it("2차 Publish는 고정점이다", () => {
+    const first = render(new Map([[pathOf("en"), base], [pathOf("fr"), fr]]));
+    const again = render(new Map(first.map((f) => [f.path, f.content!])));
+    expect(again.map((f) => f.content)).toEqual(first.map((f) => f.content));
+  });
+});
+
+/** 짝 키 없는 `@x`를 구획 주석으로 쓰는 리포(openfoodfacts/smooth-app — base·번역 127파일 모두). 첫 Publish가 지우면 안 된다(fix1 지휘자 결정 A). */
+describe("arb-catalog — 구획 주석 `@x` (렌더 경로)", () => {
+  const keys: RenderKey[] = [
+    { id: "k1", key: "a", sourceText: "A", sortIndex: 0, orphaned: false, cells: { en: { value: "A" }, fr: { value: "A_fr" } } },
+    { id: "k2", key: "b", sourceText: "B", sortIndex: 1, orphaned: false, cells: { en: { value: "B" } } },
+  ];
+  const fmt: DetectedFormat = { adapter: "arb-catalog", pathTemplate: TEMPLATE, locales: ["en", "fr"] };
+  const body = (a: string, b?: string) => [
+    "{",
+    '  "@@locale": "LOCALE",',
+    '  "@Introduction screen": {},',
+    `  "a": "${a}",`,
+    '  "@user_management": {},',
+    ...(b === undefined ? [] : [`  "b": "${b}",`]),
+    '  "@b": {}',
+    "}",
+    "",
+  ].join("\n");
+  const base = body("A", "B").replace("LOCALE", "en");
+  const fr = body("A_old").replace("LOCALE", "fr");
+  const render = (current: ReadonlyMap<string, string>) =>
+    renderLocaleFiles(fmt, "per-locale", [{ path: pathOf("en"), locale: "en" }, { path: pathOf("fr"), locale: "fr" }], keys, "en", current);
+
+  it("base와 번역 파일 모두 주석이 원본 위치에 남고 2차 Publish는 고정점이다", () => {
+    const first = render(new Map([[pathOf("en"), base], [pathOf("fr"), fr]]));
+    expect(first.find((f) => f.locale === "en")?.content).toBe(base);
+    expect(first.find((f) => f.locale === "fr")?.content).toBe(body("A_fr").replace("LOCALE", "fr"));
+    const again = render(new Map(first.map((f) => [f.path, f.content!])));
+    expect(again.map((f) => f.content)).toEqual(first.map((f) => f.content));
   });
 });
 
