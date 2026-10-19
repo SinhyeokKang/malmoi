@@ -33,8 +33,8 @@ it("이름이 재사용됐으면 쓰기 클라이언트를 반환하지 않는�
 it("읽기 클라이언트도 저장소 ID 하나로 제한한 설치 토큰을 쓰고, 읽기마다 새로 받지 않는다", async () => {
   mocks.request.mockResolvedValue({ data: { encoding: "base64", content: Buffer.from("{}").toString("base64") } });
   const reader = await openRepoReader("owner", "repo", "10", "42");
-  await reader.blob("sha-1");
-  await reader.blob("sha-2");
+  await reader.blob("sha-1", "en.json");
+  await reader.blob("sha-2", "en.json");
   expect(mocks.auth).toHaveBeenCalledExactlyOnceWith({ type: "installation", installationId: 10, repositoryIds: [42] });
   expect(mocks.options).toHaveBeenCalledExactlyOnceWith({ auth: "scoped-token" });
   expect(mocks.request).toHaveBeenCalledWith("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", { owner: "owner", repo: "repo", file_sha: "sha-1" });

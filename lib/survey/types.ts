@@ -142,6 +142,8 @@ export type SurveyInput = {
   configFiles: readonly string[];
   /** 껍데기 단계의 실패(clone 실패 등). 있으면 나머지를 재지 않는다. */
   failure?: string;
+  /** 디코드 실패 파일을 누락으로 숨기지 않는다. 정상 파일 관측과 별도로 보존한다. */
+  decodeErrors?: { path: string; code: "parse-failed" }[];
   /** 선택이 예산에 걸려 잘렸는가 — 숫자를 읽는 사람이 알아야 한다. */
   truncated?: boolean;
   /** 측정한 커밋 SHA — 고정 입력이면 그 값, 아니면 해석된 HEAD. 기준선 고정의 원료다. */
@@ -235,6 +237,8 @@ export type RepoSurvey = {
   configFiles: string[];
 
   failure?: string;
+  /** 디코드 실패 파일을 누락으로 숨기지 않는다. 정상 파일 관측과 별도로 보존한다. */
+  decodeErrors?: { path: string; code: "parse-failed" }[];
   /** 측정한 커밋 SHA (`SurveyInput.commit`) — 실패 전에 해석됐으면 실패 리포에도 남는다. */
   commit?: string;
   ms: number;

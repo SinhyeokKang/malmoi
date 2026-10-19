@@ -1,3 +1,4 @@
+import { decodeLocaleFile, encodeFileContent, LocaleFileParseError } from "@/lib/file-encoding";
 // ⚠️ **`server-only`를 일부러 붙이지 않았다.** 붙이면 `scripts/smoke-github.ts`(react-server 조건 없는 tsx)가 이 모듈을
 // **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`가 같은 이유의 선례다
 // (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
@@ -311,16 +312,17 @@ export async function openRepoReader(
       return sizesFromSnapshot(snapshot, paths);
     },
 
-    async blob(sha: string): Promise<string | undefined> {
+    async blob(sha: string, path: string) {
       try {
         const res = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
           ...base,
           file_sha: sha,
         });
         if (res.data.encoding !== "base64") return undefined;
-        // 한글·프랑스어가 들어가므로 UTF-8로 디코딩해야 한다 (`getBlobText`와 같은 이유).
-        return Buffer.from(res.data.content, "base64").toString("utf8");
+        // 경로가 없으면 UTF-16을 판별할 수 없으므로 로케일 소비자는 경로를 함께 넘긴다.
+        return decodeLocaleFile(path, Buffer.from(res.data.content, "base64")).content;
       } catch (error) {
+        if (error instanceof LocaleFileParseError) throw error;
         logFailure("blob", error);
         return undefined;
       }
@@ -397,25 +399,33 @@ export async function createGitClient(
       return blobs;
     },
 
-    async getBlobText(sha) {
+    async getBlobText(sha, path) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
         ...base,
         file_sha: sha,
       });
-      // Git blob API는 base64로 준다. 한글·프랑스어가 들어가므로 UTF-8로 디코딩해야 한다.
+      // Git의 전송 인코딩(base64)과 파일 인코딩은 별개다.
       if (res.data.encoding !== "base64") {
         throw new Error(`unexpected blob encoding: ${res.data.encoding}`);
       }
-      return Buffer.from(res.data.content, "base64").toString("utf8");
+      return decodeLocaleFile(path, Buffer.from(res.data.content, "base64"));
     },
 
     /**
      * Git Data API 네 단계 — 트리(항목의 `content`가 blob을 암묵 생성한다) → 커밋(parent = base head 하나) → sync ref 생성 또는 강제 이동.
-     * 트리 생성이 첫 외부 쓰기다 — 호출부가 그 앞에서 전달 확인을 무효화한다(`run.ts`).
+     * UTF-16은 blob 생성이 첫 외부 쓰기다 — 호출부는 이 메서드 전에 전달 확인을 무효화한다(`run.ts`).
      * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓰고, delete는 `base_tree` 위의 `sha: null` 항목이다(`buildTreePayload`).
      */
     async publishSnapshot({ branch, baseSha, changes, summary }) {
-      const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...buildTreePayload(changes, baseSha) });
+      const payload = buildTreePayload(changes, baseSha);
+      for (const [i, change] of changes.entries()) {
+        if (change.kind !== "upsert" || change.encoding === undefined || change.encoding === "utf-8") continue;
+        const blob = await octokit.request("POST /repos/{owner}/{repo}/git/blobs", {
+          ...base, content: encodeFileContent(change.content, change.encoding).toString("base64"), encoding: "base64",
+        });
+        payload.tree[i] = { path: change.path, mode: "100644", type: "blob", sha: blob.data.sha };
+      }
+      const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...payload });
       const commit = await octokit.request("POST /repos/{owner}/{repo}/git/commits", { ...base, ...buildCommitPayload(tree.data.sha, baseSha, summary) });
       const commitSha = commit.data.sha;
       // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `malmoi-i18n/sync`는 누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).

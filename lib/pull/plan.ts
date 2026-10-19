@@ -1,3 +1,4 @@
+import { encodeFileContent, type FileEncoding } from "@/lib/file-encoding";
 import { fail } from "@/lib/failure";
 import { compareKeys, isAdapterName, matchGlobPaths } from "@/lib/adapters";
 import type { Adapter, AdapterError, DetectedFormat, LocaleEntry } from "@/lib/adapters";
@@ -248,10 +249,10 @@ export function buildWriteEntries(
  * 트리 페이로드로 가므로 이 둘은 blob SHA에 영향이 없다.
  */
 export type RenderError = AdapterError & { locale?: string };
-export type LocalFile = { path: string; content: string | null; locale?: string; errors?: RenderError[] };
+export type LocalFile = { encoding?: FileEncoding; path: string; content: string | null; locale?: string; errors?: RenderError[] };
 export type TreeBlob = { path: string; sha: string };
 /** 파일 하나의 변경. **delete는 명시적 의도에서만 나온다** — 렌더 출력에서 빠졌다는 이유로 만들지 않는다(locale-add design §2). */
-export type PullChange = { kind: "upsert"; path: string; content: string } | { kind: "delete"; path: string };
+export type PullChange = { kind: "upsert"; path: string; content: string; encoding?: FileEncoding } | { kind: "delete"; path: string };
 
 /**
  * base 트리와 비교해 실제로 바뀐 파일만 고른다. **전부 같으면 빈 배열이고, 그때 GitHub API를
@@ -273,8 +274,8 @@ export function planPullChanges(
     // `null`이어도 그 경로는 렌더가 맡는다 — 같은 경로의 삭제 의도는 계획 오류다.
     rendered.add(file.path);
     if (file.content === null) continue;
-    if (baseShas.get(file.path) === blobSha(file.content)) continue;
-    changes.push({ kind: "upsert", path: file.path, content: file.content });
+    if (baseShas.get(file.path) === blobSha(encodeFileContent(file.content, file.encoding ?? "utf-8"))) continue;
+    changes.push({ kind: "upsert", path: file.path, content: file.content, ...(file.encoding === undefined ? {} : { encoding: file.encoding }) });
   }
   const deleting = new Set<string>();
   for (const path of deletes) {

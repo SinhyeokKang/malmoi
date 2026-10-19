@@ -71,6 +71,10 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     return survey;
   }
 
+  if (input.decodeErrors?.length) {
+    survey.decodeErrors = input.decodeErrors;
+    survey.failure = `parse-failed: ${input.decodeErrors.map(error => error.path).join(", ")}`;
+  }
   const probe = (p: string) => input.files.get(p);
   const found = candidatesFor(input.paths, probe);
   survey.candidates = found.map(toCandidate);
@@ -82,6 +86,14 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   survey.chosen = toCandidate(chosen);
 
   const adapter = adapterFor(chosen);
+  const selectedPaths = adapter.layout === "per-locale"
+    ? chosen.locales.map(locale => surveyLocalePath(chosen, locale, pickBase(chosen.locales)))
+    : matchGlobPaths(chosen.pathTemplate, input.paths);
+  // 선택된 카탈로그가 손상됐으면 부분 키 집합으로 왕복 성공을 보고하지 않는다.
+  if (input.decodeErrors?.some(error => selectedPaths.includes(error.path))) {
+    survey.ms = Date.now() - started;
+    return survey;
+  }
   const adapterFiles = filesForFormat(chosen, input);
 
   let read1: ReadResult;

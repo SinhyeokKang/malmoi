@@ -67,7 +67,7 @@ export type FileSelection = {
 };
 
 export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
-  const wanted = new Set<string>();
+  const wanted = new Set<string>(allPaths.filter(path => path.endsWith(".strings")));
 
   // ── chrome `_locales` — 로케일 root의 파일 전부 ──────────
   const chromeByRoot = new Map<string, string[]>();

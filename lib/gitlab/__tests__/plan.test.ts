@@ -112,7 +112,7 @@ describe("parseBranchHead · decodeBlob · isLfsPointer — 원격 파일 판정
   });
 
   it("blob은 base64 → UTF-8이다 — 한글이 깨지지 않는다", () => {
-    expect(decodeBlob({ size: 9, encoding: "base64", content: Buffer.from("안녕\n").toString("base64"), sha: "s" })).toBe("안녕\n");
+    expect(decodeBlob({ size: 9, encoding: "base64", content: Buffer.from("안녕\n").toString("base64"), sha: "s" })).toEqual({ content: "안녕\n" });
     expect(decodeBlob({ encoding: "text", content: "x" })).toBeNull();
   });
 

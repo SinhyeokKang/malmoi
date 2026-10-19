@@ -740,3 +740,16 @@ it("원본 인코딩을 보존하고 새 파일은 basePath 파일 인코딩을 
   expect(out.local.find(f => f.path === "ko.strings")?.encoding).toBe("utf-16le");
   expect(out.local.find(f => f.path === "fr.strings")?.encoding).toBe("utf-16be-bom");
 });
+
+it("UTF-16 원본과 DB가 같으면 Publish의 외부 쓰기는 0회다", async () => {
+  const { encodeFileContent } = await import("@/lib/file-encoding");
+  const loaded = state({ unpublished: 1, pendingEdits: [{ id: "t", token: "tok", cell: { surfaceId: "s1", keyId: "ka", localeCode: "ko", restoreValue: "가" } }] });
+  loaded.surfaces[0]!.pathTemplate = "{locale}.strings";
+  const e = blobSha(encodeFileContent(EN, "utf-16le-bom"));
+  const k = blobSha(encodeFileContent(KO, "utf-16be"));
+  const made = createFakeGitClient({ refSha: { "heads/dev": "h" }, tree: { h: [
+    { path: "en.strings", sha: e }, { path: "ko.strings", sha: k },
+  ] }, blobs: { [e]: EN, [k]: KO }, blobEncodings: { [e]: "utf-16le-bom", [k]: "utf-16be" } });
+  expect(await runPull(deps(loaded, made).deps)).toMatchObject({ status: "skipped", reason: "no-changes" });
+  expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+});

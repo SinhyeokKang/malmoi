@@ -39,7 +39,7 @@ export async function readFiles(
   for (const path of paths) {
     const sha = shaByPath.get(path);
     if (sha === undefined) continue;
-    const content = await reader.blob(sha);
+    const content = await reader.blob(sha, path);
     if (content === undefined) continue;
     try {
       totalBytes = checkContentBudget(path, content, totalBytes);

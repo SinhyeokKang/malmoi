@@ -51,3 +51,25 @@ export function encodeFileContent(content: string, encoding: FileEncoding): Buff
   if (!encoding.endsWith("-bom")) return body;
   return Buffer.concat([Buffer.from(bigEndian ? [0xfe, 0xff] : [0xff, 0xfe]), body]);
 }
+
+/** UTF-8은 기존 파일 객체 모양을 유지한다. */
+export type DecodedLocaleFile = { content: string; encoding?: FileEncoding };
+
+export class LocaleFileParseError extends Error {
+  readonly code = "parse-failed";
+  constructor(readonly path: string, cause: FileEncodingError) {
+    super(`parse-failed: invalid file encoding (${path})`, { cause });
+    this.name = "LocaleFileParseError";
+  }
+}
+
+/** 손상된 바이트를 파일 부재로 접으면 부분 적재가 키를 orphan시킬 수 있다. */
+export function decodeLocaleFile(path: string, bytes: Uint8Array): DecodedLocaleFile {
+  try {
+    const decoded = decodeFileBytes(path, bytes);
+    return decoded.encoding === "utf-8" ? { content: decoded.content } : decoded;
+  } catch (error) {
+    if (error instanceof FileEncodingError) throw new LocaleFileParseError(path, error);
+    throw error;
+  }
+}

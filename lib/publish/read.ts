@@ -1,3 +1,4 @@
+import type { DecodedLocaleFile } from "@/lib/file-encoding";
 import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
@@ -100,7 +101,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       await Promise.all(needed.slice(offset, offset + 8).map(async p => {
         const sha = shas.get(p.path);
         if (!sha) return;
-        const content = await client.getBlobText(sha);
+        const { content } = await client.getBlobText(sha, p.path);
         const read = adapter.read(format, [{ path: p.path, content }]);
         // 실행과 같은 판정이다(`render.ts` `baseOwnedByOriginal`) — read가 base 로케일을 못 내면 키 집합을 모른다.
         if (isBasePath(p) && !read.locales.some(l => l.locale === surface.baseLocale)) throw new PreviewBaseFileUnreadable(p.path, project.baseBranch);
@@ -184,13 +185,14 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
 }
 
 /** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */
-function cachedBlobs<C extends { getBlobText(sha: string): Promise<string> }>(client: C): C {
-  const seen = new Map<string, Promise<string>>();
-  return { ...client, getBlobText: (sha: string) => {
-    const hit = seen.get(sha);
+function cachedBlobs<C extends { getBlobText(sha: string, path: string): Promise<DecodedLocaleFile> }>(client: C): C {
+  const seen = new Map<string, Promise<DecodedLocaleFile>>();
+  return { ...client, getBlobText: (sha: string, path: string) => {
+    const key = JSON.stringify([sha, path]);
+    const hit = seen.get(key);
     if (hit !== undefined) return hit;
-    const next = client.getBlobText(sha);
-    seen.set(sha, next);
+    const next = client.getBlobText(sha, path);
+    seen.set(key, next);
     return next;
   } };
 }

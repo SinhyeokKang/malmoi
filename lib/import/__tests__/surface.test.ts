@@ -18,7 +18,7 @@ describe("readSurfaceSnapshot", () => {
       ...snapshot, files: [...snapshot.files, { path: "extra/ja.json", sha: "extra-blob", size: 20 }],
     }, format);
     expect(result).toMatchObject({ status: "ok", targets: ["extra/ja.json", "locales/en.json", "locales/fr.json", "locales/ko.json"] });
-    expect(blob.mock.calls).toEqual([["en-blob"], ["fr-blob"], ["ko-blob"], ["extra-blob"]]);
+    expect(blob.mock.calls).toEqual([["en-blob", "locales/en.json"], ["fr-blob", "locales/fr.json"], ["ko-blob", "locales/ko.json"], ["extra-blob", "extra/ja.json"]]);
   });
   it("성공한 blob은 재요청하지 않고 실패한 blob만 한 번 재시도한다", async () => {
     const blob = vi.fn<RepoReader["blob"]>()
@@ -30,7 +30,7 @@ describe("readSurfaceSnapshot", () => {
     expect(result.targets).toEqual(["locales/en.json", "locales/fr.json", "locales/ko.json"]);
     expect([...result.blobs.keys()]).toEqual(result.targets);
     expect(result.baseLocale).toBe("en");
-    expect(blob.mock.calls).toEqual([["en-blob"], ["fr-blob"], ["ko-blob"], ["ko-blob"]]);
+    expect(blob.mock.calls).toEqual([["en-blob", "locales/en.json"], ["fr-blob", "locales/fr.json"], ["ko-blob", "locales/ko.json"], ["ko-blob", "locales/ko.json"]]);
     // 재시도로 읽힌 ko가 재탐지 로케일에 남아야 적재가 ko를 orphan시키지 않는다 (delivery-invariants D6 · 감사 #59).
     expect(result.format.locales).toContain("ko");
   });

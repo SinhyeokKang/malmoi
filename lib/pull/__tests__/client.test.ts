@@ -34,8 +34,8 @@ describe("createFakeGitClient — 호출 기록", () => {
 
   it("같은 메서드를 두 번 부르면 두 건으로 기록된다 — 카운트가 목적이다", async () => {
     const { client, calls } = createFakeGitClient({ blobs: { a: "A", b: "B" } });
-    await client.getBlobText("a");
-    await client.getBlobText("b");
+    await client.getBlobText("a", "en.json");
+    await client.getBlobText("b", "en.json");
     expect(calls.filter((c) => c.method === "getBlobText")).toHaveLength(2);
   });
 });
@@ -59,12 +59,12 @@ describe("createFakeGitClient — 응답 주입", () => {
 
   it("주입한 blob 내용을 돌려준다", async () => {
     const { client } = createFakeGitClient({ blobs: { blob1: '{\n  "a": "안녕"\n}\n' } });
-    await expect(client.getBlobText("blob1")).resolves.toBe('{\n  "a": "안녕"\n}\n');
+    await expect(client.getBlobText("blob1", "en.json")).resolves.toEqual({ content: '{\n  "a": "안녕"\n}\n' });
   });
 
   it("주입하지 않은 blob을 요구하면 던진다 — undefined를 조용히 넘기면 진단이 어렵다", async () => {
     const { client } = createFakeGitClient({ blobs: {} });
-    await expect(client.getBlobText("없는sha")).rejects.toThrow(/없는sha/);
+    await expect(client.getBlobText("없는sha", "en.json")).rejects.toThrow(/없는sha/);
   });
 
   it("주입하지 않은 트리를 요구하면 던진다", async () => {

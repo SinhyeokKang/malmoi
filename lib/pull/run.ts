@@ -1,3 +1,5 @@
+import type { FileEncoding } from "@/lib/file-encoding";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { AdapterError } from "@/lib/adapters/types";
@@ -318,11 +320,15 @@ export async function renderProject(
   // `maxDuration`이 60초다. 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18).
   const shaByPath = new Map(tree.map((t) => [t.path, t.sha]));
   const current = new Map<string, string>();
+  const encodings = new Map<string, FileEncoding>();
   const targets = paths.filter((p) => shaByPath.has(p.path));
   for (let i = 0; i < targets.length; i += BLOB_CONCURRENCY) {
     const chunk = targets.slice(i, i + BLOB_CONCURRENCY);
-    const texts = await Promise.all(chunk.map((p) => client.getBlobText(shaByPath.get(p.path)!)));
-    chunk.forEach((p, j) => current.set(p.path, texts[j]!));
+    const texts = await Promise.all(chunk.map((p) => client.getBlobText(shaByPath.get(p.path)!, p.path)));
+    chunk.forEach((p, j) => {
+      current.set(p.path, texts[j]!.content);
+      encodings.set(p.path, texts[j]!.encoding ?? "utf-8");
+    });
   }
 
   const rendered = resolved.map(item => {
@@ -332,7 +338,10 @@ export async function renderProject(
     const represent = creates.size === 0 ? undefined : { locales: creates, source: basePath === undefined ? undefined : current.get(basePath) };
     return {
       surfaceId: item.surface.id, surfaceSlug: item.surface.slug, baseLocale: item.baseLocale,
-      files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current, represent),
+      files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current, represent).map(file => {
+        const encoding = encodings.get(file.path) ?? encodings.get(baseFilePath(item.format, item.baseLocale)) ?? "utf-8";
+        return encoding === "utf-8" ? file : { ...file, encoding };
+      }),
     };
   });
   const local = planMultiSurfacePull(rendered);

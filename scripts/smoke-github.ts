@@ -133,7 +133,7 @@ async function main(): Promise<void> {
       let totalBytes = 0;
       for (const path of targets) {
         const sha = shaOf.get(path);
-        const text = sha === undefined ? undefined : await reader.blob(sha);
+        const text = sha === undefined ? undefined : await reader.blob(sha, path);
         if (text === undefined) continue;
         totalBytes = checkContentBudget(path, text, totalBytes);
         blobs.set(path, text);
@@ -208,7 +208,7 @@ async function main(): Promise<void> {
     if (first !== undefined) {
       const blob = tree.find((t) => t.path === first.path);
       if (blob) {
-        const text = await client.getBlobText(blob.sha);
+        const { content: text } = await client.getBlobText(blob.sha, first.path);
         console.log(`\n원본 읽기 확인: ${first.path} — ${text.split("\n").length}줄`);
       }
     }

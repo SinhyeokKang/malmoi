@@ -120,8 +120,8 @@ describe("읽기 — getRefSha · getTree · getBlobText", () => {
       [`GET ${P}/repository/blobs/lfs`]: { status: 200, body: { encoding: "base64", content: Buffer.from("version https://git-lfs.github.com/spec/v1\noid sha256:x\nsize 1\n").toString("base64") } },
     });
     const git = await open();
-    await expect(git.getBlobText("s1")).resolves.toBe('{"a":"안녕"}\n');
-    await expect(git.getBlobText("lfs")).rejects.toThrow(/LFS/);
+    await expect(git.getBlobText("s1", "en.json")).resolves.toEqual({ content: '{"a":"안녕"}\n' });
+    await expect(git.getBlobText("lfs", "en.json")).rejects.toThrow(/LFS/);
   });
 });
 
@@ -285,7 +285,7 @@ describe("openGitLabReader — 온보딩·Sync의 스냅샷 (값으로 준다)",
       [`GET ${P}/repository/blobs/lfs`]: { status: 200, body: { encoding: "base64", content: Buffer.from("version https://git-lfs.github.com/spec/v1\n").toString("base64") } },
     });
     const r = await open();
-    expect([await r.blob("ok"), await r.blob("bad"), await r.blob("lfs")]).toEqual(["{}", undefined, undefined]);
+    expect([await r.blob("ok", "en.json"), await r.blob("bad", "en.json"), await r.blob("lfs", "en.json")]).toEqual(["{}", undefined, undefined]);
     vi.restoreAllMocks();
   });
 });

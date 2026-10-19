@@ -24,7 +24,7 @@ const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplat
 const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
 const rows = [{ surfaceId: "s", keyId: "k", localeCode: "en", value: "new", updatedBy: "editor", updatedAt: new Date(), stringKey: { key: "hello" } }];
 const db = { project: { findUniqueOrThrow: vi.fn() }, translation: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() } };
-beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", mode: "100644", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue('{"hello":"old"}'); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: [] });
+beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", mode: "100644", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue({ content: '{"hello":"old"}' }); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: [] });
   mocks.snapshot.mockImplementation(async (_prisma: unknown, slug: string, limit: number) => {
     const fixture = await db.project.findUniqueOrThrow();
     const loaded = await mocks.load();
@@ -45,13 +45,13 @@ it("쓰기 메서드 없는 클라이언트로 base 이전 값과 DB 값을 함�
  expect(mocks.snapshot).toHaveBeenCalledWith(db, "acme", 200);
  expect(mocks.client.getRefSha).toHaveBeenCalledWith("heads/main");
 });
-it("base 파싱 실패를 빈 이전 값으로 접지 않는다", async () => { mocks.client.getBlobText.mockResolvedValue("invalid"); await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow(); });
+it("base 파싱 실패를 빈 이전 값으로 접지 않는다", async () => { mocks.client.getBlobText.mockResolvedValue({ content: "invalid" }); await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow(); });
 it("상한 초과와 열린 PR 미확인을 보존한다", async () => { db.translation.count.mockResolvedValue(903); mocks.open.mockResolvedValue(undefined); const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme"); expect(result.truncated).toBe(902); expect(result.keys).toBe(1); expect(result.openPr).toBeUndefined(); });
 it("여러 로케일 파일에서는 해당 로케일과 키가 있는 파일을 고른다", async () => {
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "ts-dict", pathTemplate: "*.ts", locales: [{ code: "en" }, { code: "ko" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "a.ts", mode: "100644", sha: "a" }, { path: "b.ts", mode: "100644", sha: "b" }]);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => sha === "a" ? 'const en = { hello: "english" }; const ko = {};' : 'const en = {}; const ko = { hello: "korean" };');
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: sha === "a" ? 'const en = { hello: "english" }; const ko = {};' : 'const en = {}; const ko = { hello: "korean" };' }));
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups[0]).toMatchObject({ path: "b.ts", rows: [{ before: "korean", after: "new" }] });
 });
@@ -67,7 +67,7 @@ it("per-locale 새 파일은 경로가 확정돼 이전 값 없음으로 표시�
 it("multi-locale 경로가 둘이면 첫 파일을 임의로 고르지 않는다", async () => {
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "ts-dict", pathTemplate: "*.ts" }] });
   mocks.client.getTree.mockResolvedValue([{ path: "a.ts", mode: "100644", sha: "a" }, { path: "b.ts", mode: "100644", sha: "b" }]);
-  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "old" };');
+  mocks.client.getBlobText.mockResolvedValue({ content: 'const en = { hello: "old" };' });
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow("Preview path unavailable");
 });
 /**
@@ -80,7 +80,7 @@ it("수술적 per-locale 어댑터의 없는 파일 셀은 빼고 따로 센다"
   db.translation.findMany.mockResolvedValue([rows[0], { ...rows[0], localeCode: "ko", value: "새" }]);
   db.translation.count.mockResolvedValue(2);
   mocks.client.getTree.mockResolvedValue([{ path: "en.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue("hello: old\n");
+  mocks.client.getBlobText.mockResolvedValue({ content: "hello: old\n" });
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups.map(g => [g.path, g.rows.map(r => r.localeCode)])).toEqual([["en.yml", ["en"]]]);
   expect(result.withoutFile).toBe(1);
@@ -100,7 +100,7 @@ it("수술적 per-locale의 **base** 파일이 없으면 미리보기를 막는�
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", locales: [{ code: "en" }, { code: "ko" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko", value: "새" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "ko.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue("ko:\n  hello: old\n");
+  mocks.client.getBlobText.mockResolvedValue({ content: "ko:\n  hello: old\n" });
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toMatchObject({ name: "PreviewBaseFileMissing", path: "en.yml", branch: "main" });
 });
 it("ts-dict 로케일 객체에 자리가 없는 키는 빼고 withoutKey로 센다 — 같은 파일의 다른 로케일이 그 키를 가진다", async () => {
@@ -108,7 +108,7 @@ it("ts-dict 로케일 객체에 자리가 없는 키는 빼고 withoutKey로 센
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko" }, { ...rows[0], keyId: "k2", localeCode: "ko", stringKey: { key: "bye" } }]);
   db.translation.count.mockResolvedValue(2);
   mocks.client.getTree.mockResolvedValue([{ path: "a.ts", mode: "100644", sha: "a" }]);
-  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi", bye: "bye" };\nconst ko = { bye: "잘가" };');
+  mocks.client.getBlobText.mockResolvedValue({ content: 'const en = { hello: "hi", bye: "bye" };\nconst ko = { bye: "잘가" };' });
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups.flatMap(g => g.rows.map(r => r.key))).toEqual(["bye"]);
   expect(result).toMatchObject({ withoutFile: 0, withoutKey: 1 });
@@ -121,7 +121,7 @@ it("같은 픽스처에서 미리보기의 withoutFile과 실행의 withheld가 
   db.translation.findMany.mockResolvedValue([rows[0], { ...rows[0], localeCode: "fr", value: "neuf" }, { ...rows[0], localeCode: "ko", value: "새" }]);
   db.translation.count.mockResolvedValue(3);
   mocks.client.getTree.mockResolvedValue([{ path: "en.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue(EN);
+  mocks.client.getBlobText.mockResolvedValue({ content: EN });
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "en.yml", mode: "100644", sha: "blob" }] }, blobs: { blob: EN } });
   const edit = (locale: string) => ({ id: locale, token: locale, cell: { surfaceId: "s", keyId: "k", localeCode: locale, restoreValue: "" } });
@@ -153,7 +153,7 @@ it("code-dict 구조 충돌(문자열 자리에 중첩 키)은 보류가 아니�
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: [{ code: "en" }, { code: "ko" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko", value: "비", stringKey: { key: "a.b" } }]);
   mocks.client.getTree.mockResolvedValue([{ path: "en.ts", mode: "100644", sha: "en" }, { path: "ko.ts", mode: "100644", sha: "ko" }]);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? EN : KO));
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: (sha === "en" ? EN : KO) }));
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme").catch(() => null);
   const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "en.ts", mode: "100644", sha: "en" }, { path: "ko.ts", mode: "100644", sha: "ko" }] }, blobs: { en: EN, ko: KO } });
   const result = await runPull({
@@ -176,17 +176,17 @@ it("ts-dict 파일의 무관한 비리터럴은 미리보기를 막지 않는다
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "ts-dict", pathTemplate: "*.ts", locales: [{ code: "en" }, { code: "ko" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "a.ts", mode: "100644", sha: "a" }]);
-  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi", b: someFn };\nconst ko = { hello: "안녕" };');
+  mocks.client.getBlobText.mockResolvedValue({ content: 'const en = { hello: "hi", b: someFn };\nconst ko = { hello: "안녕" };' });
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups[0]).toMatchObject({ path: "a.ts", rows: [{ before: "안녕", after: "new" }] });
-  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi" };\nconst ko = { hello: someFn };');
+  mocks.client.getBlobText.mockResolvedValue({ content: 'const en = { hello: "hi" };\nconst ko = { hello: someFn };' });
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow();
 });
 it("#84 — 보류만 있으면 보낼 수 있는 편집·키가 0이다", async () => {
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", locales: [{ code: "en" }, { code: "de" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "de", value: "neu" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "en.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue("en:\n  hello: old\n");
+  mocks.client.getBlobText.mockResolvedValue({ content: "en:\n  hello: old\n" });
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result).toMatchObject({ total: 1, withoutFile: 1, sendable: { total: 0, keys: 0 } });
 });
@@ -202,7 +202,7 @@ it("같은 픽스처에서 미리보기의 same == sendable이면 실행은 no-c
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: [{ code: "en" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], value: "old" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "en.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue(EN);
+  mocks.client.getBlobText.mockResolvedValue({ content: EN });
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(preview.same).toBe(preview.sendable.total);
   const { blobSha } = await import("@/lib/githash");
@@ -224,12 +224,12 @@ it("같은 픽스처에서 미리보기의 same == sendable이면 실행은 no-c
 it("code-dict 중복 프로퍼티는 미리보기를 막지 않고 마지막 값을 이전 값으로 보인다 · yaml duplicate-key는 막는다 (짝)", async () => {
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "code-dict", pathTemplate: "{locale}.ts" }] });
   mocks.client.getTree.mockResolvedValue([{ path: "en.ts", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue("export default {\n  hello: 'first',\n  hello: 'old',\n}\n");
+  mocks.client.getBlobText.mockResolvedValue({ content: "export default {\n  hello: 'first',\n  hello: 'old',\n}\n" });
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups[0]?.rows[0]).toMatchObject({ before: "old", after: "new" });
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml" }] });
   mocks.client.getTree.mockResolvedValue([{ path: "en.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue("hello: first\nhello: old\n");
+  mocks.client.getBlobText.mockResolvedValue({ content: "hello: first\nhello: old\n" });
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toMatchObject({ name: "PreviewWriterWarnings", warnings: expect.arrayContaining([expect.objectContaining({ code: "duplicate-key" })]) });
 });
 /**
@@ -246,7 +246,7 @@ it("ts-dict 키가 모든 로케일 객체에서 사라지면 미리보기 witho
   db.translation.count.mockResolvedValue(2);
   db.translation.groupBy.mockResolvedValue([{ keyId: "k" }, { keyId: "k2" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "a.ts", mode: "100644", sha: "a" }]);
-  mocks.client.getBlobText.mockResolvedValue(A);
+  mocks.client.getBlobText.mockResolvedValue({ content: A });
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "a.ts", mode: "100644", sha: "a" }] }, blobs: { a: A } });
   const edit = (id: string, keyId: string) => ({ id, token: id, cell: { surfaceId: "s", keyId, localeCode: "ko", restoreValue: "" } });
@@ -276,7 +276,7 @@ it.each([
 ])("%s — 편집과 무관하면 미리보기가 열리고, 편집 키가 그 자리면 막는다 (짝)", async (_name, cols, path, source, pairSource, pairKey) => {
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols }] });
   mocks.client.getTree.mockResolvedValue([{ path, mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue(source);
+  mocks.client.getBlobText.mockResolvedValue({ content: source });
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups[0]).toMatchObject({ path, rows: [{ key: "hello", before: "old", after: "new" }] });
   // 실행(cron·Publish)도 같은 파일을 싣고 이웃을 그대로 둔다 — 미리보기가 약속한 것이 나간다.
@@ -295,7 +295,7 @@ it.each([
   const written = (calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { content: string }[] }).changes[0]?.content;
   expect(written).toBe(source.replace("old", "new"));
   db.translation.findMany.mockResolvedValue([{ ...rows[0], stringKey: { key: pairKey } }]);
-  mocks.client.getBlobText.mockResolvedValue(pairSource);
+  mocks.client.getBlobText.mockResolvedValue({ content: pairSource });
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow();
 });
 /**
@@ -316,7 +316,7 @@ it.each([
   db.translation.count.mockResolvedValue(2);
   db.translation.groupBy.mockResolvedValue([{ keyId: "k" }, { keyId: "k2" }]);
   mocks.client.getTree.mockResolvedValue([{ path: enPath, mode: "100644", sha: "en" }, { path: frPath, mode: "100644", sha: "fr" }]);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? EN : FR));
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: (sha === "en" ? EN : FR) }));
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: enPath, mode: "100644", sha: "en" }, { path: frPath, mode: "100644", sha: "fr" }] }, blobs: { en: EN, fr: FR } });
   const edit = (id: string, keyId: string, localeCode: string) => ({ id, token: id, cell: { surfaceId: "s", keyId, localeCode, restoreValue: "" } });
@@ -348,7 +348,7 @@ it("재생성 per-locale: 읽을 수 없는 base 원본 + 비-base 편집만 →
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, locales: [{ code: "en" }, { code: "fr" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "en.json", mode: "100644", sha: "en" }, { path: "fr.json", mode: "100644", sha: "fr" }]);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? EN : FR));
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: (sha === "en" ? EN : FR) }));
   const refused = await readPublishPreview(db as unknown as PrismaClient, "p", "acme").catch((e: unknown) => e);
   expect(refused).toBeInstanceOf(PreviewBaseFileUnreadable);
   expect(refused).toMatchObject({ path: "en.json", branch: "main" });
@@ -367,7 +367,7 @@ it("재생성 per-locale: 읽을 수 있는 base(숫자 값 포함) + 비-base �
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, locales: [{ code: "en" }, { code: "fr" }] }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "en.json", mode: "100644", sha: "en" }, { path: "fr.json", mode: "100644", sha: "fr" }]);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? '{"hello":"Hi","n":3}' : '{"hello":"Salut"}'));
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: (sha === "en" ? '{"hello":"Hi","n":3}' : '{"hello":"Salut"}') }));
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups.flatMap(g => g.rows.map(r => `${r.localeCode}:${r.before}`))).toEqual(["fr:Salut"]);
 });
@@ -392,7 +392,7 @@ it("#128 — 편집 없는 파일이 바뀌면 미리보기의 바뀌는 파일 
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: locales.map(code => ({ code })) }] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
   mocks.client.getTree.mockResolvedValue(tree);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => blobs[sha]);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: blobs[sha] }));
   const state = {
     project: { ...project, slug: "acme" },
     surfaces: [{ ...surface, ...cols, localeCodes: locales, keys: [
@@ -434,7 +434,7 @@ it.each([
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [web, app] });
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
   mocks.client.getTree.mockResolvedValue(tree);
-  mocks.client.getBlobText.mockImplementation(async (sha: string) => blobs[sha]);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => ({ content: blobs[sha] }));
   const key = (id: string, k: string) => ({ id, key: k, sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: "Bonjour" } } });
   const state = {
     project: { ...project, slug: "acme" },
@@ -483,7 +483,7 @@ it.each([false, true])("빈 base 편집: 원본에서 키가 제거됨=%s — �
   db.translation.count.mockResolvedValue(2);
   db.translation.groupBy.mockResolvedValue([{ keyId: "k" }, { keyId: "k2" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "en.yml", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue(content);
+  mocks.client.getBlobText.mockResolvedValue({ content: content });
   const warning = { surfaceSlug: "web", path: "en.yml", key: "hello", code: "write-empty-unsupported" };
   if (absent) {
     expect(await readPublishPreview(db as unknown as PrismaClient, "p", "acme")).toMatchObject({ withoutKey: 1, sendable: { total: 1, keys: 1 } });
@@ -535,7 +535,7 @@ function previewTsFixture(content: string, key = "hello") {
   mocks.load.mockResolvedValue(state);
   db.translation.findMany.mockResolvedValue([{ ...rows[0], stringKey: { key } }]);
   mocks.client.getTree.mockResolvedValue([{ path: "a.ts", mode: "100644", sha: "blob" }]);
-  mocks.client.getBlobText.mockResolvedValue(content);
+  mocks.client.getBlobText.mockResolvedValue({ content: content });
   return state;
 }
 
@@ -580,7 +580,7 @@ it("#200 missing locale objects block preview and execution with the same writer
   const tree = [{ path: "a.ts", mode: "100644", sha: "a" }, { path: "b.ts", mode: "100644", sha: "b" }];
   const blobs = { a: 'const en = { hello: "english" };', b: 'const ko = { hello: "korean" };' };
   mocks.client.getTree.mockResolvedValue(tree);
-  mocks.client.getBlobText.mockImplementation(async (sha: "a" | "b") => blobs[sha]);
+  mocks.client.getBlobText.mockImplementation(async (sha: "a" | "b") => ({ content: blobs[sha] }));
   const preview = await loadPublishPreview({ slug: "acme" });
   expect(preview).toMatchObject({ status: "blocked", warnings: expect.arrayContaining([expect.objectContaining({ code: "write-locale-object-missing" })]) });
   const { runPull } = await import("@/lib/pull/run");
@@ -613,7 +613,7 @@ it.each([
   mocks.load.mockResolvedValue(state);
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
   mocks.client.getTree.mockResolvedValue(tree);
-  mocks.client.getBlobText.mockResolvedValue(original);
+  mocks.client.getBlobText.mockResolvedValue({ content: original });
   const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(preview).toMatchObject({ withoutFile: 0, sendable: { total: 1, keys: 1 }, fileChanges: [{ path: `fr.${ext}`, kind: "new" }] });
   expect(preview.groups[0]).toMatchObject({ path: `fr.${ext}`, rows: [{ before: null, after: "Bonjour" }] });

@@ -11,6 +11,7 @@ import { baseFilePath } from "../lib/adapters/base-path";
 import { adapterErrorKind } from "../lib/adapters/types";
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { walkFiles } from "../lib/cli/walk";
+import { encodeFileContent, type FileEncoding } from "../lib/file-encoding";
 import { blobSha } from "../lib/githash";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import { en } from "../messages/en";
@@ -36,7 +37,8 @@ const paths = walkFiles(target);
 // probe를 준다 — 경로 신호만으로는 검색 인덱스 같은 무관한 JSON 묶음을 잡는다.
 // 포맷 결정은 `push:local`과 같은 함수다(`scripts/format.ts`) — 미리 본 것과 올리는 것이 갈리지 않는다.
 const probeFailures = new Set<string>();
-const probe = fileProbe(target, probeFailures);
+const encodings = new Map<string, FileEncoding>();
+const probe = fileProbe(target, probeFailures, encodings);
 const requested = requestedFormat(paths, probe, { adapterName: flagValue(argv, "--adapter") });
 if (!requested.ok) {
   console.error(requested.message);
@@ -145,7 +147,7 @@ if (baseLocale) {
     const before = adapter.read(writeFormat, [original]);
     const back = adapter.read(writeFormat, [{ path, content: rewritten }]);
     const semanticSame = sameMeaning(before, back, dropEmpty);
-    const byteSame = blobSha(original.content) === blobSha(rewritten);
+    const byteSame = blobSha(encodeFileContent(original.content, encodings.get(path) ?? "utf-8")) === blobSha(encodeFileContent(rewritten, encodings.get(path) ?? "utf-8"));
     console.log(`\n왕복(${path})`);
     console.log(`  의미 동일:  ${semanticSame ? "✅" : "❌ 데이터 손실"}`);
     console.log(`  바이트 동일: ${byteSame ? "✅" : "⚠️ 표현 정규화 (첫 pull에서 한 번 발생)"}`);

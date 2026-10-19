@@ -1,3 +1,5 @@
+import type { FileEncoding } from "@/lib/file-encoding";
+
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
 export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict";
 
@@ -63,6 +65,7 @@ export type FileProbe = (path: string) => string | undefined;
 export type AdapterFile = {
   path: string;
   content: string;
+  encoding?: FileEncoding;
 };
 
 /** 평탄화된 메시지 하나. 키는 어댑터가 정한 구분자로 이어진 전체 경로다. */

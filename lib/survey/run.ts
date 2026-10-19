@@ -1,3 +1,4 @@
+import { decodeLocaleFile, LocaleFileParseError } from "../file-encoding";
 /**
  * `pnpm adapter-survey`의 I/O 층 — 리포를 받아 `surveyOne`에 넘길 입력을 만들고, `--jobs`개씩 겹쳐 돈다.
  *
@@ -61,6 +62,7 @@ export async function fetchRepo(repo: string, git: GitRunner, pin?: string): Pro
     }
     const { paths: wanted, configFiles, truncated } = selectSurveyFiles(paths);
     const files = new Map<string, string>();
+    const decodeErrors: NonNullable<SurveyInput["decodeErrors"]> = [];
     if (wanted.length > 0) {
       try {
         // 한 번에 받는다. 개별 blob fetch는 네트워크 왕복이 파일 수만큼 든다.
@@ -82,15 +84,16 @@ export async function fetchRepo(repo: string, git: GitRunner, pin?: string): Pro
           // 링크를 **따라가** 그 대상을 읽는다 — 측정 대상이 아닌 파일이 코퍼스에 섞인다.
           if (lstatSync(full).isSymbolicLink()) continue;
           const buf = readFileSync(full);
-          // 비UTF-8·바이너리는 건너뛴다. 로케일 카탈로그가 그런 경우는 그 자체가 관측치다.
-          if (buf.includes(0)) continue;
-          files.set(p, buf.toString("utf8"));
-        } catch {
+          // 다른 포맷의 NUL 파일 스킵은 유지하되 .strings는 UTF-16일 수 있으므로 디코더로 보낸다.
+          if (!p.endsWith(".strings") && buf.includes(0)) continue;
+          files.set(p, decodeLocaleFile(p, buf).content);
+        } catch (error) {
+          if (error instanceof LocaleFileParseError) decodeErrors.push({ path: p, code: error.code });
           // 서브모듈(gitlink)처럼 체크아웃이 성공해도 물리화되지 않는 파일 — 없는 파일로 취급한다.
         }
       }
     }
-    return { repo, paths, files, configFiles, truncated, commit };
+    return { repo, paths, files, configFiles, truncated, commit, ...(decodeErrors.length === 0 ? {} : { decodeErrors }) };
   } catch (cause) {
     return { repo, paths: [], files: new Map(), configFiles: [], failure: `트리 읽기 실패: ${short(cause)}`, commit };
   } finally {

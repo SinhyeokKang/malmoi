@@ -94,3 +94,27 @@ it("survey가 UTF-16 strings를 물리화해 디코드하고 다른 NUL 파일�
   expect(out.files.get("en.lproj/Localizable.strings")).toBe('"a" = "A";');
   expect(out.files.has("en.json")).toBe(false);
 });
+
+it("무관한 손상 파일은 경로별 parse-failed로 남기고 정상 카탈로그의 1순위를 지우지 않는다", async () => {
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { surveyOne } = await import("../one");
+  const git: GitRunner = async (cwd, args) => {
+    if (args[0] === "clone") mkdirSync(join(cwd, "r"));
+    if (args[0] === "ls-tree") return "locales/en.json\nlocales/ko.json\nbad.strings\n";
+    if (args[0] === "checkout") {
+      mkdirSync(join(cwd, "locales"));
+      writeFileSync(join(cwd, "locales/en.json"), '{"hello":"Hello"}');
+      writeFileSync(join(cwd, "locales/ko.json"), '{"hello":"안녕"}');
+      writeFileSync(join(cwd, "bad.strings"), Buffer.from("fffe00d8", "hex"));
+    }
+    return "";
+  };
+  const input = await fetchRepo("a/1", git);
+  expect(input.decodeErrors).toEqual([{ path: "bad.strings", code: "parse-failed" }]);
+  const out = surveyOne(input);
+  expect(out.chosen).toMatchObject({ pathTemplate: "locales/{locale}.json" });
+  expect(out.decodeErrors).toEqual(input.decodeErrors);
+  expect(out.failure).toContain("parse-failed");
+  expect(out.keyCount).toBe(1);
+});

@@ -1757,7 +1757,7 @@ const sampleRequest = () => ({ owner: "acme", repo: "web", ref: "develop", adapt
 it("샘플은 확인값 검증 후 요청 언어의 blob 하나만 읽는다", async () => {
   expect((await loadCandidateSample(sampleRequest())).ok).toBe(true);
   const opened = await hoisted.openRepoReader.mock.results[0]?.value;
-  expect(opened.blob.mock.calls).toEqual([["sha-ko"]]);
+  expect(opened.blob.mock.calls).toEqual([["sha-ko", "i18n/ko.json"]]);
 });
 
 it.each([
