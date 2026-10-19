@@ -86,7 +86,7 @@ export async function fetchRepo(repo: string, git: GitRunner, pin?: string): Pro
           if (buf.includes(0)) continue;
           files.set(p, buf.toString("utf8"));
         } catch {
-          // 서브모듈(gitlink)·체크아웃 실패 — 없는 파일로 취급한다.
+          // 서브모듈(gitlink)처럼 체크아웃이 성공해도 물리화되지 않는 파일 — 없는 파일로 취급한다.
         }
       }
     }
