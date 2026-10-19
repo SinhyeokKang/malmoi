@@ -114,41 +114,80 @@ export function tokenizeStrings(text: string): Tokenized {
     }
     if (text[i] !== ";") return fail(`expected ";" at offset ${i}`);
     i += 1;
-    entries.push({ key: decodeStringsLiteral(text.slice(key.start, key.end)), start: key.start, end: i, keyEnd: key.end, value });
+    // 키·값 리터럴을 여기서 한 번 검증한다 — 담을 수 없는 값(짝 없는 서로게이트)이 있으면 파일 전체가 실패다(R1).
+    const keyText = decodeStringsLiteral(text.slice(key.start, key.end));
+    if (keyText === undefined || (value !== undefined && decodeStringsLiteral(text.slice(value.start, value.end)) === undefined)) {
+      return fail(`unpaired surrogate escape at offset ${key.start}`);
+    }
+    entries.push({ key: keyText, start: key.start, end: i, keyEnd: key.end, value });
   }
 }
 
-const SIMPLE_ESCAPES: Record<string, string> = { n: "\n", t: "\t", r: "\r", a: "\u0007", b: "\b", f: "\f", v: "\v" };
+const SIMPLE_ESCAPES: Record<string, number> = { n: 0x0a, t: 0x09, r: 0x0d, a: 0x07, b: 0x08, f: 0x0c, v: 0x0b };
 
-/** 리터럴 토큰(따옴표 포함) → 값. 따옴표 없는 토큰은 그대로다. 모르는 이스케이프는 그 글자다(Apple 파서와 같다). */
-export function decodeStringsLiteral(literal: string): string {
+/**
+ * 8진 이스케이프 0o200–0o377 → 코드 포인트. Apple 파서는 8진 값을 **NeXTSTEP 인코딩 바이트**로 읽는다 — 이 표는 `/usr/bin/plutil`에서
+ * 2026-10-19에 0o200–0o377 전부를 채록했다(0o376·0o377은 NUL). 0o400 이상은 NUL이다.
+ */
+const NEXTSTEP_HIGH: readonly number[] = [
+  0x00a0, 0x00c0, 0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c7, 0x00c8, 0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf,
+  0x00d0, 0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x00d9, 0x00da, 0x00db, 0x00dc, 0x00dd, 0x00de, 0x00b5, 0x00d7, 0x00f7,
+  0x00a9, 0x00a1, 0x00a2, 0x00a3, 0x2044, 0x00a5, 0x0192, 0x00a7, 0x00a4, 0x2019, 0x201c, 0x00ab, 0x2039, 0x203a, 0xfb01, 0xfb02,
+  0x00ae, 0x2013, 0x2020, 0x2021, 0x00b7, 0x00a6, 0x00b6, 0x2022, 0x201a, 0x201e, 0x201d, 0x00bb, 0x2026, 0x2030, 0x00ac, 0x00bf,
+  0x00b9, 0x02cb, 0x00b4, 0x02c6, 0x02dc, 0x00af, 0x02d8, 0x02d9, 0x00a8, 0x00b2, 0x02da, 0x00b8, 0x00b3, 0x02dd, 0x02db, 0x02c7,
+  0x2014, 0x00b1, 0x00bc, 0x00bd, 0x00be, 0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb,
+  0x00ec, 0x00c6, 0x00ed, 0x00aa, 0x00ee, 0x00ef, 0x00f0, 0x00f1, 0x0141, 0x00d8, 0x0152, 0x00ba, 0x00f2, 0x00f3, 0x00f4, 0x00f5,
+  0x00f6, 0x00e6, 0x00f9, 0x00fa, 0x00fb, 0x0131, 0x00fc, 0x00fd, 0x0142, 0x00f8, 0x0153, 0x00df, 0x00fe, 0x00ff, 0x0000, 0x0000,
+];
+
+/**
+ * 리터럴 토큰(따옴표 포함) → 값. 따옴표 없는 토큰은 그대로다. **Apple 파서(`plutil`)와 같은 의미다**(리뷰 R1 — 테스트의 채록 픽스처):
+ * - `\U` 뒤 16진 최대 4자리가 UTF-16 코드 유닛이고, 16진이 없으면 NUL이다. 소문자 `\u`는 이스케이프가 아니다(`u` 글자).
+ * - 8진 최대 3자리는 NeXTSTEP 바이트다(위 표). 0o400 이상은 NUL.
+ * - `a b f v n t r`는 제어 문자, 그 밖의 글자(따옴표·역슬래시·줄바꿈 포함)는 그 글자 자신이다.
+ *
+ * 짝 없는 서로게이트가 나오면 `undefined`다 — DB(UTF-8)에 담을 수 없는 값을 다른 값으로 바꿔 적재하지 않고 호출부가 파일을 실패시킨다.
+ */
+export function decodeStringsLiteral(literal: string): string | undefined {
   const q = literal[0];
   if (q !== '"' && q !== "'") return literal;
   const body = literal.slice(1, -1);
   let out = "";
+  const unit = (code: number) => (out += String.fromCharCode(code));
   for (let i = 0; i < body.length; i += 1) {
-    const c = body[i]!;
-    if (c !== "\\") {
-      out += c;
+    const c = body.charCodeAt(i);
+    if (c !== 0x5c) {
+      unit(c);
       continue;
     }
-    const next = body[i + 1] ?? "";
     i += 1;
-    if (Object.hasOwn(SIMPLE_ESCAPES, next)) out += SIMPLE_ESCAPES[next];
-    else if (next === "U" || next === "u") {
-      const hex = /^[0-9A-Fa-f]{1,4}/.exec(body.slice(i + 1))?.[0];
-      if (hex === undefined) out += next;
-      else {
-        out += String.fromCharCode(parseInt(hex, 16));
-        i += hex.length;
-      }
+    const next = body[i] ?? "";
+    if (Object.hasOwn(SIMPLE_ESCAPES, next)) unit(SIMPLE_ESCAPES[next]!);
+    else if (next === "U") {
+      const hex = /^[0-9A-Fa-f]{0,4}/.exec(body.slice(i + 1))![0];
+      unit(hex === "" ? 0 : parseInt(hex, 16));
+      i += hex.length;
     } else if (/[0-7]/.test(next)) {
       const oct = /^[0-7]{1,3}/.exec(body.slice(i))![0];
-      out += String.fromCharCode(parseInt(oct, 8));
+      const byte = parseInt(oct, 8);
+      unit(byte < 0o200 ? byte : byte < 0o400 ? NEXTSTEP_HIGH[byte - 0o200]! : 0);
       i += oct.length - 1;
-    } else out += next;
+    } else unit(body.charCodeAt(i));
   }
-  return out;
+  return wellFormed(out) ? out : undefined;
+}
+
+/** 짝 없는 서로게이트가 없는가 — `String.prototype.isWellFormed`(ES2024)는 tsconfig `lib` 밖이다. */
+function wellFormed(text: string): boolean {
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const low = text.charCodeAt(i + 1);
+      if (!(low >= 0xdc00 && low <= 0xdfff)) return false;
+      i += 1;
+    } else if (c >= 0xdc00 && c <= 0xdfff) return false;
+  }
+  return true;
 }
 
 /**
@@ -238,7 +277,8 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
     // (design §2.1). 값을 쓰는 엔트리(중복이면 나중 것)의 파일 위치 순서다.
     const entries: LocaleEntry[] = [...effective.values()].sort((a, b) => a.start - b.start).map((slot, order) => ({
       key: slot.key,
-      message: slot.value === undefined ? slot.key : decodeStringsLiteral(file.content.slice(slot.value.start, slot.value.end)),
+      // 토크나이저가 검증한 리터럴이라 `undefined`가 아니다.
+      message: slot.value === undefined ? slot.key : decodeStringsLiteral(file.content.slice(slot.value.start, slot.value.end))!,
       order,
     }));
     entries.sort((a, b) => compareKeys(a.key, b.key));

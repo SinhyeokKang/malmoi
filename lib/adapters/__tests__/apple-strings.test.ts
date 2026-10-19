@@ -79,7 +79,70 @@ describe("리터럴 이스케이프", () => {
 
   it("encode(decode(정규형 리터럴)) === 원본 리터럴", () => {
     for (const literal of ['"Hello"', '"a\\"b"', '"x\\\\y"', '"line\\nnext"', '"tab\\t"', '"%@ items"', '"é😀"']) {
-      expect(encodeStringsLiteral(decodeStringsLiteral(literal))).toBe(literal);
+      expect(encodeStringsLiteral(decodeStringsLiteral(literal)!)).toBe(literal);
+    }
+  });
+});
+
+/**
+ * **Apple 파서와 같은 의미** (리뷰 R1). 기대값은 이 머신의 `/usr/bin/plutil -convert json -o - -- -`(stdin)에서 2026-10-19에 채록했다 —
+ * `"k" = <리터럴>;`의 값과 `<리터럴> = "v";`의 키가 같았다. 자체 encode/decode 상호 비교만으로는 플랫폼과 다른 해석을 못 찾는다.
+ * 리터럴의 `~`는 역슬래시다(소스에 역슬래시-u 열을 그대로 두지 않으려고 — 편집 도구가 그것을 풀어 버린다).
+ */
+describe("리터럴 이스케이프 — plutil 채록 픽스처", () => {
+  const L = (body: string, quote = '"') => quote + body.replaceAll("~", "\\") + quote;
+  const ch = (...codes: number[]) => String.fromCharCode(...codes);
+  const PLUTIL: [string, string][] = [
+    ["~u0041", "u0041"], ["~u", "u"], ["~U0041", "A"], ["~U41", "A"], ["~U004", ch(4)], ["~U00411", "A1"], ["~U00e9", "é"], ["~UFFFF", ch(0xffff)],
+    ["~U", ch(0)], ["~UZZ", `${ch(0)}ZZ`], ["~Ug", `${ch(0)}g`], ["~U0000", ch(0)], ["~UD83D~UDE00", "😀"],
+    ["~101", "A"], ["~12", "\n"], ["~1234", "S4"], ["~0", ch(0)], ["~0000", `${ch(0)}0`], ["~08", `${ch(0)}8`], ["~8", "8"], ["~177", ch(0x7f)],
+    // 0o200–0o375는 NeXTSTEP 인코딩 표, 0o376·0o377과 0o400 이상은 NUL이다.
+    ["~200", ch(0xa0)], ["~201", ch(0xc0)], ["~241", ch(0xa1)], ["~244", ch(0x2044)], ["~256", ch(0xfb01)], ["~300", ch(0xb9)], ["~350", ch(0x141)],
+    ["~375", ch(0xff)], ["~376", ch(0)], ["~377", ch(0)], ["~400", ch(0)], ["~777", ch(0)],
+    ["~x", "x"], ["~N", "N"], ["~a~b~f~v~n~t~r", ch(7, 8, 12, 11, 10, 9, 13)], ['~"', '"'], ["~~", "\\"], ["~\nx", "\nx"],
+  ];
+
+  it.each(PLUTIL)("값 %j", (body, expected) => {
+    expect(decodeStringsLiteral(L(body))).toBe(expected);
+    expect(entriesOf("en", `"k" = ${L(body)};\n`)).toEqual({ k: expected });
+  });
+
+  it.each(PLUTIL)("키 %j", (body, expected) => {
+    expect(readOne("en", `${L(body)} = "v";\n`).locales[0]?.entries.map((e) => e.key)).toEqual([expected]);
+  });
+
+  it("작은따옴표 리터럴의 이스케이프도 같다", () => {
+    expect(decodeStringsLiteral(L("~'", "'"))).toBe("'");
+    expect(decodeStringsLiteral(L('a~"b', "'"))).toBe('a"b');
+  });
+
+  /** 짝 없는 서로게이트는 plutil도 JSON으로 못 낸다 — 조용히 다른 값으로 적재하지 않고 파일을 명시 실패시킨다. */
+  it.each(["~UD83D", "~UDE00", "~UD83DA", "~UDE00~UD83D"])("짝 없는 서로게이트 %j → 디코드 불가 · parse-failed · write-parse-failed", (body) => {
+    expect(decodeStringsLiteral(L(body))).toBeUndefined();
+    for (const text of [`"k" = ${L(body)};\n`, `${L(body)} = "v";\n`]) {
+      expect(tokenizeStrings(text).ok).toBe(false);
+      expect(readOne("en", text)).toMatchObject({ locales: [], errors: [{ code: "parse-failed" }] });
+      expect(writeOne("en", text, [{ key: "k", message: "x" }])).toMatchObject({ content: text, errors: [{ code: "write-parse-failed" }] });
+    }
+  });
+
+  it("encode는 새 디코더로 왕복한다 — NUL·DEL·C0·BMP 전역·이모지", () => {
+    const samples = [ch(0), `${ch(0)}0`, ch(0x7f), ch(1, 0x1f), `${ch(4)}A`, ch(0xa0, 0xfb01, 0xffff), "u0041", "😀"];
+    for (const v of samples) {
+      expect(decodeStringsLiteral(encodeStringsLiteral(v)), JSON.stringify(v)).toBe(v);
+      expect(decodeStringsLiteral(encodeStringsLiteral(v, "'")), JSON.stringify(v)).toBe(v);
+    }
+    let seed = 11;
+    const next = () => (seed = (seed * 48271) % 2147483647);
+    for (let n = 0; n < 500; n += 1) {
+      const v = Array.from({ length: next() % 16 }, () => {
+        const c = next() % 0x10000;
+        // 서로게이트 구간은 짝을 지어 넣는다 — DB 값은 정상 UTF-16이다.
+        return c >= 0xd800 && c < 0xe000 ? "😀" : ch(c);
+      }).join("");
+      expect(decodeStringsLiteral(encodeStringsLiteral(v))).toBe(v);
+      // 정규형 고정점 — 인코더 출력은 다시 인코딩해도 같다.
+      expect(encodeStringsLiteral(decodeStringsLiteral(encodeStringsLiteral(v))!)).toBe(encodeStringsLiteral(v));
     }
   });
 });
