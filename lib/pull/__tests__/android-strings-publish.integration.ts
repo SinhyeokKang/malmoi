@@ -247,8 +247,13 @@ describe("Android 언어 추가·제거 → Publish", () => {
  * Git 쓰기 0 · 전달 확인 0이다. 기준 셀은 E의 태그 대조(기준 대비 번역) 대상이 아니라 writer가 막아야 한다.
  */
 describe("Android — 쓸 수 없는 태그", () => {
-  it("기준 값에 속성 엔티티가 깨진 태그가 있으면 미리보기 blocked · 실행 writer-warnings · 쓰기 0 · 전달 확인 0", async () => {
-    await save("title", "en", '<b a="&">Start</b>');
+  // 리뷰 R2-3 — XML S 밖 공백(NBSP)이 든 태그도 값 단계의 키가 붙은 실패다. 쓴 파일 재파싱까지 가면 키 없는 실패가 되어 미리보기가 "기준 파일을 못 읽음"으로 오분류한다.
+  it.each([
+    ['<b a="&">Start</b>', "속성 엔티티가 깨진 태그"],
+    ["<b\u00a0>Start</b>", "이름 뒤 NBSP"],
+    ['<b a\u00a0=\u00a0"x">Start</b>', "등호 주위 NBSP"],
+  ])("기준 값 %j(%s) — 미리보기 blocked(키 있는 writer 경고) · 실행 writer-warnings · 쓰기 0 · 전달 확인 0", async (bad) => {
+    await save("title", "en", bad);
     fake(FILES);
     expect(await loadPreview(prisma, OWNER, { slug: "fixture" })).toMatchObject({
       status: "blocked", warnings: [expect.objectContaining({ path: BASE_PATH, code: "write-parse-failed", key: "title" })],

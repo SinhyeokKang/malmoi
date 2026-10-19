@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { androidStrings, androidValueTags, decodeAndroidValue, encodeAndroidValue, tokenizeAndroid } from "../android-strings";
+import { androidStrings, androidValueTags, decodeAndroidValue, dialectOf, encodeAndroidValue, tokenizeAndroid } from "../android-strings";
 import type { DetectedFormat, LocaleEntry } from "../types";
 
 /**
@@ -19,8 +19,8 @@ const load = <T>(name: string): T => JSON.parse(readFileSync(join(FIXTURES, name
 
 /** 글 → 값 문법(결정 14). */
 const dbOf = (text: string) => text.replace(/&(?=lt;|amp;)/g, "&amp;").replaceAll("<", "&lt;");
-/** 값 → 플랫폼이 보이는 글(태그를 걷고 `&lt;`·`&amp;`를 푼다). */
-const textOf = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&(lt|amp);/g, (_, e: string) => (e === "lt" ? "<" : "&"));
+/** 값 → 플랫폼이 보이는 글(태그를 걷고 `&lt;`·`&amp;`를 푼다). 한 번에 훑는다 — 태그를 먼저 걷으면 `&<b></b>lt;`가 `<`로 읽힌다. */
+const textOf = (value: string) => value.replace(/<[^>]*>|&(lt|amp);/g, (_, e: string | undefined) => (e === undefined ? "" : e === "lt" ? "<" : "&"));
 /**
  * 값 → aapt2 dump의 스팬 표기(`b:2,2 i:4,4` — 시작 순서, 시작·끝 포함, 빈 스팬은 끝이 시작-1, 속성은 `a;href=값`). `<xliff:g>`는 스팬이 아니다.
  */
@@ -108,6 +108,11 @@ describe("R2 — 쓰는 태그의 XML 문법 (`androidValueTags`)", () => {
     ["<b>x", "닫히지 않은 태그"],
     ["a < b", "태그를 시작하지 않는 <"],
     ["<1>", "이름이 아닌 태그"],
+    ["<b\u00a0>x</b>", "이름 뒤 NBSP(XML S 밖 — 리뷰 R2-3)"],
+    ['<b\u00a0a="x">x</b>', "속성 앞 NBSP"],
+    ['<b a\u00a0=\u00a0"x">x</b>', "등호 주위 NBSP"],
+    ["<b\u2028>x</b>", "이름 뒤 줄 구분자"],
+    ['<b a="x"\u3000/>', "self-closing 앞 전각 공백"],
   ])("%j → 쓸 수 없다 (%s)", (value) => {
     expect(androidValueTags(value)).toBeUndefined();
     expect(encodeAndroidValue(value)).toBeUndefined();
@@ -117,7 +122,17 @@ describe("R2 — 쓰는 태그의 XML 문법 (`androidValueTags`)", () => {
   const KO = '<resources>\n    <string name="a">가</string>\n</resources>\n';
   const format: DetectedFormat = { adapter: "android-strings", pathTemplate: TEMPLATE, locales: ["ko"], currentFiles: [{ path: "app/src/main/res/values-ko/strings.xml", content: KO }] };
 
-  it.each(['<b a="&">x</b>', '<b a="x" a="y">x</b>', '<b>x</b a="y">'])("write: %j는 그 파일의 write-parse-failed(키 포함)이고 원본 그대로다", (bad) => {
+  it.each([
+    ['<b a="x">x</b>', ['<b a="x">', "</b>"]],
+    ['<b \t\r\n a \t= \n"x"\n>x</b \t>', ['<b \t\r\n a \t= \n"x"\n>', "</b \t>"]],
+    ['<br\n/>', ["<br\n/>"]],
+  ])("XML 공백(스페이스·탭·CR·LF)은 태그 안 어디서나 받는다 — %j", (value, tags) => {
+    expect(androidValueTags(value)).toEqual(tags);
+    const raw = encodeAndroidValue(value);
+    expect(raw !== undefined && tokenizeAndroid(`<resources><string name="v">${raw}</string></resources>`).ok).toBe(true);
+  });
+
+  it.each(['<b a="&">x</b>', '<b a="x" a="y">x</b>', '<b>x</b a="y">', "<b\u00a0>x</b>", '<b a\u00a0=\u00a0"x">x</b>'])("write: %j는 그 파일의 write-parse-failed(키 포함)이고 원본 그대로다", (bad) => {
     expect(androidStrings.writeWithErrors!(format, { locale: "ko", entries: [{ key: "a", message: bad }] })).toEqual({
       content: KO, errors: [expect.objectContaining({ code: "write-parse-failed", key: "a" })],
     });
@@ -226,5 +241,130 @@ describe("결정 18 — 기준 `<string>`의 `formatted` 속성을 새 엔트리
     );
     // 기준 파일이 없으면 속성 없이 넣는다(지금까지의 동작).
     expect(androidStrings.write({ ...format, representationSource: undefined }, { locale: "ko", entries: [entries[0]!] })).toContain('<string name="fmt">%s · %d</string>');
+  });
+});
+
+describe("R2-1 — 값 의미는 `values-*/strings.xml` 바로 앞 리소스 디렉터리가 정한다", () => {
+  // 조상 어딘가의 이름이 아니라 마지막 리소스 디렉터리다 — 두 중첩 방향을 다 본다.
+  const RES = { template: "composeResources/app/src/main/res/values-{locale}/strings.xml", ko: "composeResources/app/src/main/res/values-ko/strings.xml", base: "composeResources/app/src/main/res/values/strings.xml" };
+  const COMPOSE = { template: "res/shared/composeResources/values-{locale}/strings.xml", ko: "res/shared/composeResources/values-ko/strings.xml", base: "res/shared/composeResources/values/strings.xml" };
+  const QUOTED = '<resources>\n    <string name="a">"  x  "</string>\n</resources>\n';
+  const format = (dir: typeof RES, content: string): DetectedFormat => ({ adapter: "android-strings", pathTemplate: dir.template, locales: ["ko"], currentFiles: [{ path: dir.ko, content }] });
+
+  it("dialectOf", () => {
+    expect(dialectOf(RES.template)).toBe("aapt2");
+    expect(dialectOf(COMPOSE.template)).toBe("compose");
+    expect(dialectOf("app/src/main/res/values-{locale}/strings.xml")).toBe("aapt2");
+    expect(dialectOf("shared/src/commonMain/composeResources/values-{locale}/strings.xml")).toBe("compose");
+    expect(dialectOf("composeResources/values-{locale}/strings.xml")).toBe("compose");
+    expect(dialectOf("res/values-{locale}/strings.xml")).toBe("aapt2");
+  });
+
+  it("read: `…/composeResources/…/res/`는 aapt2 — 따옴표는 구간이고, `…/res/…/composeResources/`는 Compose — 따옴표는 글자다", () => {
+    const read = (dir: typeof RES) => androidStrings.read(format(dir, QUOTED), [{ path: dir.ko, content: QUOTED }]).locales[0]?.entries.map((e) => e.message);
+    expect(read(RES)).toEqual(["  x  "]);
+    expect(read(COMPOSE)).toEqual(['"  x  "']);
+  });
+
+  it("write: 같은 값을 방언마다 다르게 쓴다", () => {
+    const KO = '<resources>\n    <string name="a">가</string>\n</resources>\n';
+    const write = (dir: typeof RES) => androidStrings.write(format(dir, KO), { locale: "ko", entries: [{ key: "a", message: "  it's  " }] });
+    expect(write(RES)).toBe('<resources>\n    <string name="a">"  it\\\'s  "</string>\n</resources>\n');
+    expect(write(COMPOSE)).toBe('<resources>\n    <string name="a">  it\'s  </string>\n</resources>\n');
+  });
+
+  it("create: 같은 값을 방언마다 다르게 쓴다", () => {
+    const BASE = '<resources>\n    <string name="a">A</string>\n</resources>\n';
+    const create = (dir: typeof RES) => androidStrings.create!({ adapter: "android-strings", pathTemplate: dir.template, locales: [], representationSource: BASE }, { locale: "ko", baseLocale: "en", entries: [{ key: "a", message: "  it's  " }] }).content;
+    expect(create(RES)).toBe('<resources>\n    <string name="a">"  it\\\'s  "</string>\n</resources>\n');
+    expect(create(COMPOSE)).toBe('<resources>\n    <string name="a">  it\'s  </string>\n</resources>\n');
+  });
+
+  it("탐지: 두 방향 모두 후보이고 템플릿이 그 리소스 디렉터리를 가리킨다", () => {
+    for (const dir of [RES, COMPOSE]) {
+      const found = androidStrings.detectCandidates!([dir.base, dir.ko], (path) => (path === dir.base ? QUOTED : undefined));
+      expect(found.map((f) => [f.pathTemplate, f.basePath])).toEqual([[dir.template, dir.base]]);
+    }
+  });
+});
+
+/**
+ * 리뷰 R2-2 — 태그가 섞인 값의 왕복. 생성한 값마다 **플랫폼이 보이는 글**(aapt2: 본문·스팬 / Compose: 아래 `composeDisplay` — 채록한 변환기의 정의를
+ * 그대로 옮긴 독립 구현)과 **태그 보존**(`decode(encode(v)) === v`)을 따로 단언한다.
+ */
+describe("R2-2 — 태그가 섞인 값의 왕복 (두 방언)", () => {
+  /** Compose 변환기: DOM `textContent`(태그를 걷고 엔티티·CDATA를 푼 글) → `handleSpecialCharacters`. */
+  function composeDisplay(raw: string): string {
+    const text = raw
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>|<[^>]*>|&(lt|gt|amp|quot|apos);/g, (_, cdata: string | undefined, e: string | undefined) =>
+        cdata ?? (e === undefined ? "" : ({ lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" } as Record<string, string>)[e]!));
+    const doubles = new Set([...text.matchAll(/\\\\/g)].map((m) => m.index));
+    return text
+      .replace(/\\u[a-fA-F0-9]{4}|\\n|\\t/g, (m: string, at: number) => (doubles.has(at - 1) ? m : m === "\\n" ? "\n" : m === "\\t" ? "\t" : String.fromCharCode(parseInt(m.slice(2), 16))))
+      .replace(/\\\\/g, "\\");
+  }
+
+  it.each([
+    "\\<b>n</b>",
+    "\\<b>u0041</b>",
+    "\\<b>t</b>",
+    "<b>\\</b>n",
+    "\\<b>\\</b>n",
+    "a\\\\<i>n</i>\\<b>u00e9</b>",
+    '\\<a href="x">n</a> <br/>\\n',
+  ])("Compose %j — 표시 글과 태그 위치가 그대로다", (value) => {
+    const raw = encodeAndroidValue(value, {}, "compose")!;
+    expect(composeDisplay(raw)).toBe(textOf(value));
+    expect(decodeAndroidValue(raw, "compose")).toBe(value);
+  });
+
+  const TEXT = [" ", "  ", "\n", "\t", '"', "'", "\\", "\\\\", "n", "t", "u", "0041", "@", "&", "<", ">", "a", "é", "😀", "lt;", "amp;"];
+  const OPEN = [["<b>", "</b>"], ["<i>", "</i>"], ['<a href="x&amp;y">', "</a>"], ['<xliff:g id="n">', "</xliff:g>"]] as const;
+  /** 무작위 값 — 글 조각 사이에 짝 맞는 태그·`<br/>`를 끼운다. */
+  function values(seed: number, n: number): string[] {
+    const next = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31);
+    const out: string[] = [];
+    for (let k = 0; k < n; k += 1) {
+      // 태그 사이 글은 이어 붙인 뒤 값 문법으로 옮긴다 — 조각마다 옮기면 `&` + `amp;`가 정규형이 아닌 값이 된다.
+      let value = "";
+      let text = "";
+      const tag = (raw: string) => {
+        value += dbOf(text) + raw;
+        text = "";
+      };
+      const open: string[] = [];
+      for (let i = next() % 10; i > 0; i -= 1) {
+        const r = next() % 10;
+        if (r < 6) text += TEXT[next() % TEXT.length]!;
+        else if (r < 8) {
+          const [o, c] = OPEN[next() % OPEN.length]!;
+          tag(o);
+          open.push(c);
+        } else if (r < 9 && open.length > 0) tag(open.pop()!);
+        else tag("<br/>");
+      }
+      tag(open.reverse().join(""));
+      out.push(value);
+    }
+    return out;
+  }
+
+  it("Compose: 생성 값 2,000건 — 표시 글(변환기 정의) · 태그 보존", () => {
+    const all = values(23, 2000);
+    expect(all.filter((v) => v.includes("<")).length).toBeGreaterThan(1000);
+    for (const value of all) {
+      const raw = encodeAndroidValue(value, {}, "compose");
+      expect(raw === undefined ? undefined : composeDisplay(raw), JSON.stringify(value)).toBe(textOf(value));
+      expect(raw === undefined ? undefined : decodeAndroidValue(raw, "compose"), `${JSON.stringify(value)} → ${JSON.stringify(raw)}`).toBe(value);
+    }
+  });
+
+  it("aapt2: 생성 값 2,000건 — 본문·스팬 · 태그 보존", () => {
+    for (const value of values(29, 2000)) {
+      const raw = encodeAndroidValue(value);
+      const decoded = raw === undefined ? undefined : decodeAndroidValue(raw);
+      expect(decoded === undefined ? undefined : [textOf(decoded), spansOf(decoded)], JSON.stringify(value)).toEqual([textOf(value), spansOf(value)]);
+      expect(decoded, `${JSON.stringify(value)} → ${JSON.stringify(raw)}`).toBe(value);
+    }
   });
 });
