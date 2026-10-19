@@ -43,3 +43,50 @@ describe("웹·MCP → 실제 공유 저장 코어", () => {
     expect(db.translations.find(t => t.localeCode === "ko")?.value).toBe("<b>안녕하세요</b>");
   });
 });
+
+
+it("MCP 두 키 중 태그 거부된 키만 건너뛰고 다른 키를 저장한다", async () => {
+  const result = await setTranslations.run({ prisma: db.prisma, subject: { ...subject, grants: [...subject.grants] }, now: new Date(), origin: null }, {
+    slug: input.slug, surfaceSlug: input.surfaceSlug, entries: [
+      { keyId: "k-greet", changes: [{ localeCode: "ko", value: "태그 없음" }] },
+      { keyId: "k-bye", changes: [{ localeCode: "ko", value: "잘가" }] },
+    ],
+  });
+  expect(result).toMatchObject({ status: "ok", data: { results: [
+    { keyId: "k-greet", status: "rejected", error: "inline-tags-mismatch" },
+    { keyId: "k-bye", status: "saved", cells: [{ localeCode: "ko", value: "잘가" }] },
+  ] } });
+  expect(db.translations).toHaveLength(1);
+  expect(db.translations[0]).toMatchObject({ keyId: "k-bye", value: "잘가" });
+});
+
+it("다른 셀에 기존 태그 불일치가 있어도 이번 셀은 저장된다", async () => {
+  await saveTranslationKey({ ...input, changes: [{ localeCode: "ko", value: "<b>안녕</b>" }] });
+  db.locales.push({ ...db.locales.find(l => l.code === "ko")!, code: "fr" });
+  db.translations.push({ ...db.translations[0]!, localeCode: "fr", value: "태그 없는 기존 번역" });
+  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "ko", value: "<b>안녕하세요</b>" }] })).toMatchObject({ ok: true });
+  expect(db.translations.find(t => t.localeCode === "fr")?.value).toBe("태그 없는 기존 번역");
+});
+
+it.each([
+  ["Line1<br>Line2", "줄1<br>줄2"], ["<unknown>", "<unknown>"], ["a </ b", "a </ b"],
+])("앱에서 깨진 기준 셀을 저장한 뒤에도 웹·MCP 번역을 저장할 수 있다: %s", async (base, value) => {
+  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "en", value: base }] })).toMatchObject({ ok: true });
+  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "ko", value }] })).toMatchObject({ ok: true });
+  const result = await setTranslations.run({ prisma: db.prisma, subject: { ...subject, grants: [...subject.grants] }, now: new Date(), origin: null }, {
+    slug: input.slug, surfaceSlug: input.surfaceSlug, entries: [{ keyId: input.keyId, changes: [{ localeCode: "ko", value: value + "!" }] }],
+  });
+  expect(result).toMatchObject({ status: "ok", data: { results: [{ status: "saved" }] } });
+  expect(db.translations.find(t => t.localeCode === "ko")?.value).toBe(value + "!");
+});
+
+it("문법 오류는 웹·MCP에서 같은 코드로 거부하고 MCP는 문자 꺾쇠 표기를 안내한다", async () => {
+  db.keys[0]!.sourceText = "Plain";
+  const changes = [{ localeCode: "ko", value: "a < b" }];
+  expect(await saveTranslationKey({ ...input, changes })).toEqual({ ok: false, error: "inline-markup-invalid", localeCodes: ["ko"] });
+  const result = await setTranslations.run({ prisma: db.prisma, subject: { ...subject, grants: [...subject.grants] }, now: new Date(), origin: null }, {
+    slug: input.slug, surfaceSlug: input.surfaceSlug, entries: [{ keyId: input.keyId, changes }],
+  });
+  expect(result).toMatchObject({ status: "ok", data: { results: [{ status: "rejected", error: "inline-markup-invalid", localeCodes: ["ko"], message: expect.stringContaining("&lt;") }] } });
+  expect(db.translations).toEqual([]);
+});

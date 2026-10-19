@@ -567,3 +567,19 @@ it("태그 불일치는 언어 이름을 든 danger Alert와 해당 셀 invalid�
   expect(cell.value).toBe("空");
   expect(container.querySelectorAll('[aria-invalid="true"]')).toHaveLength(1);
 });
+
+it("태그 문법 오류는 언어 이름을 든 danger Alert와 해당 셀 invalid를 남기고 초안을 보존한다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "inline-markup-invalid", localeCodes: ["zh"] });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  const alert = [...container.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes("Chinese"));
+  expect(alert?.textContent).toContain("To write < as text, use &lt;.");
+  expect(container.textContent).not.toContain(en.translations.workspace.footer.saveFailed.body);
+  const cell = area(container, "zh");
+  expect(cell.getAttribute("aria-invalid")).toBe("true");
+  expect((cell.getAttribute("aria-describedby") ?? "").split(" ").some(id => id !== "" && document.getElementById(id)?.contains(alert ?? null))).toBe(true);
+  expect(cell.value).toBe("空");
+  expect(container.querySelectorAll('[aria-invalid="true"]')).toHaveLength(1);
+});
