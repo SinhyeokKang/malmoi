@@ -103,3 +103,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 
 - **push** `87a71d51..c67d5e08`(D2 · B-fix2 #306 · B-fix3 #307 · roundtrip 전제 조건). CI run 39286391253. Q2 `ctx_018a53daaae7`(Q 터미널 재사용 — #306·#307 재확인 후 닫기). 워크트리 `android-A`·`-C`·`-E` 정리(cherry `+` 0), 워커 해제. 남은 것: B·D·Q 터미널.
 - `c67d5e08` dev CI success(run 39286391253). Q2: #306 온보딩은 해소, **Add sources에서 재현**(`add-sources-modal.tsx`가 빈 `baseLocale`을 그대로 쓴다 — B-fix2가 온보딩만 고쳤다) → B-fix4 `ctx_6f1cd46fd645`.
+- **Q2 완료** — #307 해소·닫음 · #306 온보딩 해소, Add sources 재현(B-fix4 진행) · D2 Android 가이드 페이지 렌더·내부 링크 45개 200·앵커 23개 확인. dev DB `rt-android` 원복 후 보관. Q 터미널 retain(B-fix4 재확인용).
