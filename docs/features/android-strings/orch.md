@@ -91,3 +91,5 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **C-fix1 완료·로컬 통합** — `5cf7dabc`·`e1a87f15`·`5a4e1d4b`(Android 코드 술어를 잎 `lib/locale-code.ts`로 · 레거시 국기 · 생성 파일 정확 바이트), `gate: ok`(17197 + 격리 945, 성능 테스트 부하 타임아웃 1회 재실행 green). C 터미널 retain.
 - **통합 게이트(main 단독)** — A·A-fix1·A-fix2·B·B-fix1·C·C-fix1·D·E·E-fix1–3 + 로그인 KV 수정 → `gate: ok`(격리 postgres 포함). tasks T3.0d·T3.1·T3.2·T3.2c·T3.4 체크(T3.2b·T3.3은 수동 확인이 Q 몫이라 남긴다).
 
+- **push** `d37f166d..87a71d51`(A·B·C·D·E 전부 + 수정 라운드 + 로그인 KV 수정 `1129b2f3`·`7a01da6f`). CI run 39279101921.
+- 3파: Q `ctx_94dc0d689582`(main 체크아웃, claude-opus-5-5 medium — `/runtime-test` 뒤 `/roundtrip` T3.5, SDK brew 설치 · `i18n-android-check` 생성) ∥ D2 `ctx_88997b607343`(D 터미널 재사용). Q가 main을 쓰는 동안 cherry-pick·build 금지. A·B·C·E 터미널은 Q 결함용으로 retain.
