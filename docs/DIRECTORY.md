@@ -682,7 +682,13 @@ lib/
                         확정 → 첫 적재 → 미리보기·PR 바이트·토큰 해제 → 다음 Publish를 잰다
                         · android-strings(Android `strings.xml`, 2026-10-19 — surgical. `@xml-tools/parser` CST는 `<string>` 안쪽 범위를 얻는 데만 쓰고
                         XML을 다시 직렬화하지 않는다. 기준 언어 파일 values/strings.xml은 basePath로 받고(base-path), 비-base 파일에만 누락 키를 삽입한다.
-                        이스케이프는 풀고 인라인 태그는 문자열 그대로 둔다) — 근거는 ARCHITECTURE §1.46
+                        이스케이프는 풀고 인라인 태그는 문자열 그대로 둔다. 방언 둘(aapt2 `res/` · Compose `composeResources/`)을 dialectOf가 마지막 리소스 디렉터리로 고르고,
+                        androidValueTags가 쓸 수 있는 태그 문법의 정본이다 — 저장 검증도 이것을 부른다) — 근거는 ARCHITECTURE §1.46
+                        __tests__/android-strings.test.ts가 read·write·삽입·create·탐지를, __tests__/android-strings-values.test.ts가 값 문법·두 방언 왕복(생성 값 2,000)을,
+                        __tests__/fixtures/android-strings/(aapt2 2.20·Compose 1.12.2 변환기 채록 — 출처는 그 README)가 기대값을,
+                        lib/onboarding-run/__tests__/detect-android-strings.test.ts가 probe 예산(여섯째 모듈이 빠지는 계약)·Flutter 셸 강등을,
+                        lib/pull/__tests__/android-strings-publish.integration.ts(`pnpm test:projects:postgres`)가 확정 → 첫 적재 → Publish(기준 파일 values/) → 언어 추가 →
+                        다른 키 번역 → 둘째 Publish와 쓸 수 없는 태그의 미리보기 blocked를 잰다
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
@@ -792,8 +798,9 @@ lib/
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다. 조립 assembleProjectListRows는 I/O가 없고
                         메타 넷과 할 일을 만들어 planProjectRow 결과만 행에 싣는다) ·
                         save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
-                        android-inline-tags(androidInlineTagsMatch — Android 값의 인라인 태그가 기준 언어 값과 같은 집합인지. 어댑터 토크나이저에 기대지 않는
-                        순수 문자열 판정이라 lib/adapters 밖에 있고, save가 웹·MCP 공통 저장 거부에 쓴다 — ARCHITECTURE §1.46) ·
+                        android-inline-tags(androidInlineTagsIssue — Android 값이 쓸 수 있는가(`inline-markup-invalid`)와 인라인 태그가 기준 언어 값과 같은 집합인가
+                        (`inline-tags-mismatch`). 문법은 어댑터의 androidValueTags를 쓰고 여기는 집합 비교용 정규화만 든다. save가 웹·MCP 공통 저장 거부에 쓴다 —
+                        ARCHITECTURE §1.46) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
                         · search(글로벌 Keys 서버 조회 — 세션 userId의 비보관 멤버 프로젝트만 SQL 안에서 확정, 최대2문장,
@@ -1178,6 +1185,8 @@ lib/
   locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다.
                         isLocaleShaped는 별개 축(로케일인가) — `package`가 `package.json`을 겨누지 않게
                         looksLikeLocale(어댑터 `read`의 로케일 이름 판정 — locale-add가 adapters/shared에서 옮겼다. 추가 입력이 관측할 수 있는 코드로 좁혀지는 근거)
+                        · isAndroidLocale(Android 언어 한정자 술어 — 어댑터 탐지·언어 추가 판정·서버 적재의 경로→코드 복원이 같은 함수를 쓴다, android-strings)
+                        · displayLocaleCode(`zh-rCN` → `zh-CN` — 표시·텍스트 방향 전용, 저장 코드는 그대로)
   failure.ts            500 본문 판정 — 우리 메시지는 그대로, 남의 라이브러리 메시지는 ref만.
                         응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
                         logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
