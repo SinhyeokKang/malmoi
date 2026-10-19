@@ -96,3 +96,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **D2 완료** — 문서별 커밋 8개(`7b304226..ff35fc3f`: ARCHITECTURE 28차 재측정·§1.46 재작성 · CLAUDE+AGENTS 파서 함정 셋 · PRODUCT · ACTIONS · DIRECTORY · README · spec/design · 가이드 en·ko·es + AUTHORING), `gate: ok`(17233). 브리프 밖으로 CLAUDE.md "pull은 값을 병합하지 않는다"와 ARCHITECTURE 불변식 2·4에 `formatted` 나르기 한 문장 — 지휘자가 diff를 읽고 수용(결정 18이 arb `@key`와 같은 부류로 정했다). 통합은 Q가 main을 놓은 뒤(가이드는 앱이 서빙한다). D 터미널 retain(Q 결과가 문서와 다르면 D3).
 - Q 결함 **#306**(온보딩 ② Android 후보 미리보기가 "Still working"에 멈춘다 — 빈 `baseLocale` 키, `values/`만 있는 후보는 영원히) → B-fix2 `ctx_690e73bc7aec`(B 터미널, 착수 확인).
 - **B-fix2 완료** — `fb0d26c4` test · `59b2a26d` fix(Refs #306 — Android 기준 파일 즉시 미리보기 · "1 language" 단수), `gate: ok`(17238 + 격리 947). 통합은 Q가 main을 놓은 뒤, 재확인은 Q 몫. B 터미널 retain.
+- Q `/runtime-test` 끝(roundtrip 진행). 결함 **#307**(Languages 카드의 Android 기준 행 제거 사유가 "다른 기준 언어를 먼저 고르라"고 한다 — 결정 24와 모순) → B-fix3 `ctx_669f9de51c54`.
