@@ -1,0 +1,218 @@
+[
+ {
+  "raw": "\"  <b>x</b>  \"",
+  "styled": true,
+  "text": "  x ",
+  "spans": "b:2,2"
+ },
+ {
+  "raw": "<b> x </b> y ",
+  "styled": true,
+  "text": " x  y ",
+  "spans": "b:0,2"
+ },
+ {
+  "raw": "  <b>x</b>  ",
+  "styled": true,
+  "text": " x ",
+  "spans": "b:1,1"
+ },
+ {
+  "raw": "a  <b>  x  </b>  b",
+  "styled": true,
+  "text": "a  x  b",
+  "spans": "b:2,4"
+ },
+ {
+  "raw": "\"a  <b>  x  </b>  b\"",
+  "styled": true,
+  "text": "a   x  b",
+  "spans": "b:3,5"
+ },
+ {
+  "raw": "a<b>\" x \"</b>b",
+  "styled": true,
+  "text": "a x b",
+  "spans": "b:1,3"
+ },
+ {
+  "raw": "\"a \"<b>x</b>\" b\"",
+  "styled": true,
+  "text": "a x b",
+  "spans": "b:2,2"
+ },
+ {
+  "raw": "<b>x</b>\"  \"",
+  "styled": true,
+  "text": "x  ",
+  "spans": "b:0,0"
+ },
+ {
+  "raw": "\"  \"<b>x</b>",
+  "styled": true,
+  "text": "  x",
+  "spans": "b:2,2"
+ },
+ {
+  "raw": "a\\u0020\\u0020<b>x</b>",
+  "styled": true,
+  "text": "a  x",
+  "spans": "b:3,3"
+ },
+ {
+  "raw": "<b>x</b>\\u0020",
+  "styled": true,
+  "text": "x ",
+  "spans": "b:0,0"
+ },
+ {
+  "raw": "\\u0020<b>x</b>",
+  "styled": true,
+  "text": " x",
+  "spans": "b:1,1"
+ },
+ {
+  "raw": "a <b>x</b> b",
+  "styled": true,
+  "text": "a x b",
+  "spans": "b:2,2"
+ },
+ {
+  "raw": "a <b> x</b>",
+  "styled": true,
+  "text": "a  x",
+  "spans": "b:2,3"
+ },
+ {
+  "raw": "a<b>x </b> b",
+  "styled": true,
+  "text": "ax  b",
+  "spans": "b:1,2"
+ },
+ {
+  "raw": "\"a <b>x\"</b>  b",
+  "styled": true,
+  "text": "a x b",
+  "spans": "b:2,2"
+ },
+ {
+  "raw": "<b>\"  x  \"</b>",
+  "styled": true,
+  "text": "  x  ",
+  "spans": "b:0,4"
+ },
+ {
+  "raw": "a <b>x</b>  ",
+  "styled": true,
+  "text": "a x ",
+  "spans": "b:2,2"
+ },
+ {
+  "raw": "  <b>x</b> y",
+  "styled": true,
+  "text": " x y",
+  "spans": "b:1,1"
+ },
+ {
+  "raw": "<i>a</i> <b>b</b>",
+  "styled": true,
+  "text": "a b",
+  "spans": "i:0,0 b:2,2"
+ },
+ {
+  "raw": "<i>a</i>  <b>b</b>",
+  "styled": true,
+  "text": "a b",
+  "spans": "i:0,0 b:2,2"
+ },
+ {
+  "raw": "<i>a </i> <b> b</b>",
+  "styled": true,
+  "text": "a   b",
+  "spans": "i:0,1 b:3,4"
+ },
+ {
+  "raw": "x <xliff:g id=\"n\">  y  </xliff:g> z",
+  "styled": false,
+  "text": "x y z",
+  "spans": ""
+ },
+ {
+  "raw": "\"x <xliff:g id=\"n\">  y  </xliff:g> z\"",
+  "styled": false,
+  "text": "x   y   z",
+  "spans": ""
+ },
+ {
+  "raw": "<b>a</b>\n  <i>b</i>",
+  "styled": true,
+  "text": "a b",
+  "spans": "b:0,0 i:2,2"
+ },
+ {
+  "raw": "Hi <b>bold</b> <xliff:g id=\"n\" example=\"Bob\">%1$s</xliff:g>",
+  "styled": true,
+  "text": "Hi bold %1$s",
+  "spans": "b:3,6"
+ },
+ {
+  "raw": "a <b>b <i>c</i></b>",
+  "styled": true,
+  "text": "a b c",
+  "spans": "b:2,4 i:4,4"
+ },
+ {
+  "raw": "x <a href=\"http://x?a=1&amp;b=2\">link</a>",
+  "styled": true,
+  "text": "x link",
+  "spans": "a;href=http://x?a=1&b=2:2,5"
+ },
+ {
+  "raw": "a<br/>b",
+  "styled": true,
+  "text": "ab",
+  "spans": "br:1,0"
+ },
+ {
+  "raw": "Don\\'t <b>stop</b>",
+  "styled": true,
+  "text": "Don't stop",
+  "spans": "b:6,9"
+ },
+ {
+  "raw": "<b>  </b>",
+  "styled": true,
+  "text": " ",
+  "spans": "b:0,0"
+ },
+ {
+  "raw": "\"<b>a</b>\"",
+  "styled": true,
+  "text": "a",
+  "spans": "b:0,0"
+ },
+ {
+  "raw": "<b>a\"</b>b  c\"",
+  "styled": true,
+  "text": "ab c",
+  "spans": "b:0,0"
+ },
+ {
+  "raw": " \"<b> x </b>\" ",
+  "styled": true,
+  "text": "  x  ",
+  "spans": "b:1,3"
+ },
+ {
+  "raw": "<b>x</b><i> </i><u>y</u>",
+  "styled": true,
+  "text": "x y",
+  "spans": "b:0,0 i:1,1 u:2,2"
+ },
+ {
+  "raw": "&lt;b&gt;<b>x</b>",
+  "styled": true,
+  "text": "<b>x",
+  "spans": "b:3,3"
+ }
+]

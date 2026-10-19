@@ -42,6 +42,8 @@ export type AndroidSlot = {
   /** 값 문법(결정 14)으로 푼 값. */
   value: string;
   form: AndroidForm;
+  /** `formatted` 속성 원문(`formatted="false"`) — 코드가 소유하는 키 메타데이터라 새 엔트리에 기준 파일의 것을 나른다(결정 18). */
+  formatted: string | undefined;
 };
 
 type Root = {
@@ -74,12 +76,17 @@ const RAW_CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/;
 
 const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 
-/** 엔티티 참조 하나(`&amp;`·`&#8230;`·`&#x41;`) → 글자. XML에 담을 수 없거나 모르는 이름이면 `undefined`. */
+/**
+ * 엔티티 참조 하나(`&amp;`·`&#8230;`·`&#x41;`) → 글자. XML에 담을 수 없거나 모르는 이름이면 `undefined`. 문자 참조는 **전체 형식**만 받는다 —
+ * `parseInt`는 `&#12abc;`의 앞 숫자만 읽어 통과시킨다(리뷰 R2).
+ */
 function entityChar(ref: string): string | undefined {
   const body = ref.slice(1, -1);
-  if (body.startsWith("#")) {
-    const cp = body[1] === "x" ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
-    return Number.isFinite(cp) && xmlChar(cp) ? String.fromCodePoint(cp) : undefined;
+  const dec = /^#([0-9]+)$/.exec(body);
+  const hex = /^#x([0-9A-Fa-f]+)$/.exec(body);
+  if (dec !== null || hex !== null) {
+    const cp = dec !== null ? parseInt(dec[1]!, 10) : parseInt(hex![1]!, 16);
+    return Number.isSafeInteger(cp) && xmlChar(cp) ? String.fromCodePoint(cp) : undefined;
   }
   return Object.hasOwn(NAMED, body) ? NAMED[body] : undefined;
 }
@@ -116,8 +123,10 @@ const startOf = (x: Node | CstToken) => ("image" in x ? x.startOffset : x.locati
 type Piece = { kind: "text"; text: string } | { kind: "tag"; raw: string; span: boolean };
 
 /** 원문 글 구간 → 글. 엔티티·문자 참조를 푼다. XML에 담을 수 없는 문자·모르는 엔티티면 진단 문자열이다. */
-function rawText(raw: string, out: Piece[]): string | undefined {
-  if (RAW_CONTROL.test(raw)) return "control character in text";
+function rawText(source: string, out: Piece[]): string | undefined {
+  if (RAW_CONTROL.test(source)) return "control character in text";
+  // XML 파서(expat·javax)는 줄 끝을 LF 하나로 바꾼 뒤 읽는다 — 따옴표 안·Compose처럼 공백을 접지 않는 자리에서 CRLF가 두 글자로 남지 않게 한다.
+  const raw = source.replace(/\r\n?/g, "\n");
   let text = "";
   for (let i = 0; i < raw.length; i += 1) {
     if (raw[i] !== "&") {
@@ -156,7 +165,7 @@ function piecesOf(text: string, start: number, end: number, content: Node | unde
       if (item.image.startsWith("<![CDATA[")) {
         const inner = item.image.slice("<![CDATA[".length, -"]]>".length);
         if (RAW_CONTROL.test(inner)) return "control character in CDATA";
-        out.push({ kind: "text", text: inner });
+        out.push({ kind: "text", text: inner.replace(/\r\n?/g, "\n") });
       }
       continue;
     }
@@ -183,7 +192,8 @@ type Out = { kind: "char"; c: string; collapsed: boolean } | { kind: "tag"; raw:
 
 /**
  * aapt2 `StringBuilder`의 의미(aapt2 2.20 채록 — 테스트 픽스처)로 조각을 푼다:
- * - 따옴표 밖 공백(ASCII `isspace`)은 한 칸으로 접고, 스팬 태그 경계에서 접기가 다시 시작된다. 스팬이 없으면 접어서 생긴 앞뒤 칸을 자른다.
+ * - 따옴표 밖 공백(ASCII `isspace`)은 한 칸으로 접는다. **스팬 태그 경계(시작·끝)에서 접기와 따옴표 구간이 둘 다 다시 시작된다**(리뷰 R1 — `"  <b>x</b>  "`는
+ *   `  x `다). 스팬이 없으면 접어서 생긴 앞뒤 칸을 자르고, 스팬이 있으면 자르지 않는다. `<xliff:g>`는 스팬이 아니라 둘 다 이어진다.
  * - `"`는 따옴표 구간을 열고 닫는다(글자가 아니다). `\` 이스케이프: `t`·`n`·`uXXXX`(서로게이트·NUL은 버린다), 그 밖은 그 글자. 끝의 `\`는 버린다.
  * - 따옴표 밖 이스케이프 안 된 `'`는 aapt2 오류지만 글자로 읽는다(design §3 — 그 셀이 바뀔 때만 정규형으로 다시 쓴다).
  * 잘못된 `\u`(16진이 아닌 글자)는 `undefined`다(aapt2 오류).
@@ -207,6 +217,7 @@ function interpret(pieces: readonly Piece[]): Out[] | undefined {
       if (run.span) {
         hasSpan = true;
         lastSpace = false;
+        quote = false;
       }
       continue;
     }
@@ -249,6 +260,82 @@ function interpret(pieces: readonly Piece[]): Out[] | undefined {
     return out.filter((o) => !(o.kind === "char" && o.collapsed && (o === first || o === last)));
   }
   return out;
+}
+
+/**
+ * Compose Multiplatform 리소스 변환기의 의미(gradle 플러그인 1.12.2 `XmlValuesConverterTask` — 테스트의 채록 픽스처)로 조각을 푼다: 값은 DOM
+ * `textContent`(엔티티·CDATA를 푼 글을 태그 없이 이은 것)에 `handleSpecialCharacters`를 건 것이다 — `\n`·`\t`·`\uXXXX`(정확히 4자리)만 풀고 그 앞이
+ * `\\`의 둘째 글자면 그대로 둔 뒤, `\\`를 `\`로 줄인다. 공백 접기·따옴표 구간·`\'`·`\@` 이스케이프가 **없다**(aapt2와 다르다). 태그는 값에 원문
+ * 그대로 남기되 Compose가 본 글의 같은 자리에 다시 끼운다(이스케이프가 태그를 건너도 그 함수의 결과와 같다).
+ * 짝 없는 서로게이트나 NUL이 나오면 DB(UTF-8 text)에 담을 수 없어 `undefined`다.
+ */
+function interpretCompose(pieces: readonly Piece[]): Out[] | undefined {
+  let text = "";
+  const marks: { at: number; raw: string }[] = [];
+  for (const p of pieces) {
+    if (p.kind === "tag") marks.push({ at: text.length, raw: p.raw });
+    else text += p.text;
+  }
+  const first = replaceMapped(text, /\\u[a-fA-F0-9]{4}|\\n|\\t/g, (() => {
+    const doubles = new Set([...text.matchAll(/\\\\/g)].map((m) => m.index));
+    return (match: string, at: number) => (doubles.has(at - 1) ? match : match === "\\n" ? "\n" : match === "\\t" ? "\t" : String.fromCharCode(parseInt(match.slice(2), 16)));
+  })());
+  const second = replaceMapped(first.text, /\\\\/g, () => "\\");
+  const result = second.text;
+  if (result.includes("\u0000") || !wellFormedUtf16(result)) return undefined;
+  const out: Out[] = [];
+  let next = 0;
+  const at = (boundary: number) => second.map[first.map[boundary]!]!;
+  for (const mark of marks) {
+    const to = at(mark.at);
+    for (; next < to; next += 1) out.push({ kind: "char", c: result[next]!, collapsed: false });
+    out.push({ kind: "tag", raw: mark.raw });
+  }
+  for (; next < result.length; next += 1) out.push({ kind: "char", c: result[next]!, collapsed: false });
+  // 서로게이트 쌍은 한 글자로 묶는다 — 값 문법(`toValue`)은 글자 단위다.
+  return out.reduce<Out[]>((acc, o) => {
+    const prev = acc[acc.length - 1];
+    if (o.kind === "char" && prev?.kind === "char" && /[\ud800-\udbff]$/.test(prev.c) && /^[\udc00-\udfff]/.test(o.c)) prev.c += o.c;
+    else acc.push(o);
+    return acc;
+  }, []);
+}
+
+/** 정규식 치환 + 경계 대응표 — `map[k]`는 원문 경계 k(글자 k 앞)가 결과에서 놓이는 경계다. 치환된 구간 안의 경계는 치환 결과 뒤로 간다. */
+function replaceMapped(text: string, pattern: RegExp, replace: (match: string, at: number) => string): { text: string; map: number[] } {
+  const map: number[] = [];
+  let out = "";
+  let pos = 0;
+  for (const m of text.matchAll(pattern)) {
+    for (; pos < m.index; pos += 1) {
+      map[pos] = out.length;
+      out += text[pos];
+    }
+    const rep = replace(m[0], m.index);
+    map[pos] = out.length;
+    for (let k = pos + 1; k < pos + m[0].length; k += 1) map[k] = out.length + rep.length;
+    out += rep;
+    pos += m[0].length;
+  }
+  for (; pos < text.length; pos += 1) {
+    map[pos] = out.length;
+    out += text[pos];
+  }
+  map[text.length] = out.length;
+  return { text: out, map };
+}
+
+/** 짝 없는 서로게이트가 없는가 — `String.prototype.isWellFormed`(ES2024)는 tsconfig `lib` 밖이다. */
+function wellFormedUtf16(text: string): boolean {
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const low = text.charCodeAt(i + 1);
+      if (!(low >= 0xdc00 && low <= 0xdfff)) return false;
+      i += 1;
+    } else if (c >= 0xdc00 && c <= 0xdfff) return false;
+  }
+  return true;
 }
 
 /** 푼 결과 → 값 문법(결정 14). 글자 `<`는 `&lt;`, 바로 뒤 글자가 `lt;`·`amp;`인 `&`는 `&amp;`. */
@@ -298,7 +385,7 @@ function wellFormed(node: Node): string | undefined {
  * `<resources>` 직속 `<string>`의 범위와 값을 파일 순서대로 낸다(T3.0d 실측 — offset은 JS 문자열 인덱스, 끝은 포함). 범위는 원본 좌표다(UTF-8 BOM 포함).
  * 주석 안의 `<string>`은 엔트리가 아니다. `<plurals>`·`<string-array>`는 `unmanaged`로 낸다. 중복 이름도 그대로 둔다(read가 알린다).
  */
-export function tokenizeAndroid(text: string): AndroidTokenized {
+export function tokenizeAndroid(text: string, dialect: AndroidDialect = "aapt2"): AndroidTokenized {
   const fail = (detail: string): AndroidTokenized => ({ ok: false, detail });
   // 파서는 BOM을 받지 않는다(T3.0d) — 건너뛰고 좌표를 되돌린다.
   const skip = text.startsWith(BOM) ? 1 : 0;
@@ -350,8 +437,8 @@ export function tokenizeAndroid(text: string): AndroidTokenized {
     const pieces: Piece[] = [];
     const broken = inner === undefined ? undefined : piecesOf(body, inner.start, inner.end, nodes(element, "content")[0], pieces);
     if (broken !== undefined) return fail(broken);
-    const out = interpret(pieces);
-    if (out === undefined) return fail(`invalid unicode escape in <string name="${key}">`);
+    const out = dialect === "compose" ? interpretCompose(pieces) : interpret(pieces);
+    if (out === undefined) return fail(`invalid escape in <string name="${key}">`);
     const raw = inner === undefined ? "" : body.slice(inner.start, inner.end);
     const children = nodes(element, "content")[0]?.children ?? {};
     const onlyCdata = (children.CData?.length ?? 0) === 1 && (children.element?.length ?? 0) === 0 && (children.reference?.length ?? 0) === 0
@@ -359,29 +446,85 @@ export function tokenizeAndroid(text: string): AndroidTokenized {
     slots.push({
       key,
       translatable: attr("translatable") !== "false",
-      reference: REFERENCE.test(raw.trim()),
+      // Compose는 참조를 풀지 않는다 — `@string/x`도 글이다.
+      reference: dialect === "aapt2" && REFERENCE.test(raw.trim()),
       element: { start: at(loc.startOffset), end: at(loc.endOffset! + 1) },
       content: inner === undefined ? undefined : { start: at(inner.start), end: at(inner.end) },
       selfClose: inner === undefined ? { start: at(afterAttrs(element, attrs)), end: at(loc.endOffset! + 1) } : undefined,
       value: toValue(out),
       form: { quoted: /^\s*"[\s\S]*"\s*$/.test(raw) && !onlyCdata, cdata: onlyCdata },
+      formatted: (() => {
+        const found = attrs.find((a) => tokens(a, "Name")[0]!.image === "formatted");
+        return found === undefined ? undefined : attrRaw(found);
+      })(),
     });
   }
   return { ok: true, slots, unmanaged, root: rootInfo };
 }
 
+/**
+ * 값 의미의 출처 — `res/`는 aapt2, `composeResources/`는 Compose Multiplatform 리소스 변환기(리뷰 Y2). 둘은 따옴표·공백·이스케이프 해석이 다르다.
+ */
+export type AndroidDialect = "aapt2" | "compose";
+
+/** 템플릿 → 값 의미. 디렉터리 이름이 곧 신호다(`ANDROID_STRINGS_FILE`). */
+export function dialectOf(pathTemplate: string): AndroidDialect {
+  return /(^|\/)composeResources\//.test(pathTemplate) ? "compose" : "aapt2";
+}
+
 /** 원문 내용 하나 → 값(결정 14). 담을 수 없는 원문(잘못된 `\u`·XML 오류)이면 `undefined`. */
-export function decodeAndroidValue(raw: string): string | undefined {
-  const result = tokenizeAndroid(`<resources><string name="v">${raw}</string></resources>`);
+export function decodeAndroidValue(raw: string, dialect: AndroidDialect = "aapt2"): string | undefined {
+  const result = tokenizeAndroid(`<resources><string name="v">${raw}</string></resources>`, dialect);
   return result.ok && result.slots.length === 1 ? result.slots[0]!.value : undefined;
 }
 
-/** 태그 하나 — 이름과 속성(따옴표 값). 값 문법에서 `<`는 이것으로만 시작한다(결정 14). */
-const TAG = /<(\/?)([A-Za-z_][\w:.-]*)((?:\s+[A-Za-z_][\w:.-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'))*)\s*(\/?)>/y;
+const NAME = /[A-Za-z_][\w:.-]*/y;
+const SPACE = /\s*/y;
 
-type ValueToken = { kind: "char"; c: string } | { kind: "tag"; raw: string };
+/**
+ * `value[i]`의 `<`에서 태그 하나를 읽는다. **XML 문법 그대로**만 받는다(리뷰 R2) — 이름, 시작 태그의 속성(따옴표 값, `<` 없음, `&`는 완전한 엔티티·문자
+ * 참조, 같은 이름 반복 없음), 끝 태그는 속성 없음. 못 읽으면 `undefined`.
+ */
+function readTag(value: string, i: number): { raw: string; name: string; kind: "open" | "close" | "self" } | undefined {
+  const at = (re: RegExp, from: number) => {
+    re.lastIndex = from;
+    const m = re.exec(value);
+    return m === null ? undefined : { text: m[0], end: from + m[0].length };
+  };
+  let pos = i + 1;
+  const closing = value[pos] === "/";
+  if (closing) pos += 1;
+  const name = at(NAME, pos);
+  if (name === undefined) return undefined;
+  pos = name.end;
+  const seen = new Set<string>();
+  for (;;) {
+    const space = at(SPACE, pos)!;
+    const rest = value.slice(space.end, space.end + 2);
+    if (rest.startsWith(">") || (!closing && rest === "/>")) {
+      const end = space.end + (rest.startsWith(">") ? 1 : 2);
+      return { raw: value.slice(i, end), name: name.text, kind: closing ? "close" : rest === "/>" ? "self" : "open" };
+    }
+    // 끝 태그는 속성을 갖지 않는다. 속성 앞에는 공백이 있어야 한다.
+    if (closing || space.text === "") return undefined;
+    const attr = at(NAME, space.end);
+    if (attr === undefined || seen.has(attr.text)) return undefined;
+    seen.add(attr.text);
+    const eq = at(/\s*=\s*/y, attr.end);
+    if (eq === undefined) return undefined;
+    const quote = value[eq.end];
+    if (quote !== '"' && quote !== "'") return undefined;
+    const close = value.indexOf(quote, eq.end + 1);
+    if (close === -1) return undefined;
+    const inner = value.slice(eq.end + 1, close);
+    if (inner.includes("<") || attributeValue(`${quote}${inner}${quote}`) === undefined) return undefined;
+    pos = close + 1;
+  }
+}
 
-/** 값 → 글자·태그. `<`가 태그를 시작하지 않거나 태그 짝이 맞지 않으면 `undefined`. */
+type ValueToken = { kind: "char"; c: string } | { kind: "tag"; raw: string; name: string };
+
+/** 값 → 글자·태그. `<`가 XML 태그를 시작하지 않거나 태그 짝이 맞지 않으면 `undefined`(결정 14 · 리뷰 R2). */
 function tokensOfValue(value: string): ValueToken[] | undefined {
   const out: ValueToken[] = [];
   const open: string[] = [];
@@ -393,18 +536,14 @@ function tokensOfValue(value: string): ValueToken[] | undefined {
       out.push({ kind: "char", c: "&" });
       i += 5;
     } else if (value[i] === "<") {
-      TAG.lastIndex = i;
-      const m = TAG.exec(value);
-      if (m === null) return undefined;
-      const [raw, close, name, , self] = m;
-      if (close === "/") {
-        if (self === "/" || open.pop() !== name) return undefined;
-      } else if (self !== "/") open.push(name!);
-      out.push({ kind: "tag", raw: raw! });
-      i += raw!.length;
+      const tag = readTag(value, i);
+      if (tag === undefined) return undefined;
+      if (tag.kind === "close" && open.pop() !== tag.name) return undefined;
+      if (tag.kind === "open") open.push(tag.name);
+      out.push({ kind: "tag", raw: tag.raw, name: tag.name });
+      i += tag.raw.length;
     } else {
-      const cp = value.codePointAt(i)!;
-      const c = String.fromCodePoint(cp);
+      const c = String.fromCodePoint(value.codePointAt(i)!);
       out.push({ kind: "char", c });
       i += c.length;
     }
@@ -413,39 +552,99 @@ function tokensOfValue(value: string): ValueToken[] | undefined {
 }
 
 /**
- * 값 → 원문 내용. **정규형**이다: `\`·`"`·`'`는 역슬래시, 개행·탭은 `\n`·`\t`, 그 밖의 제어 문자는 `\uXXXX`, 맨 앞 `@`·`?`만 역슬래시(중간은 그대로 —
- * translate-toolkit #5064), `&`·글자 `<`는 엔티티. 앞뒤 공백이 있거나 공백이 둘 이상 이어지면 값 전체를 `"…"`로 감싼다(aapt2가 접어 재적재 때 값이
- * 달라지는 조용한 손실을 막는다 — Weblate 규칙). `form`은 원본 형이다 — 감싼 원본은 감싼 채, CDATA는 CDATA로(태그·`]]>`가 있으면 엔티티 형).
- * 값 문법(결정 14)에 맞지 않으면(`<`가 태그를 시작하지 않는다) `undefined` — 호출부가 명시 실패로 알린다.
+ * **값의 태그 판정** — 값 문법(결정 14)에서 태그 원문을 순서대로 낸다. `<`가 XML 태그를 시작하지 않거나(속성 엔티티·중복 속성·끝 태그 속성 포함)
+ * 짝이 맞지 않으면 `undefined`다. writer가 쓰기 전에 지나고, 저장 검증(batch E — orch 결정 17)도 같은 판정을 쓴다.
  */
-export function encodeAndroidValue(value: string, form: Partial<AndroidForm> = {}): string | undefined {
+export function androidValueTags(value: string): string[] | undefined {
+  return tokensOfValue(value)?.flatMap((t) => (t.kind === "tag" ? [t.raw] : []));
+}
+
+/** aapt2 이스케이프 — 한 글자. 맨 앞 `@`·`?`는 참조로 읽히지 않게 이스케이프한다. */
+function aaptChar(c: string, first: boolean, cdata: boolean, before: string): string {
+  if (c === "\\" || c === '"' || c === "'") return `\\${c}`;
+  if (c === "\n") return "\\n";
+  if (c === "\t") return "\\t";
+  if (c < " " || c === "\u007f") return `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
+  if (first && (c === "@" || c === "?")) return `\\${c}`;
+  return xmlText(c, cdata, before);
+}
+
+/** Compose 이스케이프 — 한 글자. Compose는 `\\`·`\n`·`\t`·`\uXXXX`만 푼다 — 따옴표·`@`는 글자 그대로다. */
+function composeChar(c: string, cdata: boolean, before: string): string {
+  if (c === "\\") return "\\\\";
+  if (c === "\n") return "\\n";
+  if (c === "\t") return "\\t";
+  if (c < " " || c === "\u007f") return `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
+  return xmlText(c, cdata, before);
+}
+
+/** XML 글 — `&`·글자 `<`는 엔티티, `]]>`의 `>`만 엔티티. CDATA 안은 그대로다. */
+function xmlText(c: string, cdata: boolean, before: string): string {
+  if (cdata) return c;
+  if (c === "&") return "&amp;";
+  if (c === "<") return "&lt;";
+  if (c === ">" && before.endsWith("]]")) return "&gt;";
+  return c;
+}
+
+/**
+ * 값 → 원문 내용. **정규형**이다. `dialect`가 값 의미의 출처다(`dialectOf`).
+ *
+ * aapt2: `\`·`"`·`'`는 역슬래시, 개행·탭은 `\n`·`\t`, 그 밖의 제어 문자는 `\uXXXX`, 맨 앞 `@`·`?`만 역슬래시(중간은 그대로 — translate-toolkit #5064),
+ * `&`·글자 `<`는 엔티티. aapt2가 접거나 자를 공백은 따옴표로 지킨다(Weblate 규칙):
+ * - 스팬 태그가 없으면 앞뒤 공백·연속 공백이 있을 때 값 전체를 감싼다. 감싼 원본은 감싼 채다.
+ * - 스팬 태그가 있으면 **스팬 경계 사이 구간마다** 연속 공백이 있을 때만 그 구간을 감싼다 — aapt2는 스팬 경계에서 따옴표 구간을 닫고 접기를 다시 시작하며
+ *   앞뒤를 자르지 않는다(리뷰 R1 — 값 전체를 감싸면 경계 뒤 공백을 잃는다).
+ * Compose: `\`·개행·탭·제어 문자만 이스케이프하고 따옴표로 감싸지 않는다(공백을 접지 않는다).
+ * `form`은 원본 형이다 — CDATA는 CDATA로(태그·`]]>`가 있으면 엔티티 형). 값 문법(결정 14·R2)에 맞지 않으면 `undefined` — 호출부가 명시 실패로 알린다.
+ */
+export function encodeAndroidValue(value: string, form: Partial<AndroidForm> = {}, dialect: AndroidDialect = "aapt2"): string | undefined {
   const parts = tokensOfValue(value);
   if (parts === undefined) return undefined;
   const literal = parts.map((p) => (p.kind === "char" ? p.c : "")).join("");
   const cdata = form.cdata === true && parts.every((p) => p.kind === "char") && !literal.includes("]]>");
-  const quoted = form.quoted === true || literal.startsWith(" ") || literal.endsWith(" ") || literal.includes("  ");
-  let out = "";
-  let first = true;
-  for (const p of parts) {
-    if (p.kind === "tag") {
-      out += p.raw;
-      first = false;
-      continue;
-    }
-    const c = p.c;
-    if (c === "\\" || c === '"' || c === "'") out += `\\${c}`;
-    else if (c === "\n") out += "\\n";
-    else if (c === "\t") out += "\\t";
-    else if ((c < " " && c !== " ") || c === "\u007f") out += `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
-    else if (first && (c === "@" || c === "?")) out += `\\${c}`;
-    else if (!cdata && c === "&") out += "&amp;";
-    else if (!cdata && c === "<") out += "&lt;";
-    else if (!cdata && c === ">" && out.endsWith("]]")) out += "&gt;";
-    else out += c;
-    first = false;
+  const wrap = (body: string) => (cdata ? `<![CDATA[${body}]]>` : body);
+  if (dialect === "compose") {
+    let out = "";
+    for (const p of parts) out += p.kind === "tag" ? p.raw : composeChar(p.c, cdata, out);
+    return wrap(out);
   }
-  const body = quoted ? `"${out}"` : out;
-  return cdata ? `<![CDATA[${body}]]>` : body;
+  // 스팬 경계로 나눈 구간 — 각 구간은 aapt2에게 따옴표·접기를 새로 시작하는 단위다. `<xliff:g>`는 경계가 아니다.
+  const spans = parts.some((p) => p.kind === "tag" && p.name !== "xliff:g");
+  const runs: ValueToken[][] = [[]];
+  const between: string[] = [];
+  for (const p of parts) {
+    if (spans && p.kind === "tag" && p.name !== "xliff:g") {
+      between.push(p.raw);
+      runs.push([]);
+    } else runs[runs.length - 1]!.push(p);
+  }
+  let first = true;
+  const encodeRun = (run: readonly ValueToken[]) => {
+    let out = "";
+    for (const p of run) {
+      if (p.kind === "tag") out += p.raw;
+      else out += aaptChar(p.c, first, cdata, out);
+      first = false;
+    }
+    return out;
+  };
+  if (!spans) {
+    const quoted = form.quoted === true || literal.startsWith(" ") || literal.endsWith(" ") || literal.includes("  ");
+    const body = encodeRun(parts);
+    return wrap(quoted ? `"${body}"` : body);
+  }
+  let out = "";
+  runs.forEach((run, i) => {
+    const text = run.map((p) => (p.kind === "char" ? p.c : "")).join("");
+    const body = encodeRun(run);
+    out += text.includes("  ") ? `"${body}"` : body;
+    if (i < between.length) {
+      out += between[i];
+      first = false;
+    }
+  });
+  return wrap(out);
 }
 
 /** 탐지 순위 층 — main 소스셋(`src/main`·`src/commonMain`·`src/androidMain`)과 소스셋 없는 `<모듈>/res`가 0, flavor·빌드 타입이 1, 테스트·예제가 2. */
@@ -467,8 +666,8 @@ function sameSignals(a: { pathTemplate: string; locales: ReadonlySet<string> }, 
 }
 
 /** 내용이 `<resources>` 루트의 XML인가. */
-function resourcesVerdict(content: string): boolean {
-  return tokenizeAndroid(content).ok;
+function resourcesVerdict(content: string, dialect: AndroidDialect): boolean {
+  return tokenizeAndroid(content, dialect).ok;
 }
 
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
@@ -493,7 +692,7 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
     .filter((g) => {
       if (probe === undefined) return true;
       const content = probe(`${g.dir}values/strings.xml`);
-      return content !== undefined && resourcesVerdict(content);
+      return content !== undefined && resourcesVerdict(content, dialectOf(g.pathTemplate));
     })
     .map((g) => ({ adapter: "android-strings" as const, pathTemplate: g.pathTemplate, basePath: `${g.dir}values/strings.xml`, locales: [...g.locales].sort(compareKeys) }));
 }
@@ -514,7 +713,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
   for (const file of files) {
     const locale = localeOfFile(format, file.path);
     if (locale === undefined) continue;
-    const parsed = tokenizeAndroid(file.content);
+    const parsed = tokenizeAndroid(file.content, dialectOf(format.pathTemplate));
     if (!parsed.ok) {
       errors.push({ path: file.path, code: "parse-failed", detail: parsed.detail });
       continue;
@@ -586,7 +785,8 @@ function writeWithErrors(format: DetectedFormat, input: WriteInput): { content: 
   if (isBase) file = format.currentFiles?.find((c) => c.path === format.basePath);
   if (file === undefined) return { content: null, errors: [] };
   const text = file.content;
-  const parsed = tokenizeAndroid(text);
+  const dialect = dialectOf(format.pathTemplate);
+  const parsed = tokenizeAndroid(text, dialect);
   if (!parsed.ok) return { content: text, errors: [{ path: file.path, code: "write-parse-failed", detail: parsed.detail }] };
 
   const counts = new Map<string, number>();
@@ -603,9 +803,9 @@ function writeWithErrors(format: DetectedFormat, input: WriteInput): { content: 
     if (counts.has(entry.key) && !slots.has(entry.key)) continue;
     const slot = slots.get(entry.key);
     if (slot !== undefined && (!slot.translatable || slot.reference || slot.value === entry.message)) continue;
-    const raw = encodeAndroidValue(entry.message, slot?.form);
+    const raw = encodeAndroidValue(entry.message, slot?.form, dialect);
     if (raw === undefined) {
-      failed.push({ path: file.path, code: "write-parse-failed", key: entry.key, detail: "the value has a < that does not start a well-formed tag" });
+      failed.push({ path: file.path, code: "write-parse-failed", key: entry.key, detail: UNWRITABLE });
       continue;
     }
     if (slot === undefined) {
@@ -615,13 +815,32 @@ function writeWithErrors(format: DetectedFormat, input: WriteInput): { content: 
     else edits.push({ at: slot.selfClose!.start, end: slot.selfClose!.end, text: `>${raw}</string>` });
   }
   if (failed.length > 0) return { content: text, errors: failed };
-  edits.push(...insertions(text, parsed, slots, missing, input));
+  edits.push(...insertions(text, parsed, slots, missing, input, baseFormatted(format, dialect)));
 
   // 뒤에서 앞으로 — 앞 치환이 뒤 범위를 밀지 않는다. 같은 자리를 두 번 쓰는 편집은 없다(삽입은 요소 뒤·닫는 태그 앞 한 자리로 모인다).
   let out = text;
   for (const edit of edits.sort((a, b) => b.at - a.at)) out = out.slice(0, edit.at) + edit.text + out.slice(edit.end);
+  // 쓴 결과도 읽혀야 한다 — 값 하나하나를 검사해도 이어 붙인 결과가 XML이 아니면 PR이 깨진 파일을 싣는다(리뷰 R2의 마지막 그물).
+  const check = tokenizeAndroid(out, dialect);
+  if (!check.ok) return { content: text, errors: [{ path: file.path, code: "write-parse-failed", detail: `the written file is not valid XML: ${check.detail}` }] };
   return { content: out, errors: [] };
 }
+
+const UNWRITABLE = "the value has a < that does not start a well-formed XML tag";
+
+/**
+ * 기준 파일의 키별 `formatted` 속성 원문(결정 18) — 렌더가 비기준 쓰기에 기준 파일을 `representationSource`로 싣는다. 값이 아니라 코드가 소유하는 키
+ * 메타데이터라 키마다 출처가 하나다(arb `@key`와 같은 부류 — 병합이 아니다). 기준 파일을 못 읽으면 속성 없이 넣는다.
+ */
+function baseFormatted(format: DetectedFormat, dialect: AndroidDialect): ReadonlyMap<string, string> {
+  const source = format.representationSource;
+  const parsed = source === undefined ? undefined : tokenizeAndroid(source, dialect);
+  return new Map(parsed?.ok ? parsed.slots.flatMap((s) => (s.formatted === undefined ? [] : [[s.key, s.formatted] as const])) : []);
+}
+
+/** 새 `<string>` 줄 — `formatted`는 기준 파일의 속성 원문 그대로다. */
+const stringLine = (key: string, raw: string, formatted: string | undefined) =>
+  `<string name="${attributeText(key)}"${formatted === undefined ? "" : ` ${formatted}`}>${raw}</string>`;
 
 /**
  * 누락 키의 삽입 편집. 자리는 **기준 순서(`order`)상 바로 앞 키**의 `<string>` 뒤이고, 그 키가 파일에 없으면 `</resources>` 앞이다(design §2.1).
@@ -633,6 +852,7 @@ function insertions(
   slots: ReadonlyMap<string, AndroidSlot>,
   missing: readonly { entry: LocaleEntry; raw: string }[],
   input: WriteInput,
+  formatted: ReadonlyMap<string, string>,
 ): Edit[] {
   if (missing.length === 0) return [];
   const orderOf = new Map<string, number>();
@@ -656,7 +876,7 @@ function insertions(
     let before: Anchor | undefined;
     if (order !== undefined) for (const list of [anchors, placed]) for (const c of list) if (c.order < order && (before === undefined || c.order > before.order)) before = c;
     const indent = before?.indent ?? fallbackIndent;
-    const line = `${indent}<string name="${attributeText(entry.key)}">${raw}</string>`;
+    const line = `${indent}${stringLine(entry.key, raw, formatted.get(entry.key))}`;
     if (before === undefined || before.at === "end") tail.push(line);
     else (groups.get(before.at) ?? groups.set(before.at, []).get(before.at)!).push(line);
     if (order !== undefined) placed.push({ order, at: before?.at ?? "end", indent });
@@ -691,26 +911,31 @@ function create(format: DetectedFormat, input: WriteInput & { baseLocale: string
   const path = format.pathTemplate.replaceAll("{locale}", input.locale);
   const source = format.representationSource;
   if (source === undefined) return { content: null, errors: [{ path, code: "write-create-unsupported", detail: "Base language file is missing" }] };
-  const parsed = tokenizeAndroid(source);
+  const dialect = dialectOf(format.pathTemplate);
+  const parsed = tokenizeAndroid(source, dialect);
   if (!parsed.ok) return { content: null, errors: [{ path, code: "write-parse-failed", detail: parsed.detail }] };
   const entries = orderedEntries(input.entries).filter((e) => e.message !== "");
   if (entries.length === 0) return { content: null, errors: [] };
   const eol = source.includes("\r\n") ? "\r\n" : "\n";
   const first = parsed.slots[0];
   const indent = (first === undefined ? undefined : indentOf(source, first.element.start)) ?? DEFAULT_INDENT;
-  const forms = new Map(parsed.slots.map((s) => [s.key, s.form]));
+  const bySlot = new Map(parsed.slots.map((s) => [s.key, s]));
   const lines: string[] = [];
   for (const e of entries) {
-    const form = forms.get(e.key);
-    const raw = encodeAndroidValue(e.message, form === undefined ? {} : { cdata: form.cdata });
-    if (raw === undefined) return { content: null, errors: [{ path, code: "write-parse-failed", key: e.key, detail: "the value has a < that does not start a well-formed tag" }] };
-    lines.push(`${indent}<string name="${attributeText(e.key)}">${raw}</string>${eol}`);
+    const slot = bySlot.get(e.key);
+    const raw = encodeAndroidValue(e.message, slot === undefined ? {} : { cdata: slot.form.cdata }, dialect);
+    if (raw === undefined) return { content: null, errors: [{ path, code: "write-parse-failed", key: e.key, detail: UNWRITABLE }] };
+    // `formatted`는 기준 `<string>`의 속성 원문 그대로다(결정 18) — 빠지면 위치 없는 `%s %d`가 aapt2 오류다.
+    lines.push(`${indent}${stringLine(e.key, raw, slot?.formatted)}${eol}`);
   }
   const { root } = parsed;
   const bom = source.startsWith(BOM) ? BOM : "";
   const head = `${bom}${root.declaration === undefined ? "" : `${root.declaration}${eol}`}`;
   const open = `<resources${root.namespaces.map((n) => ` ${n}`).join("")}>`;
-  return { content: `${head}${open}${eol}${lines.join("")}</resources>${/\r?\n$/.test(source) ? eol : ""}`, errors: [] };
+  const content = `${head}${open}${eol}${lines.join("")}</resources>${/\r?\n$/.test(source) ? eol : ""}`;
+  const check = tokenizeAndroid(content, dialect);
+  if (!check.ok) return { content: null, errors: [{ path, code: "write-parse-failed", detail: `the created file is not valid XML: ${check.detail}` }] };
+  return { content, errors: [] };
 }
 
 export const androidStrings: Adapter = {

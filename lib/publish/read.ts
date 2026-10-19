@@ -66,7 +66,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     for (const file of surface.files) for (const error of file.errors ?? []) {
       if (error.locale !== surface.baseLocale) continue;
       if (error.code === "original-file-missing") throw new PreviewBaseFileMissing(error.path, project.baseBranch);
-      if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
+      // 키가 붙은 실패는 파일이 아니라 그 값을 쓸 수 없다는 뜻이다(Android 태그 — 리뷰 R2) — 아래 writer 경고로 낸다. 키 없는 실패만 기준 파일을 못 읽은 것이다.
+      if (error.code === "write-parse-failed" && error.key === undefined && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
     }
   }
   const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered, locales: localePlan });

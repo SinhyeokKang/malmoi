@@ -1,0 +1,122 @@
+[
+ {
+  "value": "Hello",
+  "raw": "Hello",
+  "compose": "Hello"
+ },
+ {
+  "value": "  lead and  trail  ",
+  "raw": "  lead and  trail  ",
+  "compose": "  lead and  trail  "
+ },
+ {
+  "value": "\"[Remote] %1$s\"",
+  "raw": "\"[Remote] %1$s\"",
+  "compose": "\"[Remote] %1$s\""
+ },
+ {
+  "value": "Don't",
+  "raw": "Don't",
+  "compose": "Don't"
+ },
+ {
+  "value": "Don\\'t",
+  "raw": "Don\\\\'t",
+  "compose": "Don\\'t"
+ },
+ {
+  "value": "a\\nb literal",
+  "raw": "a\\\\nb literal",
+  "compose": "a\\nb literal"
+ },
+ {
+  "value": "a\nb",
+  "raw": "a\\nb",
+  "compose": "a\nb"
+ },
+ {
+  "value": "tab\there",
+  "raw": "tab\\there",
+  "compose": "tab\there"
+ },
+ {
+  "value": "a\\\\b",
+  "raw": "a\\\\\\\\b",
+  "compose": "a\\\\b"
+ },
+ {
+  "value": "x\\",
+  "raw": "x\\\\",
+  "compose": "x\\"
+ },
+ {
+  "value": "\\u0041 literal",
+  "raw": "\\\\u0041 literal",
+  "compose": "\\u0041 literal"
+ },
+ {
+  "value": "@string/app_name",
+  "raw": "@string/app_name",
+  "compose": "@string/app_name"
+ },
+ {
+  "value": "?attr",
+  "raw": "?attr",
+  "compose": "?attr"
+ },
+ {
+  "value": "Tom & Jerry",
+  "raw": "Tom &amp; Jerry",
+  "compose": "Tom & Jerry"
+ },
+ {
+  "value": "&lt;b>literal&lt;/b>",
+  "raw": "&lt;b>literal&lt;/b>",
+  "compose": "<b>literal</b>"
+ },
+ {
+  "value": "&amp;lt;",
+  "raw": "&amp;lt;",
+  "compose": "&lt;"
+ },
+ {
+  "value": "Hi <b>bold</b> <xliff:g id=\"n\">%1$s</xliff:g>!",
+  "raw": "Hi <b>bold</b> <xliff:g id=\"n\">%1$s</xliff:g>!",
+  "compose": "Hi bold %1$s!"
+ },
+ {
+  "value": "😀",
+  "raw": "😀",
+  "compose": "😀"
+ },
+ {
+  "value": "]]>",
+  "raw": "]]&gt;",
+  "compose": "]]>"
+ },
+ {
+  "value": "\r carriage",
+  "raw": "\\u000d carriage",
+  "compose": "\r carriage"
+ },
+ {
+  "value": "\u0007bell",
+  "raw": "\\u0007bell",
+  "compose": "\u0007bell"
+ },
+ {
+  "value": "100%%",
+  "raw": "100%%",
+  "compose": "100%%"
+ },
+ {
+  "value": "%1$s and %2$d",
+  "raw": "%1$s and %2$d",
+  "compose": "%1$s and %2$d"
+ },
+ {
+  "value": "quote \" and ' marks",
+  "raw": "quote \" and ' marks",
+  "compose": "quote \" and ' marks"
+ }
+]

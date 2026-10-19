@@ -175,10 +175,13 @@ export function renderLocaleFiles(
         return { path: p.path, locale, content: null, errors: [missingOriginal(p.path, locale)] };
       }
       const borrowed = original === undefined && represent?.source !== undefined && represent.locales.has(locale) ? represent.source : undefined;
-      const writeFormat =
-        original !== undefined ? { ...format, currentFiles: [{ path: p.path, content: original }] }
-        : borrowed !== undefined ? { ...format, representationSource: borrowed } : format;
       const isBase = locale === baseLocale;
+      // 수술적 비기준 쓰기는 기준 파일 원본을 함께 싣는다 — 누락 키를 넣을 때 그 키의 코드 소유 속성(Android `formatted`)을 나르는 출처다(android-strings
+      // 결정 18). 값은 읽지 않는다. 다른 수술적 writer는 이 필드를 create에서만 읽고, 재생성 writer는 원본이 있으면 원본을 쓴다.
+      const baseSource = !isBase && adapter.writeStrategy === "surgical" ? current.get(paths.find((q) => q.locale === baseLocale)?.path ?? "") : undefined;
+      const writeFormat =
+        original !== undefined ? { ...format, currentFiles: [{ path: p.path, content: original }], ...(baseSource === undefined ? {} : { representationSource: baseSource }) }
+        : borrowed !== undefined ? { ...format, representationSource: borrowed } : format;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
       const rows = rowsForLocale(keys, locale, { isBase });

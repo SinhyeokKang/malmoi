@@ -13,6 +13,7 @@ import { optionalEnv } from "@/lib/env";
 import { blobSha } from "@/lib/githash";
 import { applyKeySave } from "@/lib/keys/save-key";
 import { addLocale, previewLocaleRemoval, removeLocale } from "@/lib/locales/change";
+import { loadPreview } from "@/lib/publish/load-preview";
 import { readPublishPreview } from "@/lib/publish/read";
 import { applyPush } from "@/lib/push/apply";
 import { assemblePushInput } from "@/lib/push/assemble";
@@ -238,5 +239,23 @@ describe("Android 언어 추가·제거 → Publish", () => {
     const made = fake(FILES);
     expect(await publish()).toMatchObject({ status: "committed" });
     expect(changesOf(made)).toEqual([{ kind: "delete", path: KO_PATH, content: undefined }]);
+  });
+});
+
+/**
+ * 리뷰 R2 — 쓸 수 없는 태그(속성 값의 맨 `&`)가 든 기준 값을 저장하면 그 파일은 `write-parse-failed`이고, 미리보기는 blocked · 실행은 writer-warnings ·
+ * Git 쓰기 0 · 전달 확인 0이다. 기준 셀은 E의 태그 대조(기준 대비 번역) 대상이 아니라 writer가 막아야 한다.
+ */
+describe("Android — 쓸 수 없는 태그", () => {
+  it("기준 값에 속성 엔티티가 깨진 태그가 있으면 미리보기 blocked · 실행 writer-warnings · 쓰기 0 · 전달 확인 0", async () => {
+    await save("title", "en", '<b a="&">Start</b>');
+    fake(FILES);
+    expect(await loadPreview(prisma, OWNER, { slug: "fixture" })).toMatchObject({
+      status: "blocked", warnings: [expect.objectContaining({ path: BASE_PATH, code: "write-parse-failed", key: "title" })],
+    });
+    const made = fake(FILES);
+    expect(await publish()).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await prisma.deliveryConfirmation.count({ where: { projectId: "p" } })).toBe(0);
   });
 });

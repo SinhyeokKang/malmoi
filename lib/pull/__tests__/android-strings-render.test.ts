@@ -78,3 +78,21 @@ describe("android-strings — 생성 → 다른 키 번역 → 두 번째 Publis
     expect(androidStrings.read(format, [{ path: FR_PATH, content: created }])).toEqual({ locales: [{ locale: "fr", entries: [{ key: "title", message: "Accueil", order: 0 }] }], errors: [], nested: false });
   });
 });
+
+/**
+ * 결정 18 — 비기준 파일에 누락 키를 넣을 때 그 키의 코드 소유 속성 `formatted`를 기준 파일에서 나른다. 렌더가 비기준 쓰기에 기준 파일 원본을
+ * `representationSource`로 싣는다 — 값은 DB에서만 온다(arb `@key`와 같은 부류 — 키마다 출처가 하나라 병합이 아니다).
+ */
+describe("android-strings — 누락 키 삽입이 기준 파일의 formatted를 나른다", () => {
+  it("fr 파일에 없는 키를 넣을 때 `formatted=\"false\"`가 따라온다", () => {
+    const base = BASE.replace('<string name="logout">Log out</string>', '<string name="logout" formatted="false">%s · %s</string>');
+    const fr = '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="title">Accueil</string>\n</resources>\n';
+    const keys: RenderKey[] = [
+      { key: "title", sourceText: "Home", sortIndex: 0, orphaned: false, cells: { en: { value: "Home" }, fr: { value: "Accueil" } } },
+      { key: "logout", sourceText: "%s · %s", sortIndex: 1, orphaned: false, cells: { en: { value: "%s · %s" }, fr: { value: "%s – %s" } } },
+    ];
+    const out = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map([[BASE_PATH, base], [FR_PATH, fr]]));
+    expect(out.find((f) => f.path === FR_PATH)?.content).toBe(fr.replace("</resources>", '    <string name="logout" formatted="false">%s – %s</string>\n</resources>'));
+    expect(out.find((f) => f.path === BASE_PATH)?.content).toBe(base);
+  });
+});
