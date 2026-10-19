@@ -94,6 +94,10 @@ describe("planGitlabCiPush — 확정 어댑터를 그대로 넘긴다", () => {
     const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "arb-catalog", MALMOI_I18N_PATH_TEMPLATE: "lib/l10n/app_{locale}.arb" });
     expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "arb-catalog", "--path-template", "lib/l10n/app_{locale}.arb"]) });
   });
+  it("apple-xcstrings", () => {
+    const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "apple-xcstrings", MALMOI_I18N_PATH_TEMPLATE: "App/Localizable.xcstrings" });
+    expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "apple-xcstrings", "--path-template", "App/Localizable.xcstrings"]) });
+  });
   it("apple-strings", () => {
     const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "apple-strings", MALMOI_I18N_PATH_TEMPLATE: "App/{locale}.lproj/Localizable.strings" });
     expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "apple-strings", "--path-template", "App/{locale}.lproj/Localizable.strings"]) });

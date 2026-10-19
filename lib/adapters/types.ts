@@ -1,7 +1,7 @@
 import type { FileEncoding } from "@/lib/file-encoding";
 
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog" | "apple-strings";
+export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog" | "apple-strings" | "apple-xcstrings";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {
@@ -26,11 +26,12 @@ export type DetectedFormat = {
   /**
    * **탐지가 관측한 기준 언어 힌트** — Flutter `l10n.yaml`의 `template-arb-file`이 가리키는 로케일(arb design §2 · 리뷰 R3). 그 파일이 후보의
    * 파일 중에 있을 때만 싣는다. 온보딩 요약이 기본 기준 언어로 쓰고(`defaultBaseLocale`), 확정은 사용자가 고른 값을 따른다. 없으면 공용 추정(en 우선)이다.
+   * `apple-xcstrings`는 카탈로그의 `sourceLanguage`를 늘 싣는다(apple-strings design §2.3).
    */
   templateLocale?: string;
   /**
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
-   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
+   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.
    * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
    *   읽는다. 없으면 기본값으로 계속 만든다. ⚠️ `arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간도 나른다(값은 아니다).
@@ -283,7 +284,7 @@ export type Adapter = {
    *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict`, `apple-strings` — ⚠️ 뒤 셋은 per-locale인데
    *   **수술적**이다. 경로 모양과 write 기계는 별개 축이다).
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
-   *   (`ts-dict`). write도 파일별로 불러야 한다.
+   *   (`ts-dict` — `apple-xcstrings`는 와일드카드 없는 파일 경로 하나다). write도 파일별로 불러야 한다.
    */
   layout: "per-locale" | "multi-locale";
   /**
@@ -292,13 +293,22 @@ export type Adapter = {
    * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `orderedEntries`의 결정성 규칙(§1.1)을
    *   지나야 한다 (`chrome-locales`·`json-catalog`·`arb-catalog`).
    * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
-   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`·`apple-strings`).
+   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`·`apple-strings`·`apple-xcstrings`).
    *
    * ⚠️ **pull이 "원본 blob 내용을 받아야 하나"를 이 값으로 판단한다.** 전에는 `layout`으로
    * 갈랐는데 `per-locale` + `surgical` 조합(YAML·코드 딕셔너리)이 생겨 성립하지 않는다 —
    * `layout`으로 가르면 그 프로젝트가 원본 없이 write에 들어가 **PR이 조용히 비어 나간다.**
    */
   writeStrategy: "regenerate" | "surgical";
+  /**
+   * **키가 든 파일이면 그 로케일의 셀이 없어도 write가 셀을 넣는다** — multi-locale 수술적 어댑터 둘 사이의 규칙 차이다(apple-strings design §2.3).
+   * `apple-xcstrings`만 `true`다: 카탈로그는 키마다 언어 셀을 따로 들어 "번역되지 않음"이 셀 부재이고, Xcode도 같은 자리에 셀을 만든다.
+   * `ts-dict`는 넣지 않는다(ARCHITECTURE §1.4) — 로케일 객체에 자리가 없는 셀은 보류다.
+   *
+   * ⚠️ **전달 판정이 이 값을 본다** — 경로 선택(`lib/pull/run.ts`)·미리보기(`lib/publish/read.ts`)가 같은 `cellSlot`(`lib/pull/undeliverable.ts`)을
+   * 지난다. writer만 넣고 판정이 보류로 세면 PR에는 셀이 나가는데 미리보기는 "보류"를 말하고 미전달 토큰이 남는다.
+   */
+  insertsMissingCells?: true;
   /**
    * 리포 파일 경로 목록에서 이 포맷을 찾는다. 못 찾으면 undefined.
    *

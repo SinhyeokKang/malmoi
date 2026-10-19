@@ -161,6 +161,11 @@ describe("표면 변수", () => {
     expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "arb-catalog", MALMOI_I18N_PATH_TEMPLATE: "lib/l10n/app_{locale}.arb" });
   });
 
+  it("apple-xcstrings 표면도 어댑터 이름을 박는다 — 템플릿이 파일 경로 하나다", () => {
+    const yaml = one({ surfaces: [{ surfaceSlug: "app", pathTemplate: "App/Localizable.xcstrings", adapter: "apple-xcstrings", baseLocale: "en" }] });
+    expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "apple-xcstrings", MALMOI_I18N_PATH_TEMPLATE: "App/Localizable.xcstrings" });
+  });
+
   it("apple-strings 표면도 어댑터 이름을 박는다", () => {
     const yaml = one({ surfaces: [{ surfaceSlug: "app", pathTemplate: "App/{locale}.lproj/Localizable.strings", adapter: "apple-strings", baseLocale: "en" }] });
     expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "apple-strings", MALMOI_I18N_PATH_TEMPLATE: "App/{locale}.lproj/Localizable.strings" });

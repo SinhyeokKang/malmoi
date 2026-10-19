@@ -150,7 +150,7 @@ describe("keySlot · slotlessCells — ts-dict 키 자리 (audit #1 B)", () => {
     const keys: Record<string, string> = { k1: "hello", k2: "gone", k3: "bye" };
     const edits = [edit("1", "fr", "k1"), edit("2", "fr", "k2"), edit("3", "fr", "k3"), edit("4", "de", "k2"), edit("5", "fr", "k2", "s2"),
       { id: "6", token: "t6" }];
-    expect(slotlessCells("s1", files, edits, (id) => keys[id])).toEqual(["s1\0fr\0gone", "s1\0fr\0bye"]);
+    expect(slotlessCells(tsDict, "s1", files, edits, (id) => keys[id])).toEqual(["s1\0fr\0gone", "s1\0fr\0bye"]);
   });
 
   it("readSlotFiles는 파일마다 읽는다 — 로케일이 파일 사이에 섞이지 않는다", () => {

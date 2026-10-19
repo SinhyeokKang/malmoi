@@ -84,6 +84,19 @@ function stringsSource(keys: readonly string[]): string {
   ].join("\n");
 }
 
+/**
+ * `apple-xcstrings`(String Catalog)의 원본 — 키마다 ko·en 셀을 둔다. JSON에는 주석이 없어 사람의 메모는 키의 `comment` 필드다.
+ * `Object.fromEntries`로 만든다 — 객체 리터럴의 `__proto__`는 own 키가 아니다.
+ */
+function xcstringsSource(keys: readonly string[]): string {
+  const cell = (value: string) => ({ stringUnit: { state: "translated", value } });
+  const strings = Object.fromEntries([
+    ...keys.map((k) => [k, { localizations: { en: cell(srcVal(k)), ko: cell(srcVal(k)) } }] as const),
+    [ORPHAN_KEY, { comment: "사람이 넣은 주석 — 보존돼야 한다", localizations: { en: cell(ORPHAN_SOURCE_VALUE), ko: cell(ORPHAN_SOURCE_VALUE) } }] as const,
+  ]);
+  return `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`;
+}
+
 /** `multi-locale` 어댑터의 원본 파일을 만든다 — 치환 대상이 원본에 있어야 한다. */
 function tsSource(keys: readonly string[]): string {
   const body = () =>
@@ -148,6 +161,13 @@ export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_K
         pathTemplate: "App/{locale}.lproj/Localizable.strings",
         locales: ["en"],
         currentFiles: [{ path: "App/en.lproj/Localizable.strings", content: stringsSource(keys) }],
+      };
+    case "apple-xcstrings":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "App/Localizable.xcstrings",
+        locales: ["ko", "en"],
+        currentFiles: [{ path: "App/Localizable.xcstrings", content: xcstringsSource(keys) }],
       };
   }
 }
@@ -330,7 +350,9 @@ export function writerContractViolations(adapter: Adapter): string[] {
       // 위험만 늘고, bugshot-2는 세 로케일이 한 파일에 나란히 있어 키 격차가 구조적으로 안 생긴다
       // (ARCHITECTURE §1.4 "없는 키를 삽입한다 — ts-dict는 예외다"). 그 예외를 양방향으로 고정한다:
       // 삽입하기 시작하면 그것도 계약 변경이라 여기서 빨개져야 한다.
-      const inserts = adapter.name !== "ts-dict";
+      // `apple-xcstrings`도 **키**는 넣지 않는다 — 넣는 것은 파일에 있는 키의 없는 언어 **셀**이다(`insertsMissingCells`, apple-strings design §2.3).
+      // 키 존재는 코드가 정한다(카탈로그 키는 Xcode가 소스에서 뽑는다). 셀 삽입은 그 어댑터의 테스트가 Xcode 골든으로 잰다.
+      const inserts = adapter.name !== "ts-dict" && adapter.name !== "apple-xcstrings";
       const appeared = inserted !== null && inserted.includes(val(insertKey));
       if (inserts && !appeared) bad.push(`삽입: 원본에 없던 키 ${insertKey}가 출력에 나타나지 않았다 (§1.1 여섯 지점 #5)`);
       if (!inserts && appeared) bad.push(`삽입: ${adapter.name}는 삽입하지 않는 것이 계약인데 원본에 없던 키가 나타났다 (§1.4)`);
@@ -614,6 +636,17 @@ function baseFixture(adapter: Adapter): { format: DetectedFormat; basePath: stri
       return perLocale("src/locale/{locale}.ts", (_l, keep, added) => `export default {\n  keep: '${keep}',\n${added ? `  added: '${added}',\n` : ""}}\n`);
     case "apple-strings":
       return perLocale("App/{locale}.lproj/Localizable.strings", (_l, keep, added) => `"keep" = "${keep}";\n${added ? `"added" = "${added}";\n` : ""}`);
+    case "apple-xcstrings": {
+      const path = "App/Localizable.xcstrings";
+      const cell = (value: string) => ({ stringUnit: { state: "translated", value } });
+      const strings = { added: { localizations: { en: cell(BASE_ADDED_VALUE) } }, keep: { localizations: { en: cell("S_keep"), fr: cell("S_fr_keep") } } };
+      return {
+        format: { adapter: adapter.name, pathTemplate: path, locales: ["en", "fr"] },
+        basePath: path,
+        files: new Map([[path, `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`]]),
+        paths: [{ path }],
+      };
+    }
     case "ts-dict": {
       const path = "src/i18n/ns/a.ts";
       return {

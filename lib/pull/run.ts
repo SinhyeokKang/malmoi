@@ -401,8 +401,9 @@ export function planDelivery(
     coordinates.locales.add(`${plan.surfaceId}\0${code}`);
     coordinates.languages.add(`${plan.surfaceId}\0${code}`);
   }
-  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
+  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `cellSlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
   //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
+  //   - apple-xcstrings(셀을 넣는다): 키가 어느 파일에도 없을 때만이다 — 언어 셀이 없는 것은 writer가 넣으므로 전달이다(apple-strings design §2.3)
   //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.
   //     base 파일만 읽는다 — `keySlot`이 그 밖의 로케일을 `no-locale`로 흘려 비-base 동작이 그대로다
   for (const item of resolved) {
@@ -414,7 +415,7 @@ export function planDelivery(
       const content = current.get(p.path);
       return content === undefined ? [] : [{ path: p.path, content }];
     }));
-    for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
+    for (const cell of slotlessCells(adapter, item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
   }
   const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
   const warnings: PullWarning[] = [];

@@ -1,4 +1,5 @@
-import { STRINGS_FILE } from "../adapters/apple-strings";
+import { NOT_SOURCE, STRINGS_FILE } from "../adapters/apple-strings";
+import { XCSTRINGS_FILE } from "../adapters/apple-xcstrings";
 import { ARB_FILE, arbProbePaths } from "../adapters/arb-catalog";
 import { LOCALES_PATH } from "../adapters/chrome-locales";
 import { CODE_FILE } from "../adapters/code-dict";
@@ -92,6 +93,8 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   // ARB는 확장자가 곧 신호이고 리포당 한 디렉터리라 전부 담는다. 루트 `l10n.yaml`은 탐지가 읽는 설정이다(`arbProbePaths`).
   for (const path of allPaths) if (ARB_FILE.test(path)) wanted.add(path);
   for (const path of arbProbePaths(allPaths)) wanted.add(path);
+  // Apple String Catalog도 확장자가 곧 신호이고 파일 하나에 전 언어다 — 전부 담는다. 의존성·빌드·번들 안의 사본은 후보가 아니다(어댑터와 같은 거름).
+  for (const path of allPaths) if (XCSTRINGS_FILE.test(path) && !NOT_SOURCE.test(path)) wanted.add(path);
 
   // ── chrome `_locales` — 로케일 root의 파일 전부 ──────────
   const chromeByRoot = new Map<string, string[]>();

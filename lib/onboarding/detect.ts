@@ -1,4 +1,5 @@
 import { adapterFor } from "@/lib/adapters";
+import { xcstringsProbePaths } from "@/lib/adapters/apple-xcstrings";
 import { arbProbePaths } from "@/lib/adapters/arb-catalog";
 import { tsDictProbePaths } from "@/lib/adapters/ts-dict";
 import { compareKeys, sampleOrder } from "@/lib/adapters/shared";
@@ -16,7 +17,7 @@ export type TemplateGroup = { pathTemplate: string; basePath?: string; locales: 
 
 /**
  * 내려받을 후보 수 상한. 비용이 아니라 **응답 시간**이다 — 페이지 `maxDuration`이 60초다 (ARCHITECTURE §3.1).
- * JSON류 5 × 3파일 + code-dict 2 × 3파일 + **ts-dict 씨앗 2 × 8파일**(2026-09-14) + ARB 설정 `l10n.yaml` 1 = blob ≤ 38.
+ * JSON류 5 × 3파일 + code-dict 2 × 3파일 + **ts-dict 씨앗 2 × 8파일**(2026-09-14) + ARB 설정 `l10n.yaml` 1 + String Catalog 씨앗 2 = blob ≤ 40.
  * ⚠️ **다운로드가 순차다**(secondary rate limit) — 늘린 몫이 그대로 응답 시간이다.
  */
 export const PROBE_LIMITS = { jsonLike: 5, codeDict: 2 } as const;
@@ -62,6 +63,8 @@ export function probeTargets(
   for (const path of tsDictProbePaths(repoPaths)) out.add(path);
   // ARB 탐지가 루트 `l10n.yaml`의 `arb-dir`로 후보를 좁힌다 — 2패스에 내용이 없으면 설정을 못 본다.
   for (const path of arbProbePaths(repoPaths)) out.add(path);
+  // String Catalog는 언어 목록이 파일 안에 있어 1패스 후보가 0이다 — ts-dict처럼 경로로 씨앗을 고른다(apple-strings design §5).
+  for (const path of xcstringsProbePaths(repoPaths)) out.add(path);
   return [...out];
 }
 

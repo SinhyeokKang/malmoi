@@ -82,6 +82,23 @@ it("apple-strings 중복 키는 경고 한 줄과 함께 exit 0이고 적재를 
 }, 60000);
 
 /**
+ * apple-xcstrings도 같은 판정이다(지휘자 결정 14). 카탈로그의 같은 이름은 Xcode 26.6처럼 앞의 것을 읽고 write도 그 사본만 고친다. 정답 리포 HealthGPT의
+ * 카탈로그가 이 모양이다(옛 Xcode가 쓴 `"LLM Settings"` 두 번 — 앞은 en 셀, 뒤는 빈 객체). 복수형 키(unmanaged)도 red가 아니다.
+ */
+it("apple-xcstrings 중복 키는 경고 한 줄과 함께 exit 0이고 적재를 보낸다", async () => {
+  const url = await fakeServer();
+  const cell = (value: string) => ({ stringUnit: { state: "translated", value } });
+  const plural = { variations: { plural: { one: cell("%lld item"), other: cell("%lld items") } } };
+  const body = JSON.stringify({ sourceLanguage: "en", strings: { "%lld items": { localizations: { en: plural } }, "LLM Settings": { localizations: { en: cell("LLM Settings") } }, Save: {} }, version: "1.0" }, null, 2)
+    .replace(/": /g, '" : ')
+    .replace('    "Save" : {}', '    "LLM Settings" : {\n\n    },\n    "Save" : {}');
+  const result = await push(fixtureRepo({ "App/Localizable.xcstrings": body }), url);
+  expect(result.code, result.out).toBe(0);
+  expect(received).toEqual(["/api/push"]);
+  expect(result.out).toMatch(/App\/Localizable\.xcstrings {2}LLM Settings — /);
+}, 60000);
+
+/**
  * **`unmanaged`도 red가 아니다** (2026-10-01 doc-check C2 사용자 판정 · ARCHITECTURE §1 "read 오류의 두 갈래"). surgical writer가
  * 파일에 그대로 남기는 값(코드의 식·YAML 숫자)이라 잃는 번역이 없다 — 서버 적재가 통과시키는 항목으로 대상 리포 CI를 막지 않는다.
  */

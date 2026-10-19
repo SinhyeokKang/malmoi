@@ -10,7 +10,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
-import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
+import { blockingErrors, cellSlot, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { planDelivery, planLocales, projectFormats, renderProject } from "@/lib/pull/run";
 import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, withdrawnLocalesOf } from "@/lib/pull/locales";
@@ -149,12 +149,15 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
           withoutKey++; heldKeys.add(row.keyId); continue;
         }
       }
-      const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
-        Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
-      // ts-dict: 그 로케일 객체는 있는데 어느 파일에도 키 자리가 없으면 실행은 그 셀만 보류한다 — **같은 `keySlot` 판정이다**(audit #1 B).
-      // 같은 파일의 다른 로케일이 키를 가질 때(`write-slot-missing`)만 세면 키가 모든 로케일에서 사라진 셀은 화면이 막고 실행은 전달로 셌다.
-      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0
-        && keySlot(base, row.localeCode, row.stringKey.key).kind === "absent") { withoutKey++; heldKeys.add(row.keyId); continue; }
+      // multi-locale은 실행의 `planDelivery`와 **같은 `cellSlot`** 이다 — ts-dict는 그 로케일 객체에 키가 있는 파일, apple-xcstrings는 키가 든 파일(없는
+      // 언어 셀은 writer가 넣는다 — apple-strings design §2.3).
+      const slot = adapter.layout === "multi-locale" ? cellSlot(adapter, base, row.localeCode, row.stringKey.key) : undefined;
+      const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode : slot?.kind === "slot" && slot.paths.includes(p.path));
+      // 키 자리가 없으면 실행은 그 셀만 보류한다(audit #1 B). 같은 파일의 다른 로케일이 키를 가질 때(`write-slot-missing`)만 세면 키가 모든 로케일에서
+      // 사라진 셀은 화면이 막고 실행은 전달로 셌다.
+      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0 && slot?.kind === "absent") {
+        withoutKey++; heldKeys.add(row.keyId); continue;
+      }
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
       const path = matches.length === 1 ? matches[0]?.path : undefined;
       if (!path) throw new Error("Preview path unavailable");

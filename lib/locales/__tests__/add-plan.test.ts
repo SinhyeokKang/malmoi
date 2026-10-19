@@ -27,6 +27,8 @@ describe("supportsLocaleChanges", () => {
     ["arb-catalog", true],
     ["apple-strings", true],
     ["ts-dict", false],
+    // 한 파일에 전 언어가 있다 — ts-dict와 같다(apple-strings design §2.3).
+    ["apple-xcstrings", false],
     [null, false],
     ["__proto__", false],
   ])("%s → %s", (adapter, expected) => expect(supportsLocaleChanges(adapter)).toBe(expected));

@@ -196,6 +196,8 @@ describe("formatLabel — 어댑터 이름을 화면에 쓰지 않는다 (PRODUC
     for (const a of ADAPTERS) {
       const { example } = formatLabel(en, a.name);
       if (a.layout === "per-locale") expect(example).toContain("{locale}");
+      // String Catalog는 와일드카드 없는 파일 하나다 — 확장자가 단서다.
+      else if (a.name === "apple-xcstrings") expect(example).toMatch(/^[^*{}]+\.xcstrings$/);
       else expect(example).toContain("*");
     }
   });

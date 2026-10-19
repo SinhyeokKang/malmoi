@@ -686,7 +686,7 @@ export const en = {
     closing: {
       title: "Start from the files you already have",
       /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
-      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS, Chrome extension, Flutter ARB or Apple strings translation files, invite your team, and let AI agents work in the same projects over MCP.",
+      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS, Chrome extension, Flutter ARB, Apple strings or String Catalog translation files, invite your team, and let AI agents work in the same projects over MCP.",
       links: { label: "Learn more", formats: "Supported formats", aiAgents: "AI agents", faq: "FAQ" },
     },
     /**
@@ -2518,6 +2518,7 @@ export const en = {
       "ts-dict": { label: "Code dictionary (all languages in one file)", example: "src/i18n/namespaces/*.ts" },
       "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
       "apple-strings": { label: "Apple strings file", example: "App/{locale}.lproj/Localizable.strings" },
+      "apple-xcstrings": { label: "Apple String Catalog", example: "App/Localizable.xcstrings" },
     },
     /**
      * 첫 적재 결과 헤드라인 — **0건이 아니면 성공 문구를 그대로 쓰지 않는다** (ARCHITECTURE §0 불변식 9).

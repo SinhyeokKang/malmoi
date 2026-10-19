@@ -11,6 +11,9 @@ const fixtures: { adapter: AdapterName; pathTemplate: string; paths: string[]; e
   { adapter: "arb-catalog", pathTemplate: "lib/l10n/app_{locale}.arb", paths: ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"], empty: '{\n  "@@locale": "en",\n  "@stray": {}\n}\n', invalid: ["{", "[]", "null", '{"hello":"Hello"}', '{"hello":null}', '{"hello":{"x":"y"}}'] },
   // 주석만 있는 `.strings`는 엔트리가 0개인 카탈로그다. 바이너리 plist·문법 오류는 read가 오류로 알린다.
   { adapter: "apple-strings", pathTemplate: "App/{locale}.lproj/Localizable.strings", paths: ["App/en.lproj/Localizable.strings", "App/ko.lproj/Localizable.strings"], empty: "/* No strings yet */\n", invalid: ['"hello" = "Hello";', '"hello" = ', "bplist00\u0000\u0001", "{ }"] },
+  // 키가 0개인 카탈로그. 키가 하나라도 있으면(원문 셀이 없어도 키 = 원문) 엔트리가 있고, 복수형 키는 read가 오류로 알린다.
+  { adapter: "apple-xcstrings", pathTemplate: "App/Localizable.xcstrings", paths: ["App/Localizable.xcstrings"], empty: '{\n  "sourceLanguage" : "en",\n  "strings" : {\n\n  },\n  "version" : "1.0"\n}',
+    invalid: ["{", "[]", '{"sourceLanguage":"en","strings":{"hello":{}}}', '{"sourceLanguage":"en","strings":{"n":{"localizations":{"en":{"variations":{}}}}}}', '{"sourceLanguage":"en"}'] },
   { adapter: "ts-dict", pathTemplate: "i18n/*.ts", paths: ["i18n/common.ts"], empty: "const en = {} as const; const ko = {}; export const common = { en, ko };", invalid: ["const en = {", "const en = []; const ko = [];", "export default {};", 'const en = { hello: "Hello" }; const ko = {};'] },
 ];
 

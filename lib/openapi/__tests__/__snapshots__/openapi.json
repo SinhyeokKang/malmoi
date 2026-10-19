@@ -200,7 +200,8 @@
                   "code-dict",
                   "ts-dict",
                   "arb-catalog",
-                  "apple-strings"
+                  "apple-strings",
+                  "apple-xcstrings"
                 ]
               },
               "pathTemplate": {

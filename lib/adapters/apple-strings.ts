@@ -22,8 +22,9 @@ export const STRINGS_FILE = /^((?:[^/]*\/)*)([^/]+)\.lproj\/([^/]+)\.strings$/;
  * 후보가 아닌 디렉터리 — 스토어 메타데이터(`fastlane/`), 의존성(`Pods/`), 빌드 산출물(`build/`), 그리고 번들 안(`*.framework/`·`*.app/` — 재측정에서
  * iTerm2·Lifeslice가 벤더 `Sparkle.framework`의 사본을 1순위로 냈다). 공용 `ASIDE_HINT`에 더하면 기존 어댑터의 순위까지 움직여 재측정 대상이 된다
  * (design §5) — 이 어댑터의 후보 판정 안에서만 거른다. `*.bundle/`은 거르지 않는다 — 리소스 번들이 정답인 리포가 있다(TwitchAdBlock).
+ * `apple-xcstrings`도 같은 규칙을 쓴다.
  */
-const NOT_SOURCE = /(^|\/)((fastlane|Pods|build)|[^/]+\.(framework|app))\//;
+export const NOT_SOURCE = /(^|\/)((fastlane|Pods|build)|[^/]+\.(framework|app))\//;
 
 /** UTF-8 BOM이 디코드된 본문 첫 글자. 소스에 보이지 않는 글자를 두지 않으려고 코드로 만든다. */
 const BOM = String.fromCharCode(0xfeff);

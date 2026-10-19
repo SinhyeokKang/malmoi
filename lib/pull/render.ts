@@ -94,7 +94,7 @@ const tagged = (errors: readonly AdapterError[], locale: string): RenderError[] 
  *
  * 재생성은 **원본 순서**(`order`)로 조립한다 — 코드가 순서를 바꿨어도 따른다. 같은 DB·같은 원본 → 같은 바이트(불변식 4)는 그대로다.
  * ⚠️ **재생성의 원본을 못 읽으면 쓰지 않고 막는다** — 키 집합을 알 수 없는데 DB로 덮으면 코드 소유 키를 지운다. 수술적은 writer가 같은 원본을 못 읽어
- * `write-parse-failed`를 스스로 낸다. multi-locale(ts-dict)은 삽입하지 않아 이 규칙이 필요 없다.
+ * `write-parse-failed`를 스스로 낸다. multi-locale은 키를 삽입하지 않아(ts-dict — apple-xcstrings도 파일에 있는 키의 언어 셀만 넣는다) 이 규칙이 필요 없다.
  */
 function baseOwnedByOriginal(
   adapter: Adapter,
