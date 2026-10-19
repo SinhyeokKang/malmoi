@@ -1,8 +1,8 @@
-import { decodeLocaleFile, encodeFileContent, LocaleFileParseError } from "@/lib/file-encoding";
 // ⚠️ **`server-only`를 일부러 붙이지 않았다.** 붙이면 `scripts/smoke-github.ts`(react-server 조건 없는 tsx)가 이 모듈을
 // **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`가 같은 이유의 선례다
 // (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
 // 목록 밖이고 `octokit`을 물므로 `"use client"` 그래프에 닿는 순간 red다.
+import { decodeLocaleFile, encodeFileContent } from "@/lib/file-encoding";
 import { App, Octokit } from "octokit";
 import { AppError, fail, httpStatus } from "@/lib/failure";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
@@ -322,7 +322,6 @@ export async function openRepoReader(
         // 경로가 없으면 UTF-16을 판별할 수 없으므로 로케일 소비자는 경로를 함께 넘긴다.
         return decodeLocaleFile(path, Buffer.from(res.data.content, "base64")).content;
       } catch (error) {
-        if (error instanceof LocaleFileParseError) throw error;
         logFailure("blob", error);
         return undefined;
       }

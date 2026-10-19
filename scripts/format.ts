@@ -1,4 +1,4 @@
-import { decodeLocaleFile, LocaleFileParseError, type FileEncoding } from "../lib/file-encoding";
+import { decodeLocaleFile, type FileEncoding } from "../lib/file-encoding";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -26,8 +26,7 @@ export function fileProbe(root: string, failures?: Set<string>, encodings?: Map<
       const file = decodeLocaleFile(path, readFileSync(join(root, path)));
       encodings?.set(path, file.encoding ?? "utf-8");
       return file.content;
-    } catch (error) {
-      if (error instanceof LocaleFileParseError) throw error;
+    } catch {
       failures?.add(path);
       return undefined;
     }

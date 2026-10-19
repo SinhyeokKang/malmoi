@@ -112,8 +112,8 @@ describe("parseBranchHead · decodeBlob · isLfsPointer — 원격 파일 판정
   });
 
   it("blob은 base64 → UTF-8이다 — 한글이 깨지지 않는다", () => {
-    expect(decodeBlob({ size: 9, encoding: "base64", content: Buffer.from("안녕\n").toString("base64"), sha: "s" })).toEqual({ content: "안녕\n" });
-    expect(decodeBlob({ encoding: "text", content: "x" })).toBeNull();
+    expect(decodeBlob({ size: 9, encoding: "base64", content: Buffer.from("안녕\n").toString("base64"), sha: "s" }, "ko.json")).toEqual({ content: "안녕\n" });
+    expect(decodeBlob({ encoding: "text", content: "x" }, "en.json")).toBeNull();
   });
 
   it("LFS 포인터를 알아본다 — 포인터를 파싱하거나 Publish가 덮어쓰면 안 된다", () => {

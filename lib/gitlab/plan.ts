@@ -91,7 +91,7 @@ export function parseBranchHead(body: unknown): { sha: string; committedAt: stri
 const Blob = z.object({ encoding: z.literal("base64"), content: z.string() });
 
 /** 전송 base64를 풀고 경로별 파일 인코딩을 판별한다. 전송 형식 오류는 null, 손상된 내용은 parse-failed다. */
-export function decodeBlob(body: unknown, path = ""): DecodedLocaleFile | null {
+export function decodeBlob(body: unknown, path: string): DecodedLocaleFile | null {
   const parsed = Blob.safeParse(body);
   return parsed.success ? decodeLocaleFile(path, Buffer.from(parsed.data.content, "base64")) : null;
 }

@@ -625,7 +625,8 @@ it.each([
 
 it.each(["en.json", "ko.json"])("잘못된 UTF-8 %s는 preview blocked와 publish writer-warnings로 끝난다", async (brokenPath) => {
   const { decodeLocaleFile } = await import("@/lib/file-encoding");
-  const { renderProject, projectFormats } = await import("@/lib/pull/run");
+  const { renderProject, projectFormats, runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
   const state: PullState = { project: { ...project, slug: "acme" }, surfaces: [{ ...surface, localeCodes: ["en", "ko"],
     keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "new" }, ko: { value: "새" } } }] }], maxUpdatedAt: new Date(), unpublished: 1,
     pendingEdits: [{ id: "t", token: "token", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "new" } }] };

@@ -1,5 +1,5 @@
-import type { DecodedLocaleFile } from "@/lib/file-encoding";
 import "server-only";
+import type { DecodedLocaleFile } from "@/lib/file-encoding";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
 import { adapterErrorKind } from "@/lib/adapters/types";

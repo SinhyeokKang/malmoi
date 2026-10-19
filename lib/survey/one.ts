@@ -73,7 +73,6 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
 
   if (input.decodeErrors?.length) {
     survey.decodeErrors = input.decodeErrors;
-    survey.failure = `parse-failed: ${input.decodeErrors.map(error => error.path).join(", ")}`;
   }
   const probe = (p: string) => input.files.get(p);
   const found = candidatesFor(input.paths, probe);
@@ -91,6 +90,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     : matchGlobPaths(chosen.pathTemplate, input.paths);
   // 선택된 카탈로그가 손상됐으면 부분 키 집합으로 왕복 성공을 보고하지 않는다.
   if (input.decodeErrors?.some(error => selectedPaths.includes(error.path))) {
+    survey.failure = `parse-failed: ${input.decodeErrors.filter(error => selectedPaths.includes(error.path)).map(error => error.path).join(", ")}`;
     survey.ms = Date.now() - started;
     return survey;
   }

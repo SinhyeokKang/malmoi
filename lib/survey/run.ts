@@ -1,4 +1,3 @@
-import { decodeLocaleFile, LocaleFileParseError } from "../file-encoding";
 /**
  * `pnpm adapter-survey`의 I/O 층 — 리포를 받아 `surveyOne`에 넘길 입력을 만들고, `--jobs`개씩 겹쳐 돈다.
  *
@@ -6,6 +5,7 @@ import { decodeLocaleFile, LocaleFileParseError } from "../file-encoding";
  * 이벤트 루프를 막았고, `--jobs 6`이어도 git은 하나씩만 돌았다. 러너가 promise여야 워커들이 실제로 겹친다 — 그리고
  * 테스트가 네트워크 없이 프로세스 경계를 제어할 수 있다.
  */
+import { decodeLocaleFile, LocaleFileParseError } from "../file-encoding";
 import { lstatSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

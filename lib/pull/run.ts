@@ -1,5 +1,4 @@
-import type { FileEncoding } from "@/lib/file-encoding";
-import { baseFilePath } from "@/lib/adapters/base-path";
+import { LocaleFileParseError, type FileEncoding } from "@/lib/file-encoding";
 import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { AdapterError } from "@/lib/adapters/types";
@@ -321,14 +320,20 @@ export async function renderProject(
   const shaByPath = new Map(tree.map((t) => [t.path, t.sha]));
   const current = new Map<string, string>();
   const encodings = new Map<string, FileEncoding>();
+  const unreadable = new Set<string>();
   const targets = paths.filter((p) => shaByPath.has(p.path));
   for (let i = 0; i < targets.length; i += BLOB_CONCURRENCY) {
     const chunk = targets.slice(i, i + BLOB_CONCURRENCY);
-    const texts = await Promise.all(chunk.map((p) => client.getBlobText(shaByPath.get(p.path)!, p.path)));
-    chunk.forEach((p, j) => {
-      current.set(p.path, texts[j]!.content);
-      encodings.set(p.path, texts[j]!.encoding ?? "utf-8");
-    });
+    await Promise.all(chunk.map(async (p) => {
+      try {
+        const file = await client.getBlobText(shaByPath.get(p.path)!, p.path);
+        current.set(p.path, file.content);
+        encodings.set(p.path, file.encoding ?? "utf-8");
+      } catch (error) {
+        if (!(error instanceof LocaleFileParseError)) throw error;
+        unreadable.add(p.path);
+      }
+    }));
   }
 
   const rendered = resolved.map(item => {
@@ -339,7 +344,9 @@ export async function renderProject(
     return {
       surfaceId: item.surface.id, surfaceSlug: item.surface.slug, baseLocale: item.baseLocale,
       files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current, represent).map(file => {
-        const encoding = encodings.get(file.path) ?? encodings.get(baseFilePath(item.format, item.baseLocale)) ?? "utf-8";
+        // 원본 부재와 디코드 실패는 다르다 — 실패한 파일을 재생성하거나 새 파일로 내보내지 않는다.
+        if (unreadable.has(file.path)) return { ...file, content: null, errors: [{ path: file.path, code: "parse-failed" as const }] };
+        const encoding = encodings.get(file.path) ?? (basePath === undefined ? undefined : encodings.get(basePath)) ?? "utf-8";
         return encoding === "utf-8" ? file : { ...file, encoding };
       }),
     };

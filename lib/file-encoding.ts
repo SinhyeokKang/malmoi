@@ -63,7 +63,7 @@ export class LocaleFileParseError extends Error {
   }
 }
 
-/** 손상된 바이트를 파일 부재로 접으면 부분 적재가 키를 orphan시킬 수 있다. */
+/** 소비자가 선택된 파일의 읽기 실패와 원격 장애를 구별해 기존 차단 경로로 보낸다. */
 export function decodeLocaleFile(path: string, bytes: Uint8Array): DecodedLocaleFile {
   try {
     const decoded = decodeFileBytes(path, bytes);
