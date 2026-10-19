@@ -48,3 +48,4 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 - **A-fix2 완료** — 커밋 5개(`0144d8c0` R4 `@@*` 상대 순서 + ⚪5 · `b922b36c` R2 형제 증거로 로케일 분리 · `2ed207a7` R3 `DetectedFormat.templateLocale` · `cd4dc48e` R1 `l10n.yaml` 먼저 읽고 설정 대상을 probe 예산 안으로 · `842fddb0` R5 격리 Postgres 시나리오 확정→첫 적재→언어 추가·제거→Publish 바이트). 고정 SHA 학습·홀드아웃 1순위 diff 0 · metrics 바이트 동일 · 모바일 ARB 1순위 14/14 · 고정점 20/20 · 손실 0 · `resource-limit` 1. `gate: ok`(16401 + 격리 918). A 터미널 retain.
 - 수정이 탐지 진입점에 걸쳐 수정분만 재검증 R2 `ctx_6f1ffc25938a`(codex gpt-6-astra medium, `ab009199..HEAD`).
 - **R2 완료** — 🔴0 · 🟡3(Y1 `l10n.yaml` 선행 읽기가 합계 10MB 예산을 두 번 새로 시작 · Y2 스모크가 설정을 예산 검사 밖에서 읽음 · Y3 형제 점수가 같은 디렉터리의 `app_*`·bare 파일군을 하나로 합침) · ⚪ `types.ts` 주석. R1–R5·⚪5 해소 확인, 병합 없음 위반 없음. 사본 `handoffs/review-A2.md`. R2 해제.
+- A-fix3 `ctx_06a53e364a67`(Y1–Y3 + ⚪).
