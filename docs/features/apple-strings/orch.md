@@ -55,3 +55,5 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - A-fix2 `ctx_c30f87ada05a`(R2-1·R2-2). 수정이 좁고 기대값이 plutil 채록 표라 재리뷰 없이 지휘자가 diff·표 출처를 본다.
 - **A-fix2 완료** — `250c3e1b` R2-1(8진 하위 8비트 → ASCII/NeXTSTEP, plutil 채록 512개를 키·값으로 단언) · `7b4676ef` R2-2(짝 없는 서로게이트: 렌더 `write-parse-failed` 그 파일만 · 미리보기 blocked · 실행 writer-warnings · Git 쓰기 0 · `push-local` exit 1 + `/api/push/failure` `parse-failed`, 템플릿 밖 대조는 막지 않음). `gate: ok`(16586 + 격리 925). 지휘자가 plutil 무작위 40개를 따로 채록해 디코더와 대조 — 불일치 0.
 - **P·A dev 통합** — 14커밋 cherry-pick(`364b03fc..96f2711e`). main `pnpm gate` → `gate: ok`(격리 postgres 포함). tasks T2.0a–T2.3 체크(T2.0c는 D 문구).
+- **push** `166366f5..e8d9b97c`(P + A + D + README 배지). P 워크트리·브랜치 정리, P 해제.
+- 2파 시작: X `ctx_c1617a9a9844`(새 워크트리 `apple-X`, claude-opus-5-5 high — A 터미널은 컨텍스트가 찼고 Q1 결함용으로 남긴다) · Q1 `ctx_2cd29204845e`(main 체크아웃, claude-opus-5-5 medium — 폐기용 리포 `SinhyeokKang/i18n-strings-check` 생성 + GitLab `ox501501/malmoi-gitlab-test`에 UTF-16 파일) · D2 `ctx_a3c5956caef3`(D 터미널 재사용 — 시작 영수증은 `outcome_unknown`이었지만 터미널이 브리프 작업 중인 것을 확인). Q1이 main을 쓰는 동안 cherry-pick·build 금지.
