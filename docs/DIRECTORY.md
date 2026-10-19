@@ -667,6 +667,9 @@ lib/
                         값이 아니라 소스 키 메타데이터라 DB에 넣지 않는다 — 근거는 ARCHITECTURE §1.37. 루트 `l10n.yaml`로 설정 대상 후보를 맨 앞에 세우고 templateLocale을 싣는다)
                         __tests__/arb-catalog.test.ts가 read·write·탐지를, lib/onboarding-run/__tests__/detect-arb.test.ts가 설정 먼저 읽기·probe 예산을,
                         lib/pull/__tests__/arb-publish.integration.ts(`pnpm test:projects:postgres`)가 확정 → 첫 적재 → 첫·둘째 Publish → 언어 추가·제거를 잰다
+                        · apple-strings(Apple `.strings`, 2026-10-19 — surgical. 토크나이저가 값 리터럴 범위를 내고, 비-base 파일에만 누락 키를 삽입한다.
+                        UTF-16 판별·왕복은 어댑터가 아니라 lib/file-encoding.ts가 든다) · apple-xcstrings(Apple String Catalog — multi-locale surgical.
+                        자리 없는 로케일 셀을 Xcode 서식으로 삽입하고 sourceLanguage를 templateLocale로 싣는다. 언어 추가·제거 비지원) — 근거는 ARCHITECTURE §1.45
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
