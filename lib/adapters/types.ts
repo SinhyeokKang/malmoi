@@ -94,8 +94,8 @@ export type LocaleEntry = {
    *
    * ⚠️ **수술적 치환 어댑터(`yaml-catalog`·`code-dict`·`ts-dict`·`apple-xcstrings`)는 이 필드를 채우지 않는다.**
    * 원본 파일이 순서를 이미 갖고 있고 그 방식은 파일을 다시 만들지 않으므로 쓸 곳이 없다 —
-   * null인 것이 결함이 아니다. **`apple-strings`만 예외로 채운다** — 비-base 파일의 누락 키를 기준 순서상 앞 키 뒤에
-   * 넣으려면 적재가 이 값을 `sortIndex`로 옮겨야 한다(apple-strings design §2.1). `apple-xcstrings`는 키를 넣지 않고(키 블록 안에 언어 셀만
+   * null인 것이 결함이 아니다. **`apple-strings`·`android-strings`만 예외로 채운다** — 비-base 파일의 누락 키를 기준 순서상 앞 키 뒤에
+   * 넣으려면 적재가 이 값을 `sortIndex`로 옮겨야 한다(apple-strings design §2.1 · android-strings design §2.1). `apple-xcstrings`는 키를 넣지 않고(키 블록 안에 언어 셀만
    * 넣는다) 셀 자리를 코드 유닛 순으로 정하므로 필요 없다.
    */
   order?: number;

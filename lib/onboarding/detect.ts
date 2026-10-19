@@ -19,6 +19,7 @@ export type TemplateGroup = { pathTemplate: string; basePath?: string; locales: 
 /**
  * 내려받을 후보 수 상한. 비용이 아니라 **응답 시간**이다 — 페이지 `maxDuration`이 60초다 (ARCHITECTURE §3.1).
  * JSON류 5 × 3파일 + code-dict 2 × 3파일 + **ts-dict 씨앗 2 × 8파일**(2026-09-14) + ARB 설정 `l10n.yaml` 1 + String Catalog 씨앗 2 = blob ≤ 40.
+ * 기준 언어 파일이 템플릿 밖인 후보(Android `values/` — basePath)는 그 파일 1이 더해져 후보당 4다 — JSON류 자리가 전부 그런 후보면 blob ≤ 45.
  * ⚠️ **다운로드가 순차다**(secondary rate limit) — 늘린 몫이 그대로 응답 시간이다.
  */
 export const PROBE_LIMITS = { jsonLike: 5, codeDict: 2 } as const;
