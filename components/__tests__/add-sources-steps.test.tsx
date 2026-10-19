@@ -288,3 +288,20 @@ it("values/만 있는 Android 소스를 기준 언어 코드 입력 후 추가�
   await click(confirm());
   expect(mocks.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" }] });
 });
+
+it("#306 Add sources는 최초 Android와 values 전용 후보를 고를 때 기준 표본을 즉시 읽는다", async () => {
+  const appBase = "app/src/main/res/values/strings.xml";
+  const onlyBase = "settings/src/main/res/values/strings.xml";
+  const app = candidate("app/src/main/res/values-{locale}/strings.xml", { adapter: "android-strings", basePath: appBase, baseLocale: "", locales: ["ko"], samples: [] });
+  const only = candidate("settings/src/main/res/values-{locale}/strings.xml", { adapter: "android-strings", basePath: onlyBase, baseLocale: "", locales: [], samples: [] });
+  mocks.loadCandidateSample.mockImplementation(async ({ locale }) => ({ ok: true, rows: [{ key: "title", value: locale === appBase ? "App base preview" : "Settings base preview" }], total: 1 }));
+  await open([app, only], [{ pathTemplate: app.pathTemplate }]);
+  expect(mocks.loadCandidateSample).toHaveBeenCalledWith(expect.objectContaining({ locale: appBase }));
+  expect(dialog().querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe(appBase);
+  expect(dialog().textContent).toContain("App base preview");
+  await click(pick(only.pathTemplate));
+  expect(mocks.loadCandidateSample).toHaveBeenLastCalledWith(expect.objectContaining({ locale: onlyBase }));
+  expect(dialog().querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe(onlyBase);
+  expect(dialog().textContent).toContain("Settings base preview");
+  expect(dialog().textContent).not.toContain(en.common.slow);
+});
