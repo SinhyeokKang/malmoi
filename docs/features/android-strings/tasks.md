@@ -67,11 +67,11 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       1순위인지 확인한다(`adapter`를 박지 않은 기존 워크플로의 영구 red는 코퍼스가 아니라 실제 소비자에서 일어난다). 커밋 없음. 검증: prod 표면 1순위 불변.
 - [ ] **T5.1 새 태그 발행** — 기능 `/merge`의 squash 커밋에 `malmoi-i18n-push-v4`·`malmoi-i18n-push-gitlab-v3`를 만든다. 기존 v3·gitlab-v2는 옮기지 않는다
       (OPERATIONS 절차). 커밋 없음. 검증: 폐기용 GitHub 리포 CI가 세 새 어댑터로 각각 green **(수동)**. GitLab 실물은 T5.7 뒤에 본다.
-- [ ] **T5.2 `docs(PRODUCT)`** — §0 포맷 수, §2 포지셔닝 문구, §4.1 지원 포맷, §7.2 언어 추가·제거 지원 포맷 목록·Android 철자·기준 언어 변경 거부.
-- [ ] **T5.3 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, Android base 예외(`basePath`), 값 표현 표(design §3), §0 불변식 3의 수술적 표면 목록에 `android-strings`.
+- [x] **T5.2 `docs(PRODUCT)`** — §0 포맷 수, §2 포지셔닝 문구, §4.1 지원 포맷, §7.2 언어 추가·제거 지원 포맷 목록·Android 철자·기준 언어 변경 거부.
+- [x] **T5.3 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, Android base 예외(`basePath`), 값 표현 표(design §3), §0 불변식 3의 수술적 표면 목록에 `android-strings`.
       CLAUDE.md 코어 원칙 두 줄(수술적 치환 목록 · 언어 되살림 목록)에 `android-strings`.
       CLAUDE.md 스택 표에 `@xml-tools/parser`(읽기·offset 전용) 함정(`docs(CLAUDE)`, 미러 `pnpm sync:agents`).
-- [ ] **T5.4 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록, Android `base-locale` 필수,
+- [x] **T5.4 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록, Android `base-locale` 필수,
       인라인 태그 안내("기준 언어의 태그를 그대로 두고 그 사이 글만 번역한다").
 - [ ] **T5.5 정리** — 네 스펙의 결론이 정본에 올라갔는지 확인한 뒤 `docs/features/mobile-strings/`·`arb/`·`apple-strings/`·`android-strings/`를 **함께** 삭제한다
       (서로 참조하므로 따로 지우지 않는다). 커밋: `docs(feature): remove mobile specs after promotion`
