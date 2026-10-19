@@ -58,3 +58,4 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **B dev 통합** — 12커밋 cherry-pick(`..b531e727`). dev DB `prisma migrate deploy` → `20261019120000_add_translation_surface_base_path` 적용, `db:status` up to date, anon·authenticated `public` USAGE·CREATE 네 칸 false, `basePath` nullable 확인. main `pnpm gate` → `gate: ok`(16256 + 격리 914). tasks M2a·M2b·M2c 체크.
 - **push** `c46880fb..9c803572`(M2). B 워크트리·터미널 정리. C2 보냄 `ctx_704d779248e8`(C 터미널 재사용, dev rebase 후).
 - C2 범위 알림: `RepoReader.blob`/`GitClient.getBlobText`가 문자열만 돌려줘 공통 인터페이스·`lib/import/read.ts`·`lib/pull/run.ts`·`lib/publish/read.ts`·fake-client·smoke까지 고친다(필수 배선, 화면 변경 없음) — 지휘자 수용.
+- C2 알림: `lib/survey/select.ts`에 `.strings` 수집을 더했다(없으면 모바일 코퍼스에서 UTF-16 디코드를 잴 수 없다). 모바일 60리포 clone 실패 0, 바이너리 `.strings`(CodenameOne·Lifeslice)는 `parse-failed`로 명시 거부. ⚠️ select 변경은 기존 코퍼스 1순위 diff 0 확인과 RC 판정 대상.
