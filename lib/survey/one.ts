@@ -1,4 +1,5 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
+import { baseFilePath } from "../adapters/base-path";
 import { dominantFieldOrder } from "../adapters/chrome-locales";
 import { stripBom } from "../adapters/json-style";
 import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
@@ -151,14 +152,24 @@ const toCandidate = (f: DetectedFormat): SurveyCandidate => ({
 /** push와 **같은 판정**을 쓴다 — 여기서 다르게 고르면 측정이 프로덕션과 다른 base를 잰다. */
 const pickBase = pickBaseLocale;
 
+/**
+ * per-locale 파일 경로 — 기준 언어만 `basePath`로 갈린다(mobile-strings design §2). 프로덕션의 `selectLocaleFiles`·`resolveLocalePaths`와
+ * 같은 분기다: 측정 층이 기준 언어 파일을 치환으로 찾으면 Android의 `values/strings.xml`을 못 읽어 지표가 조용히 빈다.
+ */
+export function surveyLocalePath(fmt: DetectedFormat, locale: string, base: string | undefined): string {
+  return locale === base ? baseFilePath(fmt, locale) : fmt.pathTemplate.replaceAll("{locale}", locale);
+}
+
 /** 1순위 후보가 가리키는 파일들을 골라온다. `layout`에 따라 규칙이 다르다. */
 function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] {
   const out: AdapterFile[] = [];
   // 축은 `layout`이다 — 프로덕션(`push/payload.ts`·`pull/plan.ts`)과 같은 판정. 템플릿 문자열을
   // 보고 갈랐던 것은 그 축의 복제였다 (2026-09-04 audit #19).
   if (adapterFor(fmt).layout === "per-locale") {
+    // 기준 언어는 아래 `pickBase(read1 로케일)`과 같은 판정이다 — read 전이라 탐지 로케일로 고른다.
+    const base = pickBase(fmt.locales);
     for (const locale of [...fmt.locales].sort(compareKeys)) {
-      const path = fmt.pathTemplate.replaceAll("{locale}", locale);
+      const path = surveyLocalePath(fmt, locale, base);
       const content = input.files.get(path);
       if (content !== undefined) out.push({ path, content });
     }
@@ -280,7 +291,7 @@ function observeShape(
   if (adapterFor(fmt).writeStrategy !== "regenerate") return;
   const base = pickBase(localeNames);
   if (base === undefined) return;
-  const pathOf = (locale: string) => fmt.pathTemplate.replaceAll("{locale}", locale);
+  const pathOf = (locale: string) => surveyLocalePath(fmt, locale, base);
 
   const baseText = input.files.get(pathOf(base));
   if (baseText === undefined) return;
@@ -396,7 +407,7 @@ function applyRoundtrip(
    */
   const paths: LocalePath[] = layout === "multi-locale"
     ? originals.map((f) => ({ path: f.path }))
-    : localeNames.map((locale) => ({ locale, path: fmt.pathTemplate.replaceAll("{locale}", locale) }));
+    : localeNames.map((locale) => ({ locale, path: surveyLocalePath(fmt, locale, base) }));
   const render = (renderKeys: readonly RenderKey[], current: ReadonlyMap<string, string>) =>
     renderLocaleFiles(fmt, layout, paths, renderKeys, base ?? "", current);
   const contents = (files: ReturnType<typeof render>): Map<string, string> =>
@@ -436,7 +447,7 @@ function applyRoundtrip(
       ? originals[0]?.path
       : base === undefined
         ? undefined
-        : fmt.pathTemplate.replaceAll("{locale}", base);
+        : baseFilePath(fmt, base);
   const before = basePath === undefined ? undefined : input.files.get(basePath);
   const after = basePath === undefined ? undefined : write1.get(basePath);
   if (before !== undefined && after !== undefined) {
@@ -464,7 +475,7 @@ function applyRoundtrip(
     const others: number[] = [];
     for (const locale of localeNames) {
       if (locale === base) continue;
-      const p = fmt.pathTemplate.replaceAll("{locale}", locale);
+      const p = surveyLocalePath(fmt, locale, base);
       const src = input.files.get(p);
       const out = write1.get(p);
       if (src !== undefined && out !== undefined) others.push(roundtripDiffRatio(src, out));
