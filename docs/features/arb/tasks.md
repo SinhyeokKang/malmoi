@@ -27,6 +27,14 @@
       `detect-candidates.test.ts` `cases` · 아이콘 분기(`components/sources/sources-screen.tsx:130`) · `lib/openapi` 스냅숏(adapter enum이 실렸으면) ·
       사전 3벌 `newProject.formats` 라벨·예시(`/translate` 모드 ① — 기존 라벨 형, 내부 이름 미노출) · `unsupported-format` 문구(`messages/en.tsx:4528` 지원 포맷 나열).
       검증: 껍데기 테스트가 `.arb`를 내려받는다, `pnpm gate` green(`banned-terms`·`dictionary-consistency` 포함). 커밋: `feat(adapters): wire the ARB adapter`
+      **실측 정정(2026-10-19 arb 런 — 다음 어댑터는 이 목록을 쓴다):** 위 목록에 더해 실제로 고친 자리 — `lib/adapters/index.ts`(`ADAPTERS`·`AdapterName`) ·
+      `lib/adapters/__tests__/base-path-sites.test.ts` · `lib/survey/__tests__/one.test.ts` · `lib/onboarding/__tests__/{workflow,gitlab-ci}.test.ts`(생성 YAML이 어댑터를 박는지) ·
+      `components/__tests__/sources-screen.test.tsx`(아이콘) · `lib/i18n/__tests__/dictionary-consistency.test.ts`의 `SAME_AS_EN`(제품명이라 번역하지 않는 라벨) ·
+      사전 3벌의 **랜딩 본문 포맷 나열**(`messages/en.tsx` "Connect a GitHub or GitLab.com repository with …" + ko·es). 코드 변경이 필요 없었던 자리 —
+      `lib/import/empty.ts`(read가 엔트리가 아닌 것을 오류로 알리면 일반 경로로 판정된다 — 테스트만 더함) · `lib/cli/gitlab-ci-input.ts`(어댑터 검증이 없다, CLI `isAdapterName`이 한다 — 테스트만).
+      ⚠️ **놓친 자리 하나**: MCP `add_locale` 도구 설명(`messages/en.tsx` `add_locale:` "JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources support it")에
+      Flutter ARB가 빠져 있다 — apple-strings T2.2가 `apple-strings`를 더할 때 함께 고친다(같은 문장).
+      ⚠️ **사전 라벨이 dev에 있어야 가이드를 쓸 수 있다** — 가이드 원고가 포맷 라벨을 굵게 쓰고 가이드 게이트가 그 문자열을 세 사전에서 찾는다. 문서 배치의 가이드 커밋은 배선이 dev에 들어간 뒤다.
 - [x] **T1.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
       `resource-limit` 거부 수 보고. 커밋 없음(결과는 T5.2에 기록).
 - [x] **T1.5 실물 (수동)** — `/roundtrip`으로 폐기용 Flutter 리포 왕복. 전제: Flutter SDK 설치, 폐기용 리포는 roundtrip 전제 조건 1의 목록에 없으면 새로 만든다.
