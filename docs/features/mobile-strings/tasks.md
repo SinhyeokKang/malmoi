@@ -22,13 +22,13 @@
 
 ## M2 `basePath` (자체 `/push`)
 
-- [ ] **M2a base 경로 자리 전수 + 테스트** (`/tdd`) — design §2의 읽는 자리·쓰는 자리·지문 자리를 grep으로 확정해 목록을 고정하고,
+- [x] **M2a base 경로 자리 전수 + 테스트** (`/tdd`) — design §2의 읽는 자리·쓰는 자리·지문 자리를 grep으로 확정해 목록을 고정하고,
       `baseFilePath`(`basePath ?? 치환`) 단위 테스트 + "basePath 표면에서 base를 치환으로 만드는 자리 0" 소스 테스트 + "쓰는 자리가 `basePath`를 기록" 테스트 +
       옛 CLI 페이로드(`basePath` 없음)가 기존 4포맷 표면에서 `format mismatch`가 아님(null 대 undefined) + 언어 제거가 `basePath`를 delete로 만들지 않음.
       검증: red(새 테스트만, 확정 목록 N개를 소스 테스트가 정확히 고정).
-- [ ] **M2b `basePath` 스키마** (`/db`) — `TranslationSurface.basePath String?` additive. SELF-HOSTING §3 체크리스트(버전 건너뛴 업그레이드 안전).
+- [x] **M2b `basePath` 스키마** (`/db`) — `TranslationSurface.basePath String?` additive. SELF-HOSTING §3 체크리스트(버전 건너뛴 업그레이드 안전).
       검증: `pnpm db:status` clean, dev `has_schema_privilege` false. prod 반영은 android-strings T5.6(`/merge` 1단계). 커밋: `feat(db): add translation surface base path`
-- [ ] **M2c `basePath` 배선** — `DetectedFormat.basePath`, push 스키마(zod)·`checkFormat` 비교·경로 안전 두 경계, M2a의 자리들(화면 자리는 android-strings T3.2b). 기존 어댑터는 null이라
+- [x] **M2c `basePath` 배선** — `DetectedFormat.basePath`, push 스키마(zod)·`checkFormat` 비교·경로 안전 두 경계, M2a의 자리들(화면 자리는 android-strings T3.2b). 기존 어댑터는 null이라
       동작 변화 0. 검증: `pnpm gate` green(격리 postgres 스위트 포함), 기존 2코퍼스 25차 표와 같고 M0 기준선과 리포별 1순위 diff 0.
       커밋: `feat(sources): carry an explicit base file path`
 
