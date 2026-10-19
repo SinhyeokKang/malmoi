@@ -121,12 +121,19 @@ async function main(): Promise<void> {
 
       const shaOf = new Map(snapshot.files.map((f) => [f.path, f.sha]));
       const blobs = new Map<string, string>();
-      // 프로덕션(`lib/onboarding-run/detect.ts`)과 같이 ARB 설정을 먼저 읽어 그 대상을 probe 상한 안으로 당긴다(리뷰 R1).
+      // ⚠️ **프로덕션(`lib/import/read.ts` `readFiles`)과 같은 예산을 같은 순서로 지난다** — 손으로 짠 루프가 건너뛰어 예산을 넘는
+      // 리포에서 프로덕션은 거부하고 스모크만 통과했다(launch-readiness L7.3). `readFiles`는 `server-only`라 직접 못 부른다.
+      // 프로덕션(`lib/onboarding-run/detect.ts`)과 같이 ARB 설정을 먼저 읽어 그 대상을 probe 상한 안으로 당긴다(리뷰 R1) — 설정도 선언 크기·내용
+      // (YAML 중첩 포함)·누적 합계 검사를 지나고, 뒤 표본과 **한 합계**다(재리뷰 Y2). 따로 재면 설정이 예산 밖으로 빠진다.
       const configPaths = arbProbePaths(paths);
+      checkDownloadBudget(configPaths, snapshot.files);
+      let totalBytes = 0;
       for (const path of configPaths) {
         const sha = shaOf.get(path);
         const text = sha === undefined ? undefined : await reader.blob(sha, path);
-        if (text !== undefined) blobs.set(path, text);
+        if (text === undefined) continue;
+        totalBytes = checkContentBudget(path, text, totalBytes);
+        blobs.set(path, text);
       }
       const jsonLike = arbConfiguredFirst(detectCandidatesAcross(paths), configPaths[0] === undefined ? undefined : blobs.get(configPaths[0]));
       const codeDict = codeDictCandidatePaths(paths);
@@ -135,10 +142,7 @@ async function main(): Promise<void> {
       const targets = probeTargets(jsonLike, codeDict, paths).filter((path) => !configPaths.includes(path));
       console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length + configPaths.length}개`);
 
-      // ⚠️ **프로덕션(`lib/import/read.ts` `readFiles`)과 같은 예산 둘을 지난다** — 손으로 짠 루프가 건너뛰어 예산을 넘는
-      // 리포에서 프로덕션은 거부하고 스모크만 통과했다(launch-readiness L7.3). `readFiles`는 `server-only`라 직접 못 부른다.
-      checkDownloadBudget(targets, snapshot.files);
-      let totalBytes = 0;
+      checkDownloadBudget([...configPaths, ...targets], snapshot.files);
       for (const path of targets) {
         const sha = shaOf.get(path);
         const text = sha === undefined ? undefined : await reader.blob(sha, path);
@@ -146,7 +150,7 @@ async function main(): Promise<void> {
         totalBytes = checkContentBudget(path, text, totalBytes);
         blobs.set(path, text);
       }
-      console.log(`  내려받음: ${blobs.size}/${targets.length}`);
+      console.log(`  내려받음: ${blobs.size}/${targets.length + configPaths.length}`);
 
       const candidates = summarizeCandidates(detectCandidatesAcross(paths, makeProbe(blobs)), blobs);
       console.log(`  2패스 후보 ${candidates.length}개:`);
