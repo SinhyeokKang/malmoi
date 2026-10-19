@@ -6,7 +6,7 @@
 
 ## M0·M1 기준선과 코퍼스
 
-- [ ] **M0 기준선 보고서 + SHA 고정** — 변경 전 dev HEAD로 학습·홀드아웃 survey를 `--json --out`으로 떠 `.scratch/adapter-survey-baseline/`에 둔다.
+- [x] **M0 기준선 보고서 + SHA 고정** — 변경 전 dev HEAD로 학습·홀드아웃 survey를 `--json --out`으로 떠 `.scratch/adapter-survey-baseline/`에 둔다.
       25차 표는 집계값뿐이라 리포별 1순위를 견줄 수 없다. 이후 모든 재측정의 "기존 리포 1순위 불변"은 이 보고서와의 리포별 1순위 경로 diff 0이다.
       ⚠️ survey는 매번 외부 리포의 최신 HEAD를 clone하고 지운다(`lib/survey/run.ts:31·37·51·75`) — 상류 변경만으로 diff가 난다. 기준선 때 **리포별 SHA를
       기록하고 이후 재측정이 같은 SHA로 돌게** 한다(survey에 SHA 고정 입력이 없으면 그 배선이 이 태스크다 — 테스트 먼저, `pnpm gate` green,

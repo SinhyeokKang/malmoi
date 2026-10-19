@@ -41,3 +41,6 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **A 완료** — 커밋 3개(`dc9e766d` test · `3a6e07dd` feat · `881df52a` 핀 파일), `gate: ok`(16166 passed). 핀은 사이드카 `docs/adapter-survey/pins.json`(학습 109)·`pins-heldout.json`(홀드아웃 20) + CLI `--pins`·`--write-pins`. 기준선 4개 보고서는 clone 실패 0이고, 1·2회차가 `ms`만 빼고 바이트까지 같다. 25차 대비 차이: 학습 오탐 0→1(상류 포맷 이동), `diff.clean` 42→41(추정). A가 `/code-review`·`/refactor`를 자체 점검으로 대신했다 → RA가 판정한다. 문서 드리프트(`--pins`)는 통합 때 문서별 커밋. A 터미널은 수정 라운드용으로 retain.
 - RA 시작 `ctx_9af75db61041`(codex gpt-6-astra medium, ms-A 읽기 전용).
 - 공통 규칙 추가(2026-10-19 사용자): `rm`에 빈 변수 경로 금지 — bypass에서도 확인 창이 떠 자동 거부까지 A가 2분 멈췄다.
+- **RA 완료** — 🔴1(고정 리포의 checkout 실패가 성공·핀으로 기록) · 🟡2(테스트가 고정 커밋 본문을 안 읽음 · `--pins` 문서 넷 누락), 사용자 결정 없음. 사본: `handoffs/review-A.md`. RA 해제.
+- **A-fix1 완료** — 커밋 7개(`cff0c2b7`..`2d6b4f43`): checkout 실패를 고정 여부와 무관하게 `failure`로, 실제 로컬 git 테스트, 문서 넷(CLAUDE+AGENTS·ARCHITECTURE·repos.md·DIRECTORY). 이번엔 실제 `/code-review`(🔴0·🟡0·⚪1)·`/refactor`를 돌렸다. 성공 경로가 안 바뀌어 기준선은 유효. 지휘자가 diff를 보고 재리뷰 없이 통합.
+- **A dev 통합** — 10커밋 cherry-pick(`..78e447c1`). main 체크아웃 `pnpm gate` 1차는 `api-contract.test.ts` 두 건 5s 타임아웃(부하 평균 121 — 다른 워커 게이트 동시 실행, 단독 재실행 54/54 통과)으로 red였고, 2차 `gate: ok`(16172 passed). tasks M0 체크.
