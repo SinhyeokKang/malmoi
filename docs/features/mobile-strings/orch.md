@@ -37,4 +37,4 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 
 ## 진행
 
-(비어 있음)
+- Run `run_eb594cbd815a`. 1파 시작(2026-10-19): A `ctx_adc4bec078e5`(워크트리 `ms-A`, claude-sonnet-5-5 medium) · B `ctx_11411e92fe49`(`ms-B`, claude-opus-5-5 high) · C1 `ctx_7ee58adca952`(`ms-C`, codex gpt-6-astra medium) — 세 `launch.effective`가 요청과 같다. 브리프: main `.scratch/orch-mobile-strings/`.
