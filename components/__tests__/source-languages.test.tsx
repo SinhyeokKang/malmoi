@@ -565,3 +565,11 @@ it("#285 GitLab판은 merge request다", async () => {
   expect(rowOf("de").textContent).toContain(gl.sources.locale.readOnlyDelivered);
   expect(gl.sources.locale.readOnlyDelivered).toMatch(/merge request/);
 });
+
+it("#307 Android 기준 행은 가능한 복구 방법을 title과 설명으로 안내한다", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: detail([row("ko")], { connection: { ...connection, adapterName: "android-strings" } }) });
+  await open();
+  expect(action("en").getAttribute("title")).toBe("The Android base language is fixed, and values/strings.xml can't be removed. Detach this source and add it again to change the code.");
+  expect(describedText(action("en"))).toBe("The Android base language is fixed, and values/strings.xml can't be removed. Detach this source and add it again to change the code.");
+  expect(describedText(action("en"))).not.toBe(en.sources.locale.baseReason);
+});
