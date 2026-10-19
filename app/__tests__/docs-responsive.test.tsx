@@ -125,10 +125,12 @@ describe("Docs 내비 — 넓은 폭은 고정 264, 좁은 폭은 하단 캡슐 
     expect(visible()).toBe(en.publicDocs.docs.title);
   });
 
-  it("캡슐 형 — 44 · radius full · 연한 윤곽 · 바탕 면 · shadow-medium · 푸터 위 16 가운데", async () => {
+  it("캡슐 형 — 44 · radius full · 테마 교차 면(primary) · shadow-medium · 푸터 위 16 가운데", async () => {
     await page(["github", "workflow"]);
     const classes = [...capsule().classList];
-    expect(classes).toEqual(expect.arrayContaining(["h-11", "rounded-full", "border", "border-border-subtle", "bg-background", "shadow-medium", "font-medium"]));
+    expect(classes).toEqual(expect.arrayContaining(["h-11", "rounded-full", "bg-primary", "text-primary-foreground", "shadow-medium", "font-medium"]));
+    expect(classes).not.toContain("bg-background");
+    expect(classes).not.toContain("border");
     expect(classes).not.toContain("shadow-low");
     expect(classes).not.toContain("w-80");
     const dock = capsule().parentElement!;
