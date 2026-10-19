@@ -738,7 +738,7 @@ describe("Android 언어 변경 진입점", () => {
     const result = await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined });
     expect(result).toMatchObject({ status: "committed" });
     const sent = made.calls.find(call => call.method === "publishSnapshot")?.args[0] as { changes: { kind: string; path: string; content?: string }[] };
-    expect(sent.changes).toContainEqual(expect.objectContaining({ path, content: expect.stringContaining("Olá") }));
+    expect(sent.changes).toContainEqual(expect.objectContaining({ path, content: '<resources>\n    <string name="hello">Olá</string>\n</resources>' }));
     expect(sent.changes.some(change => change.path === "res/values-pt-BR/strings.xml")).toBe(false);
     const view = await loadSource(prisma, en, "p", "s-web", "OWNER");
     expect(view?.languages).toContainEqual(expect.objectContaining({ code: "pt-rBR", orphaned: false }));

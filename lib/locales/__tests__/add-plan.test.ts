@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { androidStrings } from "@/lib/adapters/android-strings";
 import { jsonCatalog } from "@/lib/adapters/json-catalog";
 import { localeFromPath } from "@/lib/adapters/chrome-locales";
 import { CHROME_LOCALE_CODES } from "../chrome-codes";
@@ -195,4 +196,23 @@ describe("Android 언어 추가", () => {
   it("다른 포맷의 지역·현대 언어 코드는 그대로 받는다", () => {
     for (const code of ["pt-BR", "he", "id", "yi"]) expect(planLocaleAdd(input({ code })).ok).toBe(true);
   });
+});
+
+
+it("추가를 허용한 Android 생성 코드는 후보 탐지에서 같은 코드로 관측된다", () => {
+  const letters = [..."abcdefghijklmnopqrstuvwxyz"];
+  const languages = [...new Set([...letters.flatMap(a => letters.map(b => a + b)), "fil", "car", "yue"])];
+  const surface = { id: "android", adapterName: "android-strings", pathTemplate: "res/values-{locale}/strings.xml" };
+  let accepted = 0;
+  for (const language of languages) for (const suffix of ["", "-rBR", "-rCN", "-BR", "_BR", "-land", "-rbr"]) {
+    const code = language + suffix;
+    const verdict = planLocaleAdd(input({ surface, code, locales: [] }));
+    if (!verdict.ok) continue;
+    accepted++;
+    const paths = ["res/values/strings.xml", verdict.path];
+    const candidates = androidStrings.detectCandidates!(paths, path => paths.includes(path) ? '<resources><string name="hello">Hello</string></resources>' : undefined);
+    expect(candidates, code).toHaveLength(1);
+    expect(candidates[0]?.locales, code).toEqual([code]);
+  }
+  expect(accepted).toBeGreaterThan(2000);
 });
