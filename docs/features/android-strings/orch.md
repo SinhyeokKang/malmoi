@@ -87,3 +87,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - C 로컬 dev cherry-pick(`c4c7ed2a`·`85f1c917`, 충돌 없음). C-fix1 `ctx_62f567288168`(C 터미널 — Y5·W7·W8) ∥ B-fix1 `ctx_9b92bcb5873f`(B 터미널 — Y1–Y4·결정 23–26·W3–W5, 마지막에 dev rebase).
 - **E-fix3 완료·로컬 통합** — rebase 후 두 의도 보존(`ac022b13`·`bd24e609`·`1f9c2960`), `gate: ok`(17178 + 격리 940). E 터미널 retain.
 - C-fix1 진행 중 — 격리 게이트에서 무관한 `translation-list-performance.integration.ts` 30초 타임아웃(부하) 1회, 재실행 예정.
+- **B-fix1 완료·로컬 통합** — `7b645f29` test · `b2f6a6f5` fix(RBC Y1–Y4·결정 23–26·W3–W5), `gate: ok`(17216 + 격리 947, 소스 스캔 부하 타임아웃 1회 재실행 green). B 5커밋 cherry-pick 충돌 없음. B 터미널 retain.
