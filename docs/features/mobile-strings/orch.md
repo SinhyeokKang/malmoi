@@ -14,7 +14,8 @@
 4. **M1 정답 판정은 워커(Opus)가 원문을 읽고 한다** — 지휘자 판단. tasks의 "사람이 원문을 보고 판정"은 탐지기 출력을 정답으로 삼지 말라는 뜻이고 23차 관행도 같다. 판정 JSON은 `/merge` 전 사용자 검수 대상으로 리포트에 남긴다.
 5. **M2와 M3는 직렬, 단 M3의 순수 잎은 앞당긴다** — 지휘자 판단. 두 배치가 `lib/adapters/types.ts`·`lib/pull/plan.ts`·`scripts/ingest.ts`·`scripts/format.ts`·`lib/survey/`를 같이 고친다. C는 겹치지 않는 몫(M3a 테스트 + `lib/file-encoding.ts` + `lib/githash.ts`)만 먼저 하고, 배선(M3b)은 B가 dev에 들어간 뒤 새 Dispatch로 받는다.
 6. **`lib/survey/`는 A(M0)가 먼저 소유한다** — B의 survey 다섯 줄·C의 `run.ts:63` NUL 스킵 교체는 A가 dev에 들어간 뒤로 미룬다(인계의 "미룬 항목").
-7. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
+7. **M1 후보는 다시 모은다** — 지휘자 판단. 10-19 보급률 표본(1,397개)의 원 리포 목록이 리포·`.scratch` 어디에도 남지 않았다. D가 spec에 적힌 같은 기준(스타 구간·2026-04 이후 push·fork·보관 제외)으로 `gh` 검색해 보유 기준 비슷한 규모로 모으고, 검색식과 실제 수를 `repos.md`에 남긴다.
+8. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
 
 ## 배치
 
@@ -44,3 +45,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **RA 완료** — 🔴1(고정 리포의 checkout 실패가 성공·핀으로 기록) · 🟡2(테스트가 고정 커밋 본문을 안 읽음 · `--pins` 문서 넷 누락), 사용자 결정 없음. 사본: `handoffs/review-A.md`. RA 해제.
 - **A-fix1 완료** — 커밋 7개(`cff0c2b7`..`2d6b4f43`): checkout 실패를 고정 여부와 무관하게 `failure`로, 실제 로컬 git 테스트, 문서 넷(CLAUDE+AGENTS·ARCHITECTURE·repos.md·DIRECTORY). 이번엔 실제 `/code-review`(🔴0·🟡0·⚪1)·`/refactor`를 돌렸다. 성공 경로가 안 바뀌어 기준선은 유효. 지휘자가 diff를 보고 재리뷰 없이 통합.
 - **A dev 통합** — 10커밋 cherry-pick(`..78e447c1`). main 체크아웃 `pnpm gate` 1차는 `api-contract.test.ts` 두 건 5s 타임아웃(부하 평균 121 — 다른 워커 게이트 동시 실행, 단독 재실행 54/54 통과)으로 red였고, 2차 `gate: ok`(16172 passed). tasks M0 체크.
+- **push** `3b0af99e..c46880fb`(M0). A 워크트리·터미널 정리.
+- D 시작 `ctx_9abe3a7004aa`(`ms-D`, claude-opus-5-5 medium).
