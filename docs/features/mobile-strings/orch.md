@@ -32,7 +32,7 @@
 | RA | A 리뷰 | 없음 | A | Codex `gpt-6-astra` medium | A 워크트리 읽기 | 대기 |
 | RB | B 리뷰 | 없음 | B | Codex `gpt-6-astra` medium | B 워크트리 읽기 | 대기 |
 | RC | C1+C2 리뷰 | 없음 | C2 | Claude Opus 5.5 high | C 워크트리 읽기 | 대기 |
-| S | 후속 스펙 갱신 — 이 런에서 바뀐 결정·실측을 `docs/features/{arb,apple-strings,android-strings}/`에 스펙별 커밋으로 반영(핀 재측정·모바일 코퍼스 실측·되살림 규칙·수동 지정·UTF-8 명시 실패·RC 이관 셋·B 미룬 항목·검수 7묶음) | 그 세 폴더 | C 통합 | 지휘자 | main | 대기 |
+| S | 후속 스펙 갱신 — 이 런에서 바뀐 결정·실측을 `docs/features/{arb,apple-strings,android-strings}/`에 스펙별 커밋으로 반영(핀 재측정·모바일 코퍼스 실측·되살림 규칙·수동 지정·UTF-8 명시 실패·RC 이관 셋·B 미룬 항목·검수 7묶음) | 그 세 폴더 | C 통합 | 지휘자 | main | 완료 |
 
 겹침: A↔B·C는 `lib/survey/`(결정 6), B↔C는 결정 5의 파일들, A↔D는 `docs/adapter-survey/`(D는 A 뒤). 1파: A ∥ B ∥ C1. A 통합 → D 시작 + B·C에 survey 몫 전달. B 통합·push → C2.
 
@@ -68,3 +68,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **C-fix1 완료** — 커밋 3개(`b9df2e87` test · `ea11c814` fix · `5f4bbd87` docs), gate ok(16328 + 격리 914). `--verdicts` 포함 고정 survey 학습 109·홀드아웃 20 top-1 diff 0, 탐지·오탐·정답 순위 지표 기준선과 같음. ⚪3/6/7·실제 호스트 왕복은 apple-strings로 넘김. 🔴이 진입점 여럿에 걸쳐 수정분만 독립 재검증 RC2 `ctx_0c184b2823db`(codex gpt-6-astra medium) 시작. C 터미널 retain.
 - **RC2 통과** — 신규 🔴·🟡 0(관련 15파일 393테스트·첫 적재 오프라인 검증). 한계: 실제 호스트·DB 포함 야간 전체 실행은 안 함(공용 실행·경고 경로 테스트로 확인). 사본 `handoffs/review-C2.md`. RC2 해제.
 - **C dev 통합** — 8커밋 cherry-pick(`..82bd2e84`). main `pnpm gate` → `gate: ok`(16328 + 격리 914). tasks M3a·M3b 체크.
+- **push** `9c803572..8dccc13c`(M3).
+- **S 완료** — 스펙별 커밋: `dfcad51b` arb(M1 실측·핀 재측정) · `fae80efd` apple-strings(M3 계약·UTF-8 명시 실패 결정·RC 이관 T2.0a–c·`bplist00` 거부·T2.4가 실제 호스트 UTF-16 왕복을 닫음·API 예산 절 번호) · `e2d89a05` android-strings(M2 계약·되살림 결정·수동 지정 basePath 유도는 T3.2b 신규·실 어댑터 공급 고리 테스트·화면 자리와 표시 전용 select·composeResources 결정 시점·T5.6 검수) · `367c0f51` adapter-survey(M3 뒤 디코드 결과 · 검수 대기 판정 절 — handoff-D의 목록을 정본으로 옮김).
