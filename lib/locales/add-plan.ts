@@ -1,6 +1,6 @@
 import { androidResourceCode } from "./presets";
 import { isChromeLocaleCode } from "./chrome-codes";
-import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath, looksLikeLocale } from "@/lib/locale-code";
+import { isAndroidLocale, isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath, looksLikeLocale } from "@/lib/locale-code";
 import { surfaceOwnership, type SurfacePaths } from "@/lib/surfaces/plan";
 
 /**
@@ -64,7 +64,7 @@ export function planLocaleAdd(input: LocaleAddInput): LocaleAddVerdict {
   if (!isPathSafeLocale(code) || !isLocaleShaped(code) || !looksLikeLocale(code)) return { ok: false, error: "invalid-code" };
   if (surface.adapterName === "chrome-locales" && !isChromeLocaleCode(code)) return { ok: false, error: "unsupported-locale" };
   // 어댑터 그래프는 클라이언트에 실을 수 없다. 관측 가능한 Android 철자만 받되 현대 별칭은 조용히 바꾸지 않고 안내한다.
-  if (surface.adapterName === "android-strings" && (!/^[a-z]{2,3}(?:-r[A-Z]{2})?$/.test(code) || code === "car" || androidResourceCode(code) !== code)) {
+  if (surface.adapterName === "android-strings" && (!isAndroidLocale(code) || androidResourceCode(code) !== code)) {
     return { ok: false, error: "android-locale-code" };
   }
   const same = input.locales.find(locale => locale.code === code);

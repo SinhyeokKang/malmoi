@@ -1,5 +1,8 @@
 import { parse } from "@xml-tools/parser";
 
+import { isAndroidLocale } from "@/lib/locale-code";
+export { isAndroidLocale } from "@/lib/locale-code";
+
 import { localeFromPath } from "./chrome-locales";
 import { compareKeys, orderedEntries, pathSignals, rankTemplateCandidates } from "./shared";
 import type { Adapter, AdapterError, AdapterFile, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
@@ -60,11 +63,6 @@ type Root = {
 export type AndroidTokenized =
   | { ok: true; slots: AndroidSlot[]; unmanaged: { key: string; start: number }[]; root: Root }
   | { ok: false; detail: string };
-
-/** 한정자가 언어(+지역)인가 — `values-ko`·`values-zh-rCN`. `b+` 형식·지역 외 한정자(`night`·`car`·`v21`·`sw600dp`)는 아니다(design §2.2). */
-export function isAndroidLocale(code: string): boolean {
-  return /^[a-z]{2,3}(?:-r[A-Z]{2})?$/.test(code) && code !== "car";
-}
 
 const BOM = String.fromCharCode(0xfeff);
 const xmlSpace = (c: string) => c === " " || c === "\t" || c === "\n" || c === "\r";
