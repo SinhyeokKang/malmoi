@@ -490,6 +490,12 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 pnpm adapter-survey docs/adapter-survey/repos.txt          --verdicts docs/adapter-survey/verdicts.json
 pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapter-survey/verdicts-heldout.json
 ```
+
+⚠️ **회귀 재측정은 고정 SHA로 돈다** (2026-10-19, mobile-strings M0) — 위 두 줄은 매번 상류 최신 HEAD를 받아 리포별 결과가 상류 변경만으로 움직인다.
+기준선은 `--write-pins`로 기록한 `docs/adapter-survey/pins.json`(학습)·`pins-heldout.json`(홀드아웃)이고, 재측정은 같은 두 줄에
+`--pins docs/adapter-survey/pins.json`·`--pins docs/adapter-survey/pins-heldout.json`을 붙인다. 고정한 SHA를 받지 못하거나 체크아웃이 실패한 리포는
+HEAD로 물러나지 않고 `failure`이며 pins에도 기록되지 않는다. pins에 없는 리포는 최신 HEAD로 돈다. 기준선 보고서는 로컬 `.scratch/adapter-survey-baseline/`
+(`learning-1.json`·`heldout-1.json`)이고 "기존 리포 1순위 불변"은 그 보고서와의 리포별 1순위 diff 0이다. 아래 25차까지의 수치는 고정 이전 측정이라 그대로 둔다.
 회차별 로그는 지웠고 — `git log`가 든다 — 여기 남는 것은 **판정과 그 근거**다.
 
 **현재 집계 계약** (2026-10-07, audit 9·10): `diff.clean`은 재생성 어댑터·20키 이상·현재 `DiffCauses`가 전부 false이고
@@ -674,7 +680,7 @@ siyuan의 기존 의미 불일치와 쓰기 오류 22건이 모두 사라졌다.
 
 ⚠️ **재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를
 **학습과 홀드아웃 둘 다** 돌린다 — 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 **그중 하나는 학습
-코퍼스에서만** 나타났다. 한쪽만 돌리면 못 본다. 네트워크 ~4분이라 게이트가 아니고 `/push` 4d가 묻는다.
+코퍼스에서만** 나타났다. 한쪽만 돌리면 못 본다. 네트워크 ~4분이라 게이트가 아니고 `/push` 4d가 묻는다. 비교는 `--pins`로 같은 SHA에서 돌린다(위 §1.9 명령 아래).
 ⚠️ **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인
 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가
 잡고, **재측정이 답하는 것은 일반화뿐이다.**
