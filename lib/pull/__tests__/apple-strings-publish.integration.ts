@@ -21,7 +21,10 @@ import { buildPushPayload } from "@/lib/push/payload";
 import { hashPushToken } from "@/lib/push/token";
 import { runSync } from "@/lib/sync/run";
 
-import { createFakeGitClient } from "./fake-client";
+import { loadPullState } from "@/lib/pull/load";
+import { projectFormats, renderProject } from "@/lib/pull/run";
+
+import { createFakeGitClient, isGitMutation } from "./fake-client";
 
 const github = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/repo-host", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
@@ -77,8 +80,11 @@ const EN = [
   '"count" = "%d \\Aitems";',
   "",
 ].join("\n");
-/** 번역 — UTF-16LE + BOM, CRLF. `logout`이 없다(미번역 — 두 번째 Publish가 삽입한다). */
-const KO = ['/* 홈 */', '"title" = "홈";', '"count" = "%d개";', ""].join("\r\n");
+/**
+ * 번역 — UTF-16LE + BOM, CRLF. `logout`이 없다(미번역 — 두 번째 Publish가 삽입한다). `title`은 가려진 중복이 앞에 있다 — Apple 의미대로 나중 값이
+ * 번역이고(경고 `duplicate-property`), 앞 리터럴은 어떤 Publish에서도 바이트 그대로다.
+ */
+const KO = ['/* 홈 */', '"title" = "옛 홈";', '"title" = "홈";', '"count" = "%d개";', ""].join("\r\n");
 const FILES: Record<string, { content: string; encoding?: FileEncoding }> = { [EN_PATH]: { content: EN }, [KO_PATH]: { content: KO, encoding: "utf-16le-bom" } };
 
 beforeEach(async () => {
@@ -140,6 +146,26 @@ describe("Apple strings 확정 → 첫 적재", () => {
     const ko = await prisma.translation.findMany({ where: { projectId: "p", localeCode: "ko" }, orderBy: { value: "asc" } });
     expect(ko.map(t => [ids.get(t.keyId), t.value]).sort()).toEqual([["count", "%d개"], ["title", "홈"]]);
   });
+
+  /**
+   * 리뷰 Y4 — 첫 적재 시나리오가 DB 행에서 멈췄다. 무편집이면 미리보기도 실행도 보낼 것이 없고, 실행과 같은 렌더(`renderProject`)의 바이트가 원본이다:
+   * base의 비정규 리터럴(`\A`)·ko의 가려진 중복·UTF-16LE + BOM·CRLF가 그대로이고 바뀐 파일이 0이다.
+   */
+  it("무편집이면 미리보기·실행이 보낼 것이 없고 렌더 바이트가 원본 그대로다 — 비정규 리터럴·가려진 중복·인코딩", async () => {
+    fake(FILES);
+    expect(await readPublishPreview(prisma, "p", "fixture")).toMatchObject({ total: 0, changedFiles: [], fileChanges: [] });
+    const made = fake(FILES);
+    expect(await publish()).toMatchObject({ status: "skipped", reason: "no-edits" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+
+    const state = await loadPullState(prisma, "fixture");
+    const { rendered, changes } = await renderProject(state.project, projectFormats(state.surfaces), fake(FILES).client);
+    expect(changes).toEqual([]);
+    expect(rendered.flatMap(surface => surface.files).map(file => [file.path, file.content, file.encoding, file.errors ?? []])).toEqual([
+      [EN_PATH, EN, undefined, []],
+      [KO_PATH, KO, "utf-16le-bom", []],
+    ]);
+  });
 });
 
 describe("Apple strings Publish — 첫째와 둘째의 바이트", () => {
@@ -153,7 +179,7 @@ describe("Apple strings Publish — 첫째와 둘째의 바이트", () => {
 
     const first = fake(FILES);
     expect(await publish(preview.fingerprint)).toMatchObject({ status: "committed" });
-    const firstKo = ['/* 홈 */', '"title" = "홈 화면";', '"logout" = "로그아웃";', '"count" = "%d개";', ""].join("\r\n");
+    const firstKo = ['/* 홈 */', '"title" = "옛 홈";', '"title" = "홈 화면";', '"logout" = "로그아웃";', '"count" = "%d개";', ""].join("\r\n");
     expect(changesOf(first)).toEqual([{ kind: "upsert", path: KO_PATH, content: firstKo, encoding: "utf-16le-bom", inBase: true }]);
 
     // 첫 PR이 머지됐다 — 다음 Publish의 base는 첫 출력이다.
