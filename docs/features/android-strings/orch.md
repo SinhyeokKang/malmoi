@@ -23,6 +23,8 @@
 13. **인라인 태그 비교 기준은 기준 언어 셀의 저장 후 값이다(같은 저장의 base 변경 포함, 비면 `sourceText` 폴백)** — 지휘자 판단(E 질문). design §3.1 "비교 기준이 그 셀이다"가 답한다.
 14. **값 표현 보완(design §3): DB·화면 값에서 `<…>`는 언제나 진짜 자식 태그다. 글자 `<`는 DB 값에 `&lt;` 그대로 둔다(`&lt;`·`&#60;`·`&#x3C;`를 풀지 않는다)** (2026-10-19 사용자, RE U1). 엔티티를 다 풀면 파일의 `&lt;b&gt;`(Html.fromHtml용 글자)와 자식 태그 `<b>`가 같은 DB 문자열이 되어, 셀을 고친 Publish가 글자↔태그를 뒤집고 저장 검증도 둘을 못 가린다. 나머지 엔티티(`&amp;` 등)의 표현은 A가 고정점 계약 안에서 정하고 인계에 문법을 적는다. 태그를 시작하지 못하는 `<`가 든 Android 셀 저장은 E가 거부한다.
 15. **기준 값이 태그 열로 파싱되지 않으면 태그 모양 토큰의 멀티셋만 비교하고 닫힘 검사는 건너뛴다** — 지휘자 판단(RE U2, 리뷰 추천). 어떤 키도 영구히 저장 불가가 되지 않게 하면서 태그 누락은 계속 잡는다.
+16. **NewPipe의 `shared/src/commonMain/composeResources/values-{locale}/strings.xml`(110로케일)은 정답(`alsoValid`)으로 판정한다** — 지휘자 판단(결정 2로 composeResources가 범위에 들어왔고, 그 리포의 실제 공유 문자열 집합이다. 순위 신호(로케일 수)를 그 한 리포 때문에 바꾸지 않는다). 판정 JSON 갱신은 A의 수정 라운드, `/merge` 전 사용자 검수 대상(`repos.md` "검수 대기 판정")에 올린다.
+17. **E의 저장 판정은 A의 태그 문법(`lib/adapters/android-strings.ts`의 `TAG`)과 같은 규칙이어야 한다** — 지휘자 판단. 지금 E는 태그 이름에 `\p{L}`을 받아 `<한글>`을 태그로 통과시키고 A의 인코더는 그 셀을 `write-parse-failed`로 낸다 — 저장은 되는데 Publish가 실패한다. A 통합 뒤 E가 rebase해 같은 판정을 쓴다(E-fix2).
 
 ## 배치
 
@@ -52,4 +54,8 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **E 완료** — `20ab754e` test · `01077aa4` feat(판정 `lib/keys/android-inline-tags.ts`, 코어 `saveKeysLocked`가 잠금 뒤 이미 읽던 `adapterName`을 넘긴다 — 추가 질의 없음, 비기준 언어의 바뀐 셀만, `cannot-clear` 우선). `gate: ok`(16769 + 격리 932). E 터미널 retain. RE `ctx_c51c7b176fdb`(claude-opus-5-5 high).
 - **RE 완료** — 🔴1(R1 기준 값이 잘 닫히지 않으면 그 키의 비기준 저장이 영구히 막힌다 — 디코딩 도메인에서 파일 `&lt;br&gt;`가 `<br>`가 되는 탓) · 🟡2(Y1 번역 글자 `<`가 태그로 읽혀 거부 · Y2 진입점 테스트 공백) · ⚪4. 결정 13·키 단위 원자성·두 껍데기·병합 없음 확인. 사본 `handoffs/review-E.md`. RE 해제.
 - 결정 14(사용자)·15. A에게 결정 14 전달(`msg-A-d14.md`, send + 터미널 입력) — A 터미널에서 그 파일을 읽은 것을 확인. E-fix1 `ctx_64d86ab24675`(E 터미널 재사용 — R1·Y1·Y2 + 결정 14).
+
+- **E-fix1 완료** — `cc7e160a` test · `90afe459` fix(새 코드 `inline-markup-invalid` — 태그를 시작하지 못하는 `<`, 결정 14 · 기준 파싱 실패 시 토큰 멀티셋 비교, 결정 15 · 두 키 배치 원자성·다른 셀 기존 불일치·R1 회귀 진입점 테스트). `gate: ok`(16789 + 격리 932). 지휘자가 판정·코어 diff를 직접 보고 재리뷰 없이 수용 — A의 최종 엔티티 문법이 나오면 E 판정과 맞는지 통합 전에 대조한다. E 터미널 retain.
+- **A 완료** — `d72e5ed9` feat · `3b6fb97c` fix(같은 offset 삽입 병합 — `/code-review`) · `f52d0252` 기준선. `gate: ok`(16974 + 격리 937). `@xml-tools/parser` 1.0.12 exact(16진 문자 참조 렉싱 결함 — 엔티티는 원문에서 푼다), aapt2 2.20 채록 67건. 결정 14 값 문법을 인계에 명시(`&lt;` 유지 · `&amp;`는 `lt;`·`amp;` 앞에서만). 고정 SHA: 학습·홀드아웃 1순위·metrics 바이트 동일 · 모바일 Android 정답 19 중 18이 1순위 정답(NewPipe는 composeResources 먼저 — 결정 16 · open-u60-pro는 iOS alsoValid 유지, Android 3순위) · 고정점 100% · 손실 0 · `resource-limit` 0 · 중복 `name` 0(결정 8 ask 불필요) · Flutter 셸 6리포 전부 ARB 유지(`isFlutterShell`을 `android/`에 걸었다 — 결정 7) · 오탐 1(`android/security-certification-resources` 단일 언어 후보 — 보고 대상). ⚠️ 미룬 것: create_project/add_sources basePath 진입점 갈래·기준 코드 주입은 B(T3.2b) — **A만 dev에 있는 동안 온보딩이 `values-*` 코드를 Android 기준으로 고른다**(R이 판정). 계획과 다른 점 10개 → R. A 터미널 retain. 사본 `handoffs/handoff-A.md`.
+- 결정 16·17. R `ctx_549ef47db323`(codex gpt-6-astra medium).
 
