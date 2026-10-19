@@ -945,6 +945,8 @@ lib/
                         refs/경고에서 제외하고, 내부 실패 Symbol은 사용자 namespace·변수 문자열과 구별한다(ARCHITECTURE §4.0).
                         survey는 실제 writer 왕복과 집계를 잇는다. 점 키·중첩 공존은 presentation 관측이고 clean 제외 사유가 아니다.
                         미판정 리포는 unjudged·전체 탐지율에 남고 오탐 분자·분모에서는 제외한다(ARCHITECTURE §1.9).
+                        survey/pins — 코퍼스 커밋 고정의 순수 층(`parsePins`·`pinsFromSurveys`·`PIN_SHA`). `run.ts`의 `fetchRepo`가 고정 SHA를 받고
+                        `scripts/adapter-survey.ts`의 `--pins`·`--write-pins`가 읽고 쓴다. 입력은 `docs/adapter-survey/pins*.json`
                         cli/push-response의 보류 재개 안내는 열린 PR 머지/닫기 뒤 현재 head의 새 push 또는 야간 동기화다 — 옛 job 재실행을 권하지 않는다
   mcp/                  MCP 커넥터(2026-09-28, ARCHITECTURE §6.45). **순수 판정이 대부분이고 server-only가 셋뿐이다** —
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
