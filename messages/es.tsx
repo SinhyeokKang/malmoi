@@ -271,7 +271,7 @@ export const es = {
     },
     closing: {
       title: "Empieza con los archivos que ya tienes",
-      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
+      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS, de extensiones de Chrome, de Flutter ARB, de Apple strings, de String Catalog o de Android strings, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
       links: { label: "Más información", formats: "Formatos compatibles", aiAgents: "Agentes de IA", faq: "Preguntas frecuentes" },
     },
     mockup: {
@@ -1167,6 +1167,10 @@ export const es = {
       "yaml-catalog": { label: "Catálogo YAML", example: "config/locales/{locale}.yml" },
       "code-dict": { label: "Diccionario en código (un archivo por idioma)", example: "src/locales/{locale}.ts" },
       "ts-dict": { label: "Diccionario en código (todos los idiomas en un archivo)", example: "src/i18n/namespaces/*.ts" },
+      "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
+      "apple-strings": { label: "Archivo strings de Apple", example: "App/{locale}.lproj/Localizable.strings" },
+      "apple-xcstrings": { label: "Apple String Catalog", example: "App/Localizable.xcstrings" },
+      "android-strings": { label: "Archivo strings de Android", example: "app/src/main/res/values-{locale}/strings.xml" },
     },
     imported: (count: number, failed: number): string =>
       failed === 0
@@ -1286,7 +1290,7 @@ export const es = {
       previewCandidate: (path: string) => `Vista previa de ${path}`,
       conflicts: "Estas selecciones escriben en los mismos archivos. Desmarca una selección para continuar.",
       keys: (n: number): string => (n === 1 ? "1 clave" : `${n.toLocaleString("es")} claves`),
-      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("es")} idiomas · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("es")} ${locales === 1 ? "idioma" : "idiomas"} · ${keys}`,
       notListed: "¿No aparece?",
       setPath: "Indicar la ruta manualmente",
       preview: {
@@ -1316,6 +1320,9 @@ export const es = {
     },
 
     baseLocale: {
+      androidHint: "Introduce el código de idioma del archivo base, como en.",
+      androidInvalid: "Introduce un código de idioma válido, como en.",
+      androidOverlap: (code: string) => `${code} ya es un idioma de traducción de esta fuente. Introduce el idioma de values/strings.xml.`,
       row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "Idioma base",
       hint: "El archivo de este idioma decide qué claves existen. Si eliges el equivocado, las claves que solo existen en otro idioma quedan fuera.",
@@ -1451,6 +1458,14 @@ export const es = {
         tryAgain: "Intentar de nuevo",
         saveFailed: { title: "No pudimos guardar esta clave", body: "Tu texto sigue aquí. Vuelve a intentarlo o guárdalo dentro de un momento." },
         saveUnknown: { title: "No pudimos confirmar el guardado", body: "Tu texto sigue aquí. Revisa los valores actuales antes de volver a guardar." },
+        inlineMarkupInvalid: {
+          title: (locales: string): string => `Etiquetas no válidas en ${locales}`,
+          body: "No se guardó nada. Revisa las etiquetas y sus cierres. Para escribir < como texto, usa &lt;.",
+        },
+        inlineTagsMismatch: {
+          title: (locales: string): string => `Las etiquetas de ${locales} no coinciden con el idioma base`,
+          body: "No se guardó nada. Mantén las etiquetas del idioma base tal como están y traduce solo el texto entre ellas.",
+        },
         cannotClear: {
           title: (locales: string): string => `${locales} no puede quedar vacío`,
           body: "Este formato de archivo no puede quitar una traducción, así que no se guardó nada. Escribe un valor o descarta el cambio.",
@@ -2042,6 +2057,7 @@ export const es = {
       removeLabel: (code: string): string => `Quitar ${code}`,
       cancelLabel: (code: string): string => `Cancelar la eliminación de ${code}`,
       baseReason: "Elige otro idioma base antes de quitar este.",
+      androidBaseReason: "El idioma base de Android es fijo y no se puede quitar values/strings.xml. Desvincula esta fuente y vuelve a añadirla para cambiar el código.",
       noFileYet: "Al publicar se crea el archivo en cuanto tenga una traducción.",
       readOnly: "Solo lectura hasta que la eliminación se publique o se cancele.",
       readOnlyDelivered: "Solo lectura hasta que se fusione la pull request o se cancele la eliminación.",
@@ -2059,6 +2075,7 @@ export const es = {
       codeLabel: "Código de idioma",
       codePlaceholder: "Elige o escribe un código",
       codeHelp: "Elige uno o escribe un código: un idioma en minúsculas, con una región opcional (fr, pt-BR, zh_TW).",
+      androidCodeHelp: "Elige o escribe un código de idioma de Android, como fr o pt-rBR.",
       chromeLabel: "Idioma",
       chromePlaceholder: "Elige un idioma",
       listLabel: "Idiomas",
@@ -2076,6 +2093,7 @@ export const es = {
       errors: {
         unreadable: "Malmoi no puede volver a leer este código desde el repositorio. Añade el archivo en el repositorio.",
         unsupportedLocale: "Las extensiones de Chrome no admiten este código de idioma.",
+        androidLocaleCode: "Android requiere códigos como fr o pt-rBR. Usa iw, in y ji en lugar de he, id e yi.",
         alreadyActive: (code: string): string => `${code} ya está en esta fuente.`,
         collision: (code: string, existing: string): string => `${code} apunta al mismo archivo que ${existing}, que esta fuente ya tiene.`,
         removalPending: (code: string): string => `Se está quitando ${code}. Cancela la eliminación en su lugar.`,
@@ -2626,6 +2644,7 @@ export const es = {
       "invalid-branch": "Ese no es un nombre de rama válido. No se permiten espacios ni los caracteres ~^:?*[.",
       "sync-branch": "Malmoi publica las traducciones desde esa rama, así que no puede ser la rama base. Elige otra rama.",
       "unknown-locale": "Este repositorio no tiene ningún archivo de traducción para ese idioma.",
+      "android-base-fixed": "No se puede cambiar el idioma base de Android. Desvincula esta fuente y vuelve a añadirla para corregir el código.",
       "orphaned-locale": "El archivo de ese idioma ya no está en el repositorio. Primero vuelve a añadirlo.",
     },
   },

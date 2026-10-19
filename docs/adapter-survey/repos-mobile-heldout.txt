@@ -1,0 +1,12 @@
+Alinto/sope
+b123400/xliffie
+d4rken-org/butler
+exelban/stats
+JHubi1/ollama-app
+jonjomckay/fritter
+libre-tube/LibreTube
+mueller-ma/NFCReader
+Notsfsssf/pixez-flutter
+nowubh/Mono-Dash
+rosuH/EasyWatermark
+TelegramMessenger/Telegram-iOS

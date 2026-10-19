@@ -53,6 +53,8 @@ export type NightlyTarget = {
     lastCommitSha: string | null;
     adapterName: string | null;
     pathTemplate: string | null;
+    /** 실패 기록 CAS의 설정 축 — 경로 템플릿과 한 짝이다(mobile-strings design §2). */
+    basePath: string | null;
     baseLocale: string | null;
     /** 표면 실패 상태 — 있으면 같은 head여도 다시 적재한다(`NightlySurface.failed`). */
     lastImportError: string | null;
@@ -183,7 +185,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
             await tx.translationSurface.updateMany({
               where: { projectId: target.id, archivedAt: null, OR: active.map(surface => ({
                 id: surface.id, importRevision: surface.importRevision, adapterName: surface.adapterName,
-                pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
+                pathTemplate: surface.pathTemplate, basePath: surface.basePath, baseLocale: surface.baseLocale,
               })) },
               data: { lastImportError, lastImportFailedAt },
             });

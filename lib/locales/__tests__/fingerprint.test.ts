@@ -10,7 +10,7 @@ const BASE: LocaleChangeFingerprintInput = {
   surfaceId: "s",
   localeCode: "fr",
   change: null,
-  surface: { adapterName: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", declaredBaseLocale: null },
+  surface: { adapterName: "json-catalog", pathTemplate: "web/{locale}.json", basePath: null, baseLocale: "en", declaredBaseLocale: null },
   delivery: { revision: "rev-1", invalidated: false },
   pending: [{ id: "t1", token: "a" }, { id: "t2", token: "b" }],
 };

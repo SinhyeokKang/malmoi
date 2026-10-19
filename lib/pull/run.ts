@@ -1,3 +1,4 @@
+import { LocaleFileParseError, type FileEncoding } from "@/lib/file-encoding";
 import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { AdapterError } from "@/lib/adapters/types";
@@ -280,7 +281,7 @@ export async function renderProject(
   const resolved = formats.map(item => {
     const skip = new Set(planBySurface.get(item.surface.id)?.exclude ?? []);
     const format = skip.size === 0 ? item.format : { ...item.format, locales: item.format.locales.filter(code => !skip.has(code)) };
-    return { ...item, format, paths: resolveLocalePaths(format, item.layout, tree.map(t => t.path)) };
+    return { ...item, format, paths: resolveLocalePaths(format, item.layout, tree.map(t => t.path), item.baseLocale) };
   });
   const deletes = locales.surfaces.flatMap(plan => plan.deletes.map(d => d.path));
   const ownership = surfaceOwnership(resolved.map(item => ({
@@ -318,11 +319,21 @@ export async function renderProject(
   // `maxDuration`이 60초다. 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18).
   const shaByPath = new Map(tree.map((t) => [t.path, t.sha]));
   const current = new Map<string, string>();
+  const encodings = new Map<string, FileEncoding>();
+  const unreadable = new Set<string>();
   const targets = paths.filter((p) => shaByPath.has(p.path));
   for (let i = 0; i < targets.length; i += BLOB_CONCURRENCY) {
     const chunk = targets.slice(i, i + BLOB_CONCURRENCY);
-    const texts = await Promise.all(chunk.map((p) => client.getBlobText(shaByPath.get(p.path)!)));
-    chunk.forEach((p, j) => current.set(p.path, texts[j]!));
+    await Promise.all(chunk.map(async (p) => {
+      try {
+        const file = await client.getBlobText(shaByPath.get(p.path)!, p.path);
+        current.set(p.path, file.content);
+        encodings.set(p.path, file.encoding ?? "utf-8");
+      } catch (error) {
+        if (!(error instanceof LocaleFileParseError)) throw error;
+        unreadable.add(p.path);
+      }
+    }));
   }
 
   const rendered = resolved.map(item => {
@@ -332,7 +343,12 @@ export async function renderProject(
     const represent = creates.size === 0 ? undefined : { locales: creates, source: basePath === undefined ? undefined : current.get(basePath) };
     return {
       surfaceId: item.surface.id, surfaceSlug: item.surface.slug, baseLocale: item.baseLocale,
-      files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current, represent),
+      files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current, represent).map(file => {
+        // 원본 부재와 디코드 실패는 다르다 — 실패한 파일을 재생성하거나 새 파일로 내보내지 않는다.
+        if (unreadable.has(file.path)) return { ...file, content: null, errors: [{ path: file.path, code: "parse-failed" as const }] };
+        const encoding = encodings.get(file.path) ?? (basePath === undefined ? undefined : encodings.get(basePath)) ?? "utf-8";
+        return encoding === "utf-8" ? file : { ...file, encoding };
+      }),
     };
   });
   const local = planMultiSurfacePull(rendered);
@@ -385,8 +401,9 @@ export function planDelivery(
     coordinates.locales.add(`${plan.surfaceId}\0${code}`);
     coordinates.languages.add(`${plan.surfaceId}\0${code}`);
   }
-  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
+  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `cellSlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
   //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
+  //   - apple-xcstrings(셀을 넣는다): 키가 어느 파일에도 없을 때만이다 — 언어 셀이 없는 것은 writer가 넣으므로 전달이다(apple-strings design §2.3)
   //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.
   //     base 파일만 읽는다 — `keySlot`이 그 밖의 로케일을 `no-locale`로 흘려 비-base 동작이 그대로다
   for (const item of resolved) {
@@ -398,7 +415,7 @@ export function planDelivery(
       const content = current.get(p.path);
       return content === undefined ? [] : [{ path: p.path, content }];
     }));
-    for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
+    for (const cell of slotlessCells(adapter, item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
   }
   const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
   const warnings: PullWarning[] = [];

@@ -75,3 +75,48 @@ it("완료 순서와 무관하게 결과가 입력 순서다", async () => {
   expect(done).toEqual(["a/4", "a/3", "a/2", "a/1"]);
   expect(out.map((s) => s.repo)).toEqual(repos);
 });
+
+it("survey가 UTF-16 strings를 물리화해 디코드하고 다른 NUL 파일은 건너뛴다", async () => {
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const git: GitRunner = async (cwd, args) => {
+    if (args[0] === "clone") mkdirSync(join(cwd, "r"));
+    if (args[0] === "ls-tree") return "en.lproj/Localizable.strings\nen.json\n";
+    if (args[0] === "checkout") {
+      mkdirSync(join(cwd, "en.lproj"));
+      writeFileSync(join(cwd, "en.lproj/Localizable.strings"), Buffer.from('"a" = "A";', "utf16le"));
+      writeFileSync(join(cwd, "en.json"), Buffer.from("a\0b\0"));
+    }
+    return "";
+  };
+  const out = await fetchRepo("a/1", git);
+  expect(out.failure).toBeUndefined();
+  expect(out.files.get("en.lproj/Localizable.strings")).toBe('"a" = "A";');
+  expect(out.files.has("en.json")).toBe(false);
+});
+
+it("무관한 손상 파일은 경로별 parse-failed로 남기고 정상 카탈로그의 1순위를 지우지 않는다", async () => {
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { surveyOne } = await import("../one");
+  const git: GitRunner = async (cwd, args) => {
+    if (args[0] === "clone") mkdirSync(join(cwd, "r"));
+    if (args[0] === "ls-tree") return "locales/en.json\nlocales/ko.json\nbad.strings\n";
+    if (args[0] === "checkout") {
+      mkdirSync(join(cwd, "locales"));
+      writeFileSync(join(cwd, "locales/en.json"), '{"hello":"Hello"}');
+      writeFileSync(join(cwd, "locales/ko.json"), '{"hello":"안녕"}');
+      writeFileSync(join(cwd, "bad.strings"), Buffer.from("fffe00d8", "hex"));
+    }
+    return "";
+  };
+  const input = await fetchRepo("a/1", git);
+  expect(input.decodeErrors).toEqual([{ path: "bad.strings", code: "parse-failed" }]);
+  const out = surveyOne(input);
+  expect(out.chosen).toMatchObject({ pathTemplate: "locales/{locale}.json" });
+  expect(out.decodeErrors).toEqual(input.decodeErrors);
+  expect(out.failure).toBeUndefined();
+  const { pinsFromSurveys } = await import("../pins");
+  expect(pinsFromSurveys([{ ...out, commit: "a".repeat(40) }])).toEqual({ "a/1": "a".repeat(40) });
+  expect(out.keyCount).toBe(1);
+});

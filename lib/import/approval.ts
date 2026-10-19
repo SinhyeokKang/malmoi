@@ -23,7 +23,7 @@ export async function readDiscardApproval(
   });
   const surfaces = await db.translationSurface.findMany({
     where: { projectId: input.projectId, archivedAt: null },
-    select: { id: true, slug: true, importRevision: true, adapterName: true, pathTemplate: true, baseLocale: true },
+    select: { id: true, slug: true, importRevision: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true },
   });
   const pending = await loadPendingEdits(db, input.projectId);
   const states = await readLocaleStates(db, input.projectId);

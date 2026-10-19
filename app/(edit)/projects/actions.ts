@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adapterFor, isAdapterName } from "@/lib/adapters";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import type { AdapterError } from "@/lib/adapters/types";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
@@ -75,6 +76,7 @@ import { FirstIngestRefused, ingestFirstSnapshot } from "@/lib/onboarding/ingest
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/readiness";
+import { manualBasePath } from "@/lib/onboarding/base-input";
 import { isLocaleShaped, isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 
@@ -430,7 +432,7 @@ export type { DetectResult };
 
 /**
  * 탐지 (화면 ③) — **2패스다** (ARCHITECTURE §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
- * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤37 — ts-dict 씨앗이 2026-09-14에 16을 더했다), 내용을 들고 다시 돈다.
+ * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤40 — ts-dict 씨앗 16(2026-09-14)·String Catalog 씨앗 2를 포함한 계산은 `PROBE_LIMITS` 주석이 정본이다), 내용을 들고 다시 돈다.
  *
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
@@ -506,7 +508,7 @@ export async function loadCandidateSample(raw: NewRepoInput & {
   const parsed = AnySampleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale) || !isLocaleShaped(input.locale)) return { ok: false, error: "invalid input" };
+  if (!isValidBranchName(input.ref) || (input.adapter !== "android-strings" && (!isPathSafeLocale(input.locale) || !isLocaleShaped(input.locale)))) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
@@ -524,22 +526,26 @@ export async function loadCandidateSample(raw: NewRepoInput & {
   }, requireEnv("APP_SIGNING_SECRET"), new Date());
   // 확인값을 못 믿으면 입력이 아니라 확인값이 낡은 것이다 — 만료·키 회전·낡은 스냅샷 전부 재탐지로 풀린다.
   if (verified === null) return { ok: false, error: "sample-expired" };
+  // 코드 없는 Android 표본은 서명된 기준 경로만 받는다 — 클라이언트 경로를 그대로 읽지 않는다.
+  const basePreview = verified.adapter === "android-strings" && verified.baseLocale === "" && verified.basePath === input.locale;
   if (!isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
-      verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
+      verified.pathTemplate !== input.pathTemplate || (!basePreview && (!isPathSafeLocale(input.locale) || !isLocaleShaped(input.locale) || !verified.locales.includes(input.locale)))) {
     return { ok: false, error: "manual-no-match" };
   }
-  const format = { ...verified, adapter: verified.adapter };
+  const sampleLocale = basePreview ? "" : input.locale;
+  const format = { ...verified, adapter: verified.adapter, ...(basePreview ? { locales: [sampleLocale], templateLocale: sampleLocale } : verified.basePath === undefined || !verified.baseLocale ? {} : { templateLocale: verified.baseLocale }) };
   const adapter = adapterFor(format);
   const paths = snapshot.files.map((file) => file.path);
+  // 서명한 기준 언어의 표본은 basePath에서 읽는다(mobile-strings design §2) — 그 밖의 언어는 치환이다.
   const targets = adapter.layout === "per-locale"
-    ? [format.pathTemplate.replaceAll("{locale}", input.locale)].filter((path) => paths.includes(path))
-    : ingestTargets(format, adapter.layout, paths);
+    ? [sampleLocale === verified.baseLocale ? baseFilePath(format, sampleLocale) : format.pathTemplate.replaceAll("{locale}", input.locale)].filter((path) => paths.includes(path))
+    : ingestTargets(format, adapter.layout, paths, verified.baseLocale ?? input.locale);
   if (targets.length === 0) return { ok: false, error: "manual-no-match" };
   try {
     const files = await readFiles(reader, snapshot, targets);
     if (files.length !== targets.length) return { ok: false, error: "unavailable" };
     const read = adapter.read(format, files);
-    const locale = read.locales.find((item) => item.locale === input.locale);
+    const locale = read.locales.find((item) => item.locale === sampleLocale);
     /**
      * 0행인 정상 로케일과 **못 읽은 파일**을 구별한다 — `sampleRows`는 둘을 같은 값으로 접으므로
      * 여기서는 `read`를 직접 본다.
@@ -579,11 +585,12 @@ export async function confirmManualFormat(raw: NewRepoInput & {
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
-  const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+  const basePath = manualBasePath(input.adapter, input.pathTemplate);
+  const targets = templatePaths(input.adapter, input.pathTemplate, paths, basePath ?? null);
   try {
     const files = await readFiles(reader, snapshot, targets);
     if (files.length !== targets.length) return { ok: false, error: "unavailable" };
-    const confirmed = planConfirmedFormat(input, files);
+    const confirmed = planConfirmedFormat({ ...input, basePath }, files);
     if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
     const summary = summarizeCandidates([confirmed.format], new Map(files.map((file) => [file.path, file.content])))[0];
     if (summary === undefined) return { ok: false, error: "manual-no-match" };
@@ -591,7 +598,7 @@ export async function confirmManualFormat(raw: NewRepoInput & {
     if (!summary.samples.some((sample) => sample.locale === input.baseLocale)) {
       const format = { ...confirmed.format, locales: [input.baseLocale] };
       const adapter = adapterFor(format);
-      const selectedPaths = new Set(ingestTargets(format, adapter.layout, paths));
+      const selectedPaths = new Set(ingestTargets(format, adapter.layout, paths, input.baseLocale));
       const read = adapter.read(format, files.filter((file) => selectedPaths.has(file.path)));
       const locale = read.locales.find((item) => item.locale === input.baseLocale);
       // 위와 같은 규칙 — 엔트리 층 오류는 후보를 떨어뜨리지 않는다 (ARCHITECTURE §4).
@@ -600,10 +607,10 @@ export async function confirmManualFormat(raw: NewRepoInput & {
         rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })),
       });
     }
-    return { ok: true, candidate: { ...summary, outputPaths: candidateOutputPaths(confirmed.format, paths), baseLocale: confirmed.baseLocale,
+    return { ok: true, candidate: { ...summary, outputPaths: candidateOutputPaths(confirmed.format, paths, confirmed.baseLocale), baseLocale: confirmed.baseLocale,
       confirmation: signSampleConfirmation({
         userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),
-        ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
+        ref: input.ref, headSha: snapshot.headSha, format: { ...confirmed.format, baseLocale: confirmed.baseLocale },
       }, requireEnv("APP_SIGNING_SECRET"), new Date()),
     } };
   } catch (error) {
@@ -782,7 +789,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
 
     let prepared: Awaited<ReturnType<typeof readSurfaceSnapshot>>;
     try {
-      prepared = await readSurfaceSnapshot(reader, snapshot, { adapter: adapterName, pathTemplate, baseLocale });
+      prepared = await readSurfaceSnapshot(reader, snapshot, { adapter: adapterName, pathTemplate, baseLocale, basePath: surface.basePath });
     } catch (error) {
       if (!(error instanceof IngestBudgetError)) throw error;
       await failRun();

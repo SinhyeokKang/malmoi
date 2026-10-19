@@ -40,33 +40,33 @@ describe("templatePaths — 템플릿이 가리키는 파일 경로", () => {
   ];
 
   it("per-locale: `{locale}`을 트리의 파일명으로 치환해 교집합을 낸다 — 로케일로 보이는 이름만", () => {
-    expect(templatePaths("json-catalog", "src/locales/{locale}.json", TREE)).toEqual([
+    expect(templatePaths("json-catalog", "src/locales/{locale}.json", TREE, null)).toEqual([
       "src/locales/en.json",
       "src/locales/ko.json",
     ]);
   });
 
   it("per-locale: `{locale}`이 디렉터리 자리여도 된다 (chrome)", () => {
-    expect(templatePaths("chrome-locales", "_locales/{locale}/messages.json", TREE)).toEqual([
+    expect(templatePaths("chrome-locales", "_locales/{locale}/messages.json", TREE, null)).toEqual([
       "_locales/en/messages.json",
       "_locales/ko/messages.json",
     ]);
   });
 
   it("multi-locale: `matchGlobPaths`와 같다 — 하위 디렉터리는 안 걸린다", () => {
-    const out = templatePaths("ts-dict", "src/i18n/namespaces/*.ts", TREE);
+    const out = templatePaths("ts-dict", "src/i18n/namespaces/*.ts", TREE, null);
     expect(out).toEqual(["src/i18n/namespaces/common.ts", "src/i18n/namespaces/editor.ts"]);
     expect(out).toEqual(matchGlobPaths("src/i18n/namespaces/*.ts", TREE));
   });
 
   it("아무 파일도 가리키지 않으면 빈 배열이다 — 호출부가 `manual-no-match`로 접는다", () => {
-    expect(templatePaths("json-catalog", "nowhere/{locale}.json", TREE)).toEqual([]);
+    expect(templatePaths("json-catalog", "nowhere/{locale}.json", TREE, null)).toEqual([]);
     // per-locale인데 `{locale}`이 없는 템플릿은 어느 파일도 가리키지 못한다.
-    expect(templatePaths("json-catalog", "src/locales/en.json", TREE)).toEqual([]);
+    expect(templatePaths("json-catalog", "src/locales/en.json", TREE, null)).toEqual([]);
   });
 
   it("모르는 어댑터 이름은 빈 배열이다 — per-locale 분기에 떨어지지 않는다", () => {
-    expect(templatePaths("nope" as never, "src/locales/{locale}.json", TREE)).toEqual([]);
+    expect(templatePaths("nope" as never, "src/locales/{locale}.json", TREE, null)).toEqual([]);
   });
 
   /**
@@ -78,12 +78,12 @@ describe("templatePaths — 템플릿이 가리키는 파일 경로", () => {
    * 것은 상한을 뗐을 때 **비용이 조용히 돌아오는 것**을 이 줄이 막기 때문이다.
    */
   it("예산을 넘는 템플릿은 빈 배열이다 — 두 갈래 모두", () => {
-    expect(templatePaths("ts-dict", "src/i18n/namespaces/*****.ts", TREE)).toEqual([]);
-    expect(templatePaths("json-catalog", "l/{locale}{locale}{locale}{locale}{locale}.json", TREE)).toEqual([]);
+    expect(templatePaths("ts-dict", "src/i18n/namespaces/*****.ts", TREE, null)).toEqual([]);
+    expect(templatePaths("json-catalog", "l/{locale}{locale}{locale}{locale}{locale}.json", TREE, null)).toEqual([]);
   });
 
   it("정규식 특수문자가 들어간 경로도 리터럴로 다룬다", () => {
-    expect(templatePaths("json-catalog", "a+b/{locale}.json", ["a+b/en.json", "aab/en.json", "a+b/ko.json"])).toEqual([
+    expect(templatePaths("json-catalog", "a+b/{locale}.json", ["a+b/en.json", "aab/en.json", "a+b/ko.json"], null)).toEqual([
       "a+b/en.json",
       "a+b/ko.json",
     ]);
@@ -162,7 +162,7 @@ describe("planConfirmedFormat — 입력 ↔ 재탐지 결과 대조", () => {
     const tree = ["src/i18n/common.tsx", "src/i18n/editor.tsx", "src/i18n/util.ts", "README.md"];
     const [detected] = [detectFormatWith("ts-dict", tree, (p) => (p.endsWith(".tsx") ? TS_NS(p) : undefined))];
     expect(detected?.pathTemplate).toBe("src/i18n/*.tsx");
-    const selected = templatePaths("ts-dict", detected!.pathTemplate, tree);
+    const selected = templatePaths("ts-dict", detected!.pathTemplate, tree, null);
     expect(selected).toEqual(["src/i18n/common.tsx", "src/i18n/editor.tsx"]);
     const out = planConfirmedFormat({ adapter: "ts-dict", pathTemplate: "src/i18n/*.tsx", baseLocale: "en" }, selected.map((p) => f(p, TS_NS(p))));
     expect(out).toMatchObject({ status: "ok", format: { pathTemplate: "src/i18n/*.tsx" } });
@@ -170,7 +170,7 @@ describe("planConfirmedFormat — 입력 ↔ 재탐지 결과 대조", () => {
 
   it("혼합 폴더의 `*.ts` 수동 지정은 `.ts`만 고르고 통과한다 — `.tsx`는 별도 표면이다", () => {
     const tree = ["src/i18n/a.ts", "src/i18n/b.ts", "src/i18n/c.tsx", "src/i18n/d.tsx"];
-    const selected = templatePaths("ts-dict", "src/i18n/*.ts", tree);
+    const selected = templatePaths("ts-dict", "src/i18n/*.ts", tree, null);
     expect(selected).toEqual(["src/i18n/a.ts", "src/i18n/b.ts"]);
     expect(planConfirmedFormat({ adapter: "ts-dict", pathTemplate: "src/i18n/*.ts", baseLocale: "en" }, selected.map((p) => f(p, TS_NS(p)))))
       .toMatchObject({ status: "ok", format: { pathTemplate: "src/i18n/*.ts" } });

@@ -135,6 +135,10 @@ model TranslationSurface {
   archivedAt          DateTime?
   adapterName         String?
   pathTemplate        String?
+  /// **기준 언어 파일 경로가 `{locale}` 치환으로 표현되지 않을 때만** 든다(mobile-strings design §2 — Android `values/strings.xml`).
+  /// null이면 기준 언어 경로도 `pathTemplate` 치환이다(`baseFilePath`, `lib/adapters/base-path.ts`). 탐지가 관측한 값이고 `applyPush`가
+  /// 페이로드로 덮는다. 쓰는 자리·읽는 자리 전수는 `lib/adapters/__tests__/base-path-sites.test.ts`가 센다.
+  basePath            String?
   nested              Boolean?
   nestedByPath        Json?
   baseLocale          String?

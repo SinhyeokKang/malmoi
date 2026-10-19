@@ -92,3 +92,18 @@ export function isPathSafeRepoPath(path: string): boolean {
 export function looksLikeLocale(name: string): boolean {
   return /^[a-z]{2,3}(?:[-_][A-Za-z]{2,4})?$/.test(name) || /^[a-z]{2}[A-Z]{2}$/.test(name);
 }
+
+/**
+ * Android 리소스 철자의 지역(`zh-rCN`·`pt-rBR`) → BCP 47(`zh-CN`). **표시·방향 판정 전용이다** — 저장 코드는 바꾸지 않는다(경로 치환이 그 문자열을
+ * 도로 끼운다, android-strings design §2.2). 어느 어댑터의 코드인지 모르는 소비자가 한 번에 따라오도록 어댑터를 묻지 않는다 — `r` + 대문자 지역 둘은
+ * 다른 포맷의 코드에서 나오지 않는 모양이다.
+ */
+export function displayLocaleCode(code: string): string {
+  const m = /^([a-z]{2,3})-r([A-Z]{2})$/.exec(code);
+  return m === null ? code : `${m[1]}-${m[2]}`;
+}
+
+/** 한정자가 언어(+지역)인가 — `values-ko`·`values-zh-rCN`. `b+` 형식·지역 외 한정자(`night`·`car`·`v21`·`sw600dp`)는 아니다(design §2.2). */
+export function isAndroidLocale(code: string): boolean {
+  return /^[a-z]{2,3}(?:-r[A-Z]{2})?$/.test(code) && code !== "car";
+}

@@ -95,7 +95,7 @@ async function seed() {
 async function target() {
   const row = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   return row;
 }
@@ -206,7 +206,7 @@ it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트
   // q는 제때 방문했다(upToDate) — 방문 기록이 지금으로 전진한다.
   const q = await prisma.project.findUniqueOrThrow({ where: { id: "q" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } } } });
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true, lastImportError: true, importRevision: true } } } });
   expect(await runNightly(prisma, q, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });
   // p는 마감으로 멈췄다.
   github({});

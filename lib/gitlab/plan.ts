@@ -1,3 +1,4 @@
+import { encodeFileContent } from "@/lib/file-encoding";
 import { z } from "zod";
 
 import { AppError } from "@/lib/failure";
@@ -17,7 +18,7 @@ import { GITLAB_API } from "./transport";
 
 /** commit API의 action 하나. `execute_filemode`를 넣지 않는다 — 수정 파일이 `100644`로 남는다(W0 실측, GitHub `buildTreePayload`와 같은 동작). */
 export type GitLabCommitAction =
-  | { action: "create" | "update"; file_path: string; content: string; encoding: "text" }
+  | { action: "create" | "update"; file_path: string; content: string; encoding: "text" | "base64" }
   | { action: "delete"; file_path: string };
 
 /**
@@ -35,7 +36,10 @@ export function buildCommitActions(changes: readonly SnapshotChange[]): GitLabCo
     if (seen.has(path)) throw new AppError(`duplicate path in one GitLab commit: ${JSON.stringify(path)}`);
     seen.add(path);
     if (change.kind === "delete") return { action: "delete", file_path: path };
-    return { action: change.inBase ? "update" : "create", file_path: path, content: change.content, encoding: "text" };
+    const utf16 = change.encoding !== undefined && change.encoding !== "utf-8";
+    return { action: change.inBase ? "update" : "create", file_path: path,
+      content: utf16 ? encodeFileContent(change.content, change.encoding!).toString("base64") : change.content,
+      encoding: utf16 ? "base64" : "text" };
   });
 }
 
@@ -82,15 +86,6 @@ export function parseBranchHead(body: unknown): { sha: string; committedAt: stri
   const at = Date.parse(parsed.data.commit.committed_date);
   if (Number.isNaN(at)) return null;
   return { sha: parsed.data.commit.id, committedAt: new Date(at).toISOString() };
-}
-
-const Blob = z.object({ encoding: z.literal("base64"), content: z.string() });
-
-/** `GET /repository/blobs/:sha` → UTF-8. 다른 인코딩은 `null`(호출부가 던지거나 "못 읽음"으로 센다). */
-export function decodeBlob(body: unknown): string | null {
-  const parsed = Blob.safeParse(body);
-  // 한글·프랑스어가 들어가므로 UTF-8로 디코딩한다(GitHub `getBlobText`와 같은 이유).
-  return parsed.success ? Buffer.from(parsed.data.content, "base64").toString("utf8") : null;
 }
 
 /**

@@ -469,7 +469,7 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
         const prepared = await prepareSurfaceImport(reader, {
           projectId: input.projectId, projectSlug: lease.project.slug, mode: "repository", snapshot,
           token: lease.token, startedAt: lease.startedAt,
-          surface: { id: surface.id, slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale, nested: surface.nested, nestedByPath: surface.nestedByPath },
+          surface: { id: surface.id, slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale, basePath: surface.basePath, nested: surface.nested, nestedByPath: surface.nestedByPath },
         });
         surfaces.push(await finishSurface(prisma, lease, surface, prepared, snapshot, tally, pullRequest));
       } catch (error) {

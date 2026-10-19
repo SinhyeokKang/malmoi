@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { matchGlobPaths, namespaceOf } from "@/lib/adapters/index";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import { compareKeys } from "@/lib/adapters/shared";
 import type { Adapter, AdapterFile, DetectedFormat, FileProbe, ReadResult } from "@/lib/adapters/types";
 import type { ScannedRef } from "@/lib/scan/index";
@@ -33,16 +34,20 @@ export function pickBaseLocale(locales: readonly string[]): string | undefined {
  * ⚠️ **먹이지 않으면 어댑터는 없는 것과 같다.** 새 어댑터를 추가하면 이 층도 같은 커밋에서
  * 고친다 (POSTMORTEM 2026-09-02 — `yaml-catalog`가 1순위 리포 0개였던 원인이 판정이 아니라
  * 공급이었다).
+ *
+ * @param baseLocale 기준 언어 — `format.basePath`가 있으면 그 언어 파일은 basePath에서 읽는다(mobile-strings design §2). `values-en/`이
+ *   함께 있어도 기준 언어 파일로 읽지 않는다.
  */
 export function selectLocaleFiles(
   layout: Adapter["layout"],
   format: DetectedFormat,
   paths: readonly string[],
   probe: FileProbe,
+  baseLocale: string,
 ): AdapterFile[] {
   if (layout === "per-locale") {
     return format.locales
-      .map((l) => format.pathTemplate.replaceAll("{locale}", l))
+      .map((l) => (l === baseLocale ? baseFilePath(format, baseLocale) : format.pathTemplate.replaceAll("{locale}", l)))
       // 리포에 없는 경로는 뺀다 — 빈 내용을 먹이면 어댑터가 그 로케일의 키를 통째로 잃는다.
       .filter((p) => paths.includes(p))
       .map((p) => ({ path: p, content: probe(p) ?? "" }));
@@ -124,13 +129,15 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
       pathTemplate: input.format.pathTemplate,
       // detect는 이 값을 채울 수 없다 — 중첩 여부는 내용의 성질이라 read가 관측한다.
       nested: input.read.nested,
+      // 없으면 필드를 만들지 않는다 — 기존 네 포맷의 페이로드가 바이트 그대로이고, 옛 서버도 모르는 키를 받지 않는다.
+      ...(input.format.basePath === undefined ? {} : { basePath: input.format.basePath }),
       // ⚠️ **파일별 관측값을 반드시 함께 싣는다.** 이 줄이 없던 동안 `nestedByPath` 수정은
       // 어댑터·survey에서만 살아 있었고 프로덕션 pull은 포맷 단위 boolean으로 돌았다 (§1.35).
       // 빈 객체를 만들지 않는다 — 관측하지 못한 것과 "전부 flat"은 다르다.
       ...(input.read.nestedByPath === undefined ? {} : { nestedByPath: input.read.nestedByPath }),
       baseLocale: input.baseLocale,
     },
-    locales: input.format.locales,
+    locales: input.format.basePath === undefined ? input.format.locales : [...new Set([...input.format.locales, input.baseLocale])].sort(compareKeys),
     keys: baseEntries.map((e) => ({
       key: e.key,
       sourceText: e.message,

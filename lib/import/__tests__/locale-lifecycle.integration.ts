@@ -306,7 +306,7 @@ describe.each<Host>(["github", "gitlab"])("야간 — 같은 head의 만료 (%s 
   async function target() {
     return prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
       id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-      surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
+      surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true, lastImportError: true, importRevision: true } },
     } });
   }
   const visit = async () => runNightly(prisma, await target(), () => 0);

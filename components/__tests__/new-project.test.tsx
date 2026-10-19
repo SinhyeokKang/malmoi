@@ -1305,3 +1305,67 @@ it("arrow scanning a different repo blocks Next until explicit confirmation with
   await click(button("Next"));
   expect(mocks.detectRepoFormats).toHaveBeenLastCalledWith({owner: "acme", repo: "mobile", ref: "main"});
 });
+
+it("Android ③은 기준 파일 코드 입력을 요구하고 관측 언어와 중복되면 생성을 막는다", async () => {
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const basePath = "app/src/main/res/values/strings.xml";
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(pathTemplate), adapter: "android-strings", basePath, locales: ["de"], baseLocale: "", samples: [], outputPaths: [basePath, pathTemplate.replace("{locale}", "de")] }] });
+  await naming();
+  expect(document.body.textContent).toContain(basePath);
+  const code = field("base-locale");
+  expect(code.value).toBe("");
+  expect(button("Create project").disabled).toBe(true);
+  await input(code, "d");
+  expect(code.getAttribute("aria-invalid")).toBeNull();
+  await act(async () => { code.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+  expect(document.body.textContent).toContain("Enter a valid language code, such as en.");
+  await input(code, "de");
+  expect(code.getAttribute("aria-invalid")).toBeNull();
+  await act(async () => { code.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+  expect(document.body.textContent).toContain("de is already a translation language of this source");
+  expect(code.getAttribute("aria-invalid")).toBe("true");
+  expect(button("Create project").disabled).toBe(true);
+  await input(code, "en");
+  expect(button("Create project").disabled).toBe(false);
+  await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [expect.objectContaining({ adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" })] }));
+});
+
+it.each([{ locales: [] }, { locales: ["ko", "zh-rCN"] }])("#306 Android $locales는 기준 코드 입력 전에 기준 파일 표본을 요청한다", async ({ locales }) => {
+  const basePath = "app/src/main/res/values/strings.xml";
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const pending = deferred<{ ok: true; rows: { key: string; value: string }[]; total: number }>();
+  mocks.loadCandidateSample.mockReturnValueOnce(pending.promise);
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(pathTemplate), adapter: "android-strings", basePath, baseLocale: "", locales, samples: [] }] });
+  await files();
+  expect(mocks.loadCandidateSample).toHaveBeenCalledWith(expect.objectContaining({ locale: basePath }));
+  expect(document.querySelector('[role="radio"][data-state="checked"]')?.textContent).toContain(basePath);
+  await act(async () => pending.resolve({ ok: true, rows: [{ key: "title", value: "Base preview" }], total: 1 }));
+  expect(document.body.textContent).toContain("Base preview");
+  expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  if (locales.length === 0) expect(document.body.textContent).toContain("1 language ·");
+  else {
+    mocks.loadCandidateSample.mockResolvedValueOnce({ ok: true, rows: [{ key: "title", value: "번역 표본" }], total: 1 });
+    await click([...document.querySelectorAll<HTMLElement>('[role="radio"]')].find(node => node.textContent === "ko")!);
+    expect(document.body.textContent).toContain("번역 표본");
+    await click([...document.querySelectorAll<HTMLElement>('[role="radio"]')].find(node => node.textContent === basePath)!);
+    expect(document.body.textContent).toContain("Base preview");
+    expect(mocks.loadCandidateSample).toHaveBeenCalledTimes(2);
+  }
+});
+
+it("#306 지연 안내는 기준 파일 요청 중에만 표시된다", async () => {
+  vi.useFakeTimers();
+  try {
+    const basePath = "app/src/main/res/values/strings.xml";
+    const pending = deferred<{ ok: false; error: "unavailable" }>();
+    mocks.loadCandidateSample.mockReturnValueOnce(pending.promise);
+    mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate("app/src/main/res/values-{locale}/strings.xml"), adapter: "android-strings", basePath, baseLocale: "", locales: [], samples: [] }] });
+    await files();
+    await act(async () => { await vi.advanceTimersByTimeAsync(8_000); });
+    expect(document.body.textContent).toContain(en.common.slow);
+    await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
+    expect(document.body.textContent).not.toContain(en.common.slow);
+    expect(document.body.textContent).toContain(en.newProject.files.preview.unavailable);
+  } finally { vi.useRealTimers(); }
+});

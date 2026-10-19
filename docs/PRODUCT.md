@@ -16,7 +16,7 @@
 ## 0. 문제
 
 크롬 확장의 번역 파일(`_locales/<locale>/messages.json`)을 비개발자 동료가 편집할 수 있게 만드는 데서
-시작했다. 지금은 포맷 다섯을 가로지른다.
+시작했다. 지금은 포맷 아홉을 가로지른다.
 
 - **개발자는 1명** (나)
 - **첫 번역 편집자는 사내 비개발자 동료**이고, 그 다음은 같은 문제를 가진 팀이다
@@ -50,7 +50,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 - 번역 값과 소스 키의 소유권을 분리해 **병합 로직을 제거**한다.
 - 같은 DB 상태와 같은 원본 파일에서 같은 바이트를 만든다.
 - 변경된 파일만 고정 PR 하나에 반영한다.
-- JSON·YAML·TS/JS 딕셔너리의 **구조와 표현을 보존**한다.
+- JSON·YAML·TS/JS 딕셔너리·Flutter ARB·Apple `.strings`·String Catalog·Android `strings.xml`의 **구조와 표현을 보존**한다.
 
 **GitHub이 주이고 GitLab.com을 병기한다** (2026-10-12, gitlab-repositories). GitLab.com 리포도 같은 왕복을 돈다 —
 연결은 개발자가 붙여 넣는 레거시 PAT(스코프 `api`)이고, 재사용되는 리뷰 요청은 merge request(`!128`)이며, CI는 생성된
@@ -322,6 +322,44 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   MR을 닫고 sync 브랜치를 지운다. CI는 ①·설정이 내주는 `.gitlab-ci.yml`(protected·masked `PUSH_TOKEN`)이다 — 원본이 불변 태그
   `malmoi-i18n-push-gitlab-vN`으로 발행되기 전에는 화면이 템플릿 대신 "아직 없다"를 말한다(ACTIONS GitLab 절).
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
+- **Flutter ARB** (2026-10-19, arb) — `arb-catalog` 어댑터(언어마다 파일, 예 `lib/l10n/app_{locale}.arb`)가 여섯째 포맷이다.
+  최상위 `"key": "string"`만 번역 대상이고, ICU 문자열(복수형·select)은 **통짜 문자열로 보여 주고 보존만** 한다 — 편집기가 ICU를
+  풀지 않으므로 §4.2의 "ICU 복수형"에 들지 않는다. 키 메타데이터 `@key`와 전역 항목 `@@*`는 편집 대상이 아니고 원본 파일에서 그대로
+  나른다(`@@locale`은 원본에 그 줄이 있을 때만 경로의 언어 코드로 쓴다). 새로 만든 언어 파일에는 `@key`가 없다 — `flutter gen-l10n`은
+  템플릿의 메타데이터만 읽는다.
+- **Apple strings file · Apple String Catalog** (2026-10-19, apple-strings) — 일곱째·여덟째 포맷이다. 둘 다 수술적 치환이라
+  고친 값 리터럴과 새로 삽입하는 엔트리·셀 밖의 바이트(주석·빈 줄·키 순서)를 건드리지 않는다.
+  - `apple-strings`(언어마다 파일, 예 `ios/App/{locale}.lproj/Localizable.strings`) — `"key" = "value";` 엔트리가 번역 대상이고 값은 이스케이프를
+    푼 문자열로 보인다(`%@`·`%1$s` 그대로). **UTF-8과 UTF-16(LE·BE, BOM 유무)을 받고 원본 인코딩·BOM 그대로 돌려쓴다** — 무손실로 디코드되지
+    않는 파일은 대체 문자로 바꾸지 않고 명시 실패한다. 같은 키가 두 번 있으면 Apple처럼 나중 값이 이기고 가려진 앞 줄은 고치지 않는다(경고만 하고 CI를 막지 않는다). 비기준
+    언어 파일에 없는 키를 번역하면 그 파일에 엔트리 줄을 삽입한다(기준 파일에는 삽입하지 않는다 — 키 존재는 코드가 정한다). `.stringsdict`는
+    읽지 않는다(복수형, §4.2). 테이블(`Localizable`·`InfoPlist` 등)마다 소스 하나다.
+    언어 코드는 `.lproj` 이름 그대로이고, `es_419`·`zh-Hant-TW`처럼 숫자 지역·셋째 조각이 있는 이름은 다른 포맷과 같이 언어로 읽지 않는다.
+  - `apple-xcstrings`(모든 언어가 든 JSON 하나, 예 `ios/App/Localizable.xcstrings`) — 기준 언어는 파일의 `sourceLanguage`다. `stringUnit` 값만 번역
+    대상이고 `variations`(복수형·기기별)와 `shouldTranslate: false` 키는 **보존만** 한다. 번역이 없는 언어 셀은 Xcode 서식으로 삽입한다.
+    SwiftUI가 만든 키처럼 원문 셀이 없는 키는 **키 문자열을 원문으로** 읽고, 원문을 키와 다르게 고쳤을 때만 원문 셀을 쓴다(정답 카탈로그 리포 중앙값 96%가 이 경우다).
+    빈 키 `""`는 번역 대상이 아니다. 같은 이름이 두 번 있으면 Xcode처럼 **앞의 것**이 이기고 경고만 한다(CI를 막지 않는다). 언어 추가·제거는 하지 않는다(§7.2).
+    ⚠️ **파일 하나가 2MB를 넘으면 첫 적재가 `resource-limit`으로 거부된다**(공용 파일당 예산 — 정답 카탈로그 9개 중 2개). 자동 탐지는 GitHub에서 그 파일을 건너뛰어 다른
+    후보를 보이지만, GitLab은 트리에 크기가 없어 탐지가 `resource-limit`으로 끝난다.
+- **Android strings file** (2026-10-19, android-strings) — `android-strings` 어댑터(언어마다 파일, 예 `app/src/main/res/values-{locale}/strings.xml`)가
+  아홉째 포맷이다. Compose Multiplatform의 `composeResources/values-{locale}/strings.xml`도 같은 어댑터다. 수술적 치환이라 고친 값과 새로 삽입하는
+  엔트리 밖의 바이트(주석·빈 줄·들여쓰기·속성 따옴표·엔티티)를 건드리지 않는다 — XML을 다시 직렬화하지 않는다.
+  - `<resources>` 바로 아래 `<string name="…">`만 번역 대상이다. `translatable="false"`·`<plurals>`·`<string-array>`는 **보존만** 한다(복수형 편집은 §4.2).
+    값은 빌드 도구 규칙대로 이스케이프를 푼 문자열로 보이고(`res/`는 aapt2 — `Don\'t` → `Don't`, `composeResources/`는 Compose 변환기 규칙), `<xliff:g>`·`<b>` 같은
+    인라인 태그는 **태그 문자열 그대로** 보인다. 화면 값의 `<`는 언제나 태그이고, **글자 `<`는 `&lt;`로 보이고 그렇게 쓴다** — 파일의 `&lt;b&gt;`(글)와 `<b>`(태그)를
+    가르기 위해서다.
+    ⚠️ **저장이 둘을 거부한다** — 웹 편집과 MCP 저장이 같은 코어를 지난다. ① 쓸 수 없는 태그(태그를 시작하지 못하는 `<`, 닫히지 않은 태그)는 기준 언어 셀을 포함한
+    모든 셀에서 거부한다 — 저장은 됐는데 Publish가 실패하는 값을 만들지 않는다. ② 인라인 태그가 기준 언어와 다른 번역을 거부한다 — 기준 언어의 태그를 그대로 두고
+    그 사이 글만 번역한다. push로 기준 언어의 태그가 바뀌어 기존 번역이 어긋나도 Publish는 막지 않고, 그 셀을 다음에 저장할 때 거부한다.
+  - **기준 언어 파일 `values/strings.xml`에는 언어 코드가 없다** — 온보딩 ③과 Add sources가 그 코드를 입력받고(관측된 다른 언어와 겹치면 거부),
+    CLI는 Android 소스에 `--base`가 없으면 거부한다. 기준 언어 파일 경로는 템플릿과 따로 `basePath`로 저장한다. 그래서 **Android 소스의 기준 언어는
+    바꿀 수 없다**(§7.2) — Sources 상세는 OWNER에게도 기준 언어를 읽기 전용 값과 안내 문장으로 보인다. 코드를 잘못 넣었으면 소스를 제거하고 다시 추가한다.
+    `values/`만 있는 단일 언어 리포도 후보로 나온다. 같은 리포의 Android 소스 여럿은 모듈 디렉터리 이름(`app`·`settings`·`shared`)으로 구별된다.
+  - 언어 코드는 디렉터리 이름 그대로다(`ko`·`zh-rCN`·`iw`). `values-night`·`values-v21`·`values-sw600dp`처럼 언어가 아닌 한정자와 `b+sr+Latn` 형식은
+    후보에서 뺀다. 비기준 언어 파일에 없는 키를 번역하면 그 파일에 `<string>` 줄을 삽입한다(기준 파일에는 삽입하지 않는다 — 키 존재는 코드가 정한다).
+    같은 `name`이 두 번 있는 파일은 aapt2도 빌드 오류로 내므로 적재를 거부한다. 새로 만든 언어 파일과 삽입한 줄은 기준 파일 `<string>`의 `formatted` 속성을
+    그대로 이어받는다(빠지면 `%s %d` 같은 값이 빌드 오류다).
+    ⚠️ 모듈이 많아 후보가 다섯을 넘으면 여섯째부터는 자동 탐지 후보에 오르지 않는다 — 수동 지정으로 추가한다.
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
 - **Publish 경험** — 미배포 수, PR 상태, 버린 값 보고. **범위가 2026-09-16에 확정됐다**:
   `[Publish]`는 **언제나 나갈 것을 목록으로 먼저 보이고**(키 × 로케일 diff + 열린 PR 삼상태),
@@ -500,6 +538,12 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
 - **범용 알림 시스템** — 멤버 초대 메일(§4.1) 밖의 발송은 없다(ARCHITECTURE §6.00). 발송 이력·배달·발송물(메일)의 열람 추적, 자동 재시도·작업 큐, 캠페인 발송도 만들지 않는다.
   ⚠️ **Inbox(헤더 드롭다운 · `/inbox` 페이지)는 이것이 아니다** — 발송 없이 현재 상태를 모으며 읽음은 사용자당 시각 하나다. 항목별 읽음·발송·구독·사건 기반 알림을 더하는 순간 이 비범위에 든다.
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
+- **Apple 포맷의 확장** (2026-10-19, apple-strings) — `Base.lproj`가 기준인 리포(Base Internationalization — `Base`는 언어 코드가 아니라 후보 언어에서
+  뺀다. 모바일 코퍼스 실측 1리포) · `.stringsdict`·xcstrings `variations` 편집(위 "ICU 복수형") · UTF-8·UTF-16 밖의 인코딩과 `.strings` 밖 파일의 UTF-16 ·
+  테이블 여러 개를 한 소스로 묶기 · Xcode 생성물 갱신.
+- **Android 포맷의 확장** (2026-10-19, android-strings) — `<plurals>`·`<string-array>` 편집(위 "ICU 복수형") · `b+sr+Latn` 형식 한정자(`+`가 경로 안전
+  문자 밖이다)와 언어가 아닌 한정자(`values-ko-night`·`values-sw600dp`)의 문자열 · 인라인 태그의 하이라이트·칩 표시 · 크로스플랫폼 리포에서 같은 언어가 포맷마다
+  다른 코드(`zh-rCN`·`zh-Hans`·`zh_CN`)로 갈리는 것을 하나로 묶기 · Android Studio·Gradle 생성물 갱신.
 - **화면 언어(§4.1)의 확장** (2026-10-05, ui-locales) — 로케일 URL(`/ko/...`)·`hreflang`·언어별 색인(크롤러는 영어만 본다), `Accept-Language`·지역 기반
   자동 감지, changelog 본문 번역, 방침 es 본(법적 문서를 원어민 검수 없이 낼 수 없다), 언어별 가이드 스크린샷(ko 원고는 `게시`, 그림 속 버튼은
   `Publish` — 수용한 대가), 다른 탭의 언어 동기화(다음 새로고침에서 풀린다), en·ko·es 밖의 언어와 RTL. 테마·타임존은 비범위가 아니라
@@ -668,14 +712,24 @@ orphaned를 제외한 활성 키·언어 수다. 워크플로의 SHA 없는 소�
 ⚠️ **OWNER는 UI·MCP에서 언어 추가·제거를 요청할 수 있다** (2026-10-14, locale-add — 이전 "추가·삭제하지 않는다"를 해제했다).
 요청은 리포를 직접 바꾸지 않고 **기존 Publish PR/MR로 파일 집합 변경을 제안**할 뿐이다. 범위는 좁다:
 
-- **지원 포맷**: `json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`(언어마다 파일이 따로인 어댑터)다. `ts-dict`의 공유 파일 안 로케일 객체 추가·삭제는 하지 않는다.
+- **지원 포맷**: `json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`·`arb-catalog`·`apple-strings`·`android-strings`(언어마다 파일이 따로인 어댑터)다. `ts-dict`·`apple-xcstrings`의 공유 파일 안 로케일 객체 추가·삭제는 하지 않는다.
 - **비지원 포맷의 화면**: 역할과 무관하게 새 추가·제거 동작과 카드 설명을 숨긴다. 남아 있는 Adding·Removing 요청의 취소는 유지한다. 지원 포맷에서 권한·기준 언어·전달 미확정으로 막힌 동작은 비활성과 사유를 유지한다(DESIGN §6.66).
 - **단위**: 소스별 언어 하나씩 추가·제거·취소. **기준 언어는 제거할 수 없다** — 다른 활성 언어로 기준을 바꾼 뒤 제거한다.
+- **Android 철자** (2026-10-19, android-strings): 지역이 붙은 언어는 Android 리소스 철자(`pt-rBR`·`zh-rCN`)로만 추가한다 — `pt-BR` 꼴은 거부한다(Android가
+  `values-pt-BR/`을 인식하지 않아 번역이 조용히 빠진다). 추가 Dialog의 프리셋이 그 철자로 바꿔 보이고, 레거시 코드 `he → iw`·`id → in`·`yi → ji`를 먼저 적용한다. 직접 입력한 `he`·`id`·`yi`는 자동으로 바꾸지 않고 `iw`·`in`·`ji`를 쓰라고 거부한다.
+  웹과 MCP `add_locale`이 같은 판정을 지난다. **Android 소스의 기준 언어는 바꿀 수 없다** — `values/strings.xml`은 늘 기준 언어 자리라, 바꾸면 새 기준 값이
+  `values/`에 쓰이고 옛 기준 언어가 없던 `values-<코드>/`로 간다. 그래서 Android 소스에서는 기준 언어를 제거할 길도 없고, **언어 제거가 `values/strings.xml`을
+  지우는 일도 없다.**
 - **권한**: OWNER(`project:settings`), 비보관 프로젝트. 웹과 MCP가 같은 코어를 쓴다.
 - **보존**: 제거해도 로케일·번역·사건 행은 지우지 않는다(불변식 3). 같은 코드를 다시 추가하면 되살아난다.
 - **미전달 편집**: 그 언어의 미전달 편집은 서버 발급 지문 승인으로 폐기한 뒤 제거·추가 취소가 진행되고, 제거 요청 중에는 그 언어 편집이 잠긴다.
 - **의도는 만료된다**: 열린 PR/MR이 없음을 성공한 조회로 확인하고 base를 관측하면 요청 행이 사라지고, 그 뒤 존재 여부는 다시 리포가 정한다.
   PR/MR을 머지하지 않고 닫으면 리포에 파일이 그대로 있으므로 언어도 그대로 활성이다.
+- **앱 등록은 개발자 몫이다**: Malmoi는 언어 파일만 만들고 지운다. 코드 사전의 `import`·지원 언어 목록과 같이, **`apple-strings`는 Xcode 프로젝트(`project.pbxproj`)에
+  그 `.lproj`를 등록·제거하는 것이 개발자 몫이다**(2026-10-19 사용자 — 실측: 추가한 `fr.lproj`는 등록 전엔 앱에 실리지 않고, 등록된 언어를 제거하면 PR이 파일만 지워
+  `xcodebuild`가 "Build input file cannot be found"로 실패한다. Xcode 16 폴더 동기화 그룹은 예외일 수 있다).
+  **`android-strings`는 `values-<코드>/`를 Android가 자동으로 잡지만, Gradle의 `resConfigs`·`localeFilters`로 언어를 좁힌 앱은
+  새 언어를 그 목록에 등록하는 것이 개발자 몫이다** — 등록하지 않으면 그 언어 파일이 빌드에서 빠진다.
 
 번역 생성·포맷 설정 UI(§4.2)는 이 해제와 무관하게 비범위다.
 

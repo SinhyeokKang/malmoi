@@ -1,0 +1,169 @@
+{
+  "chromeFields": {
+    "descriptionFirst": 0,
+    "nonBaseDescription": 0,
+    "placeholders": 0
+  },
+  "configFileRepos": 2,
+  "detect": {
+    "all": {
+      "n": 11,
+      "of": 12,
+      "pct": 91.66666666666666
+    },
+    "supported": {
+      "n": 11,
+      "of": 11,
+      "pct": 100
+    }
+  },
+  "diff": {
+    "approximateRepos": [],
+    "byAdapter": {
+      "android-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 4,
+          "pct": 0
+        },
+        "repos": 4
+      },
+      "apple-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 2,
+          "pct": 0
+        },
+        "repos": 2
+      },
+      "apple-xcstrings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 1,
+          "pct": 0
+        },
+        "repos": 1
+      },
+      "arb-catalog": {
+        "median": 0.00016948630242519247,
+        "overTarget": {
+          "n": 0,
+          "of": 4,
+          "pct": 0
+        },
+        "repos": 4
+      }
+    },
+    "clean": {
+      "median": 0.00033897260485038494,
+      "overTarget": {
+        "n": 0,
+        "of": 3,
+        "pct": 0
+      },
+      "repos": 3
+    },
+    "median": 0,
+    "nonBaseMedian": 0,
+    "overHalf": {
+      "n": 0,
+      "of": 11,
+      "pct": 0
+    },
+    "overTarget": {
+      "n": 0,
+      "of": 11,
+      "pct": 0
+    }
+  },
+  "diffCauses": {
+    "emptyValues": 1,
+    "integerKeys": 0,
+    "sparseArray": 0
+  },
+  "failedCount": 0,
+  "icuPluralRepos": 2,
+  "indent": {
+    "distribution": {
+      "space-2": 3,
+      "space-4": 1
+    },
+    "twoSpace": {
+      "n": 3,
+      "of": 4,
+      "pct": 75
+    }
+  },
+  "keyCollisions": 6,
+  "localeOrder": {
+    "agreementMedian": 0.1,
+    "comparedRepos": 4
+  },
+  "measuredCount": 12,
+  "misdetect": {
+    "correctRank": {
+      "1": 10,
+      "2": 1
+    },
+    "supported": {
+      "n": 1,
+      "of": 11,
+      "pct": 9.090909090909092
+    },
+    "withCandidate": {
+      "n": 1,
+      "of": 11,
+      "pct": 9.090909090909092
+    }
+  },
+  "nonDotSeparatorRepos": [
+    "b123400/xliffie",
+    "exelban/stats"
+  ],
+  "partialReadRepos": [],
+  "placeholderRepos": 4,
+  "presentation": {
+    "compactContainer": 1,
+    "dottedWithNested": 0,
+    "escapedNonAscii": 0,
+    "escapedSlash": 0
+  },
+  "readErrors": {
+    "adapter-threw": 0,
+    "chrome-key": 0,
+    "json-parse": 0,
+    "key-collision": 6,
+    "leaf-type": 118,
+    "non-literal-value": 0,
+    "non-object-root": 0,
+    "other": 0
+  },
+  "repoCount": 12,
+  "roundtrip": {
+    "byteFixpointSame": {
+      "n": 11,
+      "of": 11,
+      "pct": 100
+    },
+    "notRun": 1,
+    "semanticSame": {
+      "n": 11,
+      "of": 11,
+      "pct": 100
+    }
+  },
+  "silentSkips": 0,
+  "surgicalEdit": {
+    "multiHunkRepos": [],
+    "oneHunk": {
+      "n": 7,
+      "of": 7,
+      "pct": 100
+    }
+  },
+  "unjudged": [],
+  "verdictSource": "\uc0ac\ub78c \ud310\uc815 \u2014 docs/adapter-survey/verdicts.json\uc758 \uc815\ub2f5 \uacbd\ub85c\uc640 \ub300\uc870"
+}

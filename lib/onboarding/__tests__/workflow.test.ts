@@ -105,7 +105,7 @@ describe("renderProjectWorkflowYaml — 표면 하나", () => {
     expect(yml).toContain("${{ secrets.PUSH_TOKEN }}");
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3) — `@main`이면 말모이 main의 커밋 하나가
     // `secrets.PUSH_TOKEN`을 든 대상 리포 러너에서 즉시 돈다.
-    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3");
+    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4");
   });
 
   /**
@@ -202,7 +202,7 @@ describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
 
   it("표면 둘이면 push step이 둘이고 checkout은 하나다", () => {
     const yml = render([one, two]);
-    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v3").length - 1).toBe(2);
+    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v4").length - 1).toBe(2);
     expect(yml.split("actions/checkout@").length - 1).toBe(1);
   });
 
@@ -257,7 +257,7 @@ describe("workflowSurfaceOf", () => {
    * 워크플로에 그 줄을 다시 넣어야 한다. 두 경로가 같은 줄을 내는지 여기서 고정한다.
    */
   it.each([
-    ["json-catalog", "en"], ["json-catalog", "ko"], ["chrome-locales", "fr"], ["ts-dict", "ko"], ["code-dict", "ko"], ["yaml-catalog", "ko"],
+    ["json-catalog", "en"], ["json-catalog", "ko"], ["chrome-locales", "fr"], ["ts-dict", "ko"], ["code-dict", "ko"], ["yaml-catalog", "ko"], ["arb-catalog", "en"], ["apple-strings", "en"], ["apple-xcstrings", "en"], ["android-strings", "en"],
   ] as const)("설정 YAML이 ④의 확정 adapter와 base를 모두 보존한다 (%s, %s)", (adapterName, baseLocale) => {
     const fromSettings = renderProjectWorkflowYaml({ slug: "x", baseBranch: "main",
       surfaces: [workflowSurfaceOf({ slug: "web", pathTemplate: "web/{locale}.json", adapterName, baseLocale, declaredBaseLocale: null })] });

@@ -138,7 +138,7 @@ async function saveKeysLocked(tx: Prisma.TransactionClient, target: KeySaveTarge
     if (key === undefined) { results.push({ ok: false, error: "key-unavailable" }); continue; }
     const locked = [...new Set(changes.filter(change => removing.has(change.localeCode)).map(change => change.localeCode))];
     if (locked.length > 0) { results.push({ ok: false, error: "locale-removal-pending", localeCodes: locked }); continue; }
-    const plan = planKeySave(new Map(locales.map(l => [l.code, cells.get(cellKey(keyId, l.code))?.value ?? null])), changes, { writeStrategy, baseLocale: surface.baseLocale, sourceText: key.sourceText });
+    const plan = planKeySave(new Map(locales.map(l => [l.code, cells.get(cellKey(keyId, l.code))?.value ?? null])), changes, { adapterName: surface.adapterName, writeStrategy, baseLocale: surface.baseLocale, sourceText: key.sourceText });
     if (!plan.ok) { results.push(plan); continue; }
     if (plan.writes.length === 0) { results.push({ ok: true, keyId, cells: [] }); continue; }
     if (delivery === undefined) {

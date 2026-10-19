@@ -82,3 +82,10 @@ describe("보유 목록", () => {
     expect(flagFor("ko")).toBe(FLAG_INVENTORY.includes("kr") ? "kr" : null);
   });
 });
+
+it.each([["in", "id", "id"], ["iw", "he", "il"]])("레거시 %s는 %s와 같은 국기를 쓴다", (legacy, modern, flag) => {
+  expect(flagFor(legacy)).toBe(flag);
+  expect(flagFor(legacy)).toBe(flagFor(modern));
+  expect(flagFor(legacy, [])).toBeNull();
+  expect(flagFor(`${legacy}-rUS`)).toBe("us");
+});

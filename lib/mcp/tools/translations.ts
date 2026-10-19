@@ -53,6 +53,8 @@ export const setTranslations = defineTool({
 /** 키 하나의 거부 → 번역 화면 저장 바닥의 같은 문장(`components/translations/workspace/workspace.tsx`의 `ALERTS`). */
 function keyRejection(r: { error: string; localeCodes?: string[] }): string {
   const footer = en.translations.workspace.footer;
+  if (r.error === "inline-markup-invalid") return `${footer.inlineMarkupInvalid.title((r.localeCodes ?? []).join(", "))} ${footer.inlineMarkupInvalid.body}`;
+  if (r.error === "inline-tags-mismatch") return `${footer.inlineTagsMismatch.title((r.localeCodes ?? []).join(", "))} ${footer.inlineTagsMismatch.body}`;
   if (r.error === "cannot-clear") return `${footer.cannotClear.title((r.localeCodes ?? []).join(", "))} ${footer.cannotClear.body}`;
   if (r.error === "key-unavailable") return footer.keyGone;
   // 제거 예정 언어(locale-add) — 키 단위 저장이라 같은 키의 다른 언어도 저장되지 않았다. 화면 전용 문구는 시안 배치 몫이다.

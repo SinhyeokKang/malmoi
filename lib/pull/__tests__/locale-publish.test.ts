@@ -22,7 +22,7 @@ import { createFakeGitClient, isGitMutation, type FakeGitOptions } from "./fake-
 const PROJECT = {
   id: "p1", slug: "fixture", repoOwner: "o", repoName: "r", baseBranch: "dev",
   repoHost: "github", gitlabConnectionId: null, installationId: "123", repositoryId: "456",
-  adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
+  adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en", basePath: null,
   lastPulledAt: null as Date | null,
 };
 
@@ -725,4 +725,31 @@ describe("결정적 언어 계획 거부 (R-B2 🟡 Y2)", () => {
     expect(classifySyncError(error)).toMatchObject({ code: "locale-plan-refused", retryable: false });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
+});
+
+it("원본 인코딩을 보존하고 새 파일은 basePath 파일 인코딩을 상속한다", async () => {
+  const loaded = state({ localeCodes: ["en", "ko", "fr"] });
+  const surface = loaded.surfaces[0]!;
+  surface.pathTemplate = "{locale}.strings";
+  surface.basePath = "Base.strings";
+  const made = createFakeGitClient({ refSha: { "heads/dev": "h" }, tree: { h: [
+    { path: "Base.strings", sha: "e" }, { path: "ko.strings", sha: "k" },
+  ] }, blobs: { e: EN, k: KO }, blobEncodings: { e: "utf-16be-bom", k: "utf-16le" } });
+  const out = await renderProject(PROJECT, projectFormats(loaded.surfaces), made.client);
+  expect(out.local.find(f => f.path === "Base.strings")?.encoding).toBe("utf-16be-bom");
+  expect(out.local.find(f => f.path === "ko.strings")?.encoding).toBe("utf-16le");
+  expect(out.local.find(f => f.path === "fr.strings")?.encoding).toBe("utf-16be-bom");
+});
+
+it("UTF-16 원본과 DB가 같으면 Publish의 외부 쓰기는 0회다", async () => {
+  const { encodeFileContent } = await import("@/lib/file-encoding");
+  const loaded = state({ unpublished: 1, pendingEdits: [{ id: "t", token: "tok", cell: { surfaceId: "s1", keyId: "ka", localeCode: "ko", restoreValue: "가" } }] });
+  loaded.surfaces[0]!.pathTemplate = "{locale}.strings";
+  const e = blobSha(encodeFileContent(EN, "utf-16le-bom"));
+  const k = blobSha(encodeFileContent(KO, "utf-16be"));
+  const made = createFakeGitClient({ refSha: { "heads/dev": "h" }, tree: { h: [
+    { path: "en.strings", sha: e }, { path: "ko.strings", sha: k },
+  ] }, blobs: { [e]: EN, [k]: KO }, blobEncodings: { [e]: "utf-16le-bom", [k]: "utf-16be" } });
+  expect(await runPull(deps(loaded, made).deps)).toMatchObject({ status: "skipped", reason: "no-changes" });
+  expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
 });

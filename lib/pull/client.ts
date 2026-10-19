@@ -1,3 +1,4 @@
+import type { DecodedLocaleFile } from "@/lib/file-encoding";
 import type { PullChange } from "./plan";
 
 /**
@@ -57,8 +58,8 @@ export type GitClient = {
    */
   getTree(commitSha: string): Promise<GitTreeEntry[]>;
 
-  /** blob 내용(UTF-8). 수술적 치환 어댑터의 write가 원본을 요구한다 (ARCHITECTURE §1.4). */
-  getBlobText(sha: string): Promise<string>;
+  /** 경로로 판별한 blob 내용과 인코딩. write·SHA 비교가 원본 표현을 보존해야 한다. */
+  getBlobText(sha: string, path: string): Promise<DecodedLocaleFile>;
 
   /**
    * **고정 base 위에** 변경 파일로 커밋 하나를 만들고 sync 브랜치를 그 커밋으로 맞춘다(없으면 만든다). **첫 외부 쓰기**다. 반환 = 커밋 SHA.

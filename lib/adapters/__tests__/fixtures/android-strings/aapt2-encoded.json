@@ -1,0 +1,176 @@
+[
+ {
+  "value": "  <b>x</b>  ",
+  "raw": "\"  \"<b>x</b>\"  \"",
+  "text": "  x  ",
+  "spans": "b:2,2"
+ },
+ {
+  "value": " <b>x</b> ",
+  "raw": " <b>x</b> ",
+  "text": " x ",
+  "spans": "b:1,1"
+ },
+ {
+  "value": "a  <b>  x  </b>  b",
+  "raw": "\"a  \"<b>\"  x  \"</b>\"  b\"",
+  "text": "a    x    b",
+  "spans": "b:3,7"
+ },
+ {
+  "value": "<b> x </b> y ",
+  "raw": "<b> x </b> y ",
+  "text": " x  y ",
+  "spans": "b:0,2"
+ },
+ {
+  "value": "Hi <b>bold</b> <xliff:g id=\"n\" example=\"Bob\">%1$s</xliff:g>",
+  "raw": "Hi <b>bold</b> <xliff:g id=\"n\" example=\"Bob\">%1$s</xliff:g>",
+  "text": "Hi bold %1$s",
+  "spans": "b:3,6"
+ },
+ {
+  "value": " x <xliff:g id=\"n\">%1$s</xliff:g>",
+  "raw": "\" x <xliff:g id=\"n\">%1$s</xliff:g>\"",
+  "text": " x %1$s",
+  "spans": ""
+ },
+ {
+  "value": "x <xliff:g id=\"n\">  y  </xliff:g> z",
+  "raw": "\"x <xliff:g id=\"n\">  y  </xliff:g> z\"",
+  "text": "x   y   z",
+  "spans": ""
+ },
+ {
+  "value": "<i>a </i> <b> b</b>",
+  "raw": "<i>a </i> <b> b</b>",
+  "text": "a   b",
+  "spans": "i:0,1 b:3,4"
+ },
+ {
+  "value": "a<br/>b",
+  "raw": "a<br/>b",
+  "text": "ab",
+  "spans": "br:1,0"
+ },
+ {
+  "value": "Don't <b>stop</b>  now",
+  "raw": "Don\\'t <b>stop</b>\"  now\"",
+  "text": "Don't stop  now",
+  "spans": "b:6,9"
+ },
+ {
+  "value": "say \"hi\" <i>there</i>",
+  "raw": "say \\\"hi\\\" <i>there</i>",
+  "text": "say \"hi\" there",
+  "spans": "i:9,13"
+ },
+ {
+  "value": "@home <b>x</b>",
+  "raw": "\\@home <b>x</b>",
+  "text": "@home x",
+  "spans": "b:6,6"
+ },
+ {
+  "value": "?q",
+  "raw": "\\?q",
+  "text": "?q",
+  "spans": ""
+ },
+ {
+  "value": "a\nb <b>c\td</b>",
+  "raw": "a\\nb <b>c\\td</b>",
+  "text": "a\nb c\td",
+  "spans": "b:4,6"
+ },
+ {
+  "value": "&lt;b>literal&lt;/b> <b>real</b>",
+  "raw": "&lt;b>literal&lt;/b> <b>real</b>",
+  "text": "<b>literal</b> real",
+  "spans": "b:15,18"
+ },
+ {
+  "value": "Tom & Jerry",
+  "raw": "Tom &amp; Jerry",
+  "text": "Tom & Jerry",
+  "spans": ""
+ },
+ {
+  "value": "&amp;lt;",
+  "raw": "&amp;lt;",
+  "text": "&lt;",
+  "spans": ""
+ },
+ {
+  "value": "100%% <u>done</u>",
+  "raw": "100%% <u>done</u>",
+  "text": "100%% done",
+  "spans": "u:6,9"
+ },
+ {
+  "value": "x <a href=\"http://x?a=1&amp;b=2\">link</a>",
+  "raw": "x <a href=\"http://x?a=1&amp;b=2\">link</a>",
+  "text": "x link",
+  "spans": "a;href=http://x?a=1&b=2:2,5"
+ },
+ {
+  "value": "  two  spaces  ",
+  "raw": "\"  two  spaces  \"",
+  "text": "  two  spaces  ",
+  "spans": ""
+ },
+ {
+  "value": "trail ",
+  "raw": "\"trail \"",
+  "text": "trail ",
+  "spans": ""
+ },
+ {
+  "value": " lead",
+  "raw": "\" lead\"",
+  "text": " lead",
+  "spans": ""
+ },
+ {
+  "value": "a\\b",
+  "raw": "a\\\\b",
+  "text": "a\\b",
+  "spans": ""
+ },
+ {
+  "value": "\u0007bell",
+  "raw": "\\u0007bell",
+  "text": "\u0007bell",
+  "spans": ""
+ },
+ {
+  "value": "<b>  </b>",
+  "raw": "<b>\"  \"</b>",
+  "text": "  ",
+  "spans": "b:0,1"
+ },
+ {
+  "value": "<b>x</b><i> </i><u>y</u>",
+  "raw": "<b>x</b><i> </i><u>y</u>",
+  "text": "x y",
+  "spans": "b:0,0 i:1,1 u:2,2"
+ },
+ {
+  "value": "]]> <b>x</b>",
+  "raw": "]]&gt; <b>x</b>",
+  "text": "]]> x",
+  "spans": "b:4,4"
+ },
+ {
+  "value": "日本語 <b>テスト</b>",
+  "raw": "日本語 <b>テスト</b>",
+  "text": "日本語 テスト",
+  "spans": "b:4,6"
+ },
+ {
+  "value": "😀 <b>emoji</b> 😀",
+  "raw": "😀 <b>emoji</b> 😀",
+  "text": "😀 emoji 😀",
+  "spans": "b:3,7"
+ }
+]

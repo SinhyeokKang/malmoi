@@ -40,7 +40,7 @@ export const getProject = defineTool({
         archivedAt: true, lastPublishedAt: true, lastPrUrl: true,
         surfaces: {
           where: { archivedAt: null }, orderBy: { slug: "asc" },
-          select: { id: true, slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true, archivedAt: true, lastCommitSha: true,
+          select: { id: true, slug: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true, declaredBaseLocale: true, archivedAt: true, lastCommitSha: true,
             locales: { where: { orphaned: false }, select: { code: true, isBase: true }, orderBy: { code: "asc" } } },
         },
       },
@@ -82,7 +82,7 @@ export const getProject = defineTool({
       ...(gitlab ? { newFromGitLab: newKeys, lastPublishMergeRequest: project.lastPrUrl } : { newFromGitHub: newKeys, lastPublishPullRequest: project.lastPrUrl }),
       lastPublishedAt: project.lastPublishedAt?.toISOString() ?? null,
       sources: project.surfaces.map(surface => ({
-        slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
+        slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, ...(surface.basePath == null ? {} : { basePath: surface.basePath }), baseLocale: surface.baseLocale,
         declaredBaseLocale: surface.declaredBaseLocale, keys: keysOf.get(surface.id) ?? 0, locales: surface.locales.map(l => l.code),
         // `locales`는 그대로다(외부 계약) — 제거 예정 언어도 아직 활성이라 거기 있고, 상태·편집 가능 여부는 이 목록이 말한다.
         languageChanges: languageChangesOf(languageStateOf.get(surface.id) ?? { rows: [], delivered: [] }),

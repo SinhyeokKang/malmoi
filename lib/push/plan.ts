@@ -81,6 +81,19 @@ const Format = z.object({
     .refine((t) => isPathSafeRepoPath(t) && !exceedsGlobBudget(t), {
       message: "pathTemplate must stay inside the repository and stay within the glob budget",
     }),
+  /**
+   * 기준 언어 파일이 템플릿 치환으로 표현되지 않을 때의 그 경로(mobile-strings design §2 — Android `values/strings.xml`). CLI 탐지가 내고
+   * `checkFormat`이 등록 값과 견준다. optional인 것은 옛 CLI와 기존 네 포맷 때문이다 — 없음은 저장값 null과 같다.
+   *
+   * ⚠️ 경로 안전은 두 경계다(POSTMORTEM 2026-09-09) — 여기와 `resolveLocalePaths`. 구체 파일 경로라 치환 토큰·글롭을 받지 않는다:
+   * 저장된 값이 그대로 쓰기 경로가 된다.
+   */
+  basePath: z
+    .string()
+    .refine((p) => isPathSafeRepoPath(p) && !p.includes("{locale}") && !p.includes("*"), {
+      message: "basePath must be a concrete file path inside the repository",
+    })
+    .optional(),
   nested: z.boolean(),
   /**
    * 파일 경로 → 그 파일이 중첩이었는지. **`nested`보다 이쪽이 정확하다** (ARCHITECTURE §1.35).

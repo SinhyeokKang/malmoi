@@ -187,7 +187,7 @@ export async function withheldRevertable(prisma: PrismaClient, projectId: string
 
 function contextOf(
   project: { repoHost: string; repositoryId: string | null; baseBranch: string },
-  surface: { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; nested: boolean | null; nestedByPath: unknown; baseLocale: string | null },
+  surface: { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; nested: boolean | null; nestedByPath: unknown; baseLocale: string | null; basePath: string | null },
 ): string {
   return deliveryContextFingerprint({ repoHost: project.repoHost, repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
 }

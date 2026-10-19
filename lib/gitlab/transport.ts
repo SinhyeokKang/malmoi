@@ -116,6 +116,11 @@ export type GitLabTransport = {
   /** 읽기 하나. 2xx가 아니면 `GitLabHttpError`, 네트워크 실패는 fetch의 오류 그대로 던진다(`classifyGitLabFailure` → `unavailable`). */
   get(path: string, query?: Readonly<Record<string, string>>): Promise<GitLabResponse>;
   /**
+   * 읽기 하나 — 본문을 JSON으로 풀지 않고 **바이트 그대로** 준다. 실패는 `get`과 같다.
+   * ⚠️ 로케일 blob(`/repository/blobs/:sha/raw`)만 쓴다 — JSON blob API는 UTF-16 파일을 UTF-8(+BOM)로 바꾼 사본을 준다(apple-strings Q1 결함 D1, GitLab.com 실측).
+   */
+  getRaw(path: string): Promise<Uint8Array>;
+  /**
    * 쓰기 하나(commit·MR 생성·MR 갱신·노트·브랜치 삭제). 실패는 `get`과 같다.
    * ⚠️ **Publish 실행 수명(`execution.fetch()`)을 받은 transport면 이 호출이 쓰기로 세어진다** — 그 뒤 실패는 결과 미확인이다(POSTMORTEM 2026-10-09).
    */
@@ -133,7 +138,7 @@ export type GitLabTransport = {
  */
 export function createGitLabTransport(token: string, options: { fetch?: typeof fetch } = {}): GitLabTransport {
   const send = options.fetch ?? globalThis.fetch;
-  async function call(method: "GET" | GitLabWriteMethod, path: string, query: Readonly<Record<string, string>> = {}, body?: unknown): Promise<GitLabResponse> {
+  async function request(method: "GET" | GitLabWriteMethod, path: string, query: Readonly<Record<string, string>>, accept: string, body?: unknown): Promise<Response> {
     assertIdAddressed(path, query);
     const url = new URL(`${GITLAB_API}${path}`);
     // `assertIdAddressed`는 정규화 전 문자열을 본다 — `new URL`이 `..`·`%2e%2e`를 접으면 `/projects/1/repository/../../2/…`가 프로젝트 2가 된다(audit A8).
@@ -141,7 +146,7 @@ export function createGitLabTransport(token: string, options: { fetch?: typeof f
     // `encodeURIComponent`를 지나므로 정상 경로는 바뀌지 않는다).
     if (url.pathname !== `${API_PATH}${path}`) throw new Error("GitLab path must be pre-normalized: URL normalization changed the path");
     for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value);
-    const headers: Record<string, string> = { "PRIVATE-TOKEN": token, Accept: "application/json" };
+    const headers: Record<string, string> = { "PRIVATE-TOKEN": token, Accept: accept };
     if (body !== undefined) headers["Content-Type"] = "application/json";
     const response = await send(url, { method, headers, redirect: "error", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     if (!response.ok) {
@@ -149,11 +154,16 @@ export function createGitLabTransport(token: string, options: { fetch?: typeof f
       const insufficientScope = response.status === 403 && (await response.text().catch(() => "")).includes("insufficient_scope");
       throw new GitLabHttpError(path, response.status, insufficientScope, method);
     }
+    return response;
+  }
+  async function call(method: "GET" | GitLabWriteMethod, path: string, query: Readonly<Record<string, string>> = {}, body?: unknown): Promise<GitLabResponse> {
+    const response = await request(method, path, query, "application/json", body);
     const text = await response.text();
     return { status: response.status, body: text === "" ? null : JSON.parse(text), headers: response.headers };
   }
   return {
     get: (path, query) => call("GET", path, query),
+    getRaw: async (path) => new Uint8Array(await (await request("GET", path, {}, "*/*")).arrayBuffer()),
     send: (method, path, sendOptions = {}) => call(method, path, sendOptions.query, sendOptions.body),
     async graphql(query, variables) {
       if (query.includes("fullPath")) throw new Error("GitLab GraphQL must address projects by numeric id, not fullPath");

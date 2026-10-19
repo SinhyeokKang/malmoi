@@ -3,6 +3,10 @@
  * 어댑터 범용성 측정 CLI — 오픈소스 리포에 `detect`·`read`·왕복을 돌려 지표를 낸다.
  *
  *   pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]
+ *                       [--pins <pins.json>] [--write-pins <pins.json>]
+ *
+ * `--write-pins`는 이번에 측정한 리포별 커밋 SHA를 기록하고, `--pins`는 그 파일의 SHA로 받아 상류 변경이 결과를 못 움직이게
+ * 한다(고정된 SHA를 못 받으면 HEAD로 물러나지 않고 그 리포가 실패다). 목록에만 있고 pins에 없는 리포는 최신 HEAD로 돈다.
  *
  * ⚠️ **`--json`을 파이프로 넘길 때는 `pnpm --silent`를 쓴다.** pnpm이 `> tsx scripts/...` 배너를
  * **stdout에** 찍어서 `pnpm x --json | jq`가 항상 깨진다 — 이 스크립트만의 문제가 아니라
@@ -25,6 +29,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { promisify } from "node:util";
 
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
+import { parsePins, pinsFromSurveys } from "../lib/survey/pins";
 import { fetchRepo, runSurveys, type GitRunner } from "../lib/survey/run";
 import { DIFF_TARGET, summarize } from "../lib/survey/summarize";
 import type { RepoSurvey, Verdict } from "../lib/survey/types";
@@ -33,10 +38,10 @@ const argv = process.argv.slice(2);
 // 값 플래그의 값 자리를 대상으로 오인하지 않는다 — `--limit 5 repos.txt`에서 `5`를 목록 파일로 읽었다.
 // 세 CLI가 공유하는 `lib/cli/args.ts`가 정확히 이 함정으로 통합됐는데 이 스크립트만 빠져 있었다
 // (2026-09-04 audit #17).
-const listPath = findTarget(argv, new Set(["--verdicts", "--out", "--limit", "--jobs"]));
+const listPath = findTarget(argv, new Set(["--verdicts", "--out", "--limit", "--jobs", "--pins", "--write-pins"]));
 if (!listPath) {
   console.error(
-    "사용법: pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]",
+    "사용법: pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N] [--pins <파일>] [--write-pins <파일>]",
   );
   // 사용법 오류만 2다. 측정 결과는 어떤 값이 나와도 0이다 (아래 §종료 코드).
   process.exit(2);
@@ -50,6 +55,8 @@ const limit = Number(flag("limit") ?? "0") || Number.POSITIVE_INFINITY;
 const jobs = Math.max(1, Number(flag("jobs") ?? "6") || 6);
 const outPath = flag("out");
 const verdictsPath = flag("verdicts");
+const pinsPath = flag("pins");
+const writePinsPath = flag("write-pins");
 
 const repos = readFileSync(listPath, "utf8")
   .split("\n")
@@ -59,6 +66,9 @@ const repos = readFileSync(listPath, "utf8")
 
 const verdicts: Verdict[] =
   verdictsPath && existsSync(verdictsPath) ? (JSON.parse(readFileSync(verdictsPath, "utf8")) as Verdict[]) : [];
+
+// 읽을 수 없는 pins로 조용히 최신 HEAD를 도는 것이 가장 나쁜 실패라 파일·형식 오류는 던져 멈춘다.
+const pins = pinsPath ? parsePins(readFileSync(pinsPath, "utf8")) : new Map<string, string>();
 
 const execFileAsync = promisify(execFile);
 /**
@@ -70,7 +80,7 @@ const git: GitRunner = async (cwd, args) =>
   (await execFileAsync("git", [...args], { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })).stdout;
 
 const run = (): Promise<RepoSurvey[]> =>
-  runSurveys(repos, jobs, (repo) => fetchRepo(repo, git), (survey, done) => {
+  runSurveys(repos, jobs, (repo) => fetchRepo(repo, git, pins.get(repo)), (survey, done) => {
     if (asJson) return;
     const tag = survey.failure ? "실패" : (survey.chosen?.adapter ?? "탐지 실패");
     console.error(`  [${String(done).padStart(3)}/${repos.length}] ${survey.repo.padEnd(45)} ${tag}`);
@@ -84,6 +94,11 @@ const { metrics, formatTable, repoTable } = summarize(surveys, verdicts);
 if (outPath) {
   writeFileSync(outPath, JSON.stringify({ surveys, metrics }, null, 2));
   if (!asJson) console.error(`\n원자료: ${outPath}`);
+}
+
+if (writePinsPath) {
+  writeFileSync(writePinsPath, `${JSON.stringify(pinsFromSurveys(surveys), null, 2)}\n`);
+  if (!asJson) console.error(`고정 SHA: ${writePinsPath}`);
 }
 
 if (asJson) {

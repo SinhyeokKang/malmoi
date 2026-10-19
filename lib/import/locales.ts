@@ -15,7 +15,7 @@ import { localeOfTemplatePath } from "@/lib/onboarding/confirm";
 export function localesToKeep(input: { format: DetectedFormat; layout: Adapter["layout"]; attempted: readonly string[] }): string[] {
   if (input.layout !== "per-locale") return [...input.format.locales];
   const fromPaths = input.attempted.flatMap(path => {
-    const locale = localeOfTemplatePath(input.format.pathTemplate, path);
+    const locale = localeOfTemplatePath(input.format.pathTemplate, path, input.format.adapter);
     return locale === undefined ? [] : [locale];
   });
   return [...new Set([...input.format.locales, ...fromPaths])].sort(compareKeys);

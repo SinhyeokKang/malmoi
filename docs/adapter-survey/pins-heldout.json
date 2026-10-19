@@ -1,0 +1,22 @@
+{
+  "AutomaApp/automa": "a4cbe34a60c92873c48c2470ca8ab1d96c22c7a0",
+  "RSSNext/Folo": "dcfd1fa359544331ee3cd3b49f62783f994db46c",
+  "Stirling-Tools/Stirling-PDF": "30dab558887f14872dc6dd7b17b59a51fb35dee4",
+  "TryGhost/Ghost": "d4952f1dec908362cc8eceb25c88ec130fe28db1",
+  "calcom/cal.com": "6bfe2df9d13c456dc9374c9e6581b36fba188728",
+  "discourse/discourse": "630b787ebdedf7a2357b336ced427d3af60c98c2",
+  "excalidraw/excalidraw": "e1b7aacb356a492aa1e0fc6eb57b8896124027f0",
+  "go-gitea/gitea": "458eda0f1d49f9413afdb353c561402b18267d43",
+  "grafana/grafana": "386a7cc7bc9bb6607f314d324015f4412650d483",
+  "jitsi/jitsi-meet": "f4a1c17e45a7d6d5b8e51a57af276fdcfa2d2473",
+  "mattermost/mattermost": "f38678d08d67a4d21ea3821f78b530ea7f8f8ec2",
+  "mozilla/pdf.js": "28e406a46fcca6591b96f943d98a739b8866da78",
+  "n8n-io/n8n": "b8a02f70dcdf52d3008e308e9d0564a7342bc016",
+  "obsidianmd/obsidian-translations": "70b691cecdd8372424b1d577264d4d15a3ccc309",
+  "open-webui/open-webui": "91ea4e3421d1d8069f13d4a463fcb5986d94ea60",
+  "outline/outline": "d97c4baad20f5fac7a208708ababf55215f86181",
+  "rubygems/rubygems.org": "c917e9da6fe7da7eab009c21a65e878e26e99a81",
+  "spree/spree_i18n": "35a2e59c888f50a0a042b32e8e130927eadaf11e",
+  "withastro/docs": "ce41ff8b0ddca4e26b5cbf588cd81bd10572060c",
+  "zulip/zulip": "68812981b397e8c59a73105bc4e9d0c9b2b5b83f"
+}

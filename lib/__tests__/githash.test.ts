@@ -14,6 +14,30 @@ const GOLDEN: ReadonlyArray<readonly [label: string, content: string, sha: strin
   ["이모지", "🎉", "d70585e234260b981a1a0f365753e0bbf77e792f"],
 ];
 
+describe("blobSha — UTF-16 원본 바이트", () => {
+  const vectors = [
+    ["22006b0065007900220020003d00200022005cd500ae20003dd800de22003b000a00", "9c38ed00adf64676e8df9dd5d68c9e347af44327"],
+    ["fffe22006b0065007900220020003d00200022005cd500ae20003dd800de22003b000a00", "42aee93d37c756988454c56c0f7f03893f761d62"],
+    ["0022006b0065007900220020003d00200022d55cae000020d83dde000022003b000a", "0366af54890bb0095ad182121cf10c79a29ce7cc"],
+    ["feff0022006b0065007900220020003d00200022d55cae000020d83dde000022003b000a", "23dc3220e494fcbbcfbcc9e5ddd514446661d016"],
+  ];
+  it.each(vectors)("%s: 골든과 git hash-object 실측에 일치한다", (hex, sha) => {
+    const bytes = Buffer.from(hex, "hex");
+    expect(blobSha(bytes)).toBe(sha);
+    expect(blobSha(Uint8Array.from(bytes))).toBe(sha);
+    expect(execFileSync("git", ["hash-object", "--stdin"], { input: bytes, encoding: "utf8" }).trim()).toBe(sha);
+  });
+
+  it.each(GOLDEN)("%s: UTF-8 문자열과 바이트 입력이 같다", (_label, content, sha) => {
+    expect(blobSha(Buffer.from(content, "utf8"))).toBe(sha);
+  });
+
+  it("부분 Uint8Array의 바이트 범위만 해시한다", () => {
+    const bytes = Uint8Array.from([255, 104, 101, 108, 108, 111, 255]);
+    expect(blobSha(bytes.subarray(1, 6))).toBe("b6fc4c620b67d95f953a5c1c1230aaab5db5a1b0");
+  });
+});
+
 describe("blobSha — git hash-object와 일치한다", () => {
   for (const [label, content, sha] of GOLDEN) {
     it(`${label}: 골든 값과 일치`, () => {

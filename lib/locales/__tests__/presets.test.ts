@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COMMON_LANGUAGES, looksLikeCodeInput, matchesLanguage, nameKey, presetCodes, presetSeparator } from "../presets";
+import { androidResourceCode, COMMON_LANGUAGES, looksLikeCodeInput, matchesLanguage, nameKey, presetCodes, presetSeparator } from "../presets";
 
 /**
  * 추가 Dialog의 프리셋(locale-add 결정 D8·D9 · 시안 A1). 프리셋 + 자유 입력은 사용자가 요청한 기능이다 — 목록은 짧은 고정 표이고,
@@ -78,5 +78,20 @@ describe("looksLikeCodeInput — 미리보기를 부를 만큼 코드 모양인�
   });
   it.each(["", "f", "fr-", "French", "fr CA", "12", "../x", "pt-"])("%s → 부르지 않는다", code => {
     expect(looksLikeCodeInput(code)).toBe(false);
+  });
+});
+
+
+describe("Android 프리셋", () => {
+  it.each(["-", "_"] as const)("기존 구분자 %s와 무관하게 Android 철자를 낸다", separator => {
+    const codes = presetCodes(separator, "android-strings");
+    expect(codes).toContain("pt-rBR");
+    expect(codes).toContain("zh-rCN");
+    expect(codes).toContain("in");
+    for (const code of ["pt-BR", "pt_BR", "id"]) expect(codes).not.toContain(code);
+    expect(codes).toHaveLength(COMMON_LANGUAGES.length);
+  });
+  it.each([["he", "iw"], ["id", "in"], ["yi", "ji"], ["he-IL", "iw-rIL"], ["id-ID", "in-rID"], ["yi-US", "ji-rUS"], ["pt-rBR", "pt-rBR"], ["fr", "fr"]])("%s는 레거시 표 뒤 지역 철자를 적용해 %s", (code, expected) => {
+    expect(androidResourceCode(code)).toBe(expected);
   });
 });

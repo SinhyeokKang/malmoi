@@ -11,7 +11,7 @@ const base: DeliveryContextInput = {
   repoHost: "github",
   repositoryId: "100",
   baseBranch: "main",
-  surface: { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en" },
+  surface: { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en", basePath: null },
 };
 
 describe("deliveryContextFingerprint", () => {

@@ -44,7 +44,10 @@
     제거된 소스 재추가 첫 적재(§5.9 — 재탐지값으로 갱신) · MCP `attach_source` 계열 — POSTMORTEM 2026-09-15(쓰는 자리를 전수로 안 셌다).
   - **지문·대조에 드는 자리**: `lib/locales/fingerprint.ts:36` · `lib/publish/fingerprint.ts:43` · `lib/protection/fingerprint.ts:55` ·
     `lib/translations/context.ts:44` · 야간 CAS(`lib/nightly/run.ts:183-187`) · 온보딩 서명(`lib/onboarding/sample-confirmation.ts:11`) ·
-    `lib/mcp/confirm.ts:41` · `plan-revival`(`lib/surfaces/plan-revival.ts:16`)의 일치 판정.
+    `lib/mcp/confirm.ts:41`. 지문 넷은 `basePath`가 있을 때만 튜플에 붙는다 — 저장되는 전달 확인 지문의 null 소스 바이트를 지킨다.
+  - **되살림 판정에는 넣지 않는다**(결정 2026-10-19 사용자 — review-B Y3): `plan-revival`(`lib/surfaces/plan-revival.ts`)은 경로 템플릿·어댑터만 보고
+    같은 행(id·slug·이력)을 잇는다. 되살린 행의 `basePath`는 재탐지 값으로 덮는다(`lib/surfaces/create.ts`). basePath만 바뀌었다고 새 행을
+    만들면 옛 키·번역이 `-2` 행과 갈라진다. 회귀 테스트는 `lib/keys/__tests__/source-remove.integration.ts`다.
 - 외부 계약: CLI가 리포에서 다시 탐지하므로 `basePath`도 CLI 탐지가 내고 `checkFormat` 비교 항목에 든다 — 등록된 값과 다르면
   `format mismatch`(경로 이전과 같은 취급). action 입력은 늘리지 않는다(`path-template`만으로 후보를 고르고 basePath는 그 후보에 딸려 온다).
   ⚠️ 옛 CLI가 `basePath` 없이 보낸 페이로드가 기존 4포맷 표면에서 `format mismatch`가 되지 않아야 한다(null 대 undefined).

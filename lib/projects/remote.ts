@@ -36,7 +36,7 @@ export type RemoteTarget = {
   baseBranch: string;
   lastPrUrl: string | null;
   /** **전체 저장 로케일**(orphaned 포함) — 탐지 정규식이 거르는 코드의 경로를 지킨다 (§3.4). */
-  surfaces: readonly { lastCommitSha: string | null; adapterName: string | null; pathTemplate: string | null; storedLocales: readonly string[] }[];
+  surfaces: readonly { lastCommitSha: string | null; adapterName: string | null; pathTemplate: string | null; basePath: string | null; baseLocale: string | null; storedLocales: readonly string[] }[];
   archived: boolean;
 };
 
@@ -115,7 +115,7 @@ async function signalsFor(
   const pullNumber = pullNumberToCheck(target);
   const formats = target.surfaces.flatMap(s =>
     s.lastCommitSha !== null && s.adapterName !== null && s.pathTemplate !== null && isAdapterName(s.adapterName)
-      ? [{ adapter: s.adapterName, pathTemplate: s.pathTemplate, storedLocales: s.storedLocales, lastCommitSha: s.lastCommitSha }]
+      ? [{ adapter: s.adapterName, pathTemplate: s.pathTemplate, basePath: s.basePath, baseLocale: s.baseLocale, storedLocales: s.storedLocales, lastCommitSha: s.lastCommitSha }]
       : []);
   // **두 신호 모두 입력이 없으면 요청이 0이다** — 클라이언트도 만들지 않는다(토큰 발급 왕복이 따라온다).
   if (formats.length === 0 && pullNumber === null) return NONE;

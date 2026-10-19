@@ -686,7 +686,7 @@ export const en = {
     closing: {
       title: "Start from the files you already have",
       /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
-      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and let AI agents work in the same projects over MCP.",
+      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS, Chrome extension, Flutter ARB, Apple strings, String Catalog or Android strings translation files, invite your team, and let AI agents work in the same projects over MCP.",
       links: { label: "Learn more", formats: "Supported formats", aiAgents: "AI agents", faq: "FAQ" },
     },
     /**
@@ -2516,6 +2516,10 @@ export const en = {
       "yaml-catalog": { label: "YAML catalog", example: "config/locales/{locale}.yml" },
       "code-dict": { label: "Code dictionary (one file per language)", example: "src/locales/{locale}.ts" },
       "ts-dict": { label: "Code dictionary (all languages in one file)", example: "src/i18n/namespaces/*.ts" },
+      "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
+      "apple-strings": { label: "Apple strings file", example: "App/{locale}.lproj/Localizable.strings" },
+      "apple-xcstrings": { label: "Apple String Catalog", example: "App/Localizable.xcstrings" },
+      "android-strings": { label: "Android strings file", example: "app/src/main/res/values-{locale}/strings.xml" },
     },
     /**
      * 첫 적재 결과 헤드라인 — **0건이 아니면 성공 문구를 그대로 쓰지 않는다** (ARCHITECTURE §0 불변식 9).
@@ -2693,7 +2697,7 @@ export const en = {
       conflicts: "These selections write to the same files. Uncheck a selection to continue.",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
-      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("en-US")} languages · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"} · ${keys}`,
       notListed: "Not listed?",
       setPath: "Set the path yourself",
       /** ② 우측 키·값 표. */
@@ -2746,6 +2750,9 @@ export const en = {
     },
 
     baseLocale: {
+      androidHint: "Enter the language code of the base file, such as en.",
+      androidInvalid: "Enter a valid language code, such as en.",
+      androidOverlap: (code: string) => `${code} is already a translation language of this source. Enter the language of values/strings.xml.`,
       /**
        * ③ 기준 언어 행의 보조 줄 — 경로와 키 수. ⚠️ **키 수는 아는 언어에만** 붙는다(결정 ⑦):
        * 모르는 언어에 숫자를 지어내면 되돌릴 수 없는 결정의 근거가 거짓이 된다.
@@ -2940,6 +2947,14 @@ export const en = {
         tryAgain: "Try again",
         saveFailed: { title: "We couldn't save this key", body: "Your text is still here. Try again, or save it in a moment." },
         saveUnknown: { title: "We couldn't confirm the save", body: "Your text is still here. Check the current values before saving again." },
+        inlineMarkupInvalid: {
+          title: (locales: string): string => `Invalid tags in ${locales}`,
+          body: "Nothing was saved. Check the tags and their closing tags. To write < as text, use &lt;.",
+        },
+        inlineTagsMismatch: {
+          title: (locales: string): string => `Tags don't match the base language in ${locales}`,
+          body: "Nothing was saved. Keep the base language's tags as they are and translate only the text between them.",
+        },
         /**
          * 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2). "revert"를 쓰지 않는다 — `Revert to last sent`는 OWNER 전용이고
          * 미저장 변경이 있으면 막힌다. "discard"는 이 화면이 이미 쓰는 어휘다. ⚠️ 명시적 빈값 export(PRODUCT §10)가 생기면 사라질 문구다.
@@ -3756,6 +3771,7 @@ export const en = {
       removeLabel: (code: string): string => `Remove ${code}`,
       cancelLabel: (code: string): string => `Cancel removing ${code}`,
       baseReason: "Choose another base language before removing this one.",
+      androidBaseReason: "The Android base language is fixed, and values/strings.xml can't be removed. Detach this source and add it again to change the code.",
       noFileYet: "Publishing creates the file once it has a translation.",
       readOnly: "Read-only until the removal is published or cancelled.",
       /** 제거가 이미 PR에 실렸다 — 남은 일은 머지(또는 취소)다(RT4 #285). */
@@ -3775,6 +3791,7 @@ export const en = {
       codeLabel: "Language code",
       codePlaceholder: "Choose or type a code",
       codeHelp: "Pick one, or type a code: a lowercase language, with an optional region (fr, pt-BR, zh_TW).",
+      androidCodeHelp: "Choose or type an Android language code, such as fr or pt-rBR.",
       chromeLabel: "Language",
       chromePlaceholder: "Choose a language",
       /** 프리셋 목록의 접근 이름. */
@@ -3798,6 +3815,7 @@ export const en = {
       errors: {
         unreadable: "Malmoi can't read this code back from the repository. Add the file in the repository instead.",
         unsupportedLocale: "Chrome extensions don't support this language code.",
+        androidLocaleCode: "Android requires codes such as fr or pt-rBR. Use iw, in, and ji instead of he, id, and yi.",
         alreadyActive: (code: string): string => `${code} is already in this source.`,
         collision: (code: string, existing: string): string => `${code} points to the same file as ${existing}, which this source already has.`,
         removalPending: (code: string): string => `${code} is being removed. Cancel the removal instead.`,
@@ -4525,9 +4543,10 @@ export const en = {
        * 그때 화면 키가 생기면 여기를 그 키로 바꾼다(같은 거부에 문구 두 벌 금지). 다음 행동을 함께 말한다 — 모르는 코드로 접히면 에이전트가 같은 호출을 되풀이한다.
        */
       languages: {
-        "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources.",
+        "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, code dictionary, Flutter ARB, Apple strings file, and Android strings file sources.",
         "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
         "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
+        "android-locale-code": "Android requires codes such as fr or pt-rBR. Use iw, in, and ji instead of he, id, and yi.",
         "already-active": "That language is already in this source.",
         "locale-collision": "This source already has that language, written with different capitalization or separators.",
         "unsafe-path": "The file path for that language isn't safe to write. Ask your developers to check the source's file path.",
@@ -4556,7 +4575,7 @@ export const en = {
       get_project: "Show a project's overview: sources, languages (with languageChanges: languages being added or removed and whether each was sent), key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
       list_repositories: "List the repositories you can connect to a new project — GitHub by default, or GitLab with host: \"gitlab\" (uses the GitLab token connected on your Account page). Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new GitHub project, { host: \"gitlab\", repositoryId } for a new GitLab project, or { slug } for an existing one — only one of them.",
-      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
+      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources. Android candidates have an empty baseLocale: supply the language code of basePath when creating or adding the source; it must differ from the detected language codes.",
       list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page. Also returns the source's languages being added or removed (languageChanges).",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
       preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, fileChanges (new, updated, or removed files), and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
@@ -4567,8 +4586,8 @@ export const en = {
       get_workflow: "Get the CI file for the project's repository: the GitHub Actions workflow, or .gitlab-ci.yml for a GitLab project. It reads the push token from PUSH_TOKEN (a GitHub secret or a GitLab CI/CD variable).",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
       read_docs: "Read Malmoi's user guide (the Docs at /docs). Call it first when a refusal, a concept, or how to do something in Malmoi is unclear — permissions, Publish, the translation screen. With no arguments it returns the contents. Pass page with a value from the contents (the same as the path after /docs/ in a guide URL) for the whole page, or query to search sections. Pass page or query, not both.",
-      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Pass { owner, repo } for GitHub or { host: \"gitlab\", repositoryId } for GitLab. Returns a push token once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, add it as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
-      add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
+      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. For Android, set each source baseLocale to the language code of its basePath file, distinct from detected language codes. Pass { owner, repo } for GitHub or { host: \"gitlab\", repositoryId } for GitLab. Returns a push token once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, add it as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
+      add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync. For Android, set each pick baseLocale to the language code of its basePath file, distinct from detected language codes.",
       set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved; while a sync is running, the whole call is refused with the time to try again.",
       publish: "Send saved changes to the repository as a pull request (a merge request for a GitLab project). Call preview_publish first and pass its fingerprint.",
       sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
@@ -4577,7 +4596,7 @@ export const en = {
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
       detach_source: "Detach a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_detach first and pass its approval. The last source can't be detached.",
       preview_locale_removal: "Preview removing a language from a source, or stopping a language that's being added: how many translations it has, how many unsent edits it has, and whether the change was already sent. Returns an approval to pass to remove_locale.",
-      add_locale: "Add a language to a source. JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
+      add_locale: "Add a language to a source. JSON catalog, Chrome extension messages, YAML catalog, code dictionary, Flutter ARB, Apple strings file, and Android strings file sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
       remove_locale: "Remove a language from a source, or stop adding it. Call preview_locale_removal first and pass its approval. A removal deletes the language's file in the next Publish, and until then its translations can't be edited; its unsent edits go back to the last sent version. The base language can't be removed.",
       cancel_locale_removal: "Cancel a pending language removal. If the removal was already sent, the next Publish puts the file back.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, update the PUSH_TOKEN CI/CD variable.",
@@ -4934,6 +4953,7 @@ export const en = {
       // 왜 없는지를 말한다 — 목록은 리포의 로케일 파일에서 온다.
       "unknown-locale": "This repository has no translation file for that language.",
       // 되돌릴 수 있는 상태이므로 무엇을 해야 하는지 말한다.
+      "android-base-fixed": "The Android base language can't be changed. Detach this source and add it again to correct the code.",
       "orphaned-locale": "That language's file is gone from the repository. Bring it back first.",
     },
   },

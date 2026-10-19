@@ -1,0 +1,156 @@
+{
+  "chromeFields": {
+    "descriptionFirst": 0,
+    "nonBaseDescription": 0,
+    "placeholders": 0
+  },
+  "configFileRepos": 6,
+  "detect": {
+    "all": {
+      "n": 18,
+      "of": 20,
+      "pct": 90
+    },
+    "supported": {
+      "n": 17,
+      "of": 17,
+      "pct": 100
+    }
+  },
+  "diff": {
+    "approximateRepos": [
+      "Stirling-Tools/Stirling-PDF"
+    ],
+    "byAdapter": {
+      "json-catalog": {
+        "median": 0,
+        "overTarget": {
+          "n": 1,
+          "of": 14,
+          "pct": 7.142857142857142
+        },
+        "repos": 14
+      },
+      "yaml-catalog": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 4,
+          "pct": 0
+        },
+        "repos": 4
+      }
+    },
+    "clean": {
+      "median": 0,
+      "overTarget": {
+        "n": 1,
+        "of": 6,
+        "pct": 16.666666666666664
+      },
+      "repos": 6
+    },
+    "median": 0,
+    "nonBaseMedian": 0.005106382978723456,
+    "overHalf": {
+      "n": 0,
+      "of": 18,
+      "pct": 0
+    },
+    "overTarget": {
+      "n": 1,
+      "of": 18,
+      "pct": 5.555555555555555
+    }
+  },
+  "diffCauses": {
+    "emptyValues": 7,
+    "integerKeys": 0,
+    "sparseArray": 0
+  },
+  "failedCount": 0,
+  "icuPluralRepos": 2,
+  "indent": {
+    "distribution": {
+      "space-2": 10,
+      "space-4": 2,
+      "tab-1": 2
+    },
+    "twoSpace": {
+      "n": 10,
+      "of": 14,
+      "pct": 71.42857142857143
+    }
+  },
+  "keyCollisions": 0,
+  "localeOrder": {
+    "agreementMedian": 1,
+    "comparedRepos": 13
+  },
+  "measuredCount": 20,
+  "misdetect": {
+    "correctRank": {
+      "1": 15,
+      "2": 1,
+      "5": 1
+    },
+    "supported": {
+      "n": 2,
+      "of": 17,
+      "pct": 11.76470588235294
+    },
+    "withCandidate": {
+      "n": 3,
+      "of": 18,
+      "pct": 16.666666666666664
+    }
+  },
+  "nonDotSeparatorRepos": [
+    "open-webui/open-webui",
+    "outline/outline",
+    "zulip/zulip"
+  ],
+  "partialReadRepos": [],
+  "placeholderRepos": 18,
+  "presentation": {
+    "compactContainer": 1,
+    "dottedWithNested": 0,
+    "escapedNonAscii": 0,
+    "escapedSlash": 0
+  },
+  "readErrors": {
+    "adapter-threw": 0,
+    "chrome-key": 0,
+    "json-parse": 1,
+    "key-collision": 0,
+    "leaf-type": 6976,
+    "non-literal-value": 0,
+    "non-object-root": 0,
+    "other": 0
+  },
+  "repoCount": 20,
+  "roundtrip": {
+    "byteFixpointSame": {
+      "n": 18,
+      "of": 18,
+      "pct": 100
+    },
+    "notRun": 2,
+    "semanticSame": {
+      "n": 18,
+      "of": 18,
+      "pct": 100
+    }
+  },
+  "silentSkips": 0,
+  "surgicalEdit": {
+    "multiHunkRepos": [],
+    "oneHunk": {
+      "n": 4,
+      "of": 4,
+      "pct": 100
+    }
+  },
+  "unjudged": [],
+  "verdictSource": "\uc0ac\ub78c \ud310\uc815 \u2014 docs/adapter-survey/verdicts.json\uc758 \uc815\ub2f5 \uacbd\ub85c\uc640 \ub300\uc870"
+}

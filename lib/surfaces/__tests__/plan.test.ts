@@ -83,3 +83,13 @@ describe("planAddConflicts", () => {
       .toEqual({ ok: false, conflicts: [{ path: "x/{locale}.json", surfaceSlugs: [] }, { path: "x/{locale}/m.json", surfaceSlugs: [] }] });
   });
 });
+
+it.each([
+  ["app/src/main/res", "app"], ["feature/settings/src/main/res", "settings"],
+  ["core/ui/src/debug/res", "ui"], ["stripe-core/res", "stripe-core"],
+  ["shared/src/commonMain/composeResources", "shared"],
+])("Android %s의 모듈 이름을 라벨과 slug로 쓴다", (dir, label) => {
+  const path = `${dir}/values-{locale}/strings.xml`;
+  expect(surfaceLabel(path)).toBe(label);
+  expect(planSurfaceSlug(path, [])).toBe(label);
+});

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { normalizeTranslationValue } from "@/lib/translations/draft";
+import { androidInlineTagsIssue } from "./android-inline-tags";
 
 /**
  * 번역값 저장 판정. **유일한 사용자 mutation이다** — 키·로케일 CRUD는 없다.
@@ -59,7 +60,7 @@ export type KeySaveInputType = z.infer<typeof KeySaveInput>;
 export type KeySavePlan =
   | { ok: true; writes: { localeCode: string; value: string }[] }
   | { ok: false; error: "empty" | "too-many" | "payload-too-large" }
-  | { ok: false; error: "duplicate-locale" | "unknown-locale" | "too-long" | "cannot-clear"; localeCodes: string[] };
+  | { ok: false; error: "duplicate-locale" | "unknown-locale" | "too-long" | "cannot-clear" | "inline-tags-mismatch" | "inline-markup-invalid"; localeCodes: string[] };
 
 /**
  * **수술적 표면의 비-base 셀은 비울 수 없다** (delivery-invariants D2 · 감사 #2). 수술적 writer는 값을 지울 줄 몰라 비운 셀은 원본
@@ -83,8 +84,8 @@ export function planClearability(input: { writeStrategy: "regenerate" | "surgica
 export function planKeySave(
   current: ReadonlyMap<string, string | null>,
   changes: readonly { localeCode: string; value: string }[],
-  /** 그 표면의 쓰기 방식과 실제 적용 base. 비우기 판정의 입력이다 — 빠뜨리면 컴파일이 막는다(기본값을 두지 않는다). */
-  surface: { writeStrategy: "regenerate" | "surgical"; baseLocale: string | null; sourceText: string },
+  /** 그 표면의 포맷·쓰기 방식과 실제 적용 base. 비우기·태그 판정의 입력이다 — 빠뜨리면 컴파일이 막는다(기본값을 두지 않는다). */
+  surface: { adapterName: string | null; writeStrategy: "regenerate" | "surgical"; baseLocale: string | null; sourceText: string },
 ): KeySavePlan {
   if (changes.length === 0) return { ok: false, error: "empty" };
   if (changes.length > KEY_SAVE_LIMITS.locales) return { ok: false, error: "too-many" };
@@ -106,5 +107,19 @@ export function planKeySave(
   // no-op이 아닌 쓰기만 본다 — 이미 빈 셀에 빈 값을 보낸 것은 비운 것이 아니다. 하나라도 걸리면 키 전체를 거부한다.
   const uncleared = writes.filter(write => planClearability({ writeStrategy: surface.writeStrategy, isBase: write.localeCode === surface.baseLocale, value: write.value, sourceText: surface.sourceText }) === "cannot-clear");
   if (uncleared.length > 0) return { ok: false, error: "cannot-clear", localeCodes: uncleared.map(write => write.localeCode) };
+  if (surface.adapterName === "android-strings") {
+    // 같은 저장의 base 변경도 비교 기준이다. 빈 base는 export와 같이 원문으로 폴백한다.
+    const base = writes.find(write => write.localeCode === surface.baseLocale)?.value
+      ?? (surface.baseLocale === null ? null : current.get(surface.baseLocale));
+    // 기준 셀은 자기 값과 비교해 태그 변경을 허용하되 writer 문법 검증은 똑같이 지난다.
+    const issues = writes.map(write => ({
+      localeCode: write.localeCode,
+      issue: androidInlineTagsIssue(write.localeCode === surface.baseLocale ? write.value : base || surface.sourceText, write.value),
+    }));
+    for (const error of ["inline-markup-invalid", "inline-tags-mismatch"] as const) {
+      const localeCodes = issues.filter(item => item.issue === error).map(item => item.localeCode);
+      if (localeCodes.length > 0) return { ok: false, error, localeCodes };
+    }
+  }
   return { ok: true, writes };
 }

@@ -1,0 +1,186 @@
+{
+  "chromeFields": {
+    "descriptionFirst": 0,
+    "nonBaseDescription": 0,
+    "placeholders": 0
+  },
+  "configFileRepos": 3,
+  "detect": {
+    "all": {
+      "n": 44,
+      "of": 48,
+      "pct": 91.66666666666666
+    },
+    "supported": {
+      "n": 40,
+      "of": 40,
+      "pct": 100
+    }
+  },
+  "diff": {
+    "approximateRepos": [],
+    "byAdapter": {
+      "android-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 15,
+          "pct": 0
+        },
+        "repos": 15
+      },
+      "apple-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 10,
+          "pct": 0
+        },
+        "repos": 10
+      },
+      "apple-xcstrings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 7,
+          "pct": 0
+        },
+        "repos": 7
+      },
+      "arb-catalog": {
+        "median": 0.0008900034566309833,
+        "overTarget": {
+          "n": 2,
+          "of": 10,
+          "pct": 20
+        },
+        "repos": 10
+      },
+      "json-catalog": {
+        "median": 0.3422454830682679,
+        "overTarget": {
+          "n": 1,
+          "of": 2,
+          "pct": 50
+        },
+        "repos": 2
+      }
+    },
+    "clean": {
+      "median": 0.010478942473761133,
+      "overTarget": {
+        "n": 3,
+        "of": 10,
+        "pct": 30
+      },
+      "repos": 10
+    },
+    "median": 0,
+    "nonBaseMedian": 0,
+    "overHalf": {
+      "n": 2,
+      "of": 44,
+      "pct": 4.545454545454546
+    },
+    "overTarget": {
+      "n": 3,
+      "of": 44,
+      "pct": 6.8181818181818175
+    }
+  },
+  "diffCauses": {
+    "emptyValues": 2,
+    "integerKeys": 0,
+    "sparseArray": 0
+  },
+  "failedCount": 0,
+  "icuPluralRepos": 6,
+  "indent": {
+    "distribution": {
+      "space-2": 10,
+      "space-4": 2
+    },
+    "twoSpace": {
+      "n": 10,
+      "of": 12,
+      "pct": 83.33333333333334
+    }
+  },
+  "keyCollisions": 22,
+  "localeOrder": {
+    "agreementMedian": 0.9147727272727273,
+    "comparedRepos": 12
+  },
+  "measuredCount": 48,
+  "misdetect": {
+    "correctRank": {
+      "1": 38,
+      "3": 1,
+      "8": 1
+    },
+    "supported": {
+      "n": 2,
+      "of": 40,
+      "pct": 5
+    },
+    "withCandidate": {
+      "n": 6,
+      "of": 44,
+      "pct": 13.636363636363635
+    }
+  },
+  "nonDotSeparatorRepos": [
+    "InteractionEngineer/PayForMe",
+    "OMARVII/Shotnix",
+    "codenameone/CodenameOne",
+    "firebase/FirebaseUI-iOS",
+    "gnachman/iTerm2",
+    "milanvarady/Applite",
+    "mit-cml/appinventor-sources",
+    "mrkai77/Loop",
+    "objective-see/LuLu"
+  ],
+  "partialReadRepos": [],
+  "placeholderRepos": 12,
+  "presentation": {
+    "compactContainer": 2,
+    "dottedWithNested": 1,
+    "escapedNonAscii": 0,
+    "escapedSlash": 0
+  },
+  "readErrors": {
+    "adapter-threw": 0,
+    "chrome-key": 0,
+    "json-parse": 0,
+    "key-collision": 22,
+    "leaf-type": 374,
+    "non-literal-value": 0,
+    "non-object-root": 0,
+    "other": 0
+  },
+  "repoCount": 48,
+  "roundtrip": {
+    "byteFixpointSame": {
+      "n": 44,
+      "of": 44,
+      "pct": 100
+    },
+    "notRun": 4,
+    "semanticSame": {
+      "n": 44,
+      "of": 44,
+      "pct": 100
+    }
+  },
+  "silentSkips": 0,
+  "surgicalEdit": {
+    "multiHunkRepos": [],
+    "oneHunk": {
+      "n": 31,
+      "of": 31,
+      "pct": 100
+    }
+  },
+  "unjudged": [],
+  "verdictSource": "\uc0ac\ub78c \ud310\uc815 \u2014 docs/adapter-survey/verdicts.json\uc758 \uc815\ub2f5 \uacbd\ub85c\uc640 \ub300\uc870"
+}

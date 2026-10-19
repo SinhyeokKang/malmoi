@@ -112,3 +112,19 @@ describe("planSampleConfirmations — manual-no-match (포맷·기준 로케일 
     expect(plan([candidate({ baseLocale: "constructor" })])).toEqual({ status: "manual-no-match", index: 0 });
   });
 });
+
+/** 기준 언어 경로도 서명된 포맷과 같아야 한다 (mobile-strings M2 — review-B Y1). 없음과 null은 같다. */
+describe("planSampleConfirmations — basePath", () => {
+  const withBase = { ...format, basePath: "i18n/base.json", baseLocale: "en" };
+
+  it("서명된 basePath와 같으면 ok, 둘 다 없어도 ok", () => {
+    expect(plan([candidate({ confirmation: sign({ format: withBase }), basePath: "i18n/base.json" })])).toEqual({ status: "ok" });
+    expect(plan([candidate()])).toEqual({ status: "ok" });
+  });
+
+  it("한쪽에만 있거나 값이 다르면 manual-no-match", () => {
+    expect(plan([candidate({ basePath: "i18n/base.json" })])).toEqual({ status: "manual-no-match", index: 0 });
+    expect(plan([candidate({ confirmation: sign({ format: withBase }) })])).toEqual({ status: "manual-no-match", index: 0 });
+    expect(plan([candidate({ confirmation: sign({ format: withBase }), basePath: "i18n/other.json" })])).toEqual({ status: "manual-no-match", index: 0 });
+  });
+});

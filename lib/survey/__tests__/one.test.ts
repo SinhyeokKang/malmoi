@@ -96,6 +96,18 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
     expect(paths).toEqual(["config/en.json", "src/i18n/en.json", "src/i18n/ko.json"]);
   });
 
+  /** 껍데기가 `.arb`를 안 고르면 `arb-catalog`은 측정에서 존재하지 않는다(POSTMORTEM 2026-09-02). `l10n.yaml`은 탐지가 읽는 설정이다. */
+  it("ARB 파일과 루트 `l10n.yaml`을 고른다", () => {
+    const { paths } = selectSurveyFiles([
+      "lib/l10n/app_en.arb",
+      "lib/l10n/app_ko.arb",
+      "l10n.yaml",
+      "pubspec.yaml",
+      "packages/x/l10n.yaml",
+    ]);
+    expect(paths).toEqual(["l10n.yaml", "lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"]);
+  });
+
   it("chrome _locales는 전부 고른다", () => {
     const { paths } = selectSurveyFiles([
       "public/_locales/en/messages.json",
@@ -165,6 +177,33 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
     expect(r.paths.length).toBeLessThanOrEqual(1200);
   });
 
+  /**
+   * apple-strings T2.0b — 큰 iOS 리포는 테이블 × 언어로 `.strings`가 수천 개다(스토리보드마다 테이블, 언어 300개). 전부 담으면 `FILE_BUDGET`이
+   * 경로 사전순으로 잘라 `Localizable.strings`나 다른 포맷의 후보가 통째로 빠진다 — 접두사 그룹과 같은 함정이다.
+   */
+  it(".lproj 그룹(디렉터리 · 테이블)마다 상한까지만 고르고 en을 먼저 담는다", () => {
+    const locales = Array.from({ length: 40 }, (_, i) => `a${String.fromCharCode(97 + (i % 26))}${i >= 26 ? "-X" : ""}`);
+    const tables = Array.from({ length: 60 }, (_, i) => `Story${String(i).padStart(2, "0")}`);
+    const ios = ["en", ...locales].flatMap((l) => [...tables, "Localizable"].map((t) => `App/${l}.lproj/${t}.strings`));
+    const r = selectSurveyFiles([...ios, "zz/i18n/en.json", "zz/i18n/ko.json"]);
+    expect(r.truncated).toBe(false);
+    // 다른 포맷의 후보가 사전순 절단에 밀려나지 않는다.
+    expect(r.paths).toEqual(expect.arrayContaining(["zz/i18n/en.json", "zz/i18n/ko.json"]));
+    const localizable = r.paths.filter((p) => p.endsWith("/Localizable.strings"));
+    expect(localizable).toHaveLength(12);
+    expect(localizable).toContain("App/en.lproj/Localizable.strings");
+    expect(r.paths.filter((p) => p.endsWith("/Story00.strings"))).toHaveLength(12);
+    // 같은 테이블이라도 디렉터리가 다르면 다른 그룹이다.
+    const two = selectSurveyFiles(["A/en.lproj/L.strings", "B/en.lproj/L.strings", "A/ko.lproj/L.strings"]).paths;
+    expect(two).toEqual(["A/en.lproj/L.strings", "A/ko.lproj/L.strings", "B/en.lproj/L.strings"]);
+  });
+
+  /** apple-xcstrings — 카탈로그는 파일 하나에 전 언어가 있다. 확장자가 곧 신호라 전부 담는다(ARB와 같다). 의존성 안의 사본은 담지 않는다. */
+  it("`.xcstrings`를 담는다 — Pods·빌드·번들 안은 빼고", () => {
+    const r = selectSurveyFiles(["App/Localizable.xcstrings", "App/mul.lproj/Main.xcstrings", "Pods/X/Localizable.xcstrings", "Out/A.app/B.xcstrings", "README.md"]);
+    expect(r.paths).toEqual(["App/Localizable.xcstrings", "App/mul.lproj/Main.xcstrings"]);
+  });
+
   it("결정적이다 — 입력 순서를 바꿔도 같은 목록", () => {
     const p = ["src/i18n/ko.json", "src/i18n/en.json", "public/_locales/en/messages.json", "public/_locales/ko/messages.json"];
     expect(selectSurveyFiles(p).paths).toEqual(selectSurveyFiles([...p].reverse()).paths);
@@ -172,6 +211,34 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
 });
 
 describe("surveyOne — 리포 하나의 판정 전체", () => {
+  /** apple-strings — 수술적 치환이라 왕복 의미·바이트 고정점이 둘 다 같아야 한다. 비-base의 누락 키 삽입도 측정 경로에서 돈다. */
+  it("Apple `.strings`: `.lproj` 템플릿이 1순위이고 왕복 2층이 통과한다", () => {
+    const s = surveyOne(input("acme/ios", {
+      "App/en.lproj/Localizable.strings": '/* Title */\n"title" = "Home";\n"logout" = "Log out";\n',
+      "App/ko.lproj/Localizable.strings": '/* 제목 */\r\n"title" = "홈";\r\n',
+      "App/Base.lproj/Main.storyboard": "<xml/>",
+    }));
+    expect(s.failure).toBeUndefined();
+    expect(s.chosen).toMatchObject({ adapter: "apple-strings", pathTemplate: "App/{locale}.lproj/Localizable.strings" });
+    expect(s.localeCount).toBe(2);
+    expect(s.roundtrip.semantic).toBe("same");
+    expect(s.roundtrip.byteFixpoint).toBe("same");
+  });
+
+  /** apple-xcstrings — 수술적 치환이라 왕복 의미·바이트 고정점이 둘 다 같아야 한다. 없는 언어 셀의 삽입도 측정 경로에서 돈다. */
+  it("Apple String Catalog: 파일 경로가 1순위이고 왕복 2층이 통과한다", () => {
+    const cell = (value: string) => ({ stringUnit: { state: "translated", value } });
+    const catalog = JSON.stringify({ sourceLanguage: "en", strings: { Hello: { localizations: { en: cell("Hello"), ko: cell("안녕") } }, Bye: { localizations: { en: cell("Bye") } }, Save: {} }, version: "1.0" }, null, 2)
+      .replace(/": /g, '" : ');
+    const s = surveyOne(input("acme/mac", { "App/Localizable.xcstrings": catalog }));
+    expect(s.failure).toBeUndefined();
+    expect(s.chosen).toMatchObject({ adapter: "apple-xcstrings", pathTemplate: "App/Localizable.xcstrings" });
+    expect(s.localeCount).toBe(2);
+    expect(s.keyCount).toBe(3);
+    expect(s.roundtrip.semantic).toBe("same");
+    expect(s.roundtrip.byteFixpoint).toBe("same");
+  });
+
   it("정상 flat: 왕복 2층이 전부 통과한다", () => {
     const s = surveyOne(input("acme/flat", FLAT));
     expect(s.failure).toBeUndefined();
@@ -363,8 +430,8 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
    * ⚠️ **옛 이름은 "ts-dict만 자동 탐지에서 빠져 있다"였고 본문이 그것을 안 쟀다** (2026-09-14 2차
    * 리뷰): 빈 문자열 probe면 다섯이 전부 0을 내므로 `> 0`이 **어떤 구현에서도 참**이었다.
    */
-  it("ADAPTERS가 5개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
-    expect(ADAPTERS).toHaveLength(5);
+  it("ADAPTERS가 9개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
+    expect(ADAPTERS).toHaveLength(9);
     const tsDict = ADAPTERS.find((a) => a.name === "ts-dict")!;
     const source = 'const en = { "a": "A" };\nconst ko = { "a": "B" };\nexport const ns = { en, ko };';
     expect(tsDict.detectCandidates(["src/i18n/x.ts", "src/i18n/y.ts"], () => source)).toHaveLength(1);

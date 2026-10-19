@@ -17,6 +17,8 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  * | `order`가 없으면 코드 유닛 순 | 검사 | **비적용** |
  * | orphaned | 출력에서 뺀다 | **원본 값이 남는다** (지우면 코드가 참조하는 키가 사라진다) |
  * | 빈 값 | 어댑터가 뺀다 — **`writeEmpty` 표시가 있으면 `""`로 쓴다** (L4.10) | **호출부 계약** — 표시가 있어도 원본 값이 남는다 |
+ * | 원본에서 가져오는 것 | 표현만 — **`arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간을 바이트 그대로**(값이 아니라 코드가 소유하는 메타데이터라 병합이 아니다 — arb design §0). `@key`는 짝 키가 **orphaned일 때만** 버린다 — 이 로케일만 미번역이면 그 키 자리에, 표면에 없는 이름(주석)이면 원본 위치에 남는다(fix1, 2026-10-19 사용자·지휘자 결정). **문자열이 아닌 엔트리 값**(`"n": 3`·`null`·객체 — gen-l10n도 거부한다)도 원본 구간 그대로 남고 read가 `value-not-string`(unmanaged)으로 알린다. 나르는 항목끼리는 원본 상대 순서를 지킨다 | 원본 전체(값만 갈아끼운다) |
+ * | 원본이 있는데 쓸 값 0개 | `{}` — **`arb-catalog`만 예외로 원본의 `@@*`·주석 `@x`·문자열이 아닌 엔트리 값만 남은 객체**(번역이 아니다) | 원본 그대로 |
  * | **배열 위치가 아니라 `order`에만** 의존·재실행 동일 | 검사 | 검사 |
  * | ADD 새 파일 → 다음 write diff 0 | 원본 없는 write로 검사 | per-locale create로 검사(ts-dict 제외) |
  * | create 보유 | 없음 | per-locale만 보유 |
@@ -67,6 +69,48 @@ function codeSource(keys: readonly string[]): string {
     ...keys.map((k) => `  ${JSON.stringify(k)}: ${JSON.stringify(srcVal(k))},`),
     `  ${JSON.stringify(ORPHAN_KEY)}: ${JSON.stringify(ORPHAN_SOURCE_VALUE)},`,
     "}",
+    "",
+  ].join("\n");
+}
+
+/** `apple-strings`(`.lproj`의 `.strings`)의 원본. 블록 주석과 줄 주석을 둘 다 둔다. */
+function stringsSource(keys: readonly string[]): string {
+  return [
+    "/* 사람이 넣은 주석 — 보존돼야 한다 */",
+    ...keys.map((k) => `${JSON.stringify(k)} = ${JSON.stringify(srcVal(k))};`),
+    "// 줄 주석",
+    `${JSON.stringify(ORPHAN_KEY)} = ${JSON.stringify(ORPHAN_SOURCE_VALUE)};`,
+    "",
+  ].join("\n");
+}
+
+/**
+ * `apple-xcstrings`(String Catalog)의 원본 — 키마다 ko·en 셀을 둔다. JSON에는 주석이 없어 사람의 메모는 키의 `comment` 필드다.
+ * `Object.fromEntries`로 만든다 — 객체 리터럴의 `__proto__`는 own 키가 아니다.
+ */
+function xcstringsSource(keys: readonly string[]): string {
+  const cell = (value: string) => ({ stringUnit: { state: "translated", value } });
+  const strings = Object.fromEntries([
+    ...keys.map((k) => [k, { localizations: { en: cell(srcVal(k)), ko: cell(srcVal(k)) } }] as const),
+    [ORPHAN_KEY, { comment: "사람이 넣은 주석 — 보존돼야 한다", localizations: { en: cell(ORPHAN_SOURCE_VALUE), ko: cell(ORPHAN_SOURCE_VALUE) } }] as const,
+  ]);
+  return `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`;
+}
+
+/**
+ * `android-strings`(`res/values-{locale}/strings.xml`)의 원본. XML 주석과 `translatable="false"` 엔트리를 둔다 — 둘 다 바이트 그대로 남아야 한다.
+ * 키는 `name` 속성이라 XML 속성 이스케이프를 지난다(`"`·`&`·`<`).
+ */
+function androidSource(keys: readonly string[]): string {
+  const attr = (k: string) => k.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+  return [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    "<resources>",
+    "    <!-- 사람이 넣은 주석 — 보존돼야 한다 -->",
+    '    <string name="app_id" translatable="false">com.example</string>',
+    ...keys.map((k) => `    <string name="${attr(k)}">${srcVal(k)}</string>`),
+    `    <string name="${ORPHAN_KEY}">${ORPHAN_SOURCE_VALUE}</string>`,
+    "</resources>",
     "",
   ].join("\n");
 }
@@ -127,6 +171,30 @@ export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_K
       return { adapter: adapter.name, pathTemplate: "public/_locales/{locale}/messages.json", locales: ["en"] };
     case "json-catalog":
       return { adapter: adapter.name, pathTemplate: "i18n/{locale}.json", locales: ["en"] };
+    case "arb-catalog":
+      return { adapter: adapter.name, pathTemplate: "lib/l10n/app_{locale}.arb", locales: ["en"] };
+    case "apple-strings":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "App/{locale}.lproj/Localizable.strings",
+        locales: ["en"],
+        currentFiles: [{ path: "App/en.lproj/Localizable.strings", content: stringsSource(keys) }],
+      };
+    case "apple-xcstrings":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "App/Localizable.xcstrings",
+        locales: ["ko", "en"],
+        currentFiles: [{ path: "App/Localizable.xcstrings", content: xcstringsSource(keys) }],
+      };
+    // 기준 언어 파일(`values/`)이 아닌 언어 파일로 잰다 — 계약의 삽입·create 검사가 비기준 파일의 규칙이다. basePath 갈래는 어댑터 테스트가 잰다.
+    case "android-strings":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "app/src/main/res/values-{locale}/strings.xml",
+        locales: ["en"],
+        currentFiles: [{ path: "app/src/main/res/values-en/strings.xml", content: androidSource(keys) }],
+      };
   }
 }
 
@@ -199,7 +267,11 @@ function fourSpaceDonor(adapter: Adapter): DetectedFormat | undefined {
   const body =
     adapter.name === "chrome-locales"
       ? `{\n    "donor": {\n        "message": ${JSON.stringify(STYLE_DONOR_VALUE)}\n    }\n}\n`
-      : `{\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)}\n}\n`;
+      // ARB는 원본의 `@@*`·`@x`를 나른다 — 기증자가 둘 다 들어야 "낼 것 0개"의 예외 행을 밟는다. `donor`는 DB에 없는 이름이라 그 `@donor`는
+      // 개발자 주석으로 남는다(fix1) — 값이 아니라 센티넬을 넣지 않는다. 값 `donor`의 센티넬은 여전히 새면 안 된다.
+      : adapter.name === "arb-catalog"
+        ? `{\n    "@@locale": "en",\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)},\n    "@donor": {\n        "description": "D"\n    }\n}\n`
+        : `{\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)}\n}\n`;
   return { ...fmt, currentFiles: [{ path, content: body }] };
 }
 
@@ -228,7 +300,10 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const creates = surgical && adapter.layout === "per-locale";
   if ((adapter.create !== undefined) !== creates) bad.push("create는 per-locale 수술적 어댑터만 갖는다");
   if (creates && adapter.create) {
-    const source = adapter.name === "yaml-catalog" ? "en:\n    donor: BASE_ONLY\n" : "export default {\n    donor: 'BASE_ONLY',\n};\n";
+    const source = adapter.name === "yaml-catalog" ? "en:\n    donor: BASE_ONLY\n"
+      : adapter.name === "apple-strings" ? "/* BASE_ONLY comment */\n\"donor\" = \"BASE_ONLY\";\n"
+      : adapter.name === "android-strings" ? '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <!-- BASE_ONLY comment -->\n    <string name="donor">BASE_ONLY</string>\n</resources>\n'
+      : "export default {\n    donor: 'BASE_ONLY',\n};\n";
     const fresh = { ...fmt, currentFiles: undefined, representationSource: source };
     const input = { locale: "fr", baseLocale: "en", entries: entriesFor(CONTRACT_KEYS) };
     const created = adapter.create(fresh, input);
@@ -302,7 +377,9 @@ export function writerContractViolations(adapter: Adapter): string[] {
       // 위험만 늘고, bugshot-2는 세 로케일이 한 파일에 나란히 있어 키 격차가 구조적으로 안 생긴다
       // (ARCHITECTURE §1.4 "없는 키를 삽입한다 — ts-dict는 예외다"). 그 예외를 양방향으로 고정한다:
       // 삽입하기 시작하면 그것도 계약 변경이라 여기서 빨개져야 한다.
-      const inserts = adapter.name !== "ts-dict";
+      // `apple-xcstrings`도 **키**는 넣지 않는다 — 넣는 것은 파일에 있는 키의 없는 언어 **셀**이다(`insertsMissingCells`, apple-strings design §2.3).
+      // 키 존재는 코드가 정한다(카탈로그 키는 Xcode가 소스에서 뽑는다). 셀 삽입은 그 어댑터의 테스트가 Xcode 골든으로 잰다.
+      const inserts = adapter.name !== "ts-dict" && adapter.name !== "apple-xcstrings";
       const appeared = inserted !== null && inserted.includes(val(insertKey));
       if (inserts && !appeared) bad.push(`삽입: 원본에 없던 키 ${insertKey}가 출력에 나타나지 않았다 (§1.1 여섯 지점 #5)`);
       if (!inserts && appeared) bad.push(`삽입: ${adapter.name}는 삽입하지 않는 것이 계약인데 원본에 없던 키가 나타났다 (§1.4)`);
@@ -455,9 +532,11 @@ export function writerContractViolations(adapter: Adapter): string[] {
     // ⚠️ **writer 계약이지 파일 결과가 아니다** — writer는 `isBase`를 모르고, **base 파일은 `renderLocaleFiles`가 `null`로 접는다**(B3 r1 —
     // base 키 집합은 코드가 진실이라 `{}`가 코드 소유 키를 지운다). 짝은 `lib/pull/__tests__/delivery-verified.test.ts`.
     const emptied = adapter.write(donor, { locale, entries: [{ key: "only", message: "" }] });
+    // ⚠️ **ARB 예외 행** — 원본의 `@@*` 전역 항목과 표면에 없는 이름의 `@x`(주석)는 번역이 아니라 파일의 것이라 낼 값이 0개여도 남는다(arb design §2 · fix1). 그 밖은 `{}`다.
+    const emptyShape = adapter.name === "arb-catalog" ? '{"@@locale":"en","@donor":{"description":"D"}}' : "{}";
     if (emptied === null) {
       bad.push("원본이 있는데 낼 항목이 0개라고 null을 냈다 — 파일에 옛 값이 남는다 (빈 객체를 내야 한다)");
-    } else if (emptied.includes(STYLE_DONOR_VALUE) || emptied.replace(/\s/g, "") !== "{}") {
+    } else if (emptied.includes(STYLE_DONOR_VALUE) || emptied.replace(/\s/g, "") !== emptyShape) {
       bad.push(`원본이 있는데 낼 항목이 0개일 때 빈 객체가 아니다: ${JSON.stringify(emptied)}`);
     }
   }
@@ -575,10 +654,39 @@ function baseFixture(adapter: Adapter): { format: DetectedFormat; basePath: stri
     case "chrome-locales":
       return perLocale("public/_locales/{locale}/messages.json", (_l, keep, added) =>
         `${JSON.stringify({ keep: { message: keep }, ...(added ? { added: { message: added } } : {}) }, null, 2)}\n`);
+    case "arb-catalog":
+      return perLocale("lib/l10n/app_{locale}.arb", (l, keep, added) =>
+        `${JSON.stringify({ "@@locale": l, keep, "@keep": { description: "d" }, ...(added ? { added, "@added": { description: "d" } } : {}) }, null, 2)}\n`);
     case "yaml-catalog":
       return perLocale("config/locales/{locale}.yml", (l, keep, added) => `${l}:\n  keep: ${keep}\n${added ? `  added: ${added}\n` : ""}`);
     case "code-dict":
       return perLocale("src/locale/{locale}.ts", (_l, keep, added) => `export default {\n  keep: '${keep}',\n${added ? `  added: '${added}',\n` : ""}}\n`);
+    case "apple-strings":
+      return perLocale("App/{locale}.lproj/Localizable.strings", (_l, keep, added) => `"keep" = "${keep}";\n${added ? `"added" = "${added}";\n` : ""}`);
+    case "apple-xcstrings": {
+      const path = "App/Localizable.xcstrings";
+      const cell = (value: string) => ({ stringUnit: { state: "translated", value } });
+      const strings = { added: { localizations: { en: cell(BASE_ADDED_VALUE) } }, keep: { localizations: { en: cell("S_keep"), fr: cell("S_fr_keep") } } };
+      return {
+        format: { adapter: adapter.name, pathTemplate: path, locales: ["en", "fr"] },
+        basePath: path,
+        files: new Map([[path, `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`]]),
+        paths: [{ path }],
+      };
+    }
+    // 기준 언어 파일이 템플릿 밖(`values/`)이다 — 그 파일의 언어는 `templateLocale`이 말한다(android-strings design §2.3).
+    case "android-strings": {
+      const xml = (keep: string, added?: string) =>
+        `<resources>\n    <string name="keep">${keep}</string>\n${added ? `    <string name="added">${added}</string>\n` : ""}</resources>\n`;
+      const basePath = "app/src/main/res/values/strings.xml";
+      const fr = "app/src/main/res/values-fr/strings.xml";
+      return {
+        format: { adapter: adapter.name, pathTemplate: "app/src/main/res/values-{locale}/strings.xml", basePath, templateLocale: "en", locales: ["en", "fr"] },
+        basePath,
+        files: new Map([[basePath, xml("S_keep", BASE_ADDED_VALUE)], [fr, xml("S_fr_keep")]]),
+        paths: [{ path: basePath, locale: "en" }, { path: fr, locale: "fr" }],
+      };
+    }
     case "ts-dict": {
       const path = "src/i18n/ns/a.ts";
       return {

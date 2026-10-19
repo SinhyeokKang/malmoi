@@ -463,6 +463,8 @@ async function applyWith(
       data: {
         adapterName: payload.format.adapter,
         pathTemplate: payload.format.pathTemplate,
+        // 없음 = null로 덮는다 — `checkFormat`이 저장값과 같을 때만 여기까지 오므로 기존 표면에서는 null → null이다.
+        basePath: payload.format.basePath ?? null,
         nested: payload.format.nested,
         // 없으면 컬럼을 건드리지 않는다 — 옛 값이 남아도 경로가 안 맞으면 write가 폴백하므로
         // 무해하고, `Prisma.DbNull`을 쓰려면 이 모듈이 생성 클라이언트를 값으로 물어야 한다.

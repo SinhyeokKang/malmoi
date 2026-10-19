@@ -33,6 +33,7 @@ export type NamingStepState = {
   slugTakenAlt: string | undefined;
   slugTaken: boolean;
   pathTemplate: string;
+  basePath?: string;
   branch: string;
   banner: string | null;
   /** 리포 호스트 — PR/MR 문장을 고른다(gitlab-repositories). 없으면 GitHub이다. */
@@ -48,7 +49,7 @@ export function NamingStep({
 }: {
   state: NamingStepState;
   disabled?: boolean;
-  surfaces?: Pick<NamingStepState, "pathTemplate" | "baseLocale" | "locales" | "keyCounts">[];
+  surfaces?: Pick<NamingStepState, "pathTemplate" | "basePath" | "baseLocale" | "locales" | "keyCounts">[];
   onBaseLocale?: (index: number, value: string) => void;
   onChange: (next: Partial<NamingStepState>) => void;
 }) {
@@ -63,7 +64,7 @@ export function NamingStep({
       {state.banner !== null && <Alert variant="danger">{failureText(m, state.banner)}</Alert>}
 
       {/* ⚠️ **읽기 전용임을 말한다** — 리포에 아무것도 쓰지 않는다(불변식). */}
-      <Alert variant="info">{m.newProject.naming.info(state.pathTemplate, state.branch)}</Alert>
+      <Alert variant="info">{m.newProject.naming.info(state.basePath === undefined ? state.pathTemplate : `${state.basePath}, ${state.pathTemplate}`, state.branch)}</Alert>
 
       <FormGroup label={m.newProject.naming.name} htmlFor="project-name">
         {(describe) => (

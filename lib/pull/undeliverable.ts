@@ -94,8 +94,24 @@ export function keySlot(files: SlotFiles, locale: string, key: string): SlotVerd
   return paths.length === 0 ? { kind: "absent" } : { kind: "slot", paths };
 }
 
+/**
+ * **셀 하나가 놓일 자리** — 경로 선택(`planDelivery`)과 미리보기(`readPublishPreview`)가 같이 부르는 유일한 판정이다(apple-strings design §2.3).
+ *
+ * - 셀을 넣는 어댑터(`insertsMissingCells` — `apple-xcstrings`): 키가 든 파일이면 그 언어 셀이 없어도 자리다. writer가 셀을 넣으므로 보류로 세면
+ *   PR에는 셀이 나가는데 미리보기는 "보류"를 말하고 미전달 토큰이 남는다. 키가 어느 파일에도 없으면(코드가 지웠다) `absent` — 보류다.
+ * - 그 밖(ts-dict): `keySlot` 그대로다 — 로케일 객체에 자리가 없으면 넣지 않으므로 보류다.
+ *
+ * ⚠️ 빈 값 경고(`write-empty-unsupported`)는 이 판정이 아니라 `keySlot`을 본다 — 비울 수 없는 것은 **실제로 있는** 셀뿐이다.
+ */
+export function cellSlot(adapter: Pick<Adapter, "insertsMissingCells">, files: SlotFiles, locale: string, key: string): SlotVerdict {
+  if (adapter.insertsMissingCells !== true) return keySlot(files, locale, key);
+  const paths = Object.keys(files).filter((path) => Object.values(files[path]!).some((entries) => Object.hasOwn(entries, key)));
+  return paths.length === 0 ? { kind: "absent" } : { kind: "slot", paths };
+}
+
 /** 표면 하나에서 `absent`인 편집 셀의 좌표(`withheldCoordinates`의 `cells`와 같은 형). */
 export function slotlessCells(
+  adapter: Pick<Adapter, "insertsMissingCells">,
   surfaceId: string,
   files: SlotFiles,
   edits: readonly PendingEdit[],
@@ -105,7 +121,7 @@ export function slotlessCells(
     const cell = edit.cell;
     if (cell === undefined || cell.surfaceId !== surfaceId) return [];
     const key = keyOf(cell.keyId);
-    if (key === undefined || keySlot(files, cell.localeCode, key).kind !== "absent") return [];
+    if (key === undefined || cellSlot(adapter, files, cell.localeCode, key).kind !== "absent") return [];
     return [`${surfaceId}\0${cell.localeCode}\0${key}`];
   });
 }

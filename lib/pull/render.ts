@@ -73,6 +73,12 @@ export function rowsForLocale(
  *
  * @param current 경로 → 원본 내용. 수술적 치환 어댑터만 쓴다 (재생성은 빈 맵이어도 된다).
  */
+/** 표면에 살아 있는데 이 로케일만 값이 없는 키(`WriteInput.untranslated`) — 그 위치는 base 순서(`sortIndex`)다. */
+function untranslatedOf(rows: readonly PullRow[], entries: readonly LocaleEntry[]): NonNullable<WriteInput["untranslated"]> {
+  const written = new Set(entries.map((e) => e.key));
+  return rows.filter((r) => !r.orphaned && !written.has(r.key)).map((r) => ({ key: r.key, ...(r.sortIndex === undefined ? {} : { order: r.sortIndex }) }));
+}
+
 /** 수술적 어댑터가 원본 없이 파일을 안 낼 때의 보고. 값을 잃은 것은 아니지만 **빠졌다는 사실**은 알려야 한다. */
 const missingOriginal = (path: string, locale?: string): RenderError => ({ path, code: "original-file-missing", ...(locale === undefined ? {} : { locale }) });
 /** 오류에 그 write 호출의 로케일을 붙인다 — 어댑터 오류는 파일 좌표만 들고, 로케일은 렌더만 안다. */
@@ -88,7 +94,7 @@ const tagged = (errors: readonly AdapterError[], locale: string): RenderError[] 
  *
  * 재생성은 **원본 순서**(`order`)로 조립한다 — 코드가 순서를 바꿨어도 따른다. 같은 DB·같은 원본 → 같은 바이트(불변식 4)는 그대로다.
  * ⚠️ **재생성의 원본을 못 읽으면 쓰지 않고 막는다** — 키 집합을 알 수 없는데 DB로 덮으면 코드 소유 키를 지운다. 수술적은 writer가 같은 원본을 못 읽어
- * `write-parse-failed`를 스스로 낸다. multi-locale(ts-dict)은 삽입하지 않아 이 규칙이 필요 없다.
+ * `write-parse-failed`를 스스로 낸다. multi-locale은 키를 삽입하지 않아(ts-dict — apple-xcstrings도 파일에 있는 키의 언어 셀만 넣는다) 이 규칙이 필요 없다.
  */
 function baseOwnedByOriginal(
   adapter: Adapter,
@@ -169,17 +175,26 @@ export function renderLocaleFiles(
         return { path: p.path, locale, content: null, errors: [missingOriginal(p.path, locale)] };
       }
       const borrowed = original === undefined && represent?.source !== undefined && represent.locales.has(locale) ? represent.source : undefined;
-      const writeFormat =
-        original !== undefined ? { ...format, currentFiles: [{ path: p.path, content: original }] }
-        : borrowed !== undefined ? { ...format, representationSource: borrowed } : format;
       const isBase = locale === baseLocale;
+      // 수술적 비기준 쓰기는 기준 파일 원본을 함께 싣는다 — 누락 키를 넣을 때 그 키의 코드 소유 속성(Android `formatted`)을 나르는 출처다(android-strings
+      // 결정 18). 값은 읽지 않는다. 다른 수술적 writer는 이 필드를 create에서만 읽고, 재생성 writer는 원본이 있으면 원본을 쓴다.
+      const baseSource = !isBase && adapter.writeStrategy === "surgical" ? current.get(paths.find((q) => q.locale === baseLocale)?.path ?? "") : undefined;
+      const writeFormat =
+        original !== undefined ? { ...format, currentFiles: [{ path: p.path, content: original }], ...(baseSource === undefined ? {} : { representationSource: baseSource }) }
+        : borrowed !== undefined ? { ...format, representationSource: borrowed } : format;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
-      const fromDb = buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase });
+      const rows = rowsForLocale(keys, locale, { isBase });
+      const fromDb = buildWriteEntries(rows, { isBase });
       const owned = isBase && original !== undefined ? baseOwnedByOriginal(adapter, writeFormat, p.path, original, locale, fromDb) : { entries: fromDb };
       if ("error" in owned) return { path: p.path, locale, content: null, errors: [owned.error] };
       const { entries } = owned;
-      const { content, errors } = write(writeFormat, { locale, entries });
+      // 비-base만 — base는 값이 없어도 원문으로 폴백해 키가 늘 나간다. B3.4가 뺀 DB 전용 키를 "미번역"으로 부르면 거짓이다.
+      const untranslated = isBase ? [] : untranslatedOf(rows, entries);
+      const orphaned = rows.filter((r) => r.orphaned).map((r) => r.key);
+      const { content, errors } = write(writeFormat, {
+        locale, entries, ...(untranslated.length === 0 ? {} : { untranslated }), ...(orphaned.length === 0 ? {} : { orphaned }),
+      });
       return { path: p.path, locale, content, ...(errors.length === 0 ? {} : { errors: tagged(errors, locale) }) };
     });
   }

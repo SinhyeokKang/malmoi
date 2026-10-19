@@ -134,13 +134,17 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
    * ⚠️ **`X.length - X.length`를 세지 않는다** (2026-09-14 2차 리뷰). 그렇게 쓰면 ts-dict를 다시 빼도
    * green이다 — **어댑터마다 후보를 실제로 내게 해서** 센다.
    */
-  it("다섯 어댑터가 전부 자동 탐지에 참여한다 — 하나라도 빠지면 red다", () => {
+  it("아홉 어댑터가 전부 자동 탐지에 참여한다 — 하나라도 빠지면 red다", () => {
     const cases: Record<string, { paths: string[]; probe: FileProbe }> = {
       "chrome-locales": { paths: ["_locales/en/messages.json", "_locales/ko/messages.json"], probe: () => '{"a":{"message":"A"}}' },
       "json-catalog": { paths: ["locales/en.json", "locales/ko.json"], probe: () => '{"a":"A"}' },
       "yaml-catalog": { paths: ["config/locales/en.yml", "config/locales/ko.yml"], probe: () => "en:\n  a: A\n" },
       "code-dict": { paths: ["src/locale/en.ts", "src/locale/ko.ts"], probe: () => 'export default { "a": "A" };' },
       "ts-dict": { paths: ["src/i18n/x.ts", "src/i18n/y.ts"], probe: () => TS_SOURCE },
+      "arb-catalog": { paths: ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"], probe: () => '{"@@locale":"en","a":"A"}' },
+      "apple-strings": { paths: ["App/en.lproj/Localizable.strings", "App/ko.lproj/Localizable.strings"], probe: () => '"a" = "A";\n' },
+      "apple-xcstrings": { paths: ["App/Localizable.xcstrings"], probe: () => '{"sourceLanguage":"en","strings":{"a":{}},"version":"1.0"}' },
+      "android-strings": { paths: ["app/src/main/res/values/strings.xml", "app/src/main/res/values-ko/strings.xml"], probe: () => '<resources><string name="a">A</string></resources>' },
     };
     for (const adapter of ADAPTERS) {
       const c = cases[adapter.name]!;
@@ -172,7 +176,34 @@ describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
     ["yaml-catalog", "locales/app.{locale}.yaml", 'en:\n  ok: OK\n'],
     ["code-dict", "messages/{locale}.tsx", 'export const en = { ok: "OK" } as const;'],
     ["ts-dict", "src/i18n/*.ts", 'const en = { "common.ok": "OK" }; export const common = { en };'],
+    // 껍데기(`probeTargets`)가 `.arb`를 내려받는지 — 안 받으면 어댑터가 "존재하지 않는다"(POSTMORTEM 2026-09-02).
+    ["arb-catalog", "lib/l10n/app_{locale}.arb", '{\n  "@@locale": "en",\n  "ok": "OK",\n  "@ok": {}\n}\n'],
+    // 껍데기가 `.strings`를 내려받는지 — `.lproj` 디렉터리 이름이 로케일이다.
+    ["apple-strings", "App/{locale}.lproj/Localizable.strings", '/* Greeting */\n"ok" = "OK";\n'],
   ] as const;
+
+  /**
+   * 껍데기가 `.xcstrings`를 내려받는지 — 카탈로그는 언어 목록이 파일 안에 있어 1패스 후보가 없고 씨앗(`xcstringsProbePaths`)이 내려받는다(POSTMORTEM 2026-09-02).
+   * 템플릿은 파일 경로 그대로이고 기준 언어 힌트(`templateLocale`)가 sourceLanguage다.
+   */
+  it("apple-xcstrings: 씨앗이 내려받아 2패스로 단일 언어를 읽고 확정 후에도 같은 경로를 유지한다", async () => {
+    const { codeDictCandidatePaths } = await import("../code-dict");
+    const { makeProbe, probeTargets, summarizeCandidates } = await import("@/lib/onboarding/detect");
+    const { planConfirmedFormat } = await import("@/lib/onboarding/confirm");
+    const path = "App/Localizable.xcstrings";
+    const content = '{\n  "sourceLanguage" : "en",\n  "strings" : {\n    "ok" : {\n\n    }\n  },\n  "version" : "1.0"\n}';
+    const paths = [path];
+    expect(detectCandidatesAcross(paths)).toEqual([]);
+    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths, new Map());
+    expect(downloads).toEqual([path]);
+    const blobs = new Map(downloads.map(p => [p, content]));
+    const found = detectCandidatesAcross(paths, makeProbe(blobs));
+    expect(found).toEqual([{ adapter: "apple-xcstrings", pathTemplate: path, locales: ["en"], templateLocale: "en" }]);
+    expect(summarizeCandidates(found, blobs)[0]).toMatchObject({ baseLocale: "en", locales: ["en"], keys: { status: "counted", count: 1 } });
+    expect(planConfirmedFormat({ adapter: "apple-xcstrings", pathTemplate: path, baseLocale: "en" }, [{ path, content }])).toMatchObject({
+      status: "ok", baseLocale: "en", format: { adapter: "apple-xcstrings", pathTemplate: path, locales: ["en"] },
+    });
+  });
 
   it.each(cases)("%s %s: 2패스로 단일 언어를 읽고 확정 후에도 같은 템플릿을 유지한다", async (adapter, pathTemplate, content) => {
     const { codeDictCandidatePaths } = await import("../code-dict");
@@ -180,7 +211,7 @@ describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
     const { planConfirmedFormat } = await import("@/lib/onboarding/confirm");
     const path = pathTemplate.replace("{locale}", "en").replace("*", "common");
     const paths = [path];
-    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
+    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths, new Map());
     expect(downloads).toContain(path);
     const blobs = new Map(downloads.map(p => [p, content]));
     const found = detectCandidatesAcross(paths, makeProbe(blobs));
@@ -206,6 +237,10 @@ describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
     ["messages/en.tsx", "export const en = { count: 42 };"],
     ["src/i18n/common.ts", "const en = { ...common.en }; export default en;"],
     ["src/i18n/common.ts", 'const fmt = { ok: "OK" };'],
+    ["lib/l10n/app_en.arb", "[1,2,3]"],
+    ["lib/l10n/app_en.arb", '{"@@locale":"en","@ok":{}}'],
+    ["App/en.lproj/Localizable.strings", "bplist00\u0000\u0001"],
+    ["App/en.lproj/Localizable.strings", '"ok" = "OK"'],
   ])("%s: 로케일 모양만 있고 지원 문자열이 없으면 거부한다", (path, content) => {
     expect(detectCandidatesAcross([path], () => content)).toEqual([]);
   });

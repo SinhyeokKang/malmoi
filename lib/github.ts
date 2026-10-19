@@ -2,6 +2,7 @@
 // **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`가 같은 이유의 선례다
 // (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
 // 목록 밖이고 `octokit`을 물므로 `"use client"` 그래프에 닿는 순간 red다.
+import { decodeLocaleFile, encodeFileContent } from "@/lib/file-encoding";
 import { App, Octokit } from "octokit";
 import { AppError, fail, httpStatus } from "@/lib/failure";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
@@ -53,6 +54,12 @@ function createApp(): App {
   cached = { appId, privateKey, app };
   return app;
 }
+
+/**
+ * UTF-16 blob 생성 동시 요청 한도. 65파일(iTerm2 규모)을 8개씩이면 9라운드다 — 호출당 ~0.5s라는 **가정**(실측 아님)에서 `maxDuration=60` 안에 들고,
+ * 설치 토큰의 secondary rate limit(동시 요청)에도 여유가 있다.
+ */
+const BLOB_CONCURRENCY = 8;
 
 /** `createGitClient`가 고정 토큰을 쥐기 전의 여유. 만료 시각을 모르면(형이 다르면) 새로 받지 않는다 — 판정은 아래 형 검사가 한다. */
 const TOKEN_MARGIN_MS = 5 * 60_000;
@@ -252,7 +259,7 @@ export async function openRepoReader(
 ): Promise<RepoReader> {
   // ⚠️ **App을 한 번만 만든다.** `@octokit/auth-app`의 설치 토큰 캐시는 인스턴스마다 새로 생기므로,
   // 읽기마다 `createApp()`을 부르면 **매 호출에 `POST /app/installations/{id}/access_tokens`가 하나씩
-  // 더 붙는다** — ARCHITECTURE §3.1의 예산(`ref 1 + tree 1 + blob ≤37`)이 2배가 되고, 50로케일 리포의 첫
+  // 더 붙는다** — ARCHITECTURE §3.1의 예산(`ref 1 + tree 1 + blob ≤40` — blob 수는 `lib/onboarding/detect.ts` `PROBE_LIMITS` 주석)이 2배가 되고, 50로케일 리포의 첫
   // 적재는 100회가 되어 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴2). `createGitClient`가
   // 클로저를 돌려주는 것과 같은 이유다.
   // 토큰도 한 번만 받는다 — 리더 하나의 수명은 호출 하나라 만료 임박 갱신(`pinnedOctokit`) 한 번이면 충분하다.
@@ -311,15 +318,15 @@ export async function openRepoReader(
       return sizesFromSnapshot(snapshot, paths);
     },
 
-    async blob(sha: string): Promise<string | undefined> {
+    async blob(sha: string, path: string) {
       try {
         const res = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
           ...base,
           file_sha: sha,
         });
         if (res.data.encoding !== "base64") return undefined;
-        // 한글·프랑스어가 들어가므로 UTF-8로 디코딩해야 한다 (`getBlobText`와 같은 이유).
-        return Buffer.from(res.data.content, "base64").toString("utf8");
+        // 경로가 없으면 UTF-16을 판별할 수 없으므로 로케일 소비자는 경로를 함께 넘긴다.
+        return decodeLocaleFile(path, Buffer.from(res.data.content, "base64")).content;
       } catch (error) {
         logFailure("blob", error);
         return undefined;
@@ -397,25 +404,52 @@ export async function createGitClient(
       return blobs;
     },
 
-    async getBlobText(sha) {
+    async getBlobText(sha, path) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
         ...base,
         file_sha: sha,
       });
-      // Git blob API는 base64로 준다. 한글·프랑스어가 들어가므로 UTF-8로 디코딩해야 한다.
+      // Git의 전송 인코딩(base64)과 파일 인코딩은 별개다.
       if (res.data.encoding !== "base64") {
         throw new Error(`unexpected blob encoding: ${res.data.encoding}`);
       }
-      return Buffer.from(res.data.content, "base64").toString("utf8");
+      return decodeLocaleFile(path, Buffer.from(res.data.content, "base64"));
     },
 
     /**
      * Git Data API 네 단계 — 트리(항목의 `content`가 blob을 암묵 생성한다) → 커밋(parent = base head 하나) → sync ref 생성 또는 강제 이동.
-     * 트리 생성이 첫 외부 쓰기다 — 호출부가 그 앞에서 전달 확인을 무효화한다(`run.ts`).
+     * UTF-16은 blob 생성이 첫 외부 쓰기다 — 호출부는 이 메서드 전에 전달 확인을 무효화한다(`run.ts`).
      * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓰고, delete는 `base_tree` 위의 `sha: null` 항목이다(`buildTreePayload`).
      */
     async publishSnapshot({ branch, baseSha, changes, summary }) {
-      const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...buildTreePayload(changes, baseSha) });
+      const payload = buildTreePayload(changes, baseSha);
+      // 순차 POST는 UTF-16 65파일(iTerm2 규모)에서 `maxDuration=60`을 넘길 위험이 있다(호출당 ~0.5s 가정 — 실측 아님). 결과는 입력 인덱스 자리에 꽂아
+      // 트리 항목 순서가 완료 순서에 흔들리지 않게 한다(export 결정성).
+      const pending: number[] = [];
+      for (const [i, change] of changes.entries()) {
+        if (change.kind === "upsert" && change.encoding !== undefined && change.encoding !== "utf-8") pending.push(i);
+      }
+      let next = 0;
+      let failed = false;
+      const worker = async () => {
+        while (!failed && next < pending.length) {
+          const i = pending[next++]!;
+          const change = changes[i]!;
+          if (change.kind !== "upsert" || change.encoding === undefined) continue;
+          try {
+            const blob = await octokit.request("POST /repos/{owner}/{repo}/git/blobs", {
+              ...base, content: encodeFileContent(change.content, change.encoding).toString("base64"), encoding: "base64",
+            });
+            payload.tree[i] = { path: change.path, mode: "100644", type: "blob", sha: blob.data.sha };
+          } catch (error) {
+            // 한 건이라도 실패하면 새 요청을 더 내지 않는다 — 어차피 커밋 전체가 실패한다.
+            failed = true;
+            throw error;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(BLOB_CONCURRENCY, pending.length) }, worker));
+      const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...payload });
       const commit = await octokit.request("POST /repos/{owner}/{repo}/git/commits", { ...base, ...buildCommitPayload(tree.data.sha, baseSha, summary) });
       const commitSha = commit.data.sha;
       // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `malmoi-i18n/sync`는 누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).

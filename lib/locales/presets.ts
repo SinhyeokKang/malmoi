@@ -20,7 +20,14 @@ export function presetSeparator(codes: readonly string[]): "-" | "_" {
   return regional.length > 0 && regional.every(code => code.includes("_") && !code.includes("-")) ? "_" : "-";
 }
 
-export function presetCodes(separator: "-" | "_"): readonly string[] {
+/** Android 리소스는 현대 언어 별칭 대신 레거시 코드와 `-r` 지역 철자를 쓴다. 저장된 코드를 바꾸는 데 쓰지 않는다. */
+export function androidResourceCode(code: string): string {
+  const legacy: Readonly<Record<string, string>> = { he: "iw", id: "in", yi: "ji" };
+  return code.replace(/^(he|id|yi)(?=-|$)/, language => (legacy[language] ?? language)).replace(/-([A-Z]{2})$/, "-r$1");
+}
+
+export function presetCodes(separator: "-" | "_", adapterName?: string): readonly string[] {
+  if (adapterName === "android-strings") return COMMON_LANGUAGES.map(androidResourceCode);
   return separator === "-" ? COMMON_LANGUAGES : COMMON_LANGUAGES.map(code => code.replaceAll("-", "_"));
 }
 

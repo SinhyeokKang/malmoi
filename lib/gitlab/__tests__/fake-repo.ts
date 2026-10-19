@@ -24,8 +24,11 @@ export type FakeRepoOptions = {
   archived?: boolean;
   /** 브랜치 → head 커밋. */
   branches: Record<string, string>;
-  /** 커밋 → 파일(경로 → 내용). 트리 항목 id는 내용의 blob SHA다. 디렉터리 항목은 경로에서 만든다. */
-  commits: Record<string, Record<string, string>>;
+  /**
+   * 커밋 → 파일(경로 → 내용). 트리 항목 id는 내용의 blob SHA다. 디렉터리 항목은 경로에서 만든다. 문자열은 UTF-8 바이트, `Buffer`는 그 바이트 그대로다
+   * (UTF-16·잘못된 UTF-8 — 아래 `jsonCopy`가 GitLab JSON API의 변환을 흉내 낸다).
+   */
+  commits: Record<string, Record<string, FileBody>>;
   /** 커밋 → 부모 커밋(시드 커밋 사이의 이력). compare의 `commits`가 이 사슬을 따른다 — 이 가짜가 만든 커밋은 스스로 잇는다. */
   parents?: Record<string, string>;
   mergeRequests?: FakeMergeRequest[];
@@ -37,14 +40,37 @@ export type FakeRepoOptions = {
   failOn?: { key: string; nth?: number; status: number; body?: unknown }[];
 };
 
+/** 파일 내용 — 문자열은 UTF-8, `Buffer`는 저장 바이트 그대로. */
+export type FileBody = string | Buffer;
+
+const bytesOf = (body: FileBody): Buffer => (typeof body === "string" ? Buffer.from(body) : body);
+const sameBody = (a: FileBody | undefined, b: FileBody | undefined): boolean => (a === undefined || b === undefined ? a === b : bytesOf(a).equals(bytesOf(b)));
+
+/**
+ * **GitLab JSON blob API(`/repository/blobs/:sha`)·files API가 주는 사본** — 실물 측정(apple-strings Q1 결함 D1, 2026-10-19 GitLab.com): 182바이트 UTF-16LE+BOM 파일이
+ * `size: 182`인데 content는 UTF-8+BOM으로 바꾼 129바이트(`efbbbf…`)였다. 원본 바이트는 `/raw`만 준다. BOM 있는 UTF-16은 그 측정대로 UTF-8+BOM이다.
+ * BOM 없는 UTF-16(NUL 패턴)과 잘못된 UTF-8은 실측이 없다 — 같은 변환(BOM 없이 UTF-8 · 대체 문자)으로 **가정**한다. 둘 다 원본 바이트를 숨긴다는 점이 요지다.
+ */
+function jsonCopy(bytes: Buffer): Buffer {
+  const utf8Bom = Buffer.from([0xef, 0xbb, 0xbf]);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return Buffer.concat([utf8Bom, Buffer.from(bytes.subarray(2).toString("utf16le"))]);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return Buffer.concat([utf8Bom, Buffer.from(Buffer.from(bytes.subarray(2)).swap16().toString("utf16le"))]);
+  let odd = 0;
+  let even = 0;
+  bytes.forEach((b, i) => { if (b === 0) { if (i % 2 === 0) even += 1; else odd += 1; } });
+  if (odd >= 2 && odd > even) return Buffer.from(bytes.toString("utf16le"));
+  if (even >= 2 && even > odd) return Buffer.from(Buffer.from(bytes).swap16().toString("utf16le"));
+  return Buffer.from(new TextDecoder("utf-8").decode(bytes));
+}
+
 export function createFakeGitLabRepo(options: FakeRepoOptions) {
   const id = options.repositoryId;
   const base = `/projects/${id}`;
   const branches = new Map(Object.entries(options.branches));
   const commits = new Map(Object.entries(options.commits).map(([sha, files]) => [sha, new Map(Object.entries(files))]));
   const parents = new Map<string, string>(Object.entries(options.parents ?? {}));
-  const blobs = new Map<string, string>();
-  for (const files of commits.values()) for (const content of files.values()) blobs.set(blobSha(content), content);
+  const blobs = new Map<string, FileBody>();
+  for (const files of commits.values()) for (const content of files.values()) blobs.set(blobSha(bytesOf(content)), content);
   const mergeRequests: FakeMergeRequest[] = options.mergeRequests?.map((mr) => ({ ...mr })) ?? [];
   const notes: { iid: number; body: string }[] = [];
   const calls: FakeCall[] = [];
@@ -66,7 +92,7 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
     }
     const entries = [
       ...[...dirs].map((path) => ({ id: createHash("sha1").update(`tree:${sha}:${path}`).digest("hex"), path, type: "tree", mode: "040000", name: path.split("/").at(-1)! })),
-      ...[...files].map(([path, content]) => ({ id: blobSha(content), path, type: "blob", mode: "100644", name: path.split("/").at(-1)! })),
+      ...[...files].map(([path, content]) => ({ id: blobSha(bytesOf(content)), path, type: "blob", mode: "100644", name: path.split("/").at(-1)! })),
     ];
     return entries.sort((a, b) => (a.path < b.path ? -1 : 1));
   }
@@ -74,7 +100,7 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
   function matchRoute(method: string, path: string): { key: string; params: string[] } | null {
     const patterns = [
       ["GET", ""], ["GET", "/repository/branches/:b"], ["DELETE", "/repository/branches/:b"], ["GET", "/repository/branches"], ["GET", "/repository/tree"],
-      ["GET", "/repository/blobs/:s"], ["POST", "/repository/commits"], ["GET", "/repository/compare"], ["GET", "/merge_requests"], ["POST", "/merge_requests"],
+      ["GET", "/repository/blobs/:s"], ["GET", "/repository/blobs/:s/raw"], ["POST", "/repository/commits"], ["GET", "/repository/compare"], ["GET", "/merge_requests"], ["POST", "/merge_requests"],
       ["GET", "/merge_requests/:n"], ["PUT", "/merge_requests/:n"], ["POST", "/merge_requests/:n/notes"], ["GET", "/members/all/:u"],
     ] as const;
     if (method === "POST" && path === "/api/graphql") return { key: "POST /api/graphql", params: [] };
@@ -131,10 +157,15 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
       }
       case "GET /repository/blobs/:s": {
         const content = blobs.get(route.params[0]!);
-        return content === undefined ? respond({ message: "404 Blob Not Found" }, 404) : respond({ size: Buffer.byteLength(content), encoding: "base64", content: Buffer.from(content).toString("base64"), sha: route.params[0] });
+        // `size`는 저장 바이트인데 content는 GitLab이 바꾼 사본이다(`jsonCopy` — 실측 D1).
+        return content === undefined ? respond({ message: "404 Blob Not Found" }, 404) : respond({ size: bytesOf(content).length, encoding: "base64", content: jsonCopy(bytesOf(content)).toString("base64"), sha: route.params[0] });
+      }
+      case "GET /repository/blobs/:s/raw": {
+        const content = blobs.get(route.params[0]!);
+        return content === undefined ? respond({ message: "404 Blob Not Found" }, 404) : new Response(new Uint8Array(bytesOf(content)), { status: 200, headers: { "content-type": "text/plain; charset=utf-8" } });
       }
       case "POST /repository/commits": {
-        const { branch, start_sha, force, actions } = json() as { branch: string; start_sha: string; force?: boolean; actions: { action: string; file_path: string; content?: string }[] };
+        const { branch, start_sha, force, actions } = json() as { branch: string; start_sha: string; force?: boolean; actions: { action: string; file_path: string; content?: string; encoding?: string }[] };
         if (branches.has(branch) && force !== true) return respond({ message: `A branch called '${branch}' already exists.` }, 400);
         const files = new Map(commits.get(start_sha) ?? []);
         for (const action of actions) {
@@ -142,8 +173,10 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
           if ((action.action === "update" || action.action === "delete") && !files.has(action.file_path)) return respond({ message: "A file with this name doesn't exist" }, 400);
           if (action.action === "delete") { files.delete(action.file_path); continue; }
           if (action.content === undefined) return respond({ message: "content is missing" }, 400);
-          files.set(action.file_path, action.content);
-          blobs.set(blobSha(action.content), action.content);
+          // `encoding: "base64"` action은 그 바이트를 그대로 저장한다(실측 — Q1이 올린 UTF-16 blob이 로컬 `git hash-object`와 같았다).
+          const stored: FileBody = action.encoding === "base64" ? Buffer.from(action.content, "base64") : action.content;
+          files.set(action.file_path, stored);
+          blobs.set(blobSha(bytesOf(stored)), stored);
         }
         // 실물처럼 같은 내용도 새 커밋이다(커밋 시각이 다르다) — 순번을 섞는다.
         const sha = createHash("sha1").update(`${start_sha}:${commits.size}:${body}`).digest("hex");
@@ -161,7 +194,7 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
         if (before === undefined || after === undefined) return respond({ message: "404 Ref Not Found" }, 404);
         const ahead: { id: string }[] = [];
         for (let at: string | undefined = to; at !== undefined && at !== from; at = parents.get(at)) ahead.push({ id: at });
-        const paths = [...new Set([...before.keys(), ...after.keys()])].filter((path) => before.get(path) !== after.get(path)).sort();
+        const paths = [...new Set([...before.keys(), ...after.keys()])].filter((path) => !sameBody(before.get(path), after.get(path))).sort();
         const diffs = paths.map((path) => ({ old_path: path, new_path: path, new_file: !before.has(path), deleted_file: !after.has(path), renamed_file: false }));
         return respond({ commits: from === to ? [] : ahead.reverse(), diffs, compare_timeout: false });
       }
@@ -201,10 +234,10 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
         // `repository.blobs` — 숫자 id 주소(`projects(ids:)`)로만 답한다. 크기는 문자열이다(실측).
         const { variables } = json() as { variables: { ids: string[]; ref: string; paths: string[] } };
         if (variables.ids[0] !== `gid://gitlab/Project/${id}`) return respond({ data: { projects: { nodes: [] } } });
-        const files = commits.get(variables.ref) ?? new Map<string, string>();
+        const files = commits.get(variables.ref) ?? new Map<string, FileBody>();
         const nodes = variables.paths.flatMap((path) => {
           const content = files.get(path);
-          return content === undefined ? [] : [{ path, size: String(Buffer.byteLength(content)), lfsOid: null, oid: blobSha(content) }];
+          return content === undefined ? [] : [{ path, size: String(bytesOf(content).length), lfsOid: null, oid: blobSha(bytesOf(content)) }];
         });
         return respond({ data: { projects: { nodes: [{ id: variables.ids[0], repository: { blobs: { pageInfo: { hasNextPage: false }, nodes } } }] } } });
       }

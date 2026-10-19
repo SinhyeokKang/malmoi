@@ -48,6 +48,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
 }) {
   const m = useMessages();
   const t = m.sources.locale;
+  const baseReason = detail.connection?.adapterName === "android-strings" ? t.androidBaseReason : t.baseReason;
   const helpId = useId();
   const titleId = useId();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -181,7 +182,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
             */}
             <StatusCell plan={plan} row={row} prLabel={prLabel} prHref={detail.pullRequestUrl} />
             <span className="flex shrink-0 items-center gap-2 @max-form:ml-auto">
-              <RowAction plan={plan} code={row.code} busy={busy} helpId={help === null ? null : helpId} cancelling={cancelling === row.code}
+              <RowAction baseReason={baseReason} plan={plan} code={row.code} busy={busy} helpId={help === null ? null : helpId} cancelling={cancelling === row.code}
                 onAdd={() => setAdding({ code: row.code })}
                 onRemove={() => setRemoving({ code: row.code, adding: row.change?.operation === "ADD" })}
                 onCancel={button => void cancelRemoval(row.code, button)} />
@@ -201,7 +202,7 @@ export function LanguagesCard({ slug, detail, role, busy, canOpen, openReason, o
     {canManage && detail.connection !== undefined && <AddLocaleDialog open={adding !== null} onOpenChange={next => { if (!next) setAdding(null); }} slug={slug} source={detail.slug}
       adapterName={detail.connection.adapterName ?? ""} pathTemplate={detail.connection.pathTemplate} languages={detail.languages} initialCode={adding?.code ?? null}
       onDone={added} onCloseAutoFocus={keepFocus} />}
-    {canManage && removing !== null && <RemoveLocaleDialog open onOpenChange={next => { if (!next) setRemoving(null); }} slug={slug} source={detail.slug}
+    {canManage && removing !== null && <RemoveLocaleDialog baseReason={baseReason} open onOpenChange={next => { if (!next) setRemoving(null); }} slug={slug} source={detail.slug}
       code={removing.code} adding={removing.adding} pullRequest={prLabel} onDone={removed} onCloseAutoFocus={keepFocus} />}
   </div>;
 }
@@ -232,8 +233,8 @@ function StatusCell({ plan, row, prLabel, prHref }: { plan: LanguageRowPlan; row
   </span>;
 }
 
-function RowAction({ plan, code, busy, helpId, cancelling, onAdd, onRemove, onCancel }: {
-  plan: LanguageRowPlan; code: string; busy: boolean; helpId: string | null; cancelling: boolean;
+function RowAction({ baseReason, plan, code, busy, helpId, cancelling, onAdd, onRemove, onCancel }: {
+  baseReason: string; plan: LanguageRowPlan; code: string; busy: boolean; helpId: string | null; cancelling: boolean;
   onAdd: () => void; onRemove: () => void; onCancel: (button: HTMLElement) => void;
 }) {
   const m = useMessages();
@@ -244,11 +245,11 @@ function RowAction({ plan, code, busy, helpId, cancelling, onAdd, onRemove, onCa
   const reasonId = block === "base" ? `language-action-reason-${code}` : block === "unconfirmed" ? `language-note-${code}` : block === "role" ? helpId ?? `language-action-reason-${code}` : undefined;
   const label = kind === "add" ? t.addLabel(code) : kind === "cancel" ? t.cancelLabel(code) : t.removeLabel(code);
   return <>
-    {block === "base" && <span id={reasonId} className="sr-only">{t.baseReason}</span>}
+    {block === "base" && <span id={reasonId} className="sr-only">{baseReason}</span>}
     {block === "role" && helpId === null && <span id={reasonId} className="sr-only">{m.sources.languagesHelpEditor}</span>}
     {/* 트리거가 danger다 — 승인 버튼과 같은 파괴 스타일이고 바닥 왼쪽 [Detach source]와 같은 계열이다(L1). 취소·재추가는 기본형이다. */}
     <Button size="sm" data-language-action variant={kind === "remove" ? "danger" : "default"} className="shrink-0" aria-label={label}
-      title={block === "base" ? t.baseReason : undefined} disabled={busy} busy={cancelling}
+      title={block === "base" ? baseReason : undefined} disabled={busy} busy={cancelling}
       aria-disabled={block !== null || undefined} aria-describedby={reasonId}
       onClick={event => {
         if (block !== null) { event.preventDefault(); return; }

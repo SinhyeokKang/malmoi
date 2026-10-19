@@ -1,5 +1,6 @@
 "use client";
 
+import { validBaseInput } from "@/lib/onboarding/base-input";
 import {
   createProject,
   confirmManualFormat,
@@ -33,7 +34,7 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { ConnectGithubButton } from "./connect-github";
 import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { LargeModal } from "@/components/ui/large-modal";
-import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
+import { FilesStep, failedPreview, initialPreviewLocale, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { repoInputOf } from "./repo-input";
 import { RepoStep, type GitLabAccountLine } from "./steps/repo";
@@ -172,8 +173,10 @@ export function NewProject({
   const selectedCandidates = candidates.flatMap((item, index) => checked.has(index) ? [{ item, index }] : []);
   const chosenCandidate = usingManual ? manualCandidate : selectedCandidates[0]?.item;
   const chosenBase = usingManual ? baseLocale : baseLocales[selectedCandidates[0]?.index ?? -1] ?? "";
-  const validBases = usingManual ? manualMatched && !!manualCandidate?.locales.includes(baseLocale)
-    : selectedCandidates.length > 0 && selectedCandidates.every(({ item, index }) => item.locales.includes(baseLocales[index] ?? ""));
+  const manualLocales = manualCandidate?.basePath === undefined ? manualCandidate?.locales ?? []
+    : manualCandidate.locales.filter(code => code !== manualCandidate.baseLocale);
+  const validBases = usingManual ? manualMatched && manualCandidate !== undefined && validBaseInput({ ...manualCandidate, locales: manualLocales }, baseLocale)
+    : selectedCandidates.length > 0 && selectedCandidates.every(({ item, index }) => validBaseInput(item, baseLocales[index] ?? ""));
 
   const state: NextState = {
     sessionExpired: accessLost !== null || (banner !== null && isAccessLost(banner)),
@@ -306,7 +309,8 @@ export function NewProject({
     if (chosen === undefined) return;
     sampleGeneration.current += 1;
     setDetail(index);
-    setLocale(chosen.baseLocale);
+    const previewLocale = initialPreviewLocale(chosen);
+    setLocale(previewLocale);
     setSlugTaken(false);
     setSamples(
       Object.fromEntries(
@@ -316,6 +320,7 @@ export function NewProject({
         ]),
       ),
     );
+    if (previewLocale === chosen.basePath) requestSample(previewLocale, chosen, index);
   }
 
   /** ②의 언어 전환 — detect가 든 셋 밖은 누를 때 받는다 (DESIGN §6.7). */
@@ -323,15 +328,22 @@ export function NewProject({
     setLocale(code);
     const key = sampleKey(code);
     if (samples[key] !== undefined || repo === undefined) return;
+    requestSample(code, candidate, detail);
+  }
+
+  function requestSample(code: string, selected: CandidateSummary | undefined, selectedIndex: number | null) {
+    if (repo === undefined) return;
+    const selectedPath = selected?.pathTemplate ?? pathTemplate;
+    const key = JSON.stringify([repo.fullName, branchValue, selectedIndex, selected?.adapter ?? manual.adapter, selectedPath, code]);
     const generation = sampleGeneration.current;
     setSamples((prev) => ({ ...prev, [key]: { status: "loading" } }));
     void loadCandidateSample({
       ...repoInputOf(repo),
       ref: branchValue,
-      adapter: candidate?.adapter ?? manual.adapter,
-      pathTemplate,
+      adapter: selected?.adapter ?? manual.adapter,
+      pathTemplate: selectedPath,
       locale: code,
-      confirmation: candidate?.confirmation ?? manualCandidate?.confirmation,
+      confirmation: selected?.confirmation ?? manualCandidate?.confirmation,
     }).then(
       (result) => {
         if (generation !== sampleGeneration.current) return;
@@ -344,8 +356,8 @@ export function NewProject({
             ...item,
             samples: [...item.samples.filter((sample) => sample.locale !== code), { locale: code, rows: result.rows, total: result.total }],
           });
-          if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
-          else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
+          if (selectedIndex === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
+          else setCandidates((prev) => prev.map((item, index) => index === selectedIndex ? update(item) : item));
         }
         setAnnounce(result.ok ? undefined : previewFailureText(m, failedPreview(result.error)));
         setSamples((prev) => ({
@@ -442,7 +454,7 @@ export function NewProject({
       try { result = await createProject({
         ...repoInputOf(repo),
         manual: usingManual,
-        surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale }] : selection.formats,
+        surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale, ...(manualCandidate?.basePath === undefined ? {} : { basePath: manualCandidate.basePath }) }] : selection.formats,
         slug,
         name,
         baseBranch: branchValue,
@@ -632,7 +644,7 @@ export function NewProject({
             candidates,
             picked: detail,
             locale,
-            preview: samples[sampleKey(locale)] ?? { status: "loading" },
+            preview: samples[sampleKey(locale)] ?? { status: candidate?.adapter === "android-strings" ? "unavailable" : "loading" },
             manual,
             manualCandidate,
             manualMatched,
@@ -680,7 +692,7 @@ export function NewProject({
           <NamingStep
             disabled={pending}
             surfaces={!usingManual && selectedCandidates.length > 1 ? selectedCandidates.map(({ item, index }) => ({
-              pathTemplate: item.pathTemplate, locales: item.locales, baseLocale: baseLocales[index] ?? "",
+              pathTemplate: item.pathTemplate, ...(item.basePath === undefined ? {} : { basePath: item.basePath }), locales: item.locales, baseLocale: baseLocales[index] ?? "",
               keyCounts: Object.fromEntries(item.samples.map(sample => [sample.locale, sample.total])),
             })) : undefined}
             onBaseLocale={(index, value) => {
@@ -691,7 +703,8 @@ export function NewProject({
               name,
               slug,
               baseLocale: chosenBase,
-              locales: chosenCandidate?.locales ?? [],
+              ...(chosenCandidate?.basePath === undefined || (!usingManual && selectedCandidates.length > 1) ? {} : { basePath: chosenCandidate.basePath }),
+              locales: usingManual ? manualLocales : chosenCandidate?.locales ?? [],
               keyCounts: Object.fromEntries(
                 (chosenCandidate?.samples ?? []).map((s) => [s.locale, s.total] as const),
               ),
@@ -699,7 +712,7 @@ export function NewProject({
               slugTaken,
               // ③의 info가 "무엇을 읽는가"를 말한다 — 표면이 여럿이면 그 경로도 전부 들어야 한다.
               pathTemplate: usingManual ? pathTemplate
-                : selectedCandidates.map(({ item }) => item.pathTemplate).join(", ") || pathTemplate,
+                : selectedCandidates.map(({ item }) => selectedCandidates.length > 1 ? [item.basePath, item.pathTemplate].filter(Boolean).join(", ") : item.pathTemplate).join(", ") || pathTemplate,
               branch: branchValue,
               host,
               // 생성 거부가 이미 같은 사유를 알렸어도 접근 상실 상태는 Back 뒤 차단에 남겨 둔다 (#199).

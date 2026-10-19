@@ -88,6 +88,27 @@ describe("planGitlabCiPush — 실행 인자", () => {
   });
 });
 
+describe("planGitlabCiPush — 확정 어댑터를 그대로 넘긴다", () => {
+  // 생성 job이 박은 이름을 러너가 거르지 않는다 — 검증은 CLI(`isAdapterName`)가 한다. 여기서 버리면 CI가 탐지 1순위를 보내 409다(POSTMORTEM 2026-09-14).
+  it("arb-catalog", () => {
+    const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "arb-catalog", MALMOI_I18N_PATH_TEMPLATE: "lib/l10n/app_{locale}.arb" });
+    expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "arb-catalog", "--path-template", "lib/l10n/app_{locale}.arb"]) });
+  });
+  it("apple-xcstrings", () => {
+    const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "apple-xcstrings", MALMOI_I18N_PATH_TEMPLATE: "App/Localizable.xcstrings" });
+    expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "apple-xcstrings", "--path-template", "App/Localizable.xcstrings"]) });
+  });
+  it("android-strings", () => {
+    const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "android-strings", MALMOI_I18N_PATH_TEMPLATE: "app/src/main/res/values-{locale}/strings.xml" });
+    expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "android-strings", "--path-template", "app/src/main/res/values-{locale}/strings.xml"]) });
+  });
+
+  it("apple-strings", () => {
+    const plan = planGitlabCiPush({ ...base, MALMOI_I18N_ADAPTER: "apple-strings", MALMOI_I18N_PATH_TEMPLATE: "App/{locale}.lproj/Localizable.strings" });
+    expect(plan).toMatchObject({ kind: "run", args: expect.arrayContaining(["--adapter", "apple-strings", "--path-template", "App/{locale}.lproj/Localizable.strings"]) });
+  });
+});
+
 describe("planGitlabCiPush — 설정 오류는 red", () => {
   it("프로젝트·base 브랜치가 없으면 invalid다 — 스킵으로 접으면 CI가 영영 조용히 green이다", () => {
     expect(planGitlabCiPush({ ...base, MALMOI_I18N_PROJECT: "" })).toMatchObject({ kind: "invalid" });

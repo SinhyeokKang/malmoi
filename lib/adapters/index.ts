@@ -1,3 +1,7 @@
+import { androidStrings } from "./android-strings";
+import { appleStrings, isFlutterShell } from "./apple-strings";
+import { appleXcstrings } from "./apple-xcstrings";
+import { arbCatalog } from "./arb-catalog";
 import { chromeLocales } from "./chrome-locales";
 import { codeDict } from "./code-dict";
 import { jsonCatalog } from "./json-catalog";
@@ -11,6 +15,10 @@ export { jsonCatalog } from "./json-catalog";
 export { yamlCatalog } from "./yaml-catalog";
 export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
+export { arbCatalog } from "./arb-catalog";
+export { appleStrings } from "./apple-strings";
+export { appleXcstrings } from "./apple-xcstrings";
+export { androidStrings } from "./android-strings";
 export { namespaceOf, compareKeys, catalogVerdict, matchGlobPaths, pathSignals } from "./shared";
 export * from "./types";
 
@@ -26,7 +34,7 @@ export * from "./types";
  * 단 **경로만으로는 후보를 못 낸다** — 내용을 봐야 알 수 있어서, 1패스에서 내려받을 파일을 고르는
  * `tsDictProbePaths`가 그 자리를 맡는다.
  */
-export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict];
+export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict, arbCatalog, appleStrings, appleXcstrings, androidStrings];
 
 /**
  * ⚠️ **한 리포에 로케일 포맷이 둘 이상일 수 있다.** bugshot-2가 그렇다 — `_locales`(4키,
@@ -59,7 +67,8 @@ export function detectFormatWith(
  * 아니다** — lokalise/i18n-ally가 정확히 그 형태로 오탐이 났다.
  */
 export function detectCandidatesAcross(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
-  const all = ADAPTERS.flatMap((a) => a.detectCandidates(paths, probe));
+  const own = ADAPTERS.map((a) => ({ name: a.name, found: a.detectCandidates(paths, probe) }));
+  const all = own.flatMap((a) => a.found);
   const chromeFirst: DetectedFormat[] = [];
   const rest: DetectedFormat[] = [];
   for (const c of all) {
@@ -67,7 +76,27 @@ export function detectCandidatesAcross(paths: readonly string[], probe?: FilePro
     if (c.adapter === "chrome-locales" && !aside) chromeFirst.push(c);
     else rest.push(c);
   }
-  return [...rankTemplates(chromeFirst), ...rankTemplates(rest)];
+  const ownOf = (name: AdapterName) => own.find((a) => a.name === name)?.found ?? [];
+  const ranked = keepOwnOrder([...rankTemplates(chromeFirst), ...rankTemplates(rest)], "arb-catalog", ownOf("arb-catalog"));
+  const ordered = (["apple-strings", "apple-xcstrings", "android-strings"] as const).reduce((list, name) => keepOwnOrder(list, name, ownOf(name)), ranked);
+  // Flutter 앱의 iOS·macOS·Android 셸(`.strings`·`.xcstrings`·`strings.xml`)은 맨 뒤다 — 앱 문자열은 ARB이고, 로케일 수로는 셸이 이길 수 있다(`isFlutterShell`).
+  const repo = new Set(paths);
+  const shell = (c: DetectedFormat) => (c.adapter === "apple-strings" || c.adapter === "apple-xcstrings" || c.adapter === "android-strings") && isFlutterShell(c.pathTemplate, repo);
+  return [...ordered.filter((c) => !shell(c)), ...ordered.filter(shell)];
+}
+
+/**
+ * 한 어댑터의 후보가 선 자리만 그 어댑터가 낸 순서로 다시 채운다 — 다른 어댑터와의 순위는 그대로다.
+ *
+ * `arb-catalog`: 루트 `l10n.yaml`이 가리키는 후보가 경로 신호로는 지는 다른 ARB 후보를 이겨야 하는데(arb design §2), 설정은
+ * 경로 신호가 아니라 `compareTemplates`에 넣을 수 없고, 후보를 걸러 내면 설정 밖 ARB 소스가 탐지에서 사라진다.
+ * `apple-strings`: `Localizable.strings`가 같은 리포의 다른 테이블보다 앞이어야 probe 예산(1패스 상위 5) 안에 든다(apple-strings design §5) —
+ * 테이블 이름은 공용 순위 신호가 아니다. `apple-xcstrings`도 같은 이유로 `Localizable.xcstrings`를 앞세운다. `android-strings`는 main 소스셋을
+ * flavor·테스트 소스셋보다 앞세운다(android-strings design §5) — 소스셋 이름도 공용 신호가 아니다.
+ */
+function keepOwnOrder(ranked: readonly DetectedFormat[], name: AdapterName, own: readonly DetectedFormat[]): DetectedFormat[] {
+  let next = 0;
+  return ranked.map((c) => (c.adapter === name ? own[next++] ?? c : c));
 }
 
 /**
@@ -86,11 +115,19 @@ function rankTemplates(candidates: readonly DetectedFormat[]): DetectedFormat[] 
       .slice()
       .sort((a, b) =>
         compareTemplates(
-          { pathTemplate: a.pathTemplate, localeCount: a.locales.length },
-          { pathTemplate: b.pathTemplate, localeCount: b.locales.length },
+          { pathTemplate: a.pathTemplate, localeCount: languageCount(a) },
+          { pathTemplate: b.pathTemplate, localeCount: languageCount(b) },
         ),
       ),
   );
+}
+
+/**
+ * 후보가 담은 언어 수 — 템플릿 밖 기준 언어 파일(`basePath`, Android `values/`)도 한 언어다. 탐지는 그 코드를 몰라 `locales`에 없다.
+ * `basePath`는 Android만 내므로 기존 어댑터의 순위는 그대로다.
+ */
+function languageCount(c: DetectedFormat): number {
+  return c.locales.length + (c.basePath === undefined ? 0 : 1);
 }
 
 /** 리포 파일 경로 목록에서 로케일 포맷을 찾는다. 못 찾으면 undefined — 연동 불가다. */

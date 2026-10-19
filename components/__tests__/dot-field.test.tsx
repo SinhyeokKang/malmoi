@@ -160,6 +160,20 @@ describe("DotField", () => {
     await render(<DotField />);
     expect(lastDraw(calls).filter(([name]) => name === "fill").length).toBe(26 * 26);
   });
+
+  /**
+   * 로그인 KV도 가상 커서가 반경만큼 패널 밖에서 줄을 바꾼다(2026-10-19 사용자 — 랜딩과 같게). 넘침이 없으면 시각 0의 커서가 (0, 0)이라
+   * 왼쪽 위 점이 커진다.
+   */
+  it("자동 순회는 패널 밖(x = -180)에서 시작한다 — 시각 0의 (0, 0) 점은 기본 크기다", async () => {
+    const { calls } = setup();
+    sized();
+    motion(false);
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    await render(<DotField />);
+    expect(arcsAt(lastDraw(calls), 0, 0)).toEqual([2]);
+  });
 });
 
 /**

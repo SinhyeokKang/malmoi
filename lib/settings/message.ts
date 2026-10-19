@@ -11,7 +11,7 @@ import type { Messages } from "@/lib/i18n";
  * ⚠️ **잎이다** — 설정 화면(클라이언트)이 값으로 읽는다. `@/lib/i18n`만 물고, 판정 함수
  * (`isValidBranchName`·`planBaseLocaleChange`)는 각자 자기 잎 모듈에 있다.
  */
-const REPOSITORY_SETTINGS_ERRORS = ["invalid-branch", "sync-branch", "unknown-locale", "orphaned-locale"] as const;
+const REPOSITORY_SETTINGS_ERRORS = ["invalid-branch", "sync-branch", "unknown-locale", "orphaned-locale", "android-base-fixed"] as const;
 
 export type RepositorySettingsError = (typeof REPOSITORY_SETTINGS_ERRORS)[number];
 

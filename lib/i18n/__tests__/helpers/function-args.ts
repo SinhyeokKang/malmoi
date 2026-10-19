@@ -24,6 +24,7 @@ export type FunctionPaths<T, P extends string = ""> = {
 type At<T, P extends string> = P extends `${infer H}.${infer R}` ? (H extends keyof T ? At<T[H], R> : never) : P extends keyof T ? T[P] : never;
 
 export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameters<Extract<At<Messages, P>, Fn>> } = {
+  "newProject.baseLocale.androidOverlap": ["de"],
   "search.noResults": ["X"],
   "search.results": [2],
   "inbox.labelUnread": [12],
@@ -240,6 +241,8 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.workspace.detail.frozenReason": ["X"],
   "translations.workspace.footer.unsaved": [2],
   "translations.workspace.footer.savedSince": [2],
+  "translations.workspace.footer.inlineMarkupInvalid.title": ["X"],
+  "translations.workspace.footer.inlineTagsMismatch.title": ["X"],
   "translations.workspace.footer.cannotClear.title": ["X"],
   "translations.workspace.footer.frozen": ["X", "Y"],
   "translations.workspace.footer.removalPending.title": ["X", 2],

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor, detectCandidatesAcross } from "@/lib/adapters";
+import { arbConfiguredFirst, arbProbePaths } from "@/lib/adapters/arb-catalog";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import { compareKeys } from "@/lib/adapters/shared";
 import type { AdapterFile, DetectedFormat } from "@/lib/adapters/types";
@@ -15,7 +16,7 @@ import { connectionEvidence, projectReadTarget, REPO_COLUMNS, repoLocatorOf, rep
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
-import { ingestTargets, makeProbe, probeTargets, summarizeCandidates, type CandidateSummary } from "@/lib/onboarding/detect";
+import { ingestTargets, knownSizesOf, makeProbe, probeTargets, summarizeCandidates, type CandidateSummary } from "@/lib/onboarding/detect";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { resolveLocalePaths } from "@/lib/pull/plan";
@@ -89,9 +90,17 @@ async function detectIn(userId: string, target: RepoTarget, ref: string): Promis
   const paths = snapshot.files.map((f) => f.path);
   // 1패스: probe 없이 경로 모양만. code-dict는 여기서 후보가 0개이고 probe가 그것을 **만든다**.
   // ⚠️ 세 번째 인자가 **경로 전체**다 — ts-dict는 1패스 후보가 0이라 씨앗을 여기서만 만들 수 있다.
-  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
+  // ⚠️ ARB 설정(`l10n.yaml`)을 **먼저** 읽는다 — 그것이 가리키는 후보가 1패스 순위로 probe 상한 밖에 밀리면 2패스가 내용 없이 만나
+  // 검증에서 떨어뜨린다(리뷰 R1). 설정 파일은 원래도 표본 하나라 예산은 그대로이고, 같은 파일을 두 번 읽지 않는다. 합계 예산은 둘째 읽기가 이어 잰다.
+  const configPaths = arbProbePaths(paths);
   let files: AdapterFile[];
-  try { files = await readFiles(reader, snapshot, targets); }
+  try {
+    const config = configPaths.length === 0 ? [] : await readFiles(reader, snapshot, configPaths);
+    const firstPass = arbConfiguredFirst(detectCandidatesAcross(paths), config[0]?.content);
+    const targets = probeTargets(firstPass, codeDictCandidatePaths(paths), paths, knownSizesOf(snapshot.files)).filter((path) => !configPaths.includes(path));
+    // 설정을 넘겨 합계 예산을 이어 잰다 — 따로 재면 설정만큼 상한 밖으로 빠진다(재리뷰 Y1).
+    files = [...config, ...await readFiles(reader, snapshot, targets, config)];
+  }
   catch (error) {
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
     throw error;
@@ -103,25 +112,28 @@ async function detectIn(userId: string, target: RepoTarget, ref: string): Promis
   if (summaries.length === 0) return { ok: false, error: "no-candidates" };
 
   const candidates = summaries.flatMap((summary) => {
-    const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths));
-    const confirmed = planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)));
+    const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths, summary.basePath ?? null));
+    // basePath 후보는 아직 코드가 없다. 2패스가 검증한 포맷을 서명하고 입력 코드는 생성·추가 때 검증한다.
+    const confirmed = summary.basePath === undefined
+      ? planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)))
+      : { status: "ok" as const, format: { adapter: summary.adapter, pathTemplate: summary.pathTemplate, basePath: summary.basePath, locales: summary.locales } };
     if (confirmed.status !== "ok") return [];
-    return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths), confirmation: signSampleConfirmation({
+    return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths, summary.baseLocale), confirmation: signSampleConfirmation({
       userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),
       ref, headSha: snapshot.headSha,
       // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
-      format: { ...confirmed.format, locales: summary.locales },
+      format: { ...confirmed.format, locales: summary.locales, baseLocale: summary.baseLocale },
     }, requireEnv("APP_SIGNING_SECRET"), new Date()) }];
   });
   return candidates.length === 0 ? { ok: false, error: "no-candidates" } : { ok: true, candidates };
 }
 
 /** 추가 읽기 없이 확정 포맷과 같은 snapshot의 전체 경로로 소유 범위를 계산한다. */
-export function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]): string[] {
+export function candidateOutputPaths(format: DetectedFormat, paths: readonly string[], baseLocale: string): string[] {
   const layout = adapterFor(format).layout;
   return [...new Set([
-    ...templatePaths(format.adapter, format.pathTemplate, paths),
-    ...ingestTargets(format, layout, paths),
-    ...resolveLocalePaths(format, layout, paths).map(item => item.path),
+    ...templatePaths(format.adapter, format.pathTemplate, paths, format.basePath ?? null),
+    ...ingestTargets(format, layout, paths, baseLocale),
+    ...resolveLocalePaths(format, layout, paths, baseLocale).map(item => item.path),
   ])].sort(compareKeys);
 }

@@ -7,12 +7,19 @@ const fixtures: { adapter: AdapterName; pathTemplate: string; paths: string[]; e
   { adapter: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", paths: ["_locales/en/messages.json", "_locales/ko/messages.json"], empty: "{}", invalid: ["{", "[]", "null", '{"hello":{"message":"Hello"}}'] },
   { adapter: "yaml-catalog", pathTemplate: "i18n/{locale}.yml", paths: ["i18n/en.yml", "i18n/ko.yml"], empty: "{}", invalid: ["{", "[]", "", "hello: Hello", "hello: *missing", "? [foo, bar]\n: Hello", "hello: null"] },
   { adapter: "code-dict", pathTemplate: "i18n/{locale}.ts", paths: ["i18n/en.ts", "i18n/ko.ts"], empty: "export default {} as const;", invalid: ["export default {", "export default [];", "export default makeMessages();", 'export default { hello: "Hello" };'] },
+  // `@@*`·`@key`만 있는 ARB는 엔트리가 0개인 카탈로그다. 문자열이 아닌 엔트리 값은 read가 오류로 알리므로 빈 카탈로그가 아니다.
+  { adapter: "arb-catalog", pathTemplate: "lib/l10n/app_{locale}.arb", paths: ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"], empty: '{\n  "@@locale": "en",\n  "@stray": {}\n}\n', invalid: ["{", "[]", "null", '{"hello":"Hello"}', '{"hello":null}', '{"hello":{"x":"y"}}'] },
+  // 주석만 있는 `.strings`는 엔트리가 0개인 카탈로그다. 바이너리 plist·문법 오류는 read가 오류로 알린다.
+  { adapter: "apple-strings", pathTemplate: "App/{locale}.lproj/Localizable.strings", paths: ["App/en.lproj/Localizable.strings", "App/ko.lproj/Localizable.strings"], empty: "/* No strings yet */\n", invalid: ['"hello" = "Hello";', '"hello" = ', "bplist00\u0000\u0001", "{ }"] },
+  // 키가 0개인 카탈로그. 키가 하나라도 있으면(원문 셀이 없어도 키 = 원문) 엔트리가 있고, 복수형 키는 read가 오류로 알린다.
+  { adapter: "apple-xcstrings", pathTemplate: "App/Localizable.xcstrings", paths: ["App/Localizable.xcstrings"], empty: '{\n  "sourceLanguage" : "en",\n  "strings" : {\n\n  },\n  "version" : "1.0"\n}',
+    invalid: ["{", "[]", '{"sourceLanguage":"en","strings":{"hello":{}}}', '{"sourceLanguage":"en","strings":{"n":{"localizations":{"en":{"variations":{}}}}}}', '{"sourceLanguage":"en"}'] },
   { adapter: "ts-dict", pathTemplate: "i18n/*.ts", paths: ["i18n/common.ts"], empty: "const en = {} as const; const ko = {}; export const common = { en, ko };", invalid: ["const en = {", "const en = []; const ko = [];", "export default {};", 'const en = { hello: "Hello" }; const ko = {};'] },
 ];
 
 describe("verifyEmptyCatalog", () => {
   for (const fixture of fixtures) {
-    const input = () => ({ stored: { adapter: fixture.adapter, pathTemplate: fixture.pathTemplate, baseLocale: "en" }, paths: fixture.paths, blobs: new Map(fixture.paths.map(path => [path, fixture.empty])) });
+    const input = () => ({ stored: { adapter: fixture.adapter, pathTemplate: fixture.pathTemplate, baseLocale: "en", basePath: null }, paths: fixture.paths, blobs: new Map(fixture.paths.map(path => [path, fixture.empty])) });
     it(`${fixture.adapter} 정상 빈 컨테이너를 인식한다`, () => expect(verifyEmptyCatalog(input())).toBe(true));
     for (const invalid of fixture.invalid) it(`${fixture.adapter} 잘못된/비어있지 않은 컨테이너 ${invalid}는 거부한다`, () => {
       const value = input(); value.blobs.set(fixture.paths[0]!, invalid);
@@ -27,11 +34,29 @@ describe("verifyEmptyCatalog", () => {
   }
 });
 
+/** Android — 기준 언어 파일이 `values/`(basePath)다. 그 파일의 언어는 저장된 기준 언어이고, 빈 `<resources/>`가 빈 카탈로그다. */
+describe("verifyEmptyCatalog — android-strings basePath", () => {
+  const paths = ["app/src/main/res/values/strings.xml", "app/src/main/res/values-ko/strings.xml"];
+  const input = (base: string, ko = "<resources/>") => ({
+    stored: { adapter: "android-strings" as const, pathTemplate: "app/src/main/res/values-{locale}/strings.xml", baseLocale: "en", basePath: paths[0]! },
+    paths, blobs: new Map([[paths[0]!, base], [paths[1]!, ko]]),
+  });
+  it("빈 `<resources/>`와 주석만 있는 `<resources>`를 인식한다", () => {
+    expect(verifyEmptyCatalog(input("<resources/>"))).toBe(true);
+    expect(verifyEmptyCatalog(input('<?xml version="1.0"?>\n<resources>\n    <!-- none -->\n</resources>\n'))).toBe(true);
+  });
+  it("엔트리·문법 오류가 있으면 아니다", () => {
+    expect(verifyEmptyCatalog(input('<resources><string name="a">A</string></resources>'))).toBe(false);
+    expect(verifyEmptyCatalog(input("<resources>"))).toBe(false);
+    expect(verifyEmptyCatalog(input("<resources/>", '<resources><string name="a">가</string></resources>'))).toBe(false);
+  });
+});
+
 /** BOM이 붙은 빈 `{}` — read는 BOM을 벗기는데(audit #57) 이 판정의 두 번째 `JSON.parse`가 벗기지 않아 던졌다(B7a r1). */
 describe("verifyEmptyCatalog — BOM", () => {
   it("BOM이 붙은 빈 json-catalog를 빈 카탈로그로 인식하고 던지지 않는다", () => {
     const paths = ["i18n/en.json", "i18n/ko.json"];
-    const input = { stored: { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en" }, paths, blobs: new Map(paths.map(path => [path, "\uFEFF{}"])) };
+    const input = { stored: { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en", basePath: null }, paths, blobs: new Map(paths.map(path => [path, "\uFEFF{}"])) };
     expect(verifyEmptyCatalog(input)).toBe(true);
   });
 });

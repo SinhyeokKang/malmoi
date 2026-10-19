@@ -16,7 +16,7 @@ Malmoi는 GitHub와 GitLab.com 리포지토리용 번역 관리(i18n) 도구입�
 
 ## 어떤 파일 형식을 지원하나요? {#formats}
 
-JSON·YAML 카탈로그, Chrome 확장 메시지, TypeScript·JavaScript 코드 사전을 지원합니다. 코드 사전은 언어마다 파일 하나여도 되고, 모든 언어가 한 파일에 있어도 됩니다. [지원 파일 형식](reference/formats.md#formats)을 참고하세요.
+JSON·YAML 카탈로그, Chrome 확장 메시지, Flutter ARB 파일, Apple strings 파일과 String Catalog, Android strings 파일, TypeScript·JavaScript 코드 사전을 지원합니다. 코드 사전은 언어마다 파일 하나여도 되고, 모든 언어가 한 파일에 있어도 됩니다. [지원 파일 형식](reference/formats.md#formats)을 참고하세요.
 
 ## Malmoi가 파일을 새로 써 버리나요? {#file-structure}
 
@@ -36,7 +36,7 @@ Malmoi는 리포지토리의 값과 Malmoi에서 편집한 값을 병합하지 �
 
 ## Malmoi에서 언어를 추가하거나 제거할 수 있나요? {#languages}
 
-JSON·YAML 카탈로그, Chrome 확장 프로그램 메시지, 언어별 코드 사전에서는 프로젝트 소유자가 할 수 있습니다. 게시하면 PR(GitLab에서는 MR)로 언어 파일을 만들거나 삭제하고, 제거한 언어의 번역은 Malmoi에 남습니다. 모든 언어를 한 파일에 담은 사전은 리포지토리에서 바꿔야 합니다. 새 YAML·언어별 코드 파일에는 주석·`import`·타입 선언이 없습니다. 앱에서 언어 등록이 필요하면 직접 등록하세요. 이후 부모 맵이 없는 곳에는 점 리터럴 키가 삽입되므로 앱에서 읽을 수 있는지 확인하세요. [언어 추가·제거](setup/languages.md#languages)를 참고하세요.
+JSON·YAML 카탈로그, Chrome 확장 프로그램 메시지, Flutter ARB 파일, Apple strings 파일, Android strings 파일, 언어별 코드 사전에서는 프로젝트 소유자가 할 수 있습니다. 게시하면 PR(GitLab에서는 MR)로 언어 파일을 만들거나 삭제하고, 제거한 언어의 번역은 Malmoi에 남습니다. 모든 언어를 한 파일에 담은 사전과 Apple String Catalog는 리포지토리에서 바꿔야 합니다. Apple strings 파일은 Xcode 프로젝트에서 `.lproj` 폴더를 추가하거나 빼세요. `resConfigs`나 `localeFilters`로 언어를 제한한 Android 앱은 거기에 언어를 추가하세요. 새 YAML·언어별 코드 파일에는 주석·`import`·타입 선언이 없습니다. 앱에서 언어 등록이 필요하면 직접 등록하세요. 이후 부모 맵이 없는 곳에는 점 리터럴 키가 삽입되므로 앱에서 읽을 수 있는지 확인하세요. [언어 추가·제거](setup/languages.md#languages)를 참고하세요.
 
 ## 워크플로를 꼭 추가해야 하나요? {#workflow}
 

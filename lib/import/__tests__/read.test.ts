@@ -15,7 +15,7 @@ describe("readFiles", () => {
   it("경로 대신 스냅샷의 blob SHA로 읽고 다운로드 실패만 뺀다", async () => {
     const blob = vi.fn<RepoReader["blob"]>().mockResolvedValueOnce('{}').mockResolvedValueOnce(undefined);
     expect(await readFiles(reader(blob), snapshot, ["en.json", "ko.json"])).toEqual([{ path: "en.json", content: '{}' }]);
-    expect(blob.mock.calls).toEqual([["en-blob"], ["ko-blob"]]);
+    expect(blob.mock.calls).toEqual([["en-blob", "en.json"], ["ko-blob", "ko.json"]]);
   });
   it.each([undefined, 2_000_001])("트리 크기 %s는 다운로드 전에 거부한다", async size => {
     const repo = reader();

@@ -36,11 +36,11 @@ export async function declareBaseLocale(prisma: PrismaClient, subject: Subject, 
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const project = await tx.translationSurface.findUnique({
       where: { id: surfaceId, projectId },
-      select: { baseLocale: true, declaredBaseLocale: true, locales: { select: { code: true, orphaned: true, change: { select: { operation: true } } } } },
+      select: { adapterName: true, baseLocale: true, declaredBaseLocale: true, locales: { select: { code: true, orphaned: true, change: { select: { operation: true } } } } },
     });
     if (project === null) return { ok: false, error: "not-found" } as const;
-    const plan = planBaseLocaleChange({ current: project.baseLocale, next: baseLocale, locales: project.locales });
-    if (plan === "unknown-locale" || plan === "orphaned-locale") return { ok: false, error: plan } as const;
+    const plan = planBaseLocaleChange({ adapter: project.adapterName, current: project.baseLocale, next: baseLocale, locales: project.locales });
+    if (plan === "unknown-locale" || plan === "orphaned-locale" || plan === "android-base-fixed") return { ok: false, error: plan } as const;
     if (plan === "ok") {
       // 잠금 뒤 읽은 언어 변경 행(로케일과 같은 질의)으로 판정한다 — 렌더 뒤 도착한 추가·제거 요청도 여기서 거부된다.
       const changes = project.locales.flatMap(locale => locale.change == null ? [] : [{ localeCode: locale.code, operation: locale.change.operation }]);

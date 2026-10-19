@@ -124,6 +124,8 @@ export type SurveyCandidate = {
   adapter: AdapterName;
   pathTemplate: string;
   locales: string[];
+  /** 기준 언어 파일이 템플릿 밖이면 그 경로(Android `values/strings.xml`) — 판정의 `basePath`와 견준다. */
+  basePath?: string;
 };
 
 export type SurveyInput = {
@@ -142,8 +144,12 @@ export type SurveyInput = {
   configFiles: readonly string[];
   /** 껍데기 단계의 실패(clone 실패 등). 있으면 나머지를 재지 않는다. */
   failure?: string;
+  /** 디코드 실패 파일을 누락으로 숨기지 않는다. 정상 파일 관측과 별도로 보존한다. */
+  decodeErrors?: { path: string; code: "parse-failed" }[];
   /** 선택이 예산에 걸려 잘렸는가 — 숫자를 읽는 사람이 알아야 한다. */
   truncated?: boolean;
+  /** 측정한 커밋 SHA — 고정 입력이면 그 값, 아니면 해석된 HEAD. 기준선 고정의 원료다. */
+  commit?: string;
 };
 
 export type RepoSurvey = {
@@ -233,6 +239,10 @@ export type RepoSurvey = {
   configFiles: string[];
 
   failure?: string;
+  /** 디코드 실패 파일을 누락으로 숨기지 않는다. 정상 파일 관측과 별도로 보존한다. */
+  decodeErrors?: { path: string; code: "parse-failed" }[];
+  /** 측정한 커밋 SHA (`SurveyInput.commit`) — 실패 전에 해석됐으면 실패 리포에도 남는다. */
+  commit?: string;
   ms: number;
 };
 
@@ -270,6 +280,11 @@ export type Verdict = {
    * 엄격하다.
    */
   alsoValid?: string[];
+  /**
+   * 대표 정답(`correctCatalogPath`)의 기준 언어 파일 경로 — 템플릿 밖일 때만(Android `values/strings.xml`, mobile-strings M1). 있으면 1순위가 템플릿과
+   * 이 경로 둘 다 같아야 정답이다. `alsoValid`는 템플릿만 본다.
+   */
+  basePath?: string;
   /** 그렇게 판정한 근거. **사후 감사용이다** (무인 루프라 판정 주체가 실행 에이전트다). */
   note: string;
   /** 스타 수 구간 — 표에만 쓴다. */

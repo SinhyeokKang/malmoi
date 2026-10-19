@@ -97,7 +97,7 @@ export type TreeEntry = {
 } & (
   | { content: string }
   /** 삭제 — `base_tree` 위에서 그 경로만 빠진다. 링크·서브모듈 경로는 `renderProject`의 파일 종류 가드가 먼저 막는다. */
-  | { sha: null }
+  | { sha: string | null }
 );
 
 export type TreePayload = {

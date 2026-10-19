@@ -40,7 +40,7 @@ Malmoi muestra una fuente por cada conjunto de archivos seleccionado. Una fuente
 
 ## Completa los datos del proyecto {#confirm-project}
 
-1. Comprueba el **Idioma base** de cada fuente. Su archivo decide qué claves existen; las claves que solo aparecen en otro idioma se dejan fuera.
+1. Comprueba el **Idioma base** de cada fuente. Su archivo decide qué claves existen; las claves que solo aparecen en otro idioma se dejan fuera. En una fuente de Android, el archivo base `values/strings.xml` no tiene código de idioma, así que escribe el código del idioma en que está escrito, como `en`. No puede ser uno de los idiomas de traducción de la fuente y no se puede cambiar después.
 2. Introduce el **Nombre** y la **Dirección** del proyecto. La dirección es el nombre que aparece en la URL del proyecto; debe ser única en todo Malmoi y no se puede cambiar después.
 3. Revisa los límites de archivos y de tamaño en [Límites](../reference/limits.md#files) y elige **Crear proyecto**.
 

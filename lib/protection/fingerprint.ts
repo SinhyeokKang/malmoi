@@ -38,7 +38,8 @@ export type DiscardFingerprintInput = {
    * 통과해, OWNER가 본 적 없는 브랜치 값으로 편집을 덮는다. 연결·설정 변경은 revision을 올리지 않으므로 값 자체를 싣는다.
    */
   repository: { repoHost: string; repositoryId: string | null; installationId: string | null; gitlabConnectionId: string | null; repoOwner: string; repoName: string; baseBranch: string };
-  surfaces: readonly { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; baseLocale: string | null }[];
+  /** `basePath`는 값이 있을 때만 튜플에 붙는다 — null 소스의 지문 바이트가 그대로다(mobile-strings design §2). */
+  surfaces: readonly { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; baseLocale: string | null; basePath: string | null }[];
   pending: readonly { id: string; token: string }[];
   /** 활성 소스의 언어 변경 상태 — 성공한 strict 적재가 의도 행을 지운다(locale-add design §1 전이 표 마지막 행). 전달 목록은 승인 뒤 전달을 가르려고 묶는다. */
   localeChanges: readonly LocaleChangeState[];
@@ -52,7 +53,7 @@ export function discardFingerprint(input: DiscardFingerprintInput): string {
     input.projectId,
     // 호스트·GitLab 연결 참조까지 — 같은 숫자 id의 다른 호스트, 다른 OWNER의 GitLab 재연결 뒤 옛 승인이 통하지 않는다(gitlab-repositories). 저장하지 않는 지문이라 바이트가 바뀌어도 된다.
     [input.repository.repoHost, input.repository.repositoryId, input.repository.installationId, input.repository.gitlabConnectionId, input.repository.repoOwner, input.repository.repoName, input.repository.baseBranch],
-    [...input.surfaces].sort(byId).map(s => [s.id, s.importRevision, s.adapterName, s.pathTemplate, s.baseLocale]),
+    [...input.surfaces].sort(byId).map(s => [s.id, s.importRevision, s.adapterName, s.pathTemplate, s.baseLocale, ...(s.basePath === null ? [] : [s.basePath])]),
     [...input.pending].sort(byId).map(p => [p.id, p.token]),
     canonicalLocaleChanges(input.localeChanges),
   ]);

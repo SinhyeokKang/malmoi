@@ -4,7 +4,6 @@ import { blobSha } from "@/lib/githash";
 
 import {
   buildCommitActions,
-  decodeBlob,
   isLfsPointer,
   nextKeysetQuery,
   parseBranchHead,
@@ -103,17 +102,12 @@ describe("parseTreePage · nextKeysetQuery — 트리는 keyset으로 끝까지"
   });
 });
 
-describe("parseBranchHead · decodeBlob · isLfsPointer — 원격 파일 판정", () => {
+describe("parseBranchHead · isLfsPointer — 원격 파일 판정", () => {
   it("브랜치 head의 SHA와 커밋 시각(ISO UTC로 정규화) — 첫 적재가 이 시각을 `stale-commit` 판정에 쓴다", () => {
     expect(parseBranchHead({ name: "main", commit: { id: "c".repeat(40), committed_date: "2026-10-12T08:47:45.000+00:00" } }))
       .toEqual({ sha: "c".repeat(40), committedAt: "2026-10-12T08:47:45.000Z" });
     expect(parseBranchHead({ name: "main", commit: { id: "c".repeat(40), committed_date: "2026-10-12T17:47:45.000+09:00" } })?.committedAt).toBe("2026-10-12T08:47:45.000Z");
     expect(parseBranchHead({ name: "main" })).toBeNull();
-  });
-
-  it("blob은 base64 → UTF-8이다 — 한글이 깨지지 않는다", () => {
-    expect(decodeBlob({ size: 9, encoding: "base64", content: Buffer.from("안녕\n").toString("base64"), sha: "s" })).toBe("안녕\n");
-    expect(decodeBlob({ encoding: "text", content: "x" })).toBeNull();
   });
 
   it("LFS 포인터를 알아본다 — 포인터를 파싱하거나 Publish가 덮어쓰면 안 된다", () => {

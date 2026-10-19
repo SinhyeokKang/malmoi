@@ -1,0 +1,170 @@
+[
+ {
+  "raw": "Hello",
+  "compose": "Hello"
+ },
+ {
+  "raw": "  lead   and   trail  ",
+  "compose": "  lead   and   trail  "
+ },
+ {
+  "raw": "\"  quoted   spaces  \"",
+  "compose": "\"  quoted   spaces  \""
+ },
+ {
+  "raw": "Don't",
+  "compose": "Don't"
+ },
+ {
+  "raw": "Don\\'t",
+  "compose": "Don\\'t"
+ },
+ {
+  "raw": "say \\\"hi\\\"",
+  "compose": "say \\\"hi\\\""
+ },
+ {
+  "raw": "say \"hi\"",
+  "compose": "say \"hi\""
+ },
+ {
+  "raw": "a\\nb\\tc",
+  "compose": "a\nb\tc"
+ },
+ {
+  "raw": "line1\n    line2",
+  "compose": "line1\n    line2"
+ },
+ {
+  "raw": "line1\r\n    line2",
+  "compose": "line1\n    line2"
+ },
+ {
+  "raw": "\\@home",
+  "compose": "\\@home"
+ },
+ {
+  "raw": "\\?mark",
+  "compose": "\\?mark"
+ },
+ {
+  "raw": "\\u0041\\u00e9",
+  "compose": "Aé"
+ },
+ {
+  "raw": "\\u004",
+  "compose": "\\u004"
+ },
+ {
+  "raw": "\\uZZZZ",
+  "compose": "\\uZZZZ"
+ },
+ {
+  "raw": "a &amp; b &lt; c &#8230; &#x41;",
+  "compose": "a & b < c … A"
+ },
+ {
+  "raw": "<![CDATA[<b>x</b>]]>",
+  "compose": "<b>x</b>"
+ },
+ {
+  "raw": "<![CDATA[a\\nb]]>",
+  "compose": "a\nb"
+ },
+ {
+  "raw": "a\\xb",
+  "compose": "a\\xb"
+ },
+ {
+  "raw": "a\\\\b",
+  "compose": "a\\b"
+ },
+ {
+  "raw": "a\\\\nb",
+  "compose": "a\\nb"
+ },
+ {
+  "raw": "a\\\\\\nb",
+  "compose": "a\\\nb"
+ },
+ {
+  "raw": "a\\\\\\\\nb",
+  "compose": "a\\\\nb"
+ },
+ {
+  "raw": "100%%",
+  "compose": "100%%"
+ },
+ {
+  "raw": "%1$s and %2$d",
+  "compose": "%1$s and %2$d"
+ },
+ {
+  "raw": "a<!-- c -->b",
+  "compose": "ab"
+ },
+ {
+  "raw": "Hi <b>bold</b> <xliff:g id=\"n\">%1$s</xliff:g>!",
+  "compose": "Hi bold %1$s!"
+ },
+ {
+  "raw": "\\uD83D\\uDE00",
+  "compose": "😀"
+ },
+ {
+  "raw": "😀",
+  "compose": "😀"
+ },
+ {
+  "raw": "\"[Remote] %1$s\"",
+  "compose": "\"[Remote] %1$s\""
+ },
+ {
+  "raw": "@string/app_name",
+  "compose": "@string/app_name"
+ },
+ {
+  "raw": "a&#13;b",
+  "compose": "a\rb"
+ },
+ {
+  "raw": "a&#9;b",
+  "compose": "a\tb"
+ },
+ {
+  "raw": "x\\",
+  "compose": "x\\"
+ },
+ {
+  "raw": "\\\\",
+  "compose": "\\"
+ },
+ {
+  "raw": "\\\\\\\\",
+  "compose": "\\\\"
+ },
+ {
+  "raw": "a \\u0020 b",
+  "compose": "a   b"
+ },
+ {
+  "raw": "&#92;n",
+  "compose": "\n"
+ },
+ {
+  "raw": "\\&#110;",
+  "compose": "\n"
+ },
+ {
+  "raw": "\\\\u0041",
+  "compose": "\\u0041"
+ },
+ {
+  "raw": "tab\there",
+  "compose": "tab\there"
+ },
+ {
+  "raw": "",
+  "compose": ""
+ }
+]

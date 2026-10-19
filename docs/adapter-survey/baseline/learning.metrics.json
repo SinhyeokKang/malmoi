@@ -1,0 +1,188 @@
+{
+  "chromeFields": {
+    "descriptionFirst": 1,
+    "nonBaseDescription": 20,
+    "placeholders": 12
+  },
+  "configFileRepos": 20,
+  "detect": {
+    "all": {
+      "n": 105,
+      "of": 109,
+      "pct": 96.3302752293578
+    },
+    "supported": {
+      "n": 105,
+      "of": 105,
+      "pct": 100
+    }
+  },
+  "diff": {
+    "approximateRepos": [],
+    "byAdapter": {
+      "chrome-locales": {
+        "median": 0.021048603138155375,
+        "overTarget": {
+          "n": 5,
+          "of": 33,
+          "pct": 15.151515151515152
+        },
+        "repos": 33
+      },
+      "code-dict": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 13,
+          "pct": 0
+        },
+        "repos": 13
+      },
+      "json-catalog": {
+        "median": 0,
+        "overTarget": {
+          "n": 3,
+          "of": 39,
+          "pct": 7.6923076923076925
+        },
+        "repos": 39
+      },
+      "yaml-catalog": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 20,
+          "pct": 0
+        },
+        "repos": 20
+      }
+    },
+    "clean": {
+      "median": 0,
+      "overTarget": {
+        "n": 1,
+        "of": 41,
+        "pct": 2.4390243902439024
+      },
+      "repos": 41
+    },
+    "median": 0,
+    "nonBaseMedian": 0.000884506373535654,
+    "overHalf": {
+      "n": 2,
+      "of": 105,
+      "pct": 1.9047619047619049
+    },
+    "overTarget": {
+      "n": 8,
+      "of": 105,
+      "pct": 7.6190476190476195
+    }
+  },
+  "diffCauses": {
+    "emptyValues": 19,
+    "integerKeys": 5,
+    "sparseArray": 0
+  },
+  "failedCount": 0,
+  "icuPluralRepos": 3,
+  "indent": {
+    "distribution": {
+      "none-0": 2,
+      "space-2": 51,
+      "space-3": 1,
+      "space-4": 12,
+      "tab-1": 6
+    },
+    "twoSpace": {
+      "n": 51,
+      "of": 72,
+      "pct": 70.83333333333334
+    }
+  },
+  "keyCollisions": 124,
+  "localeOrder": {
+    "agreementMedian": 1,
+    "comparedRepos": 70
+  },
+  "measuredCount": 109,
+  "misdetect": {
+    "correctRank": {
+      "1": 104,
+      "\uc5c6\uc74c": 1
+    },
+    "supported": {
+      "n": 1,
+      "of": 105,
+      "pct": 0.9523809523809524
+    },
+    "withCandidate": {
+      "n": 1,
+      "of": 105,
+      "pct": 0.9523809523809524
+    }
+  },
+  "nonDotSeparatorRepos": [
+    "diaspora/diaspora",
+    "fastladder/fastladder",
+    "iv-org/invidious",
+    "lyqht/mini-qr",
+    "misskey-dev/misskey",
+    "permacommons/lib.reviews",
+    "rtorr/vim-cheat-sheet",
+    "sugarlabs/musicblocks"
+  ],
+  "partialReadRepos": [
+    "Js-Monkey/datepicker",
+    "ant-design/ant-design",
+    "arco-design/arco-design-vue",
+    "element-plus/element-plus",
+    "jumodada/better-datepicker",
+    "payloadcms/payload",
+    "tusen-ai/naive-ui",
+    "vuetifyjs/vuetify",
+    "ylater/me-nuxt"
+  ],
+  "placeholderRepos": 53,
+  "presentation": {
+    "compactContainer": 5,
+    "dottedWithNested": 8,
+    "escapedNonAscii": 4,
+    "escapedSlash": 1
+  },
+  "readErrors": {
+    "adapter-threw": 0,
+    "chrome-key": 1843,
+    "json-parse": 0,
+    "key-collision": 124,
+    "leaf-type": 697,
+    "non-literal-value": 622,
+    "non-object-root": 4,
+    "other": 1
+  },
+  "repoCount": 109,
+  "roundtrip": {
+    "byteFixpointSame": {
+      "n": 105,
+      "of": 105,
+      "pct": 100
+    },
+    "notRun": 4,
+    "semanticSame": {
+      "n": 105,
+      "of": 105,
+      "pct": 100
+    }
+  },
+  "silentSkips": 0,
+  "surgicalEdit": {
+    "multiHunkRepos": [],
+    "oneHunk": {
+      "n": 33,
+      "of": 33,
+      "pct": 100
+    }
+  },
+  "unjudged": [],
+  "verdictSource": "\uc0ac\ub78c \ud310\uc815 \u2014 docs/adapter-survey/verdicts.json\uc758 \uc815\ub2f5 \uacbd\ub85c\uc640 \ub300\uc870"
+}

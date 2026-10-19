@@ -1,4 +1,5 @@
 import "server-only";
+import type { DecodedLocaleFile } from "@/lib/file-encoding";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
 import { adapterErrorKind } from "@/lib/adapters/types";
@@ -9,7 +10,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
-import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
+import { blockingErrors, cellSlot, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { planDelivery, planLocales, projectFormats, renderProject } from "@/lib/pull/run";
 import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, withdrawnLocalesOf } from "@/lib/pull/locales";
@@ -65,7 +66,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     for (const file of surface.files) for (const error of file.errors ?? []) {
       if (error.locale !== surface.baseLocale) continue;
       if (error.code === "original-file-missing") throw new PreviewBaseFileMissing(error.path, project.baseBranch);
-      if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
+      // 키가 붙은 실패는 파일이 아니라 그 값을 쓸 수 없다는 뜻이다(Android 태그 — 리뷰 R2) — 아래 writer 경고로 낸다. 키 없는 실패만 기준 파일을 못 읽은 것이다.
+      if (error.code === "write-parse-failed" && error.key === undefined && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
     }
   }
   const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered, locales: localePlan });
@@ -91,7 +93,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     if (!surfaceRows.length) continue;
     const format = formatFromProject(surface, surface.localeCodes);
     const adapter = adapterFor(format);
-    const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path));
+    const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path), surface.baseLocale);
     // ⚠️ **재생성 per-locale은 base 파일을 늘 읽는다** (B3 r3) — 실행이 base 원본으로 base 키 집합을 정하고(B3.4) 못 읽으면 비-base 편집만 있어도 거부한다.
     const regeneratePerLocale = adapter.layout === "per-locale" && adapter.writeStrategy === "regenerate";
     const isBasePath = (p: (typeof paths)[number]) => regeneratePerLocale && p.locale === surface.baseLocale;
@@ -100,7 +102,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       await Promise.all(needed.slice(offset, offset + 8).map(async p => {
         const sha = shas.get(p.path);
         if (!sha) return;
-        const content = await client.getBlobText(sha);
+        const { content } = await client.getBlobText(sha, p.path);
         const read = adapter.read(format, [{ path: p.path, content }]);
         // 실행과 같은 판정이다(`render.ts` `baseOwnedByOriginal`) — read가 base 로케일을 못 내면 키 집합을 모른다.
         if (isBasePath(p) && !read.locales.some(l => l.locale === surface.baseLocale)) throw new PreviewBaseFileUnreadable(p.path, project.baseBranch);
@@ -148,12 +150,15 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
           withoutKey++; heldKeys.add(row.keyId); continue;
         }
       }
-      const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
-        Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
-      // ts-dict: 그 로케일 객체는 있는데 어느 파일에도 키 자리가 없으면 실행은 그 셀만 보류한다 — **같은 `keySlot` 판정이다**(audit #1 B).
-      // 같은 파일의 다른 로케일이 키를 가질 때(`write-slot-missing`)만 세면 키가 모든 로케일에서 사라진 셀은 화면이 막고 실행은 전달로 셌다.
-      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0
-        && keySlot(base, row.localeCode, row.stringKey.key).kind === "absent") { withoutKey++; heldKeys.add(row.keyId); continue; }
+      // multi-locale은 실행의 `planDelivery`와 **같은 `cellSlot`** 이다 — ts-dict는 그 로케일 객체에 키가 있는 파일, apple-xcstrings는 키가 든 파일(없는
+      // 언어 셀은 writer가 넣는다 — apple-strings design §2.3).
+      const slot = adapter.layout === "multi-locale" ? cellSlot(adapter, base, row.localeCode, row.stringKey.key) : undefined;
+      const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode : slot?.kind === "slot" && slot.paths.includes(p.path));
+      // 키 자리가 없으면 실행은 그 셀만 보류한다(audit #1 B). 같은 파일의 다른 로케일이 키를 가질 때(`write-slot-missing`)만 세면 키가 모든 로케일에서
+      // 사라진 셀은 화면이 막고 실행은 전달로 셌다.
+      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0 && slot?.kind === "absent") {
+        withoutKey++; heldKeys.add(row.keyId); continue;
+      }
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
       const path = matches.length === 1 ? matches[0]?.path : undefined;
       if (!path) throw new Error("Preview path unavailable");
@@ -184,13 +189,14 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
 }
 
 /** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */
-function cachedBlobs<C extends { getBlobText(sha: string): Promise<string> }>(client: C): C {
-  const seen = new Map<string, Promise<string>>();
-  return { ...client, getBlobText: (sha: string) => {
-    const hit = seen.get(sha);
+function cachedBlobs<C extends { getBlobText(sha: string, path: string): Promise<DecodedLocaleFile> }>(client: C): C {
+  const seen = new Map<string, Promise<DecodedLocaleFile>>();
+  return { ...client, getBlobText: (sha: string, path: string) => {
+    const key = JSON.stringify([sha, path]);
+    const hit = seen.get(key);
     if (hit !== undefined) return hit;
-    const next = client.getBlobText(sha);
-    seen.set(sha, next);
+    const next = client.getBlobText(sha, path);
+    seen.set(key, next);
     return next;
   } };
 }

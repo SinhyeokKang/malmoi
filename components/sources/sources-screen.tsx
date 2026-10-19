@@ -127,7 +127,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // Card owns the boundary; inset empty content has no top border.
           ? <EmptyState placement="inset" icon={FileJson2} title={m.sources.emptyTitle} description={canEdit ? m.sources.emptyOwner : m.sources.emptyEditor} />
           : <ul>{data.sources.map(source => {
-          const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" ? FileJson2 : FileCode2;
+          // ARB도 JSON 파일이다.
+          const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" || source.connection?.adapterName === "arb-catalog" || source.connection?.adapterName === "apple-xcstrings" ? FileJson2 : FileCode2;
           // 칸만 상태 톤을 든다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다. 톤은 배지와 같은 판정이다(🔴 A1).
           const { tone } = planSurfaceImportStatus(source);
           return <li key={source.id} className="border-border border-t first:border-t-0">
@@ -141,7 +142,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
                   <span className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                     {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
                     {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
-                    {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 wrap-anywhere">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
+                    {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 wrap-anywhere">{source.connection.basePath && <>{source.connection.basePath}<br /></>}{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
                     {/*
                       언어 막대 — 이름 칸 셋째 줄이라 시작선이 이름과 같고 640 적층에서도 따로 맞출 값이 없다(source-row-locale-meter 시안 1·4). `mt-2`는 경로와 다른 종류의
                       정보라 `gap-copy-gap`(3)에 붙어 읽히지 않게 띄운다. 키가 0이면 서버가 `shown`을 비워 줄이 서지 않는다 — 0% 막대는 "번역이 하나도 없다"로 읽히지만 실제 뜻은 "아직 모른다"다.

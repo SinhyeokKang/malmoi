@@ -10,7 +10,7 @@ import type { GitTreeBlob } from "@/lib/pull/client";
 export type RepoReader = {
   snapshot(baseBranch: string): Promise<RepoSnapshot>;
   /** 트리 항목의 `sha`로 읽는다 — contents API의 1MB 상한이 없다. */
-  blob(sha: string): Promise<string | undefined>;
+  blob(sha: string, path: string): Promise<string | undefined>;
   /**
    * 다운로드 예산(`checkDownloadBudget`) 대상 경로의 크기. 트리 응답에 크기가 실리는 호스트는 인자 스냅샷에서 읽는다(호출 0 —
    * `sizesFromSnapshot`). 리더는 상태를 들지 않는다 — 스냅샷을 인자로 받는 이유다.

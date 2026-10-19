@@ -1,5 +1,7 @@
+import type { FileEncoding } from "@/lib/file-encoding";
+
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict";
+export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog" | "apple-strings" | "apple-xcstrings" | "android-strings";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {
@@ -17,11 +19,22 @@ export type DetectedFormat = {
    */
   locales: string[];
   /**
+   * **기준 언어 파일이 템플릿 치환으로 표현되지 않을 때의 그 경로** (mobile-strings design §2 — Android `values/strings.xml`). 탐지가
+   * 관측한 값이고, 기존 네 어댑터는 내지 않는다(없음 = 기준 언어도 치환). 경로 계산은 `baseFilePath`(`./base-path`)를 지난다.
+   */
+  basePath?: string;
+  /**
+   * **탐지가 관측한 기준 언어 힌트** — Flutter `l10n.yaml`의 `template-arb-file`이 가리키는 로케일(arb design §2 · 리뷰 R3). 그 파일이 후보의
+   * 파일 중에 있을 때만 싣는다. 온보딩 요약이 기본 기준 언어로 쓰고(`defaultBaseLocale`), 확정은 사용자가 고른 값을 따른다. 없으면 공용 추정(en 우선)이다.
+   * `apple-xcstrings`는 카탈로그의 `sourceLanguage`를 늘 싣는다(apple-strings design §2.3).
+   */
+  templateLocale?: string;
+  /**
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
-   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
+   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.
-   * - 재생성(`chrome-locales`·`json-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
-   *   읽는다. 없으면 기본값으로 계속 만든다.
+   * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
+   *   읽는다. 없으면 기본값으로 계속 만든다. ⚠️ `arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간도 나른다(값은 아니다).
    * 그래서 pull은 어댑터 종류와 무관하게 blob **내용**을 받는다 (ARCHITECTURE §2). 값은 어느 쪽도 안 읽는다.
    */
   currentFiles?: readonly AdapterFile[];
@@ -58,6 +71,7 @@ export type FileProbe = (path: string) => string | undefined;
 export type AdapterFile = {
   path: string;
   content: string;
+  encoding?: FileEncoding;
 };
 
 /** 평탄화된 메시지 하나. 키는 어댑터가 정한 구분자로 이어진 전체 경로다. */
@@ -78,9 +92,11 @@ export type LocaleEntry = {
    *
    * 없으면 "순서를 모른다"는 뜻이고 재생성 writer가 코드 유닛 순으로 뒤에 붙인다.
    *
-   * ⚠️ **수술적 치환 어댑터(`yaml-catalog`·`code-dict`·`ts-dict`)는 이 필드를 채우지 않는다.**
+   * ⚠️ **수술적 치환 어댑터(`yaml-catalog`·`code-dict`·`ts-dict`·`apple-xcstrings`)는 이 필드를 채우지 않는다.**
    * 원본 파일이 순서를 이미 갖고 있고 그 방식은 파일을 다시 만들지 않으므로 쓸 곳이 없다 —
-   * null인 것이 결함이 아니다.
+   * null인 것이 결함이 아니다. **`apple-strings`·`android-strings`만 예외로 채운다** — 비-base 파일의 누락 키를 기준 순서상 앞 키 뒤에
+   * 넣으려면 적재가 이 값을 `sortIndex`로 옮겨야 한다(apple-strings design §2.1 · android-strings design §2.1). `apple-xcstrings`는 키를 넣지 않고(키 블록 안에 언어 셀만
+   * 넣는다) 셀 자리를 코드 유닛 순으로 정하므로 필요 없다.
    */
   order?: number;
   /**
@@ -104,8 +120,8 @@ export type LocaleEntry = {
    * 코드에서 사라진 키. DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
    *
    * **처리가 writer 방식마다 다르다** (ARCHITECTURE §1.1):
-   * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
-   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
+   * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
+   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
    * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
@@ -187,7 +203,7 @@ export type AdapterErrorCode = (typeof ADAPTER_ERROR_CODES)[number];
 const ERROR_KIND = {
   "parse-failed": "failure", "parse-crashed": "failure", "root-not-object": "failure", "no-default-export": "failure",
   "invalid-chrome-key": "failure", "missing-message-field": "failure", "value-not-message-object": "failure",
-  // yaml-catalog(surgical)만 낸다 — 숫자·불린 스칼라가 파일에 남는다.
+  // yaml-catalog(surgical) — 숫자·불린 스칼라가 파일에 남는다. arb-catalog(regenerate)도 낸다 — 문자열이 아닌 엔트리 값의 원본 구간을 그대로 나른다.
   "value-not-string": "unmanaged",
   // json-catalog(regenerate)만 낸다 — DB에 없는 값이라 다음 Publish가 지운다.
   "value-not-string-or-container": "failure",
@@ -196,6 +212,7 @@ const ERROR_KIND = {
   "duplicate-key": "failure",
   // code-dict·ts-dict — 코드 객체의 같은 키. JS 의미대로 마지막이 적재되고 write도 그 자리를 고친다(B7a r1, 2026-09-24 사용자 결정):
   // 잃는 번역이 없으므로 **대상 리포 CI를 red로 만들지 않는다**(docs/ACTIONS.md §3). 실패로도 unmanaged로도 세지 않는다.
+  // apple-strings도 같다 — `.strings`의 같은 키는 Apple 의미대로 나중 값이고 write도 그 리터럴만 고친다(2026-10-19 지휘자 결정).
   "duplicate-property": "warning",
   "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-create-unsupported": "failure", "write-locale-object-missing": "failure",
   "write-empty-unsupported": "failure",
@@ -242,6 +259,20 @@ export type ReadResult = {
 export type WriteInput = {
   locale: string;
   entries: readonly LocaleEntry[];
+  /**
+   * **표면에 살아 있는데(orphaned 아님) 이 로케일만 값이 없는 키** — 위치(`order`)와 함께. 비-base 로케일에서만 렌더(`renderLocaleFiles`)가
+   * 싣는다. `entries`는 값이 없는 키를 빼므로 writer가 "이 키가 살아 있는가"를 알 길이 따로 없다.
+   *
+   * `arb-catalog`만 읽는다 — 그 키의 `@key` 메타데이터를 원본 그대로 남긴다(2026-10-19 사용자 결정). 나머지 writer에게는 값이 없는 키라
+   * 쓸 것이 없다. 없으면 "모른다"이다 — 그 이름은 표면에 없는 이름으로 읽혀, orphaned(`orphaned`)가 아니면 그 `@key`가 개발자 주석처럼 원본 위치에
+   * 남는다(fix1 결정 13). 값 없는 키의 자리(base 순서)를 지키려면 이 필드가 있어야 한다.
+   */
+  untranslated?: readonly { key: string; order?: number }[];
+  /**
+   * **표면에 있지만 코드에서 사라진(orphaned) 키** — 렌더가 싣는다. `entries`는 orphaned 키를 빼므로 writer가 "사라진 키"와 "처음부터 키가
+   * 아닌 이름"을 가를 길이 따로 없다. `arb-catalog`만 읽는다 — orphaned 키의 `@key`는 버리고, 표면에 없는 이름의 `@x`(개발자 주석)는 남긴다.
+   */
+  orphaned?: readonly string[];
 };
 
 export type Adapter = {
@@ -251,25 +282,34 @@ export type Adapter = {
    * 로케일 파일 경로를 만드는 방식. 어댑터마다 구조가 다르다:
    *
    * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
-   *   (`chrome-locales`, `json-catalog`, `yaml-catalog`, `code-dict` — ⚠️ 뒤 둘은 per-locale인데
+   *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict`, `apple-strings` — ⚠️ 뒤 셋은 per-locale인데
    *   **수술적**이다. 경로 모양과 write 기계는 별개 축이다).
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
-   *   (`ts-dict`). write도 파일별로 불러야 한다.
+   *   (`ts-dict` — `apple-xcstrings`는 와일드카드 없는 파일 경로 하나다). write도 파일별로 불러야 한다.
    */
   layout: "per-locale" | "multi-locale";
   /**
    * write 방식. **`layout`과 별개 축이다** (2026-09-02 분리).
    *
    * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `orderedEntries`의 결정성 규칙(§1.1)을
-   *   지나야 한다 (`chrome-locales`·`json-catalog`).
+   *   지나야 한다 (`chrome-locales`·`json-catalog`·`arb-catalog`).
    * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
-   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`).
+   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`·`apple-strings`·`apple-xcstrings`).
    *
    * ⚠️ **pull이 "원본 blob 내용을 받아야 하나"를 이 값으로 판단한다.** 전에는 `layout`으로
    * 갈랐는데 `per-locale` + `surgical` 조합(YAML·코드 딕셔너리)이 생겨 성립하지 않는다 —
    * `layout`으로 가르면 그 프로젝트가 원본 없이 write에 들어가 **PR이 조용히 비어 나간다.**
    */
   writeStrategy: "regenerate" | "surgical";
+  /**
+   * **키가 든 파일이면 그 로케일의 셀이 없어도 write가 셀을 넣는다** — multi-locale 수술적 어댑터 둘 사이의 규칙 차이다(apple-strings design §2.3).
+   * `apple-xcstrings`만 `true`다: 카탈로그는 키마다 언어 셀을 따로 들어 "번역되지 않음"이 셀 부재이고, Xcode도 같은 자리에 셀을 만든다.
+   * `ts-dict`는 넣지 않는다(ARCHITECTURE §1.4) — 로케일 객체에 자리가 없는 셀은 보류다.
+   *
+   * ⚠️ **전달 판정이 이 값을 본다** — 경로 선택(`lib/pull/run.ts`)·미리보기(`lib/publish/read.ts`)가 같은 `cellSlot`(`lib/pull/undeliverable.ts`)을
+   * 지난다. writer만 넣고 판정이 보류로 세면 PR에는 셀이 나가는데 미리보기는 "보류"를 말하고 미전달 토큰이 남는다.
+   */
+  insertsMissingCells?: true;
   /**
    * 리포 파일 경로 목록에서 이 포맷을 찾는다. 못 찾으면 undefined.
    *
@@ -284,7 +324,7 @@ export type Adapter = {
    * `detect`는 이 결과의 `[0]`이다 — 두 함수가 같은 관문(순위·probe 검증)을 지나므로 어긋날 수
    * 없다. ⚠️ **2026-09-14부터 예외가 0이다** — `ts-dict`가 자동 탐지에 들어오면서 다섯이 같은 계약을
    * 진다(`detect-candidates.test.ts`). 그 전에는 `detectCandidates`가 항상 `[]`이라 일치를 요구할 수
-   * 없었고, 한때 `detect`까지 그 빈 배열을 거쳐 명시 지정이 죽었다 (POSTMORTEM 2026-09-03).
+   * 없었고, 한때 `detect`까지 그 빈 배열을 거쳐 명시 지정이 죽었다 (POSTMORTEM 2026-09-03). `arb-catalog`(2026-10-19)도 같은 계약이다.
    * ⚠️ **`ts-dict`는 probe가 없으면 여전히 `[]`다** — 경로만으로는 판단하지 않는다.
    * 후보 목록이 따로 필요한 이유는 **1순위가 틀렸을 때 정답이 몇 순위였는지**를 관측하기
    * 위해서다: 1순위만 보면 오탐이 났다는 사실은 알아도 탐지가 얼마나 가까웠는지는 알 수 없다

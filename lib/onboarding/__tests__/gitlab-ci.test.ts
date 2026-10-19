@@ -155,6 +155,27 @@ describe("표면 변수", () => {
     });
   });
 
+  // 확정 어댑터를 생략하면 그 job이 탐지 1순위를 보내 `format mismatch` 409로 영구 red다(POSTMORTEM 2026-09-14).
+  it("arb-catalog 표면도 어댑터 이름을 박는다", () => {
+    const yaml = one({ surfaces: [{ surfaceSlug: "app", pathTemplate: "lib/l10n/app_{locale}.arb", adapter: "arb-catalog", baseLocale: "en" }] });
+    expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "arb-catalog", MALMOI_I18N_PATH_TEMPLATE: "lib/l10n/app_{locale}.arb" });
+  });
+
+  it("apple-xcstrings 표면도 어댑터 이름을 박는다 — 템플릿이 파일 경로 하나다", () => {
+    const yaml = one({ surfaces: [{ surfaceSlug: "app", pathTemplate: "App/Localizable.xcstrings", adapter: "apple-xcstrings", baseLocale: "en" }] });
+    expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "apple-xcstrings", MALMOI_I18N_PATH_TEMPLATE: "App/Localizable.xcstrings" });
+  });
+
+  it("android-strings 표면도 어댑터 이름과 기준 언어를 박는다", () => {
+    const yaml = one({ surfaces: [{ surfaceSlug: "app", pathTemplate: "app/src/main/res/values-{locale}/strings.xml", adapter: "android-strings", baseLocale: "en" }] });
+    expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "android-strings", MALMOI_I18N_PATH_TEMPLATE: "app/src/main/res/values-{locale}/strings.xml", MALMOI_I18N_BASE: "en" });
+  });
+
+  it("apple-strings 표면도 어댑터 이름을 박는다", () => {
+    const yaml = one({ surfaces: [{ surfaceSlug: "app", pathTemplate: "App/{locale}.lproj/Localizable.strings", adapter: "apple-strings", baseLocale: "en" }] });
+    expect(jobs(yaml)["malmoi-i18n-order-check-app"]?.variables).toMatchObject({ MALMOI_I18N_ADAPTER: "apple-strings", MALMOI_I18N_PATH_TEMPLATE: "App/{locale}.lproj/Localizable.strings" });
+  });
+
   /**
    * action v3의 `wrapper` 입력과 같은 자리 (R-Eui fix2) — 표면 job마다 빈 값으로 서서, 훅으로 번역을 읽는 리포가 줄바꿈으로 나눈 스펙을 채운다.
    * 빈 값은 아무 플래그도 만들지 않는다(`lib/cli/gitlab-ci-input.ts`가 줄마다 다듬어 빈 줄을 버린다 — action v3와 같다).

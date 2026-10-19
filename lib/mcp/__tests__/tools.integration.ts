@@ -179,7 +179,7 @@ describe("create_project", () => {
     { userId, repositoryId: "123", connection: "github:77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
   const I18N = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json" };
   const SECOND = { adapter: "json-catalog", pathTemplate: "second/{locale}.json" };
-  const input = (surfaces: { adapter: string; pathTemplate: string; confirmation: string }[]) =>
+  const input = (surfaces: { adapter: string; pathTemplate: string; basePath?: string; confirmation: string }[]) =>
     ({ owner: "acme", repo: "web", slug: "created", name: "Created", baseBranch: "main", surfaces: surfaces.map(s => ({ ...s, baseLocale: "en" })) });
   const created = () => prisma.project.findUnique({ where: { slug: "created" } });
 
@@ -235,6 +235,17 @@ describe("create_project", () => {
     expect((await prisma.apiToken.findUniqueOrThrow({ where: { userId: "owner" } })).projectIds).toEqual(["p"]);
   });
 
+  /**
+   * ⚠️ **basePath는 서명된 포맷과 같아야 한다** (mobile-strings M2 — review-B Y1). 에이전트가 후보에 basePath를 붙여 보내도 서명·재탐지가
+   * 그 값을 내지 않았으면 쓰기 0건이다 — 클라이언트 값을 저장하지 않는다.
+   */
+  it("서명에 없는 basePath를 붙이면 manual-no-match이고 쓰기 0건이다", async () => {
+    expect(code(await call("create_project", await token("owner"), input([{ ...I18N, basePath: "i18n/base.json", confirmation: confirmation(I18N) }])))).toBe("manual-no-match");
+    expect(await created()).toBeNull();
+    expect(await prisma.translationSurface.count({ where: { projectId: { not: "p" } } })).toBe(0);
+    expect(await prisma.projectEvent.count()).toBe(0);
+  });
+
   it("같은 head에 서명된 두 후보는 한 tx로 생성된다", async () => {
     expect(await call("create_project", await token("owner"), input([{ ...I18N, confirmation: confirmation(I18N) }, { ...SECOND, confirmation: confirmation(SECOND) }])))
       .toMatchObject({ status: "ok", data: { keys: 2 } });
@@ -260,6 +271,14 @@ describe("add_sources", () => {
     expect(await events()).toBe(0);
     expect(code(await call("add_sources", subject, { slug: "p", picks: [{ ...SECOND, confirmation: sign(SECOND) }] }))).toBe("ok");
     expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(2);
+  });
+
+  it("서명에 없는 basePath를 붙이면 manual-no-match이고 쓰기 0건이다 (review-B Y1)", async () => {
+    const subject = await token("owner");
+    expect(await call("add_sources", subject, { slug: "p", picks: [{ ...SECOND, basePath: "second/base.json", confirmation: sign(SECOND) }] }))
+      .toMatchObject({ status: "refused", code: "manual-no-match", detail: { index: 0 } });
+    expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(1);
+    expect(await events()).toBe(0);
   });
 });
 

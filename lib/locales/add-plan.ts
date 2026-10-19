@@ -1,5 +1,6 @@
+import { androidResourceCode } from "./presets";
 import { isChromeLocaleCode } from "./chrome-codes";
-import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath, looksLikeLocale } from "@/lib/locale-code";
+import { isAndroidLocale, isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath, looksLikeLocale } from "@/lib/locale-code";
 import { surfaceOwnership, type SurfacePaths } from "@/lib/surfaces/plan";
 
 /**
@@ -10,7 +11,7 @@ import { surfaceOwnership, type SurfacePaths } from "@/lib/surfaces/plan";
  */
 
 /** 로케일별 파일을 생성·삭제할 수 있는 포맷만 — 공유 파일(`ts-dict`)의 언어 구성 변경은 범위 밖이다. */
-const SUPPORTED_ADAPTERS: ReadonlySet<string> = new Set(["json-catalog", "chrome-locales", "yaml-catalog", "code-dict"]);
+const SUPPORTED_ADAPTERS: ReadonlySet<string> = new Set(["json-catalog", "chrome-locales", "yaml-catalog", "code-dict", "arb-catalog", "apple-strings", "android-strings"]);
 
 export function supportsLocaleChanges(adapterName: string | null): boolean {
   return adapterName !== null && SUPPORTED_ADAPTERS.has(adapterName);
@@ -38,6 +39,7 @@ export type LocaleAddRefusal =
   | "unsupported-format"
   | "invalid-code"
   | "unsupported-locale"
+  | "android-locale-code"
   | "already-active"
   | "locale-collision"
   | "unsafe-path"
@@ -61,6 +63,10 @@ export function planLocaleAdd(input: LocaleAddInput): LocaleAddVerdict {
   // 그 밖의 코드는 파일을 만들어도 머지 뒤 관측되지 않아 만료가 orphan시킨다. 그런 언어는 리포에서 직접 추가하면 기존 적재가 받는다.
   if (!isPathSafeLocale(code) || !isLocaleShaped(code) || !looksLikeLocale(code)) return { ok: false, error: "invalid-code" };
   if (surface.adapterName === "chrome-locales" && !isChromeLocaleCode(code)) return { ok: false, error: "unsupported-locale" };
+  // 어댑터 그래프는 클라이언트에 실을 수 없다. 관측 가능한 Android 철자만 받되 현대 별칭은 조용히 바꾸지 않고 안내한다.
+  if (surface.adapterName === "android-strings" && (!isAndroidLocale(code) || androidResourceCode(code) !== code)) {
+    return { ok: false, error: "android-locale-code" };
+  }
   const same = input.locales.find(locale => locale.code === code);
   if (same !== undefined && !same.orphaned) return { ok: false, error: "already-active" };
   // 되살릴 행이 있어도 다른 철자의 행(활성·orphan 무관)과 충돌하면 거부한다 — 같은 파일을 두 행이 가리키게 된다.

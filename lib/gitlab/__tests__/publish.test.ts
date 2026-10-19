@@ -25,7 +25,7 @@ const KEYS: RenderKey[] = [{ key: "a.one", sourceText: "one", orphaned: false, c
 
 const PROJECT = {
   id: "p1", slug: "app", repoOwner: "g/sub", repoName: "app", baseBranch: "main", repoHost: "gitlab", installationId: null, repositoryId: REPO, gitlabConnectionId: "conn-1",
-  adapterName: "json-catalog", pathTemplate: "locales/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en", lastPulledAt: null as Date | null,
+  adapterName: "json-catalog", pathTemplate: "locales/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en", basePath: null, lastPulledAt: null as Date | null,
 };
 
 function state(unpublished = 1): PullState {

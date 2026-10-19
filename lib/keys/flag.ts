@@ -92,9 +92,9 @@ export const LANGUAGE_FLAGS = new Map<string, string>([
   ["no", "no"], ["nb", "no"], ["nn", "no"],
 
   // 아시아·중동.
-  ["tr", "tr"], ["he", "il"], ["fa", "ir"], ["hi", "in"], ["ur", "pk"],
+  ["tr", "tr"], ["he", "il"], ["iw", "il"], ["fa", "ir"], ["hi", "in"], ["ur", "pk"],
   ["bn", "bd"], ["ne", "np"], ["th", "th"], ["vi", "vn"], ["km", "kh"],
-  ["lo", "la"], ["id", "id"], ["ka", "ge"], ["hy", "am"], ["az", "az"],
+  ["lo", "la"], ["id", "id"], ["in", "id"], ["ka", "ge"], ["hy", "am"], ["az", "az"],
   ["kk", "kz"], ["uz", "uz"], ["mn", "mn"],
 
   /**
@@ -122,7 +122,9 @@ export const LANGUAGE_FLAGS = new Map<string, string>([
  */
 export function flagFor(code: string, inventory: readonly string[] = FLAG_INVENTORY): string | null {
   // ⚠️ `_`와 `-`를 같게 본다 — 리포 파일명이 둘 다 쓴다 (`planBaseLocaleChange`가 이미 겪은 자리다).
-  const parts = code.toLowerCase().split(/[-_]/);
+  // Android 철자(`pt-rBR`)의 지역을 먼저 푼다 — `rbr`은 두 글자 지역이 아니라 언어 국기로 떨어진다(android-strings design §2.2). 잎이라 `displayLocaleCode`
+  // (`lib/locale-code.ts`)를 import하지 않고 같은 모양을 여기서 본다.
+  const parts = code.replace(/^([a-z]{2,3})-r([A-Z]{2})$/, "$1-$2").toLowerCase().split(/[-_]/);
   const language = parts[0] ?? "";
   const region = parts.length > 1 ? parts[parts.length - 1] : undefined;
 

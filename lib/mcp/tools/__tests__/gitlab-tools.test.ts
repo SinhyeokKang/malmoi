@@ -307,7 +307,7 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
    * 접히므로 파일을 싣지 않고 `get_workflow`로 보낸다 — GitHub step(`uses: …/.github/…`)은 GitLab 리포에 붙일 수 없으니 싣지 않는다.
    */
   it("add_sources는 GitHub step을 싣지 않고 get_workflow로 보낸다(발행 전이면 Sync 안내)", async () => {
-    const added = { ok: true, results: [{ surfaceSlug: "web" }], yaml: "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3" };
+    const added = { ok: true, results: [{ surfaceSlug: "web" }], yaml: "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4" };
     const input = { slug: "glab", picks: [{ adapter: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", confirmation: "c" }] };
     h.core.mockResolvedValueOnce(added);
     const before = await call("add_sources", subject("owner"), input);

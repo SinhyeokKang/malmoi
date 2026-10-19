@@ -275,7 +275,7 @@ export const ko = {
     },
     closing: {
       title: "이미 있는 번역 파일에서 시작하세요",
-      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램 번역 파일을 지원합니다. GitHub 또는 GitLab.com 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
+      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램, Flutter ARB, Apple strings, String Catalog, Android strings 번역 파일을 지원합니다. GitHub 또는 GitLab.com 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
       links: { label: "자세히 알아보기", formats: "지원 파일 형식", aiAgents: "AI 에이전트", faq: "자주 묻는 질문" },
     },
     // 목업 데이터는 가상 프로젝트의 리포 내용(원문 en·de·fr 값)이라 화면 언어와 함께 바꾸지 않는다.
@@ -1173,6 +1173,10 @@ export const ko = {
       "yaml-catalog": { label: "YAML 카탈로그", example: "config/locales/{locale}.yml" },
       "code-dict": { label: "코드 사전(언어별 파일)", example: "src/locales/{locale}.ts" },
       "ts-dict": { label: "코드 사전(모든 언어를 한 파일에)", example: "src/i18n/namespaces/*.ts" },
+      "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
+      "apple-strings": { label: "Apple strings 파일", example: "App/{locale}.lproj/Localizable.strings" },
+      "apple-xcstrings": { label: "Apple String Catalog", example: "App/Localizable.xcstrings" },
+      "android-strings": { label: "Android strings 파일", example: "app/src/main/res/values-{locale}/strings.xml" },
     },
     imported: (count: number, failed: number): string =>
       failed === 0
@@ -1322,6 +1326,9 @@ export const ko = {
     },
 
     baseLocale: {
+      androidHint: "기준 파일의 언어 코드를 입력하세요. 예: en",
+      androidInvalid: "올바른 언어 코드를 입력하세요. 예: en",
+      androidOverlap: (code: string) => `${code}는 이 소스의 번역 언어입니다. values/strings.xml의 언어 코드를 입력하세요.`,
       row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "기준 언어",
       hint: "이 언어의 파일을 기준으로 키 목록을 만듭니다. 다른 언어에만 있는 키는 포함되지 않습니다.",
@@ -1459,6 +1466,14 @@ export const ko = {
         tryAgain: "다시 시도",
         saveFailed: { title: "이 키를 저장하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 시도하거나 잠시 후 저장하세요." },
         saveUnknown: { title: "저장되었는지 확인하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 저장하기 전에 현재 값을 확인하세요." },
+        inlineMarkupInvalid: {
+          title: (locales: string): string => `${locales} 번역의 태그 형식이 잘못되었습니다`,
+          body: "아무것도 저장하지 않았습니다. 태그 형식과 닫는 태그를 확인하세요. < 문자를 입력하려면 &lt;로 쓰세요.",
+        },
+        inlineTagsMismatch: {
+          title: (locales: string): string => `${locales} 번역의 태그가 기준 언어와 다릅니다`,
+          body: "아무것도 저장하지 않았습니다. 기준 언어의 태그는 그대로 두고 태그 사이의 텍스트만 번역하세요.",
+        },
         cannotClear: {
           title: (locales: string): string => `${locales} 번역은 비워 둘 수 없습니다`,
           body: "이 파일 형식에서는 번역을 비울 수 없어 아무것도 저장하지 않았습니다. 값을 입력하거나 변경을 취소하세요.",
@@ -2033,6 +2048,7 @@ export const ko = {
       removeLabel: (code: string): string => `${code} 제거`,
       cancelLabel: (code: string): string => `${code} 제거 취소`,
       baseReason: "이 언어를 제거하려면 먼저 다른 기준 언어를 고르세요.",
+      androidBaseReason: "Android 기준 언어는 고정되어 있으며 values/strings.xml은 제거할 수 없습니다. 코드를 바꾸려면 소스를 연결 해제한 뒤 다시 추가하세요.",
       noFileYet: "번역이 하나라도 생기면 게시할 때 파일이 만들어집니다.",
       readOnly: "제거가 게시되거나 취소될 때까지 읽기 전용입니다.",
       readOnlyDelivered: "PR이 머지되거나 제거가 취소될 때까지 읽기 전용입니다.",
@@ -2050,6 +2066,7 @@ export const ko = {
       codeLabel: "언어 코드",
       codePlaceholder: "코드를 고르거나 입력하세요",
       codeHelp: "목록에서 고르거나 코드를 직접 입력하세요. 소문자 언어 코드 뒤에 지역을 붙일 수 있습니다(fr, pt-BR, zh_TW).",
+      androidCodeHelp: "목록에서 고르거나 fr, pt-rBR 같은 Android 언어 코드를 입력하세요.",
       chromeLabel: "언어",
       chromePlaceholder: "언어를 고르세요",
       listLabel: "언어",
@@ -2067,6 +2084,7 @@ export const ko = {
       errors: {
         unreadable: "Malmoi가 리포지토리에서 이 코드를 다시 읽을 수 없습니다. 리포지토리에서 직접 파일을 추가하세요.",
         unsupportedLocale: "Chrome 확장 프로그램이 지원하지 않는 언어 코드입니다.",
+        androidLocaleCode: "Android에서는 fr, pt-rBR 같은 코드를 사용합니다. he, id, yi 대신 iw, in, ji를 입력하세요.",
         alreadyActive: (code: string): string => `${code} 언어는 이미 이 소스에 있습니다.`,
         collision: (code: string, existing: string): string => `${code} 코드는 이 소스에 이미 있는 ${existing} 코드와 같은 파일을 가리킵니다.`,
         removalPending: (code: string): string => `${code} 언어는 제거 중입니다. 대신 제거를 취소하세요.`,
@@ -2623,6 +2641,7 @@ export const ko = {
       "invalid-branch": "올바른 브랜치 이름이 아닙니다. 공백과 ~^:?*[ 문자는 쓸 수 없습니다.",
       "sync-branch": "Malmoi가 그 브랜치에서 번역을 게시하므로 기준 브랜치로 쓸 수 없습니다. 다른 브랜치를 고르세요.",
       "unknown-locale": "이 리포지토리에는 그 언어의 번역 파일이 없습니다.",
+      "android-base-fixed": "Android 기준 언어는 변경할 수 없습니다. 코드를 바로잡으려면 소스를 연결 해제한 뒤 다시 추가하세요.",
       "orphaned-locale": "해당 언어의 파일이 리포지토리에서 삭제되었습니다. 먼저 파일을 복원하세요.",
     },
   },

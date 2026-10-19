@@ -3014,3 +3014,15 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 제거와 추가 취소가 한 판정·미리보기 형식을 공유하면서 파일을 지우지 않는 취소에도 언어별 경로를 요구했다. 비지원 포맷 테스트는 어댑터 이름만 ts-dict로 바꾸고 `{locale}.json` 경로를 남겨 실제 다중 언어 glob을 검증하지 않았다. UI 테스트도 성공 응답을 직접 주어 코어 거부를 보지 못했다.
 - **그물**: 실제 경로를 쓴 브라우저 QA와 MCP 미리보기가 잡았다. 기존 단위·DOM·독립 리뷰는 형식과 경로가 맞지 않는 픽스처를 놓쳤다. 새 회귀는 단위·DOM 4건과 격리 PostgreSQL 3건에서 수정 전 실패했다. Server Action → 격리 DB → Sources·Logs 뷰 모델 시나리오로 미리보기와 실행, 값·저자 보존과 토큰 정리, 권한·낡은 지문·미확정 전달 거부를 함께 검사한다.
 - **재발 방지**: `rg -n 'localeFilePath|cancel-add|path: preview.path' lib/locales/change-plan.ts lib/locales/change.ts lib/mcp/tools/locales.ts components/sources/remove-locale-dialog.tsx`로 소비자를 대조했다. 취소의 경로는 계산할 수 있을 때만 표시하고 없으면 `null`을 전달하며 Dialog는 File 행을 생략한다. 새 제거 요청은 경로 검증을 계속 요구한다. 포맷 픽스처는 어댑터 이름뿐 아니라 그 포맷의 실제 경로 규약을 함께 써야 한다. 수정 후 브라우저 포커스·MCP 재검증은 QA 담당자가 수행한다.
+
+
+### 2026-10-19 — GitLab이 UTF-16 로케일 파일을 UTF-8+BOM으로 바꿔 줘서 Publish가 파일 전체를 다시 썼다
+
+- **영역**: `lib/gitlab/client.ts`(`readBlobText`) · `lib/gitlab/transport.ts` · `lib/gitlab/__tests__/fake-repo.ts`.
+- **증상**: apple-strings T2.4 실물 왕복(Q1)에서 GitLab.com `ox501501/malmoi-gitlab-test`의 UTF-16LE+BOM `.strings`(182바이트, blob `f1faad0d`)를 소스로 연결했다. 편집이 0건인데도 렌더가 ko를 `utf-8`로 내 `changes=[upsert ko]`가 생겼다. 편집 1건 Publish MR !29는 파일 전체를 UTF-8+BOM으로 바꿔 커밋했다. 머지하지 않고 닫았다. 같은 파일의 GitHub 경로는 정상이었다.
+- **근본 원인**: `GET /projects/:id/repository/blobs/:sha`(JSON)와 files API는 GitLab이 **UTF-8로 변환한 사본**을 base64로 준다. 응답의 `size`는 182였지만 `content`는 129바이트였고 `efbbbf`로 시작했다. 저장된 바이트는 `/repository/blobs/:sha/raw`만 준다. 이름이 "blob"이고 형식이 base64라서 원본 바이트로 읽혔다. mobile-strings M3가 UTF-16 왕복을 넣을 때도 이 엔드포인트를 그대로 썼다. 그 결과 `decodeLocaleFile`은 UTF-8+BOM 문자열(첫 글자 U+FEFF)을 받았고 인코딩을 `undefined`로 판정했다. 같은 경로로 잘못된 UTF-8 파일도 변환된 사본으로 받아, M3의 명시 실패를 지나칠 수 있었다.
+- **그물**: 실제 호스트를 쓴 `/roundtrip`(편집 0 드라이런 + 원격 바이트 `xxd` 대조)이 잡았다. M3의 단위·격리 테스트는 놓쳤다. 가짜 GitLab(`fake-repo.ts`·`client.test.ts`)이 JSON 엔드포인트에서 저장 바이트를 그대로 돌려줬기 때문이다. **가짜가 호스트의 실제 변환을 흉내 내지 않으면 인코딩 경계 테스트는 항등식이 된다.** 수정 `f4424e86`는 `/raw`를 새 `transport.getRaw`로 읽는다. 숫자 id 주소 검사와 오류 매핑은 그대로 유지했다. 가짜는 이제 실측 동작을 흉내 낸다(JSON 사본은 UTF-8+BOM으로 변환, `/raw`는 저장 바이트, base64 commit action은 바이트 그대로 저장). 새 `lib/gitlab/__tests__/encoding.test.ts`는 수정 전 4건 red였다. Q1b가 새 프로젝트로 다시 쟀다. 편집 0이면 같았고, 편집 1건 MR !30은 UTF-16LE+BOM을 유지했다.
+- **재발 방지**:
+  - grep `rg -n 'repository/files|repository/blobs' lib scripts app -g '!**/__tests__/**'` — 2026-10-19 실행: 로케일 내용을 읽는 호출은 `client.ts:129`의 `/raw` 하나뿐이다. JSON blob·files 엔드포인트로 파일 **내용**을 읽는 호출이 생기면 그 자리에서 막는다(메타데이터만 읽는 호출은 괜찮다).
+  - GitHub 쪽 `GET /git/blobs/{sha}`(`lib/github.ts:323·408`)는 변환하지 않는다는 것을 Q1이 실물로 확인했다(원격 blob = 로컬 `git hash-object`). 호스트를 늘리면 같은 실측(UTF-16 파일 하나를 올리고 API로 읽은 바이트를 `xxd`로 대조)을 먼저 한다.
+  - 호스트 가짜에 새 엔드포인트를 더할 때는 실제 응답을 한 번 채록해 그 변환을 재현한다. 저장 바이트를 그대로 돌려주는 가짜로 인코딩 계약을 증명하지 않는다.

@@ -1,3 +1,4 @@
+import { decodeLocaleFile, type FileEncoding } from "../lib/file-encoding";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -19,10 +20,12 @@ import type { AdapterFile, DetectedFormat, FileProbe } from "../lib/adapters/typ
  *   먹이고 어댑터에 따라(ts-dict) 오류 없이 그 파일의 키가 빠져, 서버가 부분 페이로드를 받아 그 키를 orphan시킨다. 판정은
  *   `unreadableLocaleFiles`가 한다 — 탐지가 훑는 무관한 파일의 실패까지 red로 만들지 않으려고 여기서 거르지 않는다.
  */
-export function fileProbe(root: string, failures?: Set<string>): FileProbe {
+export function fileProbe(root: string, failures?: Set<string>, encodings?: Map<string, FileEncoding>): FileProbe {
   return (path) => {
     try {
-      return readFileSync(join(root, path), "utf8");
+      const file = decodeLocaleFile(path, readFileSync(join(root, path)));
+      encodings?.set(path, file.encoding ?? "utf-8");
+      return file.content;
     } catch {
       failures?.add(path);
       return undefined;

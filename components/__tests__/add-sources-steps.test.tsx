@@ -65,7 +65,7 @@ async function open(candidates: CandidateSummary[], existing: { pathTemplate: st
     existing={existing} adapters={[]} server={{}} />);
 }
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.loadCandidateSample.mockResolvedValue({ ok: false, error: "unavailable" }); });
 
 it("① 하단에 공통 기준 언어 셀렉트가 없다 — 단계 표시와 [Next]만 선다", async () => {
   await open([web, emails]);
@@ -270,4 +270,38 @@ it("손 사본 0 — ②와 신규 프로젝트 ③이 같은 소스 블록 컴�
   expect(modal).not.toMatch(/BaseLocaleFields/);
   // ①·②의 바닥 [Next]·[Back]·확정은 `WizardFooter`다 — 마크업 사본을 두지 않는다 (fix1 🟡2).
   expect(modal.match(/<WizardFooter\b/g) ?? []).toHaveLength(2);
+});
+
+it("values/만 있는 Android 소스를 기준 언어 코드 입력 후 추가한다", async () => {
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const basePath = "app/src/main/res/values/strings.xml";
+  await open([candidate(pathTemplate, { adapter: "android-strings", basePath, locales: [], baseLocale: "", samples: [], outputPaths: [basePath] })]);
+  expect(dialog().textContent).toContain(en.newProject.files.summaryShort(1, en.newProject.files.keys(2)));
+  await click(include(pathTemplate));
+  await click(next());
+  expect((dialog().textContent ?? "").split(basePath)).toHaveLength(2);
+  expect(confirm().getAttribute("aria-disabled")).toBe("true");
+  expect(dialog().textContent).toContain(basePath);
+  await input(find<HTMLInputElement>(document.body, "#surface-base-0"), "en");
+  expect(confirm().getAttribute("aria-disabled")).toBeNull();
+  mocks.addSurfaces.mockResolvedValue({ ok: true, results: [], yaml: "" });
+  await click(confirm());
+  expect(mocks.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" }] });
+});
+
+it("#306 Add sources는 최초 Android와 values 전용 후보를 고를 때 기준 표본을 즉시 읽는다", async () => {
+  const appBase = "app/src/main/res/values/strings.xml";
+  const onlyBase = "settings/src/main/res/values/strings.xml";
+  const app = candidate("app/src/main/res/values-{locale}/strings.xml", { adapter: "android-strings", basePath: appBase, baseLocale: "", locales: ["ko"], samples: [] });
+  const only = candidate("settings/src/main/res/values-{locale}/strings.xml", { adapter: "android-strings", basePath: onlyBase, baseLocale: "", locales: [], samples: [] });
+  mocks.loadCandidateSample.mockImplementation(async ({ locale }) => ({ ok: true, rows: [{ key: "title", value: locale === appBase ? "App base preview" : "Settings base preview" }], total: 1 }));
+  await open([app, only], [{ pathTemplate: app.pathTemplate }]);
+  expect(mocks.loadCandidateSample).toHaveBeenCalledWith(expect.objectContaining({ locale: appBase }));
+  expect(dialog().querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe(appBase);
+  expect(dialog().textContent).toContain("App base preview");
+  await click(pick(only.pathTemplate));
+  expect(mocks.loadCandidateSample).toHaveBeenLastCalledWith(expect.objectContaining({ locale: onlyBase }));
+  expect(dialog().querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe(onlyBase);
+  expect(dialog().textContent).toContain("Settings base preview");
+  expect(dialog().textContent).not.toContain(en.common.slow);
 });

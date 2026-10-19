@@ -24,7 +24,7 @@ const target = (over: Partial<RemoteTarget> = {}): RemoteTarget => ({
   repositoryId: "9001",
   baseBranch: "release",
   lastPrUrl: "https://github.com/o/r/pull/142",
-  surfaces: [{ lastCommitSha: "a".repeat(40), adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] }],
+  surfaces: [{ lastCommitSha: "a".repeat(40), adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] }],
   archived: false,
   ...over,
 });
@@ -287,8 +287,8 @@ it("한 소스의 compare가 거부돼도 같은 프로젝트의 다른 compare�
     } as unknown as GitClient;
   });
   const surfaces = [
-    { lastCommitSha: "a".repeat(40), adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] },
-    { lastCommitSha: "b".repeat(40), adapterName: "json-catalog", pathTemplate: "web/{locale}.json", storedLocales: ["en", "ko"] },
+    { lastCommitSha: "a".repeat(40), adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] },
+    { lastCommitSha: "b".repeat(40), adapterName: "json-catalog", pathTemplate: "web/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] },
   ];
   const pending = loadRemoteSignals(
     Array.from({ length: 7 }, (_, i) => target({ projectId: `p${i}`, lastPrUrl: null, surfaces })),
@@ -392,7 +392,7 @@ const HEAD = "2".repeat(40);
 const gitlabTarget = (over: Partial<RemoteTarget> = {}): RemoteTarget => target({
   repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", repositoryId: GL_REPO, repoOwner: "g/sub", repoName: "app", baseBranch: "main",
   lastPrUrl: "https://gitlab.com/g/sub/app/-/merge_requests/7",
-  surfaces: [{ lastCommitSha: INGESTED, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] }],
+  surfaces: [{ lastCommitSha: INGESTED, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] }],
   ...over,
 });
 function gitlabRepo(head: Record<string, string>, mrState: "opened" | "closed" = "opened") {
@@ -431,7 +431,7 @@ it("GitLab 행 — 로케일 밖만 바뀌었거나 base가 그대로면 0이고
   const outside = gitlabRepo({ "i18n/en.json": "{}\n", "i18n/ko.json": "{}\n", "README.md": "x\n" }, "closed");
   expect((await loadRemoteSignals([gitlabTarget()], gitlabClients(outside))).get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
   const same = gitlabRepo({ "i18n/en.json": "{}\n", "i18n/ko.json": "{}\n" });
-  const unchanged = await loadRemoteSignals([gitlabTarget({ surfaces: [{ lastCommitSha: HEAD, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] }] })], gitlabClients(same));
+  const unchanged = await loadRemoteSignals([gitlabTarget({ surfaces: [{ lastCommitSha: HEAD, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] }] })], gitlabClients(same));
   expect(unchanged.get("p1")).toEqual({ openPr: { number: 7, url: "https://gitlab.com/g/sub/app/-/merge_requests/7" }, repoAheadFiles: 0 });
 });
 

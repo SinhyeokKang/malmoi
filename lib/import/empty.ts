@@ -8,13 +8,15 @@ import { checkContentBudget } from "@/lib/onboarding/budget";
 
 /** 엔트리가 비었다는 것만으로는 부족하다 — 모든 대상이 base를 포함한, 오류 없이 인식된 카탈로그여야 한다. */
 export function verifyEmptyCatalog(input: {
-  stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string };
+  stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string; basePath: string | null };
   paths: readonly string[];
   blobs: ReadonlyMap<string, string>;
 }): boolean {
-  const targets = templatePaths(input.stored.adapter, input.stored.pathTemplate, input.paths);
+  const targets = templatePaths(input.stored.adapter, input.stored.pathTemplate, input.paths, input.stored.basePath);
   if (targets.length === 0) return false;
-  const format: DetectedFormat = { adapter: input.stored.adapter, pathTemplate: input.stored.pathTemplate, locales: [] };
+  // basePath 파일에는 언어 코드가 없다 — 그 언어가 저장된 기준 언어임을 `templateLocale`로 알려야 어댑터가 읽는다(android-strings).
+  const format: DetectedFormat = { adapter: input.stored.adapter, pathTemplate: input.stored.pathTemplate,
+    ...(input.stored.basePath === null ? {} : { basePath: input.stored.basePath, templateLocale: input.stored.baseLocale }), locales: [] };
   const adapter = adapterFor(format);
   let bytes = 0;
   const locales = new Set<string>();

@@ -11,11 +11,12 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { adapterFor, detectCandidatesAcross } from "../lib/adapters/index";
 import { codeDictCandidatePaths } from "../lib/adapters/code-dict";
+import { arbConfiguredFirst, arbProbePaths } from "../lib/adapters/arb-catalog";
 import { requireEnv } from "../lib/env";
 import { en } from "../messages/en";
 import { createGitClient, openRepoReader, probeRepo } from "../lib/github";
 import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budget";
-import { formatLabel, makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
+import { formatLabel, knownSizesOf, makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
 import { syncBranchFor } from "../lib/pull/sync-branch";
 import { loadLocalEnv, scriptPrisma } from "./local";
@@ -60,6 +61,7 @@ async function main(): Promise<void> {
             slug: true,
             adapterName: true,
             pathTemplate: true,
+            basePath: true,
             nested: true,
             nestedByPath: true,
             baseLocale: true,
@@ -117,27 +119,38 @@ async function main(): Promise<void> {
       const paths = snapshot.files.map((f) => f.path);
       console.log(`  head ${snapshot.headSha.slice(0, 8)} @ ${snapshot.headCommittedAt} / ${paths.length}경로`);
 
-      const jsonLike = detectCandidatesAcross(paths);
-      const codeDict = codeDictCandidatePaths(paths);
-      // ⚠️ **경로 전체를 함께 넘긴다** — ts-dict 씨앗이 여기서만 만들어진다. 안 넘기면 스모크가
-      // 프로덕션과 다른 후보 목록을 낸다(그 리포에서 ts-dict가 통째로 빠진다).
-      const targets = probeTargets(jsonLike, codeDict, paths);
-      console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length}개`);
-
-      // ⚠️ **프로덕션(`lib/import/read.ts` `readFiles`)과 같은 예산 둘을 지난다** — 손으로 짠 루프가 건너뛰어 예산을 넘는
-      // 리포에서 프로덕션은 거부하고 스모크만 통과했다(launch-readiness L7.3). `readFiles`는 `server-only`라 직접 못 부른다.
-      checkDownloadBudget(targets, snapshot.files);
       const shaOf = new Map(snapshot.files.map((f) => [f.path, f.sha]));
       const blobs = new Map<string, string>();
+      // ⚠️ **프로덕션(`lib/import/read.ts` `readFiles`)과 같은 예산을 같은 순서로 지난다** — 손으로 짠 루프가 건너뛰어 예산을 넘는
+      // 리포에서 프로덕션은 거부하고 스모크만 통과했다(launch-readiness L7.3). `readFiles`는 `server-only`라 직접 못 부른다.
+      // 프로덕션(`lib/onboarding-run/detect.ts`)과 같이 ARB 설정을 먼저 읽어 그 대상을 probe 상한 안으로 당긴다(리뷰 R1) — 설정도 선언 크기·내용
+      // (YAML 중첩 포함)·누적 합계 검사를 지나고, 뒤 표본과 **한 합계**다(재리뷰 Y2). 따로 재면 설정이 예산 밖으로 빠진다.
+      const configPaths = arbProbePaths(paths);
+      checkDownloadBudget(configPaths, snapshot.files);
       let totalBytes = 0;
-      for (const path of targets) {
+      for (const path of configPaths) {
         const sha = shaOf.get(path);
-        const text = sha === undefined ? undefined : await reader.blob(sha);
+        const text = sha === undefined ? undefined : await reader.blob(sha, path);
         if (text === undefined) continue;
         totalBytes = checkContentBudget(path, text, totalBytes);
         blobs.set(path, text);
       }
-      console.log(`  내려받음: ${blobs.size}/${targets.length}`);
+      const jsonLike = arbConfiguredFirst(detectCandidatesAcross(paths), configPaths[0] === undefined ? undefined : blobs.get(configPaths[0]));
+      const codeDict = codeDictCandidatePaths(paths);
+      // ⚠️ **경로 전체를 함께 넘긴다** — ts-dict 씨앗이 여기서만 만들어진다. 안 넘기면 스모크가
+      // 프로덕션과 다른 후보 목록을 낸다(그 리포에서 ts-dict가 통째로 빠진다).
+      const targets = probeTargets(jsonLike, codeDict, paths, knownSizesOf(snapshot.files)).filter((path) => !configPaths.includes(path));
+      console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length + configPaths.length}개`);
+
+      checkDownloadBudget([...configPaths, ...targets], snapshot.files);
+      for (const path of targets) {
+        const sha = shaOf.get(path);
+        const text = sha === undefined ? undefined : await reader.blob(sha, path);
+        if (text === undefined) continue;
+        totalBytes = checkContentBudget(path, text, totalBytes);
+        blobs.set(path, text);
+      }
+      console.log(`  내려받음: ${blobs.size}/${targets.length + configPaths.length}`);
 
       const candidates = summarizeCandidates(detectCandidatesAcross(paths, makeProbe(blobs)), blobs);
       console.log(`  2패스 후보 ${candidates.length}개:`);
@@ -193,6 +206,7 @@ async function main(): Promise<void> {
       format,
       layout,
       tree.map((t) => t.path),
+      surface.baseLocale,
     );
     console.log(`\n로케일 파일 ${paths.length}개 (${layout}):`);
     for (const p of paths) {
@@ -206,7 +220,7 @@ async function main(): Promise<void> {
     if (first !== undefined) {
       const blob = tree.find((t) => t.path === first.path);
       if (blob) {
-        const text = await client.getBlobText(blob.sha);
+        const { content: text } = await client.getBlobText(blob.sha, first.path);
         console.log(`\n원본 읽기 확인: ${first.path} — ${text.split("\n").length}줄`);
       }
     }

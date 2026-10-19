@@ -660,7 +660,35 @@ lib/
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
                         index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 25) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
+                        base-path(baseFilePath — 기준 언어 파일 경로 = basePath ?? 템플릿 치환. import 0인 잎이라 lib/locales도 쓴다.
+                        치환 자리 전수와 분기별 동작 테스트는 __tests__/base-path-sites.test.ts가 센다 — mobile-strings M2) ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
+                        · arb-catalog(Flutter ARB, 2026-10-19 — regenerate인데 원본의 `@key`·`@@*` 구간을 바이트 그대로 나른다.
+                        값이 아니라 소스 키 메타데이터라 DB에 넣지 않는다 — 근거는 ARCHITECTURE §1.37. 루트 `l10n.yaml`로 설정 대상 후보를 맨 앞에 세우고 templateLocale을 싣는다)
+                        __tests__/arb-catalog.test.ts가 read·write·탐지를, lib/onboarding-run/__tests__/detect-arb.test.ts가 설정 먼저 읽기·probe 예산을,
+                        lib/pull/__tests__/arb-publish.integration.ts(`pnpm test:projects:postgres`)가 확정 → 첫 적재 → 첫·둘째 Publish → 언어 추가·제거를 잰다
+                        · apple-strings(Apple `.strings`, 2026-10-19 — surgical. 토크나이저가 값 리터럴 범위를 내고, 비-base 파일에만 누락 키를 삽입한다.
+                        UTF-16 판별·왕복은 어댑터가 아니라 lib/file-encoding.ts가 든다) · apple-xcstrings(Apple String Catalog — multi-locale surgical.
+                        자리 없는 로케일 셀을 Xcode 서식으로 삽입하고 sourceLanguage를 templateLocale로 싣는다. 언어 추가·제거 비지원) — 근거는 ARCHITECTURE §1.45
+                        __tests__/apple-strings.test.ts가 토크나이저·이스케이프(plutil 채록 — 8진 512개)·삽입·create·탐지를,
+                        lib/onboarding-run/__tests__/detect-apple-strings.test.ts가 probe 예산·Flutter 셸 강등을, lib/pull/__tests__/apple-strings-render.test.ts가
+                        렌더 경로(표현 불가 리터럴의 write-parse-failed 포함)를, lib/pull/__tests__/apple-strings-publish.integration.ts(`pnpm test:projects:postgres`)가
+                        확정 → 첫 적재 → 미리보기·첫/둘째 Publish 바이트(UTF-16LE+BOM·CRLF) → 언어 추가·제거를 잰다.
+                        Flutter 셸 판정 isFlutterShell은 apple-strings.ts에 있고 강등·keepOwnOrder는 index.ts의 detectCandidatesAcross가 한다(어댑터 간 순위)
+                        apple-xcstrings.ts는 insertsMissingCells: true를 단 유일한 어댑터이고 씨앗 xcstringsProbePaths를 낸다(경로 거름은 apple-strings의 NOT_SOURCE).
+                        __tests__/apple-xcstrings.test.ts가 read·write·중복 이름·삽입 서식을, __tests__/fixtures/apple-xcstrings/(Xcode 26.6 xcstringstool 채록 +
+                        MIT 리포 원본 — 출처는 그 README)가 골든 바이트를, lib/onboarding-run/__tests__/detect-apple-xcstrings.test.ts가 씨앗·probe 예산·큰 카탈로그 건너뛰기를,
+                        lib/pull/__tests__/apple-xcstrings-delivery.test.ts가 cellSlot 판정의 일치를, lib/pull/__tests__/apple-xcstrings-publish.integration.ts가
+                        확정 → 첫 적재 → 미리보기·PR 바이트·토큰 해제 → 다음 Publish를 잰다
+                        · android-strings(Android `strings.xml`, 2026-10-19 — surgical. `@xml-tools/parser` CST는 `<string>` 안쪽 범위를 얻는 데만 쓰고
+                        XML을 다시 직렬화하지 않는다. 기준 언어 파일 values/strings.xml은 basePath로 받고(base-path), 비-base 파일에만 누락 키를 삽입한다.
+                        이스케이프는 풀고 인라인 태그는 문자열 그대로 둔다. 방언 둘(aapt2 `res/` · Compose `composeResources/`)을 dialectOf가 마지막 리소스 디렉터리로 고르고,
+                        androidValueTags가 쓸 수 있는 태그 문법의 정본이다 — 저장 검증도 이것을 부른다) — 근거는 ARCHITECTURE §1.46
+                        __tests__/android-strings.test.ts가 read·write·삽입·create·탐지를, __tests__/android-strings-values.test.ts가 값 문법·두 방언 왕복(생성 값 2,000)을,
+                        __tests__/fixtures/android-strings/(aapt2 2.20·Compose 1.12.2 변환기 채록 — 출처는 그 README)가 기대값을,
+                        lib/onboarding-run/__tests__/detect-android-strings.test.ts가 probe 예산(여섯째 모듈이 빠지는 계약)·Flutter 셸 강등을,
+                        lib/pull/__tests__/android-strings-publish.integration.ts(`pnpm test:projects:postgres`)가 확정 → 첫 적재 → Publish(기준 파일 values/) → 언어 추가 →
+                        다른 키 번역 → 둘째 Publish와 쓸 수 없는 태그의 미리보기 blocked를 잰다
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
@@ -770,6 +798,9 @@ lib/
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다. 조립 assembleProjectListRows는 I/O가 없고
                         메타 넷과 할 일을 만들어 planProjectRow 결과만 행에 싣는다) ·
                         save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
+                        android-inline-tags(androidInlineTagsIssue — Android 값이 쓸 수 있는가(`inline-markup-invalid`)와 인라인 태그가 기준 언어 값과 같은 집합인가
+                        (`inline-tags-mismatch`). 문법은 어댑터의 androidValueTags를 쓰고 여기는 집합 비교용 정규화만 든다. save가 웹·MCP 공통 저장 거부에 쓴다 —
+                        ARCHITECTURE §1.46) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
                         · search(글로벌 Keys 서버 조회 — 세션 userId의 비보관 멤버 프로젝트만 SQL 안에서 확정, 최대2문장,
@@ -871,6 +902,7 @@ lib/
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   pull/undeliverable.ts 전달 불가 셀의 좌표 보류(잎) — writer 오류를 보류(비-base 파일 부재 · 키 자리 없음)와 거부로
                         가르고 캡처 편집을 실린 것/보류된 것으로 나눈다. 미리보기(publish/read)는 같은 판정을 행 단위로 따로 든다
+                        cellSlot(셀 하나의 자리 — 셀을 넣는 어댑터는 키가 있으면 자리, 그 밖은 keySlot)을 경로 선택과 미리보기가 같이 부른다
   import/locales.ts     localesToKeep — 다운로드 실패 로케일을 재탐지 목록에 되살린다(경로 → 로케일은 onboarding/confirm의
                         localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다). ⚠️ 심볼릭 링크된 언어 파일도 센다 — 만료의 관측(pull/locales)과 이 한 군데만 다르다(ARCHITECTURE §5.10.2)
   import/observe.ts     observeSurfaceLocales(tree, surface) — 같은 head 야간 방문·야간 적재 만료의 base 관측. pull/locales의 observeLocaleFiles에 위임하는 얇은 껍데기(순수)
@@ -882,6 +914,7 @@ lib/
                         __tests__/observe-locale-files.test.ts는 yaml-catalog·code-dict의 파일 관측을 직접 검사하고, __tests__/locale-create.test.ts는 수술적 ADD create·revive 렌더·blocking 실패를 검사한다
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
+                        UTF-16 blob POST는 BLOB_CONCURRENCY(8) 워커 풀이다 — lib/__tests__/github-blob-concurrency.test.ts가 한도·순서·실패를 잰다
   repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
                         판정, sameRepoTarget·sameRepository·sameAccessedRepository · 잎, server-only 없음) · reader(RepoReader 계약) ·
                         index(호스트 구현을 고르는 **유일한 자리** — createGitClient·openRepoReader·listBranches·loadConnectionHealth).
@@ -893,7 +926,8 @@ lib/
                         execution.fetch()를 넘긴다 · 응답을 통째로 로그하지 않는다(GET /projects에 runners_token이 실린다)) · client(GitClient·
                         RepoReader·브랜치·건강성의 GitLab 구현, DB를 모른다 — 토큰은 lib/repo-host가 참조 연결에서 열어 넘긴다) · plan(원격 응답의
                         순수 판정 — 모양이 다른 응답을 "없음"·"빈 목록"으로 접지 않는다). server-only를 붙이지 않은 것은 lib/github.ts와 같은 이유다
-                        (smoke-gitlab이 프로덕션 경로를 지난다)
+                        (smoke-gitlab이 프로덕션 경로를 지난다). ⚠️ blob 읽기는 transport.getRaw로 /repository/blobs/:sha/raw다 — JSON blob·files API는
+                        UTF-16을 UTF-8+BOM으로 바꿔 준다. __tests__/encoding.test.ts의 가짜 GitLab이 그 실측 동작을 흉내 낸다
   github-wait.ts        GitHub 대기 마감(GITHUB_WAIT_MS 8초) 하나 — 목록 원격 신호·probe·열린 PR·계정 조회가 같은 값을
                         읽는다(ARCHITECTURE §6.5.2). octokit을 물지 않는 잎이라 lib/github를 mock한 테스트에서도 실물이 돈다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
@@ -945,6 +979,8 @@ lib/
                         refs/경고에서 제외하고, 내부 실패 Symbol은 사용자 namespace·변수 문자열과 구별한다(ARCHITECTURE §4.0).
                         survey는 실제 writer 왕복과 집계를 잇는다. 점 키·중첩 공존은 presentation 관측이고 clean 제외 사유가 아니다.
                         미판정 리포는 unjudged·전체 탐지율에 남고 오탐 분자·분모에서는 제외한다(ARCHITECTURE §1.9).
+                        survey/pins — 코퍼스 커밋 고정의 순수 층(`parsePins`·`pinsFromSurveys`·`PIN_SHA`). `run.ts`의 `fetchRepo`가 고정 SHA를 받고
+                        `scripts/adapter-survey.ts`의 `--pins`·`--write-pins`가 읽고 쓴다. 입력은 `docs/adapter-survey/pins*.json`
                         cli/push-response의 보류 재개 안내는 열린 PR 머지/닫기 뒤 현재 head의 새 push 또는 야간 동기화다 — 옛 job 재실행을 권하지 않는다
   mcp/                  MCP 커넥터(2026-09-28, ARCHITECTURE §6.45). **순수 판정이 대부분이고 server-only가 셋뿐이다** —
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
@@ -1149,6 +1185,8 @@ lib/
   locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다.
                         isLocaleShaped는 별개 축(로케일인가) — `package`가 `package.json`을 겨누지 않게
                         looksLikeLocale(어댑터 `read`의 로케일 이름 판정 — locale-add가 adapters/shared에서 옮겼다. 추가 입력이 관측할 수 있는 코드로 좁혀지는 근거)
+                        · isAndroidLocale(Android 언어 한정자 술어 — 어댑터 탐지·언어 추가 판정·서버 적재의 경로→코드 복원이 같은 함수를 쓴다, android-strings)
+                        · displayLocaleCode(`zh-rCN` → `zh-CN` — 표시·텍스트 방향 전용, 저장 코드는 그대로)
   failure.ts            500 본문 판정 — 우리 메시지는 그대로, 남의 라이브러리 메시지는 ref만.
                         응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
                         logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
@@ -1182,6 +1220,7 @@ lib/
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
   viewport.ts           잎(타입 import 하나). 요청 UA → 루트 viewport(viewportFor) — iOS에만 maximumScale 1. 근거는 ARCHITECTURE §6.358.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
+  file-encoding.ts      잎. .strings만 UTF-16 BOM·NUL 판별, 원본 엔디언·BOM 왕복. 잘못된 바이트는 명시 실패하고 리더 경계는 parse-failed로 전달한다.
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
@@ -1273,7 +1312,7 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
                         DB 세션의 session 콜백에는 token이 아니라 user가 와서 실을 곳이 없다
 .github/actions/malmoi-i18n-push/action.yml
                         **대상 리포가 참조하는 composite action**(외부 계약, 정본은 ACTIONS.md).
-                        ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v3다(v1·v2는 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
+                        ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v4다(v1·v2·v3는 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
                         셋업 계약은 scripts/__tests__/action-setup이 센다(store 캐시 없음 · setup-node 자동 캐시 끔)
 .gitlab/malmoi-i18n-push/push.sh · run.ts
                         **GitLab 프로젝트의 CI가 실행하는 원본**(action.yml의 짝, 2026-10-12 D5). 대상 리포의 생성 job이 이 리포를 불변 태그

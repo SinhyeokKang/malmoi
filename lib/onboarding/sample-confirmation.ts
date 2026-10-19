@@ -8,7 +8,14 @@ import { z } from "zod";
  */
 const Confirmation = z.object({
   userId: z.string(), repositoryId: z.string(), connection: z.string(), ref: z.string(), headSha: z.string(),
-  format: z.object({ adapter: z.string(), pathTemplate: z.string(), locales: z.array(z.string()) }),
+  /**
+   * `basePath`·`baseLocale`은 기준 언어 파일이 템플릿 밖일 때 지연 표본이 그 언어를 basePath에서 읽게 한다(mobile-strings design §2).
+   * optional인 이유는 수명이다 — 배포 전에 발급된 확인값이 30분 안에 다시 들어온다. 없으면 지금처럼 치환이다.
+   */
+  format: z.object({
+    adapter: z.string(), pathTemplate: z.string(), locales: z.array(z.string()),
+    basePath: z.string().optional(), baseLocale: z.string().optional(),
+  }),
   issuedAt: z.number(),
 });
 type SampleConfirmation = z.infer<typeof Confirmation>;

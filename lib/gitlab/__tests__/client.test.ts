@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { encodeFileContent } from "@/lib/file-encoding";
 import { classifySyncError } from "@/lib/sync/plan";
 
 import { commitMessage, SKIP_MARKER } from "@/lib/pull/payload";
@@ -114,14 +115,25 @@ describe("읽기 — getRefSha · getTree · getBlobText", () => {
     expect(n).toBe(TREE_PAGE_LIMIT);
   });
 
-  it("getBlobText: base64 → UTF-8 · ⚠️ LFS 포인터는 던진다(파싱·덮어쓰기 금지)", async () => {
-    const { open } = client({
-      [`GET ${P}/repository/blobs/s1`]: { status: 200, body: { encoding: "base64", content: Buffer.from('{"a":"안녕"}\n').toString("base64") } },
-      [`GET ${P}/repository/blobs/lfs`]: { status: 200, body: { encoding: "base64", content: Buffer.from("version https://git-lfs.github.com/spec/v1\noid sha256:x\nsize 1\n").toString("base64") } },
+  /**
+   * ⚠️ **`/raw`의 저장 바이트를 읽는다** — JSON blob API는 UTF-16 파일을 UTF-8(+BOM)로 바꾼 사본을 준다(apple-strings Q1 결함 D1, GitLab.com 실측). 경로로 UTF-16을 판별하고
+   * 손상된 바이트는 parse-failed로 거부한다(mobile-strings design §3).
+   */
+  it("getBlobText: `/raw` 바이트 → 경로별 인코딩 · 손상은 parse-failed · ⚠️ LFS 포인터는 던진다(파싱·덮어쓰기 금지)", async () => {
+    const utf16 = encodeFileContent('"hello" = "안녕 😀";\n', "utf-16be-bom");
+    const raw = (bytes: Buffer) => () => new Response(new Uint8Array(bytes));
+    const { fake, open } = client({
+      [`GET ${P}/repository/blobs/s1/raw`]: raw(Buffer.from('{"a":"안녕"}\n')),
+      [`GET ${P}/repository/blobs/u16/raw`]: raw(utf16),
+      [`GET ${P}/repository/blobs/bad/raw`]: raw(Buffer.from("fffe00d8", "hex")),
+      [`GET ${P}/repository/blobs/lfs/raw`]: raw(Buffer.from("version https://git-lfs.github.com/spec/v1\noid sha256:x\nsize 1\n")),
     });
     const git = await open();
-    await expect(git.getBlobText("s1")).resolves.toBe('{"a":"안녕"}\n');
-    await expect(git.getBlobText("lfs")).rejects.toThrow(/LFS/);
+    await expect(git.getBlobText("s1", "en.json")).resolves.toEqual({ content: '{"a":"안녕"}\n' });
+    await expect(git.getBlobText("u16", "ko.strings")).resolves.toEqual({ content: '"hello" = "안녕 😀";\n', encoding: "utf-16be-bom" });
+    await expect(git.getBlobText("bad", "ko.strings")).rejects.toMatchObject({ code: "parse-failed", path: "ko.strings" });
+    await expect(git.getBlobText("lfs", "en.json")).rejects.toThrow(/LFS/);
+    expect(fake.calls.filter((call) => call.url.pathname.includes("/blobs/")).every((call) => call.url.pathname.endsWith("/raw"))).toBe(true);
   });
 });
 
@@ -227,6 +239,13 @@ describe("MR 생명주기 — findOpenPr · createPr · updatePrTitle · updateP
   });
 });
 
+it("GitLab 적재 리더는 잘못된 UTF-8을 unreadable로 돌린다", async () => {
+  const fake = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META },
+    [`GET ${P}/repository/blobs/bad/raw`]: () => new Response(new Uint8Array([0xff])) });
+  const reader = await openGitLabReader(TARGET, CREDENTIAL, { fetch: fake.fetch });
+  await expect(reader.blob("bad", "ko.json")).resolves.toBeUndefined();
+});
+
 describe("openGitLabReader — 온보딩·Sync의 스냅샷 (값으로 준다)", () => {
   const head = { [`GET ${P}/repository/branches/main`]: { status: 200, body: { commit: { id: BASE, committed_date: "2026-10-12T08:47:45.000+00:00" } } } };
   const tree = { [`GET ${P}/repository/tree`]: { status: 200, body: [
@@ -280,12 +299,12 @@ describe("openGitLabReader — 온보딩·Sync의 스냅샷 (값으로 준다)",
   it("blob: 못 읽으면 undefined(로그) · LFS 포인터도 undefined", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { open } = reader({
-      [`GET ${P}/repository/blobs/ok`]: { status: 200, body: { encoding: "base64", content: Buffer.from("{}").toString("base64") } },
-      [`GET ${P}/repository/blobs/bad`]: { status: 500 },
-      [`GET ${P}/repository/blobs/lfs`]: { status: 200, body: { encoding: "base64", content: Buffer.from("version https://git-lfs.github.com/spec/v1\n").toString("base64") } },
+      [`GET ${P}/repository/blobs/ok/raw`]: () => new Response("{}"),
+      [`GET ${P}/repository/blobs/bad/raw`]: { status: 500 },
+      [`GET ${P}/repository/blobs/lfs/raw`]: () => new Response("version https://git-lfs.github.com/spec/v1\n"),
     });
     const r = await open();
-    expect([await r.blob("ok"), await r.blob("bad"), await r.blob("lfs")]).toEqual(["{}", undefined, undefined]);
+    expect([await r.blob("ok", "en.json"), await r.blob("bad", "en.json"), await r.blob("lfs", "en.json")]).toEqual(["{}", undefined, undefined]);
     vi.restoreAllMocks();
   });
 });

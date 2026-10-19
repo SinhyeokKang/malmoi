@@ -9,7 +9,7 @@ import { KEY_SAVE_LIMITS, KeySaveInput, planClearability, planKeySave } from "..
  */
 const current = (entries: Record<string, string | null>) => new Map(Object.entries(entries));
 /** 재생성 표면 — 비우기 판정이 끼지 않는 기존 계약의 입력이다. */
-const REGEN = { writeStrategy: "regenerate", sourceText: "Source", baseLocale: "en" } as const;
+const REGEN = { adapterName: "json-catalog", writeStrategy: "regenerate", sourceText: "Source", baseLocale: "en" } as const;
 const planRegen = (c: ReadonlyMap<string, string | null>, changes: readonly { localeCode: string; value: string }[]) => planKeySave(c, changes, REGEN);
 
 describe("planKeySave — 정상", () => {
@@ -122,7 +122,7 @@ describe("planClearability — 정규화 뒤 값으로 판정한다", () => {
 });
 
 describe("planKeySave — 수술적 표면의 비-base 비우기는 키 전체 거부", () => {
-  const SURGICAL = { writeStrategy: "surgical", sourceText: "Source", baseLocale: "en" } as const;
+  const SURGICAL = { adapterName: "ts-dict", writeStrategy: "surgical", sourceText: "Source", baseLocale: "en" } as const;
 
   it("비-base fr 비우기 → cannot-clear + localeCodes", () => {
     expect(planKeySave(current({ en: "Hi", fr: "Salut" }), [{ localeCode: "fr", value: "" }], SURGICAL))
@@ -158,7 +158,34 @@ describe("planKeySave — 수술적 표면의 비-base 비우기는 키 전체 �
 });
 
 it("수술적 base도 폴백 원문이 비어 있으면 비우기를 거부한다", () => {
-  const surface = { writeStrategy: "surgical" as const, baseLocale: "en", sourceText: "" };
+  const surface = { adapterName: "ts-dict", writeStrategy: "surgical" as const, baseLocale: "en", sourceText: "" };
   expect(planKeySave(current({ en: "Published" }), [{ localeCode: "en", value: "" }], surface))
     .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["en"] });
+});
+
+describe("Android 인라인 태그 저장 판정", () => {
+  const surface = { adapterName: "android-strings", writeStrategy: "surgical", sourceText: "<b>Source</b>", baseLocale: "en" } as const;
+  it("한 셀이라도 태그를 깨면 정상 셀까지 거부한다", () => {
+    expect(planKeySave(current({ en: null, ko: null, fr: null }), [
+      { localeCode: "ko", value: "<b>정상</b>" }, { localeCode: "fr", value: "Cassé" },
+    ], surface)).toEqual({ ok: false, error: "inline-tags-mismatch", localeCodes: ["fr"] });
+  });
+  it("기준 셀은 태그 집합을 바꿀 수 있고 같은 저장의 기준 변경을 비교 기준으로 삼는다", () => {
+    const changes = [{ localeCode: "ko", value: "<i>새 번역</i>" }, { localeCode: "en", value: "<i>New</i>" }];
+    expect(planKeySave(current({ en: "<b>Old</b>", ko: null }), changes, surface)).toEqual({ ok: true, writes: changes });
+    expect(planKeySave(current({ en: null }), [{ localeCode: "en", value: "<broken>" }], surface)).toEqual({ ok: false, error: "inline-markup-invalid", localeCodes: ["en"] });
+  });
+  it("현재 기준 셀을 읽고 빈 기준 셀은 sourceText로 폴백한다", () => {
+    expect(planKeySave(current({ en: "<i>Current</i>", ko: null }), [{ localeCode: "ko", value: "<b>옛 태그</b>" }], surface))
+      .toEqual({ ok: false, error: "inline-tags-mismatch", localeCodes: ["ko"] });
+    expect(planKeySave(current({ en: "", ko: null }), [{ localeCode: "ko", value: "<b>번역</b>" }], surface).ok).toBe(true);
+  });
+  it("다른 포맷은 같은 태그 변경을 허용한다", () => {
+    expect(planKeySave(current({ ko: null }), [{ localeCode: "ko", value: "번역" }], { ...surface, adapterName: "apple-strings" }).ok).toBe(true);
+  });
+  it("기존 불일치 no-op은 쓰지 않으며 빈값 거부가 우선한다", () => {
+    expect(planKeySave(current({ ko: "옛 번역" }), [{ localeCode: "ko", value: "옛 번역" }], surface)).toEqual({ ok: true, writes: [] });
+    expect(planKeySave(current({ ko: "옛 번역" }), [{ localeCode: "ko", value: " " }], surface))
+      .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["ko"] });
+  });
 });

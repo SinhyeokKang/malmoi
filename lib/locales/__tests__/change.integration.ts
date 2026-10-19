@@ -16,7 +16,7 @@ import { eventMeta, eventSentence } from "@/lib/events/view";
 import { applyKeySave } from "@/lib/keys/save-key";
 import { previewKeyRevert } from "@/lib/keys/revert";
 import { hashPushToken } from "@/lib/push/token";
-import { previewSourceLocaleRemoval, removeSourceLocale } from "@/app/(edit)/projects/[slug]/sources/actions";
+import { addSourceLocale, previewSourceLocaleAdd, previewSourceLocaleRemoval, removeSourceLocale } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { loadSource } from "@/lib/sources/query";
 import { declareBaseLocale } from "@/lib/sources/base-locale";
 import { deliveryContextFingerprint } from "@/lib/translations/context";
@@ -709,3 +709,69 @@ describe("#303 legacy ts-dict ADD with a real namespace glob", () => {
       .toMatchObject({ orphaned: false, change: { operation: "ADD" }, unsent: true });
   });
 });
+
+
+describe("Android 언어 변경 진입점", () => {
+  const basePath = "res/values/strings.xml";
+  beforeEach(async () => {
+    await prisma.translationSurface.update({ where: { id: "s-web" }, data: { adapterName: "android-strings", pathTemplate: "res/values-{locale}/strings.xml", basePath } });
+    await prisma.translationSurface.update({ where: { id: "s-app" }, data: { archivedAt: new Date() } });
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "android-owner", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+  });
+  const context = () => ({ prisma, subject: { userId: "owner", credential: { kind: "api-token" as const, tokenHash: "android-owner" }, grants: ["project:settings" as const], scope: { kind: "all" as const } }, now: new Date(), origin: null });
+  it.each(["pt-BR", "he"])("%s를 미리보기·웹·MCP에서 동일하게 거부하고 쓰지 않는다", async localeCode => {
+    const before = await state();
+    const input = { ...WEB, localeCode };
+    expect(await previewSourceLocaleAdd(input)).toEqual({ ok: false, error: "android-locale-code" });
+    expect(await addSourceLocale(input)).toEqual({ ok: false, error: "android-locale-code" });
+    expect(await addLocaleTool.run(context(), input)).toMatchObject({ status: "refused", code: "android-locale-code", message: expect.stringContaining("pt-rBR") });
+    expect(await state()).toEqual(before);
+  });
+  it.each(["web", "mcp"])("%s 추가가 PR에 Android 경로를 내고 화면 목록에 같은 코드를 표시한다", async entry => {
+    const input = { ...WEB, localeCode: "pt-rBR" };
+    const path = "res/values-pt-rBR/strings.xml";
+    expect(await previewSourceLocaleAdd(input)).toEqual({ ok: true, action: "create", path, revive: 0 });
+    if (entry === "web") expect(await addSourceLocale(input)).toMatchObject({ ok: true, path });
+    else expect(await addLocaleTool.run(context(), input)).toMatchObject({ status: "ok", data: { language: "pt-rBR", path } });
+    expect(await save("s-web", "hello", "pt-rBR", "Olá")).toMatchObject({ ok: true });
+    const made = androidRepository();
+    const result = await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined });
+    expect(result).toMatchObject({ status: "committed" });
+    const sent = made.calls.find(call => call.method === "publishSnapshot")?.args[0] as { changes: { kind: string; path: string; content?: string }[] };
+    expect(sent.changes).toContainEqual(expect.objectContaining({ path, content: '<resources>\n    <string name="hello">Olá</string>\n</resources>' }));
+    expect(sent.changes.some(change => change.path === "res/values-pt-BR/strings.xml")).toBe(false);
+    const view = await loadSource(prisma, en, "p", "s-web", "OWNER");
+    expect(view?.languages).toContainEqual(expect.objectContaining({ code: "pt-rBR", orphaned: false }));
+  });
+  it("기준 언어 제거를 거부하고 다른 언어를 제거해도 values/strings.xml을 남긴다", async () => {
+    expect(await previewSourceLocaleRemoval({ ...WEB, localeCode: "en" })).toEqual({ ok: false, error: "base-locale" });
+    expect(await removeSourceLocale({ ...WEB, localeCode: "en", approval: "arbitrary" })).toEqual({ ok: false, error: "base-locale" });
+    const input = { ...WEB, localeCode: "ko" };
+    const preview = await previewSourceLocaleRemoval(input);
+    expect(preview).toMatchObject({ ok: true, path: "res/values-ko/strings.xml" });
+    if (!preview.ok) throw new Error("removal preview refused");
+    expect(await removeSourceLocale({ ...input, approval: preview.approval })).toMatchObject({ ok: true });
+    const made = androidRepository();
+    expect(await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined })).toMatchObject({ status: "committed" });
+    const sent = made.calls.find(call => call.method === "publishSnapshot")?.args[0] as { changes: { kind: string; path: string }[] };
+    expect(sent.changes.filter(change => change.kind === "delete").map(change => change.path)).toEqual(["res/values-ko/strings.xml"]);
+    expect(sent.changes.some(change => change.kind === "delete" && change.path === basePath)).toBe(false);
+  });
+});
+
+
+const androidGit = vi.hoisted(() => ({ client: null as unknown }));
+vi.mock("@/lib/repo-host", async original => ({ ...(await original<object>()), createGitClient: async () => androidGit.client }));
+import { addLocaleTool } from "@/lib/mcp/tools/locales";
+import { runSync } from "@/lib/sync/run";
+import { blobSha } from "@/lib/githash";
+import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
+function androidRepository() {
+  const files = {
+    "res/values/strings.xml": '<resources><string name="hello">hello</string><string name="bye">bye</string></resources>',
+    "res/values-ko/strings.xml": '<resources><string name="hello">hello-ko</string><string name="bye">bye-ko</string></resources>',
+  };
+  const made = createFakeGitClient({ refSha: { "heads/main": "basehead" }, tree: { basehead: Object.entries(files).map(([path, content]) => ({ path, sha: blobSha(content) })) }, blobs: Object.fromEntries(Object.values(files).map(content => [blobSha(content), content])) });
+  androidGit.client = made.client;
+  return made;
+}

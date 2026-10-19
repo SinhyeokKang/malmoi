@@ -24,7 +24,7 @@ function base(): PullState {
     surfaces: [
       {
         id: "s1", slug: "web", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: true,
-        nestedByPath: { "i18n/en.json": true, "i18n/fr.json": false }, baseLocale: "en", localeCodes: ["en", "fr"],
+        nestedByPath: { "i18n/en.json": true, "i18n/fr.json": false }, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"],
         keys: [
           key("k1", "hello", { en: { value: "Hello" }, fr: { value: "Bonjour" } }),
           key("k2", "bye", { en: { value: "Bye" }, fr: { value: "Salut", description: "fr note" } }),
@@ -32,7 +32,7 @@ function base(): PullState {
       },
       {
         id: "s2", slug: "app", adapterName: "yaml-catalog", pathTemplate: "config/{locale}.yml", nested: null, nestedByPath: null,
-        baseLocale: "en", localeCodes: ["en", "ko"],
+        baseLocale: "en", basePath: null, localeCodes: ["en", "ko"],
         keys: [key("k3", "title", { en: { value: "Title" }, ko: { value: "제목" } })],
       },
     ],

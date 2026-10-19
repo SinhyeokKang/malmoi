@@ -1,5 +1,6 @@
 // ⚠️ **`server-only`를 일부러 붙이지 않았다** — `lib/github.ts`와 같은 이유다(tsx 스모크 스크립트가 프로덕션 경로를 그대로 지난다).
 // 이 파일은 DB를 모른다 — 토큰은 호출부(`lib/repo-host`)가 프로젝트가 참조하는 연결에서 열어 넘긴다.
+import { decodeLocaleFile, type DecodedLocaleFile } from "@/lib/file-encoding";
 import { AppError, logCaught } from "@/lib/failure";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { planConnectionPushAccess, planProjectMeta } from "@/lib/gitlab-connect/access-plan";
@@ -11,7 +12,6 @@ import type { RepoTarget } from "@/lib/repo-host/target";
 
 import {
   buildCommitActions,
-  decodeBlob,
   isLfsPointer,
   nextKeysetQuery,
   parseBranchHead,
@@ -120,10 +120,14 @@ async function readTree(transport: GitLabTransport, repositoryId: string, sha: s
   return query === null ? entries : null;
 }
 
-async function readBlobText(transport: GitLabTransport, repositoryId: string, sha: string): Promise<string> {
-  const text = decodeBlob((await transport.get(projectPath(repositoryId, `repository/blobs/${encodeURIComponent(sha)}`))).body);
-  if (text === null) throw new AppError("unexpected GitLab blob encoding");
-  if (isLfsPointer(text)) throw new AppError("refusing a Git LFS pointer file — the locale file is stored in LFS");
+/**
+ * 로케일 blob 하나 — **`/raw`의 저장 바이트**를 경로별 파일 인코딩으로 판별한다(mobile-strings design §3). JSON blob API(`/repository/blobs/:sha`)는 쓰지 않는다:
+ * UTF-16 파일을 UTF-8(+BOM)로 바꾼 사본을 줘서 편집 0건에도 렌더가 파일 전체를 UTF-8+BOM으로 다시 썼다(apple-strings Q1 결함 D1 — GitLab.com 실측 `size` 182 · content 129바이트).
+ * 크기 대조는 하지 않는다 — 트리 응답에 크기가 없어 호출을 하나 더 해야 한다.
+ */
+async function readBlobText(transport: GitLabTransport, repositoryId: string, sha: string, path: string): Promise<DecodedLocaleFile> {
+  const text = decodeLocaleFile(path, await transport.getRaw(projectPath(repositoryId, `repository/blobs/${encodeURIComponent(sha)}/raw`)));
+  if (isLfsPointer(text.content)) throw new AppError("refusing a Git LFS pointer file — the locale file is stored in LFS");
   return text;
 }
 
@@ -158,7 +162,7 @@ export async function createGitLabClient(target: GitLabTarget, credential: GitLa
       return entries.map(({ path, sha, mode }) => ({ path, sha, mode }));
     },
 
-    getBlobText: (sha) => readBlobText(transport, id, sha),
+    getBlobText: (sha, path) => readBlobText(transport, id, sha, path),
 
     /**
      * 커밋 API 한 번이 트리·커밋·ref 셋을 한다 — `start_sha` = 고정 base, `force: true`(브랜치 유무와 무관한 한 형태 — W0 실측). **첫 외부 쓰기가 이 호출 하나**다.
@@ -273,9 +277,9 @@ export async function openGitLabReader(target: GitLabTarget, credential: GitLabC
       }
     },
 
-    async blob(sha: string): Promise<string | undefined> {
+    async blob(sha: string, path: string) {
       try {
-        return await readBlobText(transport, id, sha);
+        return (await readBlobText(transport, id, sha, path)).content;
       } catch (error) {
         logCaught("gitlab", "blob", error);
         return undefined;

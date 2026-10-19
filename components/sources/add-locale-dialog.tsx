@@ -36,7 +36,7 @@ export type AddOutcome = { kind: "added"; code: string; action: "create" | "revi
 const TYPING_PAUSE_MS = 250;
 /** 한 번에 하나만 열리는 Dialog라 고정 id다 — Select 트리거의 `aria-labelledby`가 같은 파일의 선언을 가리켜야 한다(`combobox-name.test.ts`). */
 const FIELD_ID = "add-locale-code";
-const FIELD_ERRORS = new Set(["invalid-code", "unsupported-locale", "already-active", "locale-collision", "unsafe-path", "path-conflict", "removal-pending"]);
+const FIELD_ERRORS = new Set(["invalid-code", "unsupported-locale", "android-locale-code", "already-active", "locale-collision", "unsafe-path", "path-conflict", "removal-pending"]);
 
 /**
  * **언어 추가 Dialog** (locale-add E1 — 시안 A1–A5). json은 프리셋 + 자유 입력 칸(`Combobox`), Chrome은 지원 목록 `Select`, Inactive 행에서 열면
@@ -139,7 +139,7 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
     const shown = (value: string) => matchesLanguage(value, name(value), typed);
     const previously = inactive.filter(language => shown(language.code)).map(language => ({ value: language.code, label: row(language.code), aside: m.sources.locale.translationCount(language.translated + language.needsReview) }));
     const taken = new Set(inactive.map(language => language.code));
-    const common = presetCodes(presetSeparator(languages.map(language => language.code))).filter(value => !taken.has(value) && shown(value))
+    const common = presetCodes(presetSeparator(languages.map(language => language.code)), adapterName).filter(value => !taken.has(value) && shown(value))
       .map(value => active.has(localeCollisionKey(value)) ? { value, label: row(value), aside: m.sources.locale.added, disabled: true } : { value, label: row(value) });
     // 목록 밖 **코드**만 그대로 쓰라고 권한다 — 이름 조각(`Fren`)에 Use this code가 첫 행이면 Enter가 프리셋 대신 모양 오류를 낸다(R-E1 🟡1).
     if (looksLikeCodeInput(typed) && ![...previously, ...common].some(option => option.value === typed)) groups.push({ options: [{ value: typed, label: <span data-option-code className="min-w-0 truncate">{typed}</span>, aside: m.sources.locale.useCode }] });
@@ -180,7 +180,7 @@ export function AddLocaleDialog({ open, onOpenChange, slug, source, adapterName,
               })}</SelectContent>
             </Select>}
           </FormGroup>
-          : <FormGroup label={m.sources.locale.codeLabel} htmlFor={FIELD_ID} help={m.sources.locale.codeHelp} error={fieldError}>
+          : <FormGroup label={m.sources.locale.codeLabel} htmlFor={FIELD_ID} help={adapterName === "android-strings" ? m.sources.locale.androidCodeHelp : m.sources.locale.codeHelp} error={fieldError}>
             {describe => <Combobox id={FIELD_ID} initialFocus value={query} onValueChange={type} onSelect={choose} groups={groups} readOnly={saving} invalid={fieldError !== undefined}
               placeholder={m.sources.locale.codePlaceholder} listLabel={m.sources.locale.listLabel} aria-describedby={describe()} />}
           </FormGroup>)}
@@ -238,6 +238,7 @@ function fieldText(m: Messages, error: string, code: string, languages: readonly
   switch (error) {
     case "invalid-code": return errors.unreadable;
     case "unsupported-locale": return errors.unsupportedLocale;
+    case "android-locale-code": return errors.androidLocaleCode;
     case "already-active": return errors.alreadyActive(code);
     case "locale-collision": {
       const key = localeCollisionKey(code);

@@ -50,6 +50,8 @@ type TreeEntry = { path: string; sha: string; mode: string };
 type FormatItem = {
   surface: { id: string; slug: string; pathTemplate: string | null; localeChanges?: SurfaceLocaleChanges };
   format: DetectedFormat;
+  /** `format.basePath`가 가리키는 언어 — 그 소스가 쥔 경로에 기준 언어 파일이 basePath로 든다(mobile-strings design §2). */
+  baseLocale: string;
   layout: Adapter["layout"];
 };
 
@@ -77,7 +79,7 @@ export function planProjectLocales(formats: readonly FormatItem[], tree: readonl
   const pathsOf = (item: FormatItem, without: ReadonlySet<string>) => {
     const locales = item.format.locales.filter(code => !without.has(code));
     if (item.layout === "per-locale" && locales.length === 0) return [];
-    return resolveLocalePaths({ ...item.format, locales }, item.layout, treePaths).map(p => p.path);
+    return resolveLocalePaths({ ...item.format, locales }, item.layout, treePaths, item.baseLocale).map(p => p.path);
   };
   const surfaces: SurfaceLocalePlan[] = [];
   for (const item of withRows) {

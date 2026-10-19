@@ -294,3 +294,13 @@ it("legacy ts-dict cancellation omits an unavailable file and returns focus to L
   expect(card().querySelector("[data-card-notice]")!.textContent).toBe(en.sources.locale.cancelAddDone("es", 9));
   await vi.waitFor(() => expect(document.activeElement).toBe(card().querySelector("h2")));
 });
+
+it.each(["preview", "submit"])("#307 Android %s의 기준 언어 거부는 고정 기준 파일을 안내한다", async phase => {
+  if (phase === "preview") mocks.preview.mockResolvedValue({ ok: false, error: "base-locale" });
+  else mocks.remove.mockResolvedValue({ ok: false, error: "base-locale" });
+  await open(detail([row("de")], { connection: { ...connection, adapterName: "android-strings" } }));
+  await openRemove("de");
+  if (phase === "submit") await act(async () => { await user().click(inDialog(en.sources.locale.removeLanguage)!); });
+  expect(dialog()!.querySelector("[data-alert='danger']")!.textContent).toBe("The Android base language is fixed, and values/strings.xml can't be removed. Detach this source and add it again to change the code.");
+  expect(dialog()!.textContent).not.toContain(en.sources.locale.baseReason);
+});

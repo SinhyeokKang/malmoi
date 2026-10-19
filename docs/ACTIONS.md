@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -73,7 +73,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **참조는 `@malmoi-i18n-push-v3`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2" · 생성기의 v3 전환은 2026-10-09 — 아래 "v3"). 이 스텝에는
+⚠️ **참조는 `@malmoi-i18n-push-v4`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2" · 생성기의 v3 전환은 2026-10-09 — 아래 "v3" · v4 전환은 2026-10-20 — 아래 "v4"). 이 스텝에는
 `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
 대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. `main`에는 이제 브랜치
 프로텍션(required check `verify`, 2026-09-18)이 있지만 그것이 보는 것은 **테스트 green**이지 action이
@@ -83,9 +83,9 @@ jobs:
 "action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은
 **가변성**이고, `main`에 닿는 커밋은 그 순간 전 소비자에게 나간다.
 
-**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v3`)를 그 커밋으로
-옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v3`를 새로 끊고 이 문서의 예시를
-바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1·v2가 그렇게 남았다).
+**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v4`)를 그 커밋으로
+옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v5`를 새로 끊고 이 문서의 예시를
+바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1·v2·v3가 그렇게 남았다).
 
 ### v1과 v2 (2026-09-27)
 
@@ -140,7 +140,7 @@ action 호환을 약속하지 않는다. 앱 버전이 올라도 action 태그�
 `permissions: contents: read`도 같은 파일이 센다).
 
 ⚠️ **그 테스트가 이 문서도 읽는다** — 이 문서가 action을 `main`으로 참조하도록 안내하지 않는지, 그리고
-`@malmoi-i18n-push-v3` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
+`@malmoi-i18n-push-v4` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
 가변 참조를 예시로 쓰지 않는다). 위 스니펫의 태그를 고칠 때 그 두 조건이 함께 움직인다.
 
 ⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout` 줄은 그 방어선 밖이다.**
@@ -158,6 +158,10 @@ action 안의 두 판은 `workflow-pins.test.ts`가 기대 SHA로 박는다 — 
 
 ⚠️ **알려진 한계 — 같은 job에서 이 action 앞에 pnpm을 설치하면 그 store가 지워진다**(v1부터 같다). `pnpm/action-setup`이 매번 `~/setup-pnpm`을 새로 깔고 기본 store가 그 아래(`PNPM_HOME`)에 있어서다 — 대상 리포가 같은 job에서 자기 `pnpm/action-setup`(`cache: true`)+install을 먼저 돌면 그 설치가 사라지고, 그 job의 post가 말모이 store를 대상 리포 캐시 키에 저장한다(2026-09-27 실측, v1 태그로도 재현). 이 action은 **별도 job**에 둔다(생성 워크플로가 그 모양이다).
 
+### v4 (모바일 세 포맷 — 2026-10-20, v1.4.7)
+
+**`malmoi-i18n-push-v4`는 v1.4.7 머지의 squash 커밋에 발행된다**(android-strings T5.1 — 머지 직후). **같은 머지부터 온보딩·설정의 워크플로 생성기와 이 문서의 복사 예시가 v4를 안내한다**(`lib/onboarding/workflow.ts`). 태그 발행까지 수 분 동안 새로 생성한 워크플로는 태그가 없어 실패할 수 있다(design 결정 — 감수). v1·v2·v3 리포는 아무것도 안 바뀐다(태그를 옮기지 않았다). v3와 다른 것: **어댑터 넷**(`arb-catalog`·`apple-strings`·`apple-xcstrings`·`android-strings` — v3는 이 이름을 `adapter` 형식 오류로 exit 2), **UTF-16 로케일 파일**(`.strings`)을 바이트 그대로 읽고 보낸다, **Android 표면은 `base-locale`이 필수**다(`values/strings.xml`에 언어 코드가 없다 — 없거나 관측된 `values-*` 코드와 겹치면 red), 그리고 v3 발행 뒤 `main`에 쌓인 CLI 판정(§3 표에서 "현재 코드"로 표시한 행 — `key-shadowed` 등)이 같이 나간다. GitLab CI 원본은 별도 축(`malmoi-i18n-push-gitlab-v3`, T5.7 후속 패치)이다.
+
 ### 표면별 입력과 추가 step
 
 `surface`는 서버에 등록된 slug이며 action 기본값은 `default`다. `path-template`은 등록된 후보를 정확히 고른다.
@@ -171,11 +175,14 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 (`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 틀린 `surface:`는
 그 표면에 저장된 포맷과 맞지 않아 409 `format mismatch`다(없는 slug면 `surface mismatch`) — 한 프로젝트의
 표면은 `pathTemplate`이 겹치지 않고 `checkFormat`이 그것까지 비교한다.
+페이로드의 `format.basePath`(선택)도 같은 비교에 든다 — 기준 언어 파일이 `{locale}` 치환으로 표현되지 않는 포맷(Android `values/strings.xml`)만
+CLI 탐지가 채우고, action 입력은 늘지 않는다(`path-template`이 고른 후보에 딸려 온다). **필드가 없으면 저장값 null과 같다** — 기존 네 포맷과
+옛 action 태그의 CI는 그대로 통과한다. 저장값과 다르면(한쪽에만 있는 경우 포함) 경로 이전과 같은 409 `format mismatch`다.
 `malmoi-i18n-push-v1`(8511d37)·`-v2`·`-v3` 모두 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
 
 <!-- additional-surface-step -->
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -194,8 +201,8 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | `project` | **항상.** `push-token`이 정한 프로젝트의 slug와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5). 토큰이 먼저 프로젝트를 정하고 이 값은 그 뒤에 대조된다 |
 | `target` | 로케일·소스가 **하위 디렉터리**에만 있을 때(모노레포). 기본은 `github.workspace`. `git rev-parse`도 이 경로에서 돈다 |
 | `github-token` | **항상 권장.** 없으면 열린 번역 PR 경고 스텝이 통째로 빠진다 — 실패도 경고도 없이 조용히. ⚠️ **2026-09-30(nightly-sync)부터 이 스텝은 안내일 뿐이다** — 열린 PR이 있으면 서버가 이 토큰과 무관하게 적재를 보류한다(§3 `open-pr`). 빠지는 것은 push **전의** 한 줄뿐이다 |
-| `adapter` | **말모이가 생성하는 YAML은 확정한 어댑터를 항상 명시한다.** 자동 탐지·수동 지정 여부와 무관하게 결과 화면과 설정 화면이 같은 값을 내므로, 복사 후 CI의 탐지 순위가 저장된 포맷을 바꾸지 않는다. **한 리포에 포맷이 둘이면 필수.** `ts-dict`도 2026-09-14부터 자동 탐지 후보에 오르지만(ARCHITECTURE §1.9 판정 ③) **1순위는 `detectCandidatesAcross`의 순위가 정한다** — bugshot-2는 `_locales` 4키가 크롬 버킷이라 `ts-dict` 903키보다 언제나 앞선다 → `adapter: ts-dict`. 명시가 없으면 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
-| `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04). ⚠️ **말모이 설정 화면에서 기준 언어를 바꾸면 이 값도 함께 고쳐야 한다** (6b-3): 화면은 "선언"만 저장하고 실제 전환은 **이 값을 든 다음 push**가 한다 — 안 고치면 CI는 계속 옛 base를 보내 통과하고(409가 아니다) 변경이 **영영 일어나지 않는다.** 그래서 대기 중에는 설정 화면의 워크플로 YAML이 이 줄을 무조건 박아 낸다. ⚠️ **2026-09-14부터 말모이가 내는 YAML은 대기가 아닐 때도 이 줄을 든다** — 온보딩 ③에서 탐지 1순위가 아닌 기준 언어를 고를 수 있고, 그때 이 줄이 없으면 CI가 1순위를 보내 `format mismatch` 409가 된다. 결과 화면과 설정 화면이 같은 값을 낸다 |
+| `adapter` | **말모이가 생성하는 YAML은 확정한 어댑터를 항상 명시한다.** 자동 탐지·수동 지정 여부와 무관하게 결과 화면과 설정 화면이 같은 값을 내므로, 복사 후 CI의 탐지 순위가 저장된 포맷을 바꾸지 않는다. **한 리포에 포맷이 둘이면 필수.** `ts-dict`도 2026-09-14부터 자동 탐지 후보에 오르지만(ARCHITECTURE §1.9 판정 ③) **1순위는 `detectCandidatesAcross`의 순위가 정한다** — bugshot-2는 `_locales` 4키가 크롬 버킷이라 `ts-dict` 903키보다 언제나 앞선다 → `adapter: ts-dict`. 명시가 없으면 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다. **허용값**은 `chrome-locales`·`json-catalog`·`yaml-catalog`·`code-dict`·`ts-dict`·`arb-catalog`(Flutter ARB, 2026-10-19)·`apple-strings`(Apple `.strings`, 2026-10-19)·`apple-xcstrings`(Apple String Catalog, 2026-10-19)·`android-strings`(Android `strings.xml`, 2026-10-19)이고 목록 밖은 exit 2다(아래 §3). ⚠️ **`arb-catalog`·`apple-strings`·`apple-xcstrings`·`android-strings`는 그 어댑터를 든 action 태그부터 쓸 수 있다** — action은 자기 체크아웃의 CLI를 돌므로 그 전 태그(`@malmoi-i18n-push-v3`)는 이 값을 모른다 |
+| `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04). ⚠️ **말모이 설정 화면에서 기준 언어를 바꾸면 이 값도 함께 고쳐야 한다** (6b-3): 화면은 "선언"만 저장하고 실제 전환은 **이 값을 든 다음 push**가 한다 — 안 고치면 CI는 계속 옛 base를 보내 통과하고(409가 아니다) 변경이 **영영 일어나지 않는다.** 그래서 대기 중에는 설정 화면의 워크플로 YAML이 이 줄을 무조건 박아 낸다. ⚠️ **2026-09-14부터 말모이가 내는 YAML은 대기가 아닐 때도 이 줄을 든다** — 온보딩 ③에서 탐지 1순위가 아닌 기준 언어를 고를 수 있고, 그때 이 줄이 없으면 CI가 1순위를 보내 `format mismatch` 409가 된다. 결과 화면과 설정 화면이 같은 값을 낸다. ⚠️ **`android-strings`는 `en`이 있어도 필수다** (2026-10-19, android-strings) — 기준 언어 파일 `values/strings.xml`에는 언어 코드가 없어 CLI가 추정할 근거가 없다. 그래서 CLI가 Android 표면에서 이 값 없이는 거부하고(exit 1, 아래 §3), 말모이가 내는 YAML(GitHub·GitLab)은 온보딩에서 입력받은 코드를 박는다. Android 표면은 기준 언어 변경을 받지 않으므로(ARCHITECTURE §1.46) 위의 "함께 고친다"가 일어나지 않는다 |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
 | `api-url` | 기본값이 `https://mal-moi.com`이라 호스팅 서비스에선 보통 생략. **self-hosted 설치의 워크플로엔 항상 있고 필수다**(아래 "self-hosted 설치").  **Malmoi가 생성한 워크플로는 프로덕션이 아닌 앱(dev·로컬)에서 만들면 그 origin을 이 입력으로 박는다**(`workflowApiUrl`).  ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측). ⚠️ **https여야 한다** — 요청이 push 토큰 원문을 싣는다. `http:`는 루프백(`localhost`·`127.0.0.1`·`[::1]`)만 받고 그 밖이면 스텝이 exit 2로 red다 |
 
@@ -204,7 +211,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 값은 그 설치의 `MALMOI_ORIGIN`(HTTPS origin, 끝 슬래시 없음)이다. action의 기본값이 호스팅 서비스(`https://mal-moi.com`)라 이 줄이 빠지면 **push 토큰 원문이 우리 서비스로 간다**(그쪽은 401로 거절하지만 토큰은 이미 남의 서버에 도착했다). 그래서 설치 화면이 낸 파일을 그대로 쓰고, 손으로 옮겨 적을 때도 이 줄을 지우지 않는다. 설치의 판정이 무효(`invalid`)면 생성기가 줄을 생략하는 대신 워크플로 렌더를 거부한다(`workflowApiUrl`).
 
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -216,7 +223,7 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **공급망 의존이 하나 있다.** 위 `uses:`는 설치가 아니라 **상류 리포의 불변 태그**를 가리킨다 — self-hosted 설치의 대상 리포 CI도 우리 `malmoi-i18n-push-v3` 태그의 코드를 자기 러너에서 실행하고, 그 스텝에 그 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어간다. 설치를 고정 버전으로 두어도 이 태그는 설치 버전과 무관하게 움직일 수 있다(태그를 옮기는 것이 action 릴리스다 — 위). 이 의존을 받아들일 수 없는 운영자는 상류 리포를 포크해 `uses:`를 그 포크의 커밋 SHA에 고정할 수 있다 — 포크는 상류의 계약 변경을 자동으로 따라가지 않는다. 조직 허용 목록에 넣을 이름은 위 넷 그대로다.
+⚠️ **공급망 의존이 하나 있다.** 위 `uses:`는 설치가 아니라 **상류 리포의 불변 태그**를 가리킨다 — self-hosted 설치의 대상 리포 CI도 우리 `malmoi-i18n-push-v4` 태그의 코드를 자기 러너에서 실행하고, 그 스텝에 그 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어간다. 설치를 고정 버전으로 두어도 이 태그는 설치 버전과 무관하게 움직일 수 있다(태그를 옮기는 것이 action 릴리스다 — 위). 이 의존을 받아들일 수 없는 운영자는 상류 리포를 포크해 `uses:`를 그 포크의 커밋 SHA에 고정할 수 있다 — 포크는 상류의 계약 변경을 자동으로 따라가지 않는다. 조직 허용 목록에 넣을 이름은 위 넷 그대로다.
 
 훅 기반 리포의 예 (실측 형태 — ARCHITECTURE §4.0):
 
@@ -239,7 +246,7 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
 
 ## 3. 무엇이 red를 만드는가
 
-⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다** — 새 워크플로는 v3지만(§2 "v3"), v2와 달라지는 행은 해당 행에 v3 판정으로, 발행된 태그에 아직 없는 현재 코드의 CLI 판정도 해당 행에 따로 표시한다. 서버 판정은 배포된 서버를 따른다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
+⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다** — 새 워크플로는 v4지만(§2 "v3"·"v4" — "현재 코드" 행은 v4에서 나간다), v2와 달라지는 행은 해당 행에 v3 판정으로, 발행된 태그에 아직 없는 현재 코드의 CLI 판정도 해당 행에 따로 표시한다. 서버 판정은 배포된 서버를 따른다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
 
 **적재 실패만 red다.** 스캔 실패는 경고이고 exit 0이다 — 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이라, 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 
@@ -247,12 +254,13 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
 | **로케일 파일을 읽지 못했다**(권한·I/O 오류) | **red** (exit 1 — **서버까지 가지 않는다**, `prepare-failed`로 보고). 빈 파일로 읽으면 그 파일의 키가 페이로드에서 빠져 말모이가 삭제로 읽는다 — 부분 페이로드를 보내지 않는다 (2026-09-27, audit #7). ⚠️ **구 태그 `@malmoi-i18n-push-v1`에는 이 판정이 없다** — action이 그 태그의 `scripts/push-local.ts`를 clone해 돌리므로, v2로 옮기기(워크플로 재복사) 전까지 그 리포는 여전히 부분 페이로드를 보낸다 |
-| **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다.** YAML의 점 키·중첩 충돌(`a.b: …` + `a: { b: … }`)도 2026-09-24부터 같은 red다. `ts-dict`·`code-dict`는 코드 객체의 같은 키(점 키·중첩 충돌 포함)를 **`duplicate-property` 경고**로 알린다 — JS 의미대로 마지막 값이 적재되고 malmoi가 그 자리를 고치므로 잃는 값이 없다. CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍히고 **green이다**. `chrome-locales`는 중복 감지가 없어(JSON 파서가 접는다) 마지막 값만 남는다: **green이다** |
+| **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다.** YAML의 점 키·중첩 충돌(`a.b: …` + `a: { b: … }`)도 2026-09-24부터 같은 red다. `ts-dict`·`code-dict`는 코드 객체의 같은 키(점 키·중첩 충돌 포함)를 **`duplicate-property` 경고**로 알린다 — JS 의미대로 마지막 값이 적재되고 malmoi가 그 자리를 고치므로 잃는 값이 없다. CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍히고 **green이다**. `apple-strings`(Apple `.strings`, 2026-10-19)도 같은 키의 엔트리 둘을 **`duplicate-property` 경고**로 알린다 — Apple 파서처럼 나중 값이 적재되고 malmoi는 그 리터럴만 고치며 가려진 앞 줄은 그대로 둔다: **green이다**(그 어댑터를 든 action 태그부터). `apple-xcstrings`(String Catalog)의 같은 JSON 이름(키·언어 셀·필드 — 옛 Xcode가 남긴 사본)도 **`duplicate-property` 경고**이고 **green이다** — Xcode처럼 **앞의** 사본이 적재되고 malmoi도 그 사본만 고친다(가려진 뒤 사본은 Xcode가 다음 저장에서 지운다). 키 단위 가려진 사본이 객체가 아니면(`null`·문자열) Xcode도 못 읽는 파일이라 **red** `parse-failed`다. `chrome-locales`는 중복 감지가 없어(JSON 파서가 접는다) 마지막 값만 남는다: **green이다** |
 | `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`**(앱에서 제거한 소스면 `surface removed`) · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 다섯 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 넷과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | `api-url`이 https가 아니다(루프백 `http:` 제외) | **red** (exit 2 — 토큰을 평문으로 보내기 전에 멈춘다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
+| **`android-strings`인데 `base-locale`이 없거나, 번역 파일에 이미 있는 코드다** | **red** (exit 1 — **서버까지 가지 않는다**, 2026-10-19). 로그는 `a base locale is required (--base / base-locale): <basePath> has no locale code in its path` 또는 `--base / base-locale must be a valid locale code distinct from the observed translation locales: <code>`다. `values/strings.xml`의 실제 언어 코드를 넣는다 — 앱에 등록된 기준 언어와 다르면 그다음은 `format mismatch` 409다 |
 | **말모이에 아직 안 보낸 번역 편집이 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pending-edits","pendingCount":N,…}` (2026-09-18, sync-edit-protection). 미전달 편집이 하나라도 있으면 **프로젝트 전체 적재를 보류**해 편집이 리포 값에 덮이지 않게 한다. 이 run의 새 키·삭제·로케일 변경도 앱에 **안 들어갔다**. 풀리는 길: 번역자가 Publish하고 열린 말모이 PR이 있으면 머지하거나 닫은 뒤 **현재 head의 새 push 또는 야간 동기화**로 최신 리포 상태 받기, 또는 OWNER가 앱의 `[Sync]`에서 편집 폐기를 승인하기. ⚠️ **Publish로 안 나가는 편집이 있다** (#129) — 언어 파일이나 키 자리가 리포에 없으면(코드에서 지운 base 키 포함) 그 편집은 보류되어 Publish 뒤에도 `deferred`가 이어진다. 그때 주된 해법은 **파일·키를 리포에 되돌려 놓기**이고, 아니면 폐기 승인 Sync, 되돌릴 기준이 있는 셀이면 OWNER의 `Revert to last sent`다. 경고 줄이 이 순서로 함께 말한다(응답 필드는 그대로다 — 서버는 어느 편집이 보류인지 모른다). ⚠️ **red가 아니다** — 남의 리포 CI를 앱 상태로 실패시키지 않는다. 새 CLI는 `::warning title=Malmoi import deferred::…` 한 줄을 더 낸다(구 태그 `@malmoi-i18n-push-v1`은 본문만 찍는다 — 그래도 exit 0이라 안전하다. 성공 본문은 `"status":"applied"`로 시작한다) |
 | **말모이 번역 PR(`malmoi-i18n/sync-<project>`)이 아직 열려 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"open-pr",…}`(`pendingCount` 없음, 2026-09-30 nightly-sync). 미전달 편집이 0이어도 그렇다 — Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전에 적재하면 그 PR의 번역이 DB에서 옛 리포 값으로 덮인다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: **그 PR을 머지하거나 닫는다** — 그 뒤 **현재 head의 새 push나 야간 동기화가 최신 리포 상태를 받는다.** ⚠️ **이 job을 다시 돌리지 않는다** — PR이 머지된 뒤 옛 커밋의 job을 다시 돌리면 그 커밋의 옛 값이 방금 머지된 번역을 strict로 덮는다(야간이 이미 더 새 커밋을 적재했으면 409 `stale commit`이다). 닫은(머지 안 한) PR은 열린 PR로 세지 않는다. ⚠️ **GitHub App 설치나 리포 고정(`installationId`·`repositoryId`)이 없는 프로젝트엔 이 게이트가 없다** — PR을 낼 수 없으니 열린 PR도 없다. v2 CLI는 경고 없이 본문만 찍는다(§2 "v3") |
 | **말모이가 열린 PR을 확인하지 못했다**(GitHub 오류·설치 토큰 실패·마감 초과) | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pr-check-failed",…}`. ⚠️ **"PR 없음"으로 읽지 않는다**(fail-closed) — 그렇게 읽으면 GitHub 장애 동안 열린 PR의 번역이 덮인다. 대가로 **CI 적재가 GitHub 가용성에 묶인다.** 할 일: 조회가 가능해지면 **현재 head의 새 push 또는 야간 동기화**로 최신 리포 상태를 받는다. 계속되면 말모이 설정의 GitHub 연결(설치·리포 선택)을 본다 |
@@ -293,7 +301,7 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
 
 ⚠️ **401부터 푼다 — 토큰이 틀리면 400·409를 아예 못 본다.** JSON 파싱과 zod 검증이 **인증 뒤에** 있다(`app/api/push/route.ts` — `maxDuration = 60`인 공개 엔드포인트라 무효 토큰 하나로 1446키 페이로드를 파싱시키고 zod `issues`로 스키마 구조까지 받아 가게 두지 않는다). 그래서 페이로드가 아무리 깨져 있어도 토큰이 안 맞으면 응답은 401이다 — 진단을 페이로드에서 시작하면 엉뚱한 곳을 판다.
 
-응답 본문이 run 로그에 **800자**까지 찍힌다(`lib/cli/push-response.ts`의 `reportPushResponse`가 든 `slice(0, 800)` — `scripts/push-local.ts`는 부르기만 한다 — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때) 또는 `{"error":"body too large"}`(본문 **4,500,000바이트** 초과 — Vercel 함수의 요청 본문 상한 이하로 잡은 값이다. 플랫폼 상한이 2진 4.5 MiB라면 그 사이의 페이로드는 여기서 걸린다), 409는 다섯이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 넷은 판정 순서대로 slug 오배송(`expected/got`) · 표면 불일치(`surface mismatch`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 리포 트리를 읽지 않아(GitHub 호출은 열린 PR 조회 하나뿐이다) 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+응답 본문이 run 로그에 **800자**까지 찍힌다(`lib/cli/push-response.ts`의 `reportPushResponse`가 든 `slice(0, 800)` — `scripts/push-local.ts`는 부르기만 한다 — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때) 또는 `{"error":"body too large"}`(본문 **4,500,000바이트** 초과 — Vercel 함수의 요청 본문 상한 이하로 잡은 값이다. 플랫폼 상한이 2진 4.5 MiB라면 그 사이의 페이로드는 여기서 걸린다), 409는 다섯이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 넷은 판정 순서대로 slug 오배송(`expected/got`) · 표면 불일치(`surface mismatch`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3. **`basePath`는 값이 있을 때만** 양쪽에 실린다 — 기준 언어 경로만 다른 불일치가 같은 두 줄로 보이지 않게 하려는 것이고, 기존 포맷의 본문 모양은 그대로다) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 리포 트리를 읽지 않아(GitHub 호출은 열린 PR 조회 하나뿐이다) 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 실행 식별자 — 같은 실행이 두 줄이 되지 않게 한다 (2026-09-20)
 

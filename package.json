@@ -67,6 +67,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@vercel/analytics": "2.0.1",
     "@vercel/blob": "2.8.0",
+    "@xml-tools/parser": "1.0.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.37.0",
@@ -93,5 +94,5 @@
     "yaml": "2.9.0",
     "zod": "^4.5.4"
   },
-  "version": "1.4.6"
+  "version": "1.4.7"
 }

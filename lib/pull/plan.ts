@@ -1,6 +1,8 @@
+import { encodeFileContent, type FileEncoding } from "@/lib/file-encoding";
 import { fail } from "@/lib/failure";
 import { compareKeys, isAdapterName, matchGlobPaths } from "@/lib/adapters";
 import type { Adapter, AdapterError, DetectedFormat, LocaleEntry } from "@/lib/adapters";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import { blobSha } from "@/lib/githash";
 import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
@@ -51,6 +53,8 @@ export type ProjectFormatColumns = {
   nested: boolean | null;
   nestedByPath: unknown;
   baseLocale: string | null;
+  /** 기준 언어 경로가 치환이 아닐 때만 값이 있다(mobile-strings design §2). ⚠️ `nestedByPath`와 같은 이유로 optional이 아니다. */
+  basePath: string | null;
 };
 
 /**
@@ -97,6 +101,9 @@ export function formatFromProject(
     ...(cols.nested === null ? {} : { nested: cols.nested }),
     // 파일별 관측값이 있으면 write가 이걸 먼저 본다 (ARCHITECTURE §1.35).
     ...((byPath) => (byPath === undefined ? {} : { nestedByPath: byPath }))(nestedByPathOf(cols.nestedByPath)),
+    // null을 필드 부재로 접는다 — 기존 표면의 포맷 모양이 그대로다. basePath 파일에는 언어 코드가 없어 그 언어(기준 언어)를 `templateLocale`로 싣는다 —
+    // 빠지면 어댑터 read가 기준 파일을 못 읽어 렌더의 B3.4(원본이 기준 키 집합을 정한다)가 원본에 없는 DB 키를 기준 파일에 넣는다(android-strings design §2.3).
+    ...(cols.basePath === null ? {} : { basePath: cols.basePath, templateLocale: baseLocale }),
   };
 }
 
@@ -113,11 +120,15 @@ export type LocalePath = {
  *
  * @param layout 어댑터의 배치 방식. **`DetectedFormat`이 아니라 `Adapter`가 든 값이라** 별도 인자다.
  * @param treePaths base 트리의 파일 경로 목록. `multi-locale`의 글롭 매칭 대상이다.
+ * @param baseLocale 기준 언어. `format.basePath`가 있으면 그 언어만 basePath로 간다(mobile-strings design §2) — 빠지면 Publish가
+ *   없던 `values-en/`에 새 파일을 만든다. `null`은 기준 언어를 아직 모르는 행(첫 적재 전)이고 전부 치환이다 — basePath는 기준 언어와
+ *   같은 적재(`applyPush`)가 쓰므로 둘 중 하나만 있는 행은 없다.
  */
 export function resolveLocalePaths(
   format: DetectedFormat,
   layout: Adapter["layout"],
   treePaths: readonly string[],
+  baseLocale: string | null,
 ): LocalePath[] {
   if (layout === "per-locale") {
     // 치환 토큰이 없으면 모든 로케일이 **같은 경로**를 받는다 — 트리에 같은 path가 여러 번 실려
@@ -140,7 +151,8 @@ export function resolveLocalePaths(
       if (!isLocaleShaped(locale)) {
         fail(`stored locale code is not locale-shaped: ${locale}`);
       }
-      const path = format.pathTemplate.replaceAll("{locale}", locale);
+      // basePath도 DB에 저장된 외부 값이라 push 스키마와 여기, 두 경계에서 막는다 — 아래 `isPathSafeRepoPath`가 둘째다(POSTMORTEM 2026-09-09).
+      const path = locale === baseLocale ? baseFilePath(format, locale) : format.pathTemplate.replaceAll("{locale}", locale);
       // 트리에 없는 파일을 만드는 것은 유지하고, **템플릿의 디렉터리 밖으로 나가는 것만** 막는다.
       if (!isPathSafeRepoPath(path)) {
         fail(`the resolved path leaves the repository: ${path}`);
@@ -238,10 +250,10 @@ export function buildWriteEntries(
  * 트리 페이로드로 가므로 이 둘은 blob SHA에 영향이 없다.
  */
 export type RenderError = AdapterError & { locale?: string };
-export type LocalFile = { path: string; content: string | null; locale?: string; errors?: RenderError[] };
+export type LocalFile = { encoding?: FileEncoding; path: string; content: string | null; locale?: string; errors?: RenderError[] };
 export type TreeBlob = { path: string; sha: string };
 /** 파일 하나의 변경. **delete는 명시적 의도에서만 나온다** — 렌더 출력에서 빠졌다는 이유로 만들지 않는다(locale-add design §2). */
-export type PullChange = { kind: "upsert"; path: string; content: string } | { kind: "delete"; path: string };
+export type PullChange = { kind: "upsert"; path: string; content: string; encoding?: FileEncoding } | { kind: "delete"; path: string };
 
 /**
  * base 트리와 비교해 실제로 바뀐 파일만 고른다. **전부 같으면 빈 배열이고, 그때 GitHub API를
@@ -263,8 +275,8 @@ export function planPullChanges(
     // `null`이어도 그 경로는 렌더가 맡는다 — 같은 경로의 삭제 의도는 계획 오류다.
     rendered.add(file.path);
     if (file.content === null) continue;
-    if (baseShas.get(file.path) === blobSha(file.content)) continue;
-    changes.push({ kind: "upsert", path: file.path, content: file.content });
+    if (baseShas.get(file.path) === blobSha(encodeFileContent(file.content, file.encoding ?? "utf-8"))) continue;
+    changes.push({ kind: "upsert", path: file.path, content: file.content, ...(file.encoding === undefined ? {} : { encoding: file.encoding }) });
   }
   const deleting = new Set<string>();
   for (const path of deletes) {

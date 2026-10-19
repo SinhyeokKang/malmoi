@@ -13,7 +13,7 @@ Abre **Fuentes** desde la navegación del proyecto. Cada fila muestra el estado 
 ## Añade fuentes {#add-sources}
 
 1. Elige **Añadir fuentes** y luego elige los archivos detectados o introduce una ruta compatible. Elige **Siguiente**; sigue desactivado hasta que selecciones al menos un archivo nuevo.
-2. En **Elige los idiomas base**, elige el **Idioma base** de cada fuente nueva y luego **Añadir las fuentes seleccionadas**. Elige **Atrás** para cambiar tu selección; tus elecciones se conservan. Un archivo puede fallar mientras se añaden los demás, así que revisa cada resultado. Si no se añade nada, te quedas en este paso con tu selección intacta.
+2. En **Elige los idiomas base**, elige el **Idioma base** de cada fuente nueva y luego **Añadir las fuentes seleccionadas**. En una fuente de Android, escribe en su lugar el código de idioma de `values/strings.xml`. Elige **Atrás** para cambiar tu selección; tus elecciones se conservan. Un archivo puede fallar mientras se añaden los demás, así que revisa cada resultado. Si no se añade nada, te quedas en este paso con tu selección intacta.
 3. Sigue el enlace **Configuración** del resultado y copia los pasos de la nueva fuente del workflow generado en el archivo de workflow de tu repositorio (en GitLab, copia el archivo de CI completo y reemplaza con él los jobs de Malmoi en `.gitlab-ci.yml`). Añadir fuentes no edita ese archivo automáticamente.
 
 ![El paso Elige los idiomas base de Añadir fuentes, con la ruta de una fuente y sus idiomas como opciones de radio, el paso 2 de 2 y los botones Atrás y Añadir las fuentes seleccionadas](/guide/add-sources.webp "Elige el idioma base de cada fuente nueva y luego añade las fuentes seleccionadas.")
@@ -39,6 +39,8 @@ Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de arc
 3. Ejecuta el workflow. Si hay ediciones sin enviar, la actualización se retiene. Publica o resuelve esas ediciones y ejecuta el workflow de nuevo.
 
 No puedes elegir como idioma base uno que se está añadiendo o quitando. Consulta [Qué bloquea otras tareas](languages.md#blocks).
+
+El idioma base de una fuente de Android no se puede cambiar: los detalles de la fuente lo muestran sin menú. Si el código que introdujiste es incorrecto, desvincula la fuente y vuelve a añadirla con el código correcto.
 
 [Sincronizar desde el repositorio](../sync/revert.md#resync) reemplaza los valores, pero conserva el idioma base actual.
 

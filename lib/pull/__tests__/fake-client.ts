@@ -1,3 +1,4 @@
+import type { FileEncoding } from "@/lib/file-encoding";
 import { createHash } from "node:crypto";
 import type { GitClient, GitTreeBlob } from "../client";
 
@@ -34,6 +35,7 @@ export type FakeGitOptions = {
   tree?: Record<string, (GitTreeBlob & { mode?: string })[]>;
   /** blob SHA → 내용. 주입되지 않은 SHA를 요구하면 던진다. */
   blobs?: Record<string, string>;
+  blobEncodings?: Record<string, FileEncoding>;
   /** 열린 PR. 없으면 `null`이 되어 생성 경로를 태운다. `title`은 마커 유무 판정의 입력이다. */
   openPr?: { url: string; number: number; title: string; base?: string; body?: string };
   /**
@@ -80,7 +82,7 @@ export function createFakeGitClient(opts: FakeGitOptions): {
       record("getBlobText", [sha]);
       const text = opts.blobs?.[sha];
       if (text === undefined) throw new Error(`fake에 주입되지 않은 blob: ${sha}`);
-      return text;
+      return { content: text, ...(opts.blobEncodings?.[sha] === undefined ? {} : { encoding: opts.blobEncodings[sha] }) };
     },
     async publishSnapshot(input) {
       record("publishSnapshot", [input]);

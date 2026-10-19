@@ -1,4 +1,5 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
+import { baseFilePath } from "../adapters/base-path";
 import { dominantFieldOrder } from "../adapters/chrome-locales";
 import { stripBom } from "../adapters/json-style";
 import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
@@ -63,23 +64,36 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     configFiles: [...input.configFiles],
     ms: 0,
   };
+  if (input.commit !== undefined) survey.commit = input.commit;
   if (input.failure !== undefined) {
     survey.failure = input.failure;
     survey.ms = Date.now() - started;
     return survey;
   }
 
+  if (input.decodeErrors?.length) {
+    survey.decodeErrors = input.decodeErrors;
+  }
   const probe = (p: string) => input.files.get(p);
   const found = candidatesFor(input.paths, probe);
   survey.candidates = found.map(toCandidate);
-  const chosen = found[0];
+  const chosen = found[0] === undefined ? undefined : withSurveyBase(found[0]);
   if (chosen === undefined) {
     survey.ms = Date.now() - started;
     return survey;
   }
-  survey.chosen = toCandidate(chosen);
+  survey.chosen = toCandidate(found[0]!);
 
   const adapter = adapterFor(chosen);
+  const selectedPaths = adapter.layout === "per-locale"
+    ? chosen.locales.map(locale => surveyLocalePath(chosen, locale, baseOf(chosen, chosen.locales)))
+    : matchGlobPaths(chosen.pathTemplate, input.paths);
+  // 선택된 카탈로그가 손상됐으면 부분 키 집합으로 왕복 성공을 보고하지 않는다.
+  if (input.decodeErrors?.some(error => selectedPaths.includes(error.path))) {
+    survey.failure = `parse-failed: ${input.decodeErrors.filter(error => selectedPaths.includes(error.path)).map(error => error.path).join(", ")}`;
+    survey.ms = Date.now() - started;
+    return survey;
+  }
   const adapterFiles = filesForFormat(chosen, input);
 
   let read1: ReadResult;
@@ -145,10 +159,31 @@ const toCandidate = (f: DetectedFormat): SurveyCandidate => ({
   adapter: f.adapter,
   pathTemplate: f.pathTemplate,
   locales: [...f.locales].sort(compareKeys),
+  ...(f.basePath === undefined ? {} : { basePath: f.basePath }),
 });
 
-/** push와 **같은 판정**을 쓴다 — 여기서 다르게 고르면 측정이 프로덕션과 다른 base를 잰다. */
-const pickBase = pickBaseLocale;
+/**
+ * 기준 언어 파일이 템플릿 밖(`basePath`, Android `values/`)이면 그 코드가 리포에 없다 — 프로덕션은 사람이 넣는다(`--base`·온보딩 입력). 측정은
+ * 리포의 언어와 겹치지 않는 코드 하나(en, 겹치면 und)를 기준 언어로 둔다. 코드 이름은 지표에 영향이 없고, 겹치면 `values-en/`이 기준 파일로 잘못 읽힌다.
+ */
+function withSurveyBase(f: DetectedFormat): DetectedFormat {
+  if (f.basePath === undefined) return f;
+  const code = f.locales.includes("en") ? "und" : "en";
+  return { ...f, locales: [...f.locales, code], templateLocale: code };
+}
+
+/** push와 **같은 판정**을 쓴다 — 여기서 다르게 고르면 측정이 프로덕션과 다른 base를 잰다. basePath 포맷은 `withSurveyBase`가 정한 코드다. */
+function baseOf(fmt: DetectedFormat, locales: readonly string[]): string | undefined {
+  return fmt.basePath !== undefined && fmt.templateLocale !== undefined ? fmt.templateLocale : pickBaseLocale(locales);
+}
+
+/**
+ * per-locale 파일 경로 — 기준 언어만 `basePath`로 갈린다(mobile-strings design §2). 프로덕션의 `selectLocaleFiles`·`resolveLocalePaths`와
+ * 같은 분기다: 측정 층이 기준 언어 파일을 치환으로 찾으면 Android의 `values/strings.xml`을 못 읽어 지표가 조용히 빈다.
+ */
+export function surveyLocalePath(fmt: DetectedFormat, locale: string, base: string | undefined): string {
+  return locale === base ? baseFilePath(fmt, locale) : fmt.pathTemplate.replaceAll("{locale}", locale);
+}
 
 /** 1순위 후보가 가리키는 파일들을 골라온다. `layout`에 따라 규칙이 다르다. */
 function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] {
@@ -156,8 +191,10 @@ function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] 
   // 축은 `layout`이다 — 프로덕션(`push/payload.ts`·`pull/plan.ts`)과 같은 판정. 템플릿 문자열을
   // 보고 갈랐던 것은 그 축의 복제였다 (2026-09-04 audit #19).
   if (adapterFor(fmt).layout === "per-locale") {
+    // 기준 언어는 아래 `pickBase(read1 로케일)`과 같은 판정이다 — read 전이라 탐지 로케일로 고른다.
+    const base = baseOf(fmt, fmt.locales);
     for (const locale of [...fmt.locales].sort(compareKeys)) {
-      const path = fmt.pathTemplate.replaceAll("{locale}", locale);
+      const path = surveyLocalePath(fmt, locale, base);
       const content = input.files.get(path);
       if (content !== undefined) out.push({ path, content });
     }
@@ -277,9 +314,9 @@ function observeShape(
   // 재생성 writer가 내는 JSON만 재는 지표다. 이름 목록이 아니라 `writeStrategy`로 가른다 —
   // 재생성 어댑터가 늘면 이름 목록은 조용히 낡는다 (2026-09-04 audit #19).
   if (adapterFor(fmt).writeStrategy !== "regenerate") return;
-  const base = pickBase(localeNames);
+  const base = baseOf(fmt, localeNames);
   if (base === undefined) return;
-  const pathOf = (locale: string) => fmt.pathTemplate.replaceAll("{locale}", locale);
+  const pathOf = (locale: string) => surveyLocalePath(fmt, locale, base);
 
   const baseText = input.files.get(pathOf(base));
   if (baseText === undefined) return;
@@ -377,7 +414,7 @@ function applyRoundtrip(
   if (read1.locales.length === 0 || originals.length === 0) return;
   const adapter = adapterFor(fmt);
   const localeNames = read1.locales.map((l) => l.locale);
-  const base = pickBase(localeNames);
+  const base = baseOf(fmt, localeNames);
   /**
    * ⚠️ **프로덕션이 write에 넘기는 입력을 그대로 만든다** (launch-readiness L4.6). push는 base 파일의 키만 base 순서
    * (`order` → `sortIndex`)로 DB에 올리고 빈 값은 적재하지 않는다(`apply.ts`). pull은 그 키로 로케일마다 행을 만들어
@@ -395,7 +432,7 @@ function applyRoundtrip(
    */
   const paths: LocalePath[] = layout === "multi-locale"
     ? originals.map((f) => ({ path: f.path }))
-    : localeNames.map((locale) => ({ locale, path: fmt.pathTemplate.replaceAll("{locale}", locale) }));
+    : localeNames.map((locale) => ({ locale, path: surveyLocalePath(fmt, locale, base) }));
   const render = (renderKeys: readonly RenderKey[], current: ReadonlyMap<string, string>) =>
     renderLocaleFiles(fmt, layout, paths, renderKeys, base ?? "", current);
   const contents = (files: ReturnType<typeof render>): Map<string, string> =>
@@ -435,7 +472,7 @@ function applyRoundtrip(
       ? originals[0]?.path
       : base === undefined
         ? undefined
-        : fmt.pathTemplate.replaceAll("{locale}", base);
+        : baseFilePath(fmt, base);
   const before = basePath === undefined ? undefined : input.files.get(basePath);
   const after = basePath === undefined ? undefined : write1.get(basePath);
   if (before !== undefined && after !== undefined) {
@@ -463,7 +500,7 @@ function applyRoundtrip(
     const others: number[] = [];
     for (const locale of localeNames) {
       if (locale === base) continue;
-      const p = fmt.pathTemplate.replaceAll("{locale}", locale);
+      const p = surveyLocalePath(fmt, locale, base);
       const src = input.files.get(p);
       const out = write1.get(p);
       if (src !== undefined && out !== undefined) others.push(roundtripDiffRatio(src, out));
@@ -474,7 +511,7 @@ function applyRoundtrip(
 
 /**
  * read 결과 → push가 DB에 남겼을 키. **base 파일의 키만**이고(`buildPushPayload`), 빈 값은 셀이 없다(`apply.ts`가
- * `""`를 적재하지 않는다). base가 없으면 첫 로케일을 base로 본다(`pickBase`와 같은 폴백).
+ * `""`를 적재하지 않는다). base가 없으면 첫 로케일을 base로 본다(`baseOf`와 같은 폴백).
  */
 function renderKeysOf(read: ReadResult, base: string | undefined): RenderKey[] {
   const baseLocale = read.locales.find((l) => l.locale === base) ?? read.locales[0];

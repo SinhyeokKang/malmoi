@@ -5,7 +5,7 @@ import { createFakeGitClient } from "./fake-client";
 it("publishes both surfaces from one snapshot and rejects overlap before writes", async () => {
   const project = { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null };
   const surface = (id: string, pathTemplate: string) => ({
-    id, slug: id, adapterName: "json-catalog", pathTemplate, baseLocale: "en", nested: false, nestedByPath: null,
+    id, slug: id, adapterName: "json-catalog", pathTemplate, baseLocale: "en", basePath: null, nested: false, nestedByPath: null,
     localeCodes: ["en"], keys: [{ key: "hello", sourceText: id, orphaned: false, cells: { en: { value: id } } }],
   });
   async function run(reverse: boolean, overlap = false) {
@@ -36,7 +36,7 @@ it("does not publish or advance the watermark when the second surface blob fails
   const saveLastPulledAt = vi.fn();
   await expect(runPull({ loadState: async () => ({
     project: { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null },
-    surfaces: ["a", "b"].map(id => ({ id, slug: id, adapterName: "json-catalog", pathTemplate: `${id}/{locale}.json`, baseLocale: "en", nested: false, nestedByPath: null,
+    surfaces: ["a", "b"].map(id => ({ id, slug: id, adapterName: "json-catalog", pathTemplate: `${id}/{locale}.json`, baseLocale: "en", basePath: null, nested: false, nestedByPath: null,
       localeCodes: ["en"], keys: [{ key: "hello", sourceText: id, orphaned: false, cells: { en: { value: id } } }] })), maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [],
   }), createClient: async () => client, saveLastPulledAt, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-demo" })).rejects.toThrow();
   expect(calls.filter(c => c.method === "publishSnapshot" || c.method === "resetSyncBranch" || c.method === "createPr")).toEqual([]);

@@ -552,3 +552,25 @@ it("지역 코드 막대는 고정 폭이 아니라 최소 폭이고 코드 글�
   }
   expect(meters[1]?.textContent).toBe("bn-BD100%");
 });
+it.each([
+  ["arb-catalog", "lucide-file-braces-corner"],
+  ["json-catalog", "lucide-file-braces-corner"],
+  ["yaml-catalog", "lucide-file-code"],
+  ["apple-strings", "lucide-file-code"],
+  // String Catalog는 JSON 파일이다.
+  ["apple-xcstrings", "lucide-file-braces-corner"],
+] as const)("행 아이콘은 파일 종류를 따른다 — %s", async (adapterName, glyph) => {
+  const connected = { ...data, sources: [{ ...source, connection: { adapterName, pathTemplate: "lib/l10n/app_{locale}.arb", format: null } }] };
+  await render(<SourcesScreen slug="p" role="OWNER" data={connected} adapters={[]} now={new Date()} />);
+  const icon = document.querySelector("[data-source-row] svg")!;
+  expect(icon.getAttribute("class")).toContain(glyph);
+});
+
+it.each([true, false])("Sources 목록 basePath 유무에 맞춰 경로 줄을 표시한다: %s", async android => {
+  const pathTemplate = android ? "app/src/main/res/values-{locale}/strings.xml" : "i18n/{locale}.json";
+  const basePath = "app/src/main/res/values/strings.xml";
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, connection: { adapterName: android ? "android-strings" : "json-catalog", format: "Format", pathTemplate, ...(android ? { basePath } : {}) } }] }} adapters={[]} now={new Date()} />);
+  const path = document.querySelector('[data-source-content] .wrap-anywhere')!;
+  expect(path.textContent).toBe(android ? basePath + pathTemplate : pathTemplate);
+  expect(path.querySelectorAll("br")).toHaveLength(android ? 1 : 0);
+});
