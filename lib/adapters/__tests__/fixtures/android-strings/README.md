@@ -44,7 +44,7 @@ DB 값 그대로 앱에 보인다는 증거다. 만든 스크립트: `.scratch/a
 - 규칙: 태그는 걷고(텍스트만 잇는다), 엔티티·CDATA는 풀고, 줄 끝은 XML 파서가 LF로 바꾼다. 그 글에서 `\n`·`\t`·`\uXXXX`(정확히 4자리)만 풀되 바로 앞이 `\\`의
   둘째 글자면 그대로 두고, 마지막에 `\\`를 `\`로 줄인다. **공백 접기·따옴표 구간·`\'`·`\"`·`\@`·`\?` 이스케이프가 없다** — `"[Remote] %1$s"`는 따옴표째,
   `Don\'t`는 역슬래시째다. 서로게이트 쌍 `\uD83D\uDE00`은 이모지다(aapt2는 버린다).
-- 어댑터는 템플릿이 `composeResources/` 아래면 이 의미로 읽고 쓴다(`dialectOf`). 값의 태그는 원문 그대로 남는다(Compose 화면에는 보이지 않는다).
+- 어댑터는 `values-{locale}/strings.xml` **바로 앞** 리소스 디렉터리가 `composeResources`일 때만 이 의미로 읽고 쓴다(`dialectOf` — 조상 이름이 아니다. `composeResources/app/src/main/res/`는 aapt2다, 리뷰 R2-1). 값의 태그는 원문 그대로, Compose가 본 글의 같은 자리에 남는다(Compose 화면에는 보이지 않는다 — 그대로 둔 `\n`·`\uXXXX` 매치 안의 태그도 제자리다, 리뷰 R2-2).
 
 ## `formatted` 속성 — 결정 18 (fix1, 리뷰 Y1)
 

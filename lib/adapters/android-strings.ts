@@ -301,7 +301,10 @@ function interpretCompose(pieces: readonly Piece[]): Out[] | undefined {
   }, []);
 }
 
-/** 정규식 치환 + 경계 대응표 — `map[k]`는 원문 경계 k(글자 k 앞)가 결과에서 놓이는 경계다. 치환된 구간 안의 경계는 치환 결과 뒤로 간다. */
+/**
+ * 정규식 치환 + 경계 대응표 — `map[k]`는 원문 경계 k(글자 k 앞)가 결과에서 놓이는 경계다. 치환된 구간 안의 경계는 치환 결과 뒤로 가고, **그대로 둔 매치
+ * 안의 경계는 제자리다**(리뷰 R2-2 — `\\` 뒤 `\n`을 그대로 둘 때 끝으로 밀면 `\<b>n</b>`의 태그가 `n` 뒤로 간다).
+ */
 function replaceMapped(text: string, pattern: RegExp, replace: (match: string, at: number) => string): { text: string; map: number[] } {
   const map: number[] = [];
   let out = "";
@@ -313,7 +316,7 @@ function replaceMapped(text: string, pattern: RegExp, replace: (match: string, a
     }
     const rep = replace(m[0], m.index);
     map[pos] = out.length;
-    for (let k = pos + 1; k < pos + m[0].length; k += 1) map[k] = out.length + rep.length;
+    for (let k = pos + 1; k < pos + m[0].length; k += 1) map[k] = out.length + (rep === m[0] ? k - pos : rep.length);
     out += rep;
     pos += m[0].length;
   }
@@ -467,9 +470,12 @@ export function tokenizeAndroid(text: string, dialect: AndroidDialect = "aapt2")
  */
 export type AndroidDialect = "aapt2" | "compose";
 
-/** 템플릿 → 값 의미. 디렉터리 이름이 곧 신호다(`ANDROID_STRINGS_FILE`). */
+/**
+ * 템플릿 → 값 의미. **`values-{locale}/strings.xml` 바로 앞 리소스 디렉터리**가 신호다(`ANDROID_STRINGS_FILE`의 마지막 세그먼트) — 조상 이름이 아니다.
+ * `composeResources/app/src/main/res/`는 aapt2가 컴파일하는 `res`다(리뷰 R2-1). 탐지·read·write·create가 이 판정 하나를 쓴다.
+ */
 export function dialectOf(pathTemplate: string): AndroidDialect {
-  return /(^|\/)composeResources\//.test(pathTemplate) ? "compose" : "aapt2";
+  return ANDROID_STRINGS_FILE.exec(pathTemplate)?.[1]?.endsWith("composeResources/") === true ? "compose" : "aapt2";
 }
 
 /** 원문 내용 하나 → 값(결정 14). 담을 수 없는 원문(잘못된 `\u`·XML 오류)이면 `undefined`. */
@@ -479,7 +485,9 @@ export function decodeAndroidValue(raw: string, dialect: AndroidDialect = "aapt2
 }
 
 const NAME = /[A-Za-z_][\w:.-]*/y;
-const SPACE = /\s*/y;
+// XML의 공백(S)은 이 넷뿐이다 — `\s`는 NBSP·줄 구분자까지 받아, 파서가 거부하는 태그가 값 판정을 지나 키 없는 파일 실패가 된다(리뷰 R2-3).
+const SPACE = /[ \t\r\n]*/y;
+const EQ = /[ \t\r\n]*=[ \t\r\n]*/y;
 
 /**
  * `value[i]`의 `<`에서 태그 하나를 읽는다. **XML 문법 그대로**만 받는다(리뷰 R2) — 이름, 시작 태그의 속성(따옴표 값, `<` 없음, `&`는 완전한 엔티티·문자
@@ -510,7 +518,7 @@ function readTag(value: string, i: number): { raw: string; name: string; kind: "
     const attr = at(NAME, space.end);
     if (attr === undefined || seen.has(attr.text)) return undefined;
     seen.add(attr.text);
-    const eq = at(/\s*=\s*/y, attr.end);
+    const eq = at(EQ, attr.end);
     if (eq === undefined) return undefined;
     const quote = value[eq.end];
     if (quote !== '"' && quote !== "'") return undefined;
