@@ -28,7 +28,7 @@ Use this skill when the user asks to run the migrated source command `roundtrip`
 
 ## 전제 조건 (착수 전 확인 — 하나라도 어긋나면 중단)
 
-1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `malmoi-i18n/sync` 삭제, DB 원복). 현재 GitHub 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
+1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `malmoi-i18n/sync` 삭제, DB 원복). 현재 GitHub 폐기용 리포 **넷**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭), `i18n-arb-check`(arb-catalog — Flutter gen-l10n, en 템플릿 4칸 + ko·ja 2칸, `@key`가 키 앞 · 키 없는 `"@section_home": {}` · ko 미번역 키의 `@key` · ja `@@locale` 없음 · ICU plural. 검증 뒤 `flutter gen-l10n` — Flutter는 brew cask). 재생성 어댑터를 고쳤으면 **뒤의 둘**(json-catalog면 `i18n-order-check`, arb-catalog면 `i18n-arb-check`)이다 — 앞의 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
    GitLab 폐기용 리포: **`ox501501/malmoi-gitlab-test`**. GitLab 검증은 이 리포만 쓰고, 실행 전 기본 브랜치·머지 설정·열린 MR·브랜치 목록을 필요한 필드만 기록한다.
 2. **`Project` 행이 있고 호스트별 연결이 유효하다.** `repoTargetOf(project)`가 `ok`여야 한다. GitHub는 설치·고정 리포 id, GitLab은 숫자 `repositoryId`와 `gitlabConnectionId`가 필요하며 참조된 PAT가 유효해야 한다. GitLab에 GitHub 설치를 요구하지 않는다.
 3. **대상 Project와 활성 Surface의 소유권을 확인한다.** 한 리포에 Project가 여럿 있어도 sync branch는
