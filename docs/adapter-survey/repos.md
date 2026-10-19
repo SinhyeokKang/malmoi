@@ -328,6 +328,8 @@ ARB는 계획(9)보다 많다. Flutter 앱이 Android·Apple 쪽으로도 뽑혀
 
 M1이 원문을 보고 정했지만 정답이 갈릴 수 있는 것들이다. 검수에서 바뀌면 판정 JSON을 고치고 재측정한다.
 
+**2026-10-20 사용자 검수 — 아래 9건 모두 현재 판정 유지**(NewPipe composeResources `alsoValid` 포함, Meshtastic은 android-strings 결정 2로 해소). 판정 JSON 변경·재측정 없음.
+
 - **mit-cml/appinventor-sources** — 모바일 파일은 Settings.bundle 1항목뿐이다. 정답을 블록 편집기 `messages_{locale}.json`(json-catalog, 21로케일)으로 뒀다. `null`(`no-catalog`)일 수도 있다.
 - **OMARVII/Shotnix** — 정답 `Localization/Localizable.xcstrings`. `scripts/localize.py`가 `Localization/translations/*.json`(자체 형식)으로 덮어쓰므로 사람이 실제로 고치는 곳은 그 JSON일 수 있다.
 - **TelegramMessenger/Telegram-iOS** — 정답 `Telegram/Telegram-iOS/{locale}.lproj/Localizable.strings`(en 하나, 13,386항목 — 번역은 서버 배포), 19로케일 `InfoPlist.strings`는 `alsoValid`.
