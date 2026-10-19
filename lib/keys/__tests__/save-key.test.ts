@@ -162,3 +162,30 @@ it("수술적 base도 폴백 원문이 비어 있으면 비우기를 거부한�
   expect(planKeySave(current({ en: "Published" }), [{ localeCode: "en", value: "" }], surface))
     .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["en"] });
 });
+
+describe("Android 인라인 태그 저장 판정", () => {
+  const surface = { adapterName: "android-strings", writeStrategy: "surgical", sourceText: "<b>Source</b>", baseLocale: "en" } as const;
+  it("한 셀이라도 태그를 깨면 정상 셀까지 거부한다", () => {
+    expect(planKeySave(current({ en: null, ko: null, fr: null }), [
+      { localeCode: "ko", value: "<b>정상</b>" }, { localeCode: "fr", value: "Cassé" },
+    ], surface)).toEqual({ ok: false, error: "inline-tags-mismatch", localeCodes: ["fr"] });
+  });
+  it("기준 셀은 검사하지 않고 같은 저장의 기준 변경을 비교 기준으로 삼는다", () => {
+    const changes = [{ localeCode: "ko", value: "<i>새 번역</i>" }, { localeCode: "en", value: "<i>New</i>" }];
+    expect(planKeySave(current({ en: "<b>Old</b>", ko: null }), changes, surface)).toEqual({ ok: true, writes: changes });
+    expect(planKeySave(current({ en: null }), [{ localeCode: "en", value: "<broken>" }], surface).ok).toBe(true);
+  });
+  it("현재 기준 셀을 읽고 빈 기준 셀은 sourceText로 폴백한다", () => {
+    expect(planKeySave(current({ en: "<i>Current</i>", ko: null }), [{ localeCode: "ko", value: "<b>옛 태그</b>" }], surface))
+      .toEqual({ ok: false, error: "inline-tags-mismatch", localeCodes: ["ko"] });
+    expect(planKeySave(current({ en: "", ko: null }), [{ localeCode: "ko", value: "<b>번역</b>" }], surface).ok).toBe(true);
+  });
+  it("다른 포맷은 같은 태그 변경을 허용한다", () => {
+    expect(planKeySave(current({ ko: null }), [{ localeCode: "ko", value: "번역" }], { ...surface, adapterName: "apple-strings" }).ok).toBe(true);
+  });
+  it("기존 불일치 no-op은 쓰지 않으며 빈값 거부가 우선한다", () => {
+    expect(planKeySave(current({ ko: "옛 번역" }), [{ localeCode: "ko", value: "옛 번역" }], surface)).toEqual({ ok: true, writes: [] });
+    expect(planKeySave(current({ ko: "옛 번역" }), [{ localeCode: "ko", value: " " }], surface))
+      .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["ko"] });
+  });
+});
