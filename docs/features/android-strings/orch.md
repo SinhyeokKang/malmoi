@@ -30,6 +30,10 @@
 20. **`android/security-certification-resources`의 새 단일 언어 후보는 보고 대상 오탐이다** — 지휘자 판단(apple 결정 12와 같은 기준: 정답을 빼앗지 않았고 `-`가 후보로 바뀐 것). spec 완료 조건 3 문구는 D2가 apple과 같이 맞춘다.
 21. **쓸 수 있는가(`androidValueTags` 통과)는 모든 Android 셀 저장에 건다 — 기준 언어 셀 포함. 태그 불일치 비교(결정 13·15)는 비기준 셀에만 건다** — 지휘자 판단(E-fix2 질문). 저장은 됐는데 Publish가 `write-parse-failed`로 막히는 값을 만들지 않는 것이 결정 17의 요지다. 기준 셀 편집도 검사하지 않으면 깨진 기준이 생겨 결정 15 폴백이 상시 경로가 된다. 결정 15의 목적(영구 저장 불가 없음)은 글자 `<`를 `&lt;`로 쓰면 저장된다는 것으로 지킨다.
 22. **태그 속성 값의 XML 금지 문자(U+0001·U+FFFE 등)는 이번에 막지 않고 알려진 한계로 적는다** — 지휘자 판단(A-fix2 범위 밖 메모). 우리 파서·재파싱은 통과하고 aapt2가 거부할 수 있는 드문 입력이다. 결과는 대상 리포 빌드 red로 드러나 조용한 손실이 아니다. D2가 ARCHITECTURE 한계 목록에 적는다.
+23. **Android 소스의 라벨·slug는 모듈 디렉터리다(`app`·`settings`·`stripe-core`·`shared`) — `src/<set>`·`res`·`composeResources`를 건너뛴다** — 지휘자 판단(RBC Y2). design §3.2가 "Android 소스 둘을 같은 라벨로 접지 않는다"를 요구했고, slug는 URL·워크플로 job·MCP의 영구 식별자라 prod에 Android 표면이 없는 지금만 바꿀 수 있다. 다른 어댑터 라벨은 그대로다.
+24. **Sources 상세의 Android 기준 언어는 읽기 전용 값 + 안내 문장이다(언어 선택·저장 컨트롤을 두지 않는다)** — 지휘자 판단(RBC 결정 2). design §2.4가 변경을 거부로 정했으니 언제나 실패하는 컨트롤을 두지 않는다. 서버 거부(`android-base-fixed`)는 그대로 그물로 남긴다.
+25. **`values/`와 `values-<기준 코드>/`가 함께 있는 리포는 관측 코드 중복 거부를 유지한다** — 지휘자 판단(RBC W1, stripe 3ds2sdk). 같은 코드 행 둘을 허용하는 변경은 범위가 크다. 거부 문구(Y3)가 그 상황을 말하게 한다.
+26. **RBC Y1(서버 적재가 `values-car`·`values-de-land`를 언어로 싣는다)은 B가 같은 push 안에서 고친다** — 지휘자 판단. A 영역 결함이지만 B가 R3로 같은 경로(`confirm.ts`·`lib/import/**`)를 소유 중이라 겹침이 없다. Y5(Android 코드 술어 손 사본)는 C가 잎 모듈로 옮겨 어댑터와 공유한다.
 
 ## 배치
 
@@ -78,3 +82,5 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **A-fix2 완료** — `322b5716` test · `f29723ba` fix(R2-1 방언은 `values-*` 바로 앞 리소스 디렉터리로 · R2-2 Compose 치환하지 않은 매치의 경계를 제자리로, 두 방언 태그 왕복 2,000값 생성 테스트 · R2-3 태그 공백 = XML S만, NBSP 태그는 키 붙은 `write-parse-failed`). `gate: ok` 첫 실행(17164 + 격리 940). 재측정 생략(세 변경 모두 1순위·metrics를 못 움직인다 — 코퍼스의 compose 템플릿이 전부 `composeResources/`로 끝난다). 지휘자가 diff 확인 후 재리뷰 없이 로컬 dev cherry-pick. 결정 22. A 터미널 retain.
 
 - **E-fix2 완료** — `6bec5b58` test · `7a7d0145` fix(저장 판정이 A의 `androidValueTags`를 쓴다 — 결정 17·21, 결정 15 갱신) · `c78fdd01` test(옛 잘못된 기준 값은 DB에 직접 심는다). `gate: ok`(17154 + 격리 938). cherry-pick 때 A-fix2와 `android-strings-publish.integration.ts`가 충돌 — 지휘자는 풀지 않고 abort, E-fix3 `ctx_bfebfe3db39b`(E 터미널 재사용 — rebase 후 두 의도 모두 보존).
+- **RBC 완료** — 🔴0 · 🟡5(Y1 서버 적재가 Android 비언어 한정자를 언어로 · Y2 Android 라벨·slug가 전부 `res` · Y3 `androidInvalid` 문구가 화면에 없는 목록을 가리킨다 · Y4 basePath 표시·응답 테스트 0, `DISPLAY_ONLY` 낡음, 재추가 시나리오가 DB 행에서 멈춤 · Y5 C의 Android 코드 술어가 손 사본) · ⚪8. R3 아홉 경로 모두 닫힘, Y3(A 리뷰) 닫힘, 병합 없음 위반 없음. 사본 `handoffs/review-BC.md`. RBC 해제. 결정 23–26.
+
