@@ -7,6 +7,18 @@
 MCP로 대체한 실물 단계 · App 설치 범위)는 apple-strings tasks 머리와 같다.
 design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(design §3.2).
 
+**apple-strings 런에서 넘어온 것(2026-10-19, `docs/features/apple-strings/orch.md`)** — 인테이크 때 배치 계획에 반영한다:
+- **Android가 이겨야 할 리포 둘** — 모바일 코퍼스 `jesther-ai/open-u60-pro`·`rosuH/EasyWatermark`는 정답이 Android인데 apple-strings 뒤 1순위가 실제 iOS 카탈로그(`.strings`)다(apple 결정 12 — 보고 대상).
+  T3.4 재측정에서 이 둘의 1순위가 Android 정답으로 바뀌는지 본다. 기준선은 apple-xcstrings 뒤 커밋된 `docs/adapter-survey/baseline/`이다.
+- **완료 조건 3의 문구가 완화됐다**(apple 결정 12) — "정답을 빼앗지 않는다. `-`·오탐이 새 후보로 바뀐 것은 보고 대상". 이 스펙의 같은 조건도 같은 기준으로 판정한다.
+- **리뷰가 잡은 결함 부류**(apple R·R2·RX): 플랫폼 파서와 다른 이스케이프 해석(키까지 틀리게 적재 — `aapt2`로 채록한 기대값을 쓴다) · CRLF·EOF 삽입 바이트 · 같은 offset 두 번 쓰기 ·
+  DB 행에서 멈춘 시나리오 · 강등 분기를 안 밟는 `detectFormats` 테스트 · 가려진 중복 사본의 자료형 · 큰 파일 하나가 탐지 전체를 `resource-limit`으로 만듦(apple 결정 16 — 크기를 아는 씨앗만 건너뛴다).
+  Flutter 셸 강등(`isFlutterShell`, `lib/adapters/index.ts`)이 `android/`에도 걸려야 하는지 T3.1에서 정한다.
+- **중복 키는 플랫폼 의미 + `duplicate-property` 경고가 선례다**(apple 결정 10·14) — T3.1의 "중복 `name`(`duplicate-key`)"을 착수 전에 다시 판정한다(대상 CI가 영구 red가 되는지 코퍼스로 본다).
+- **언어 추가·제거는 빌드 설정 등록을 개발자 몫으로 문서화했다**(apple 결정 13 — Xcode `project.pbxproj`). Android는 `values-<qualifier>/`가 자동으로 잡히지만 `resConfigs`·`localeFilters`로 좁힌 앱은 같은 부류다.
+- **GitLab 로케일 blob은 `/raw`로 읽는다**(POSTMORTEM 2026-10-19) — 호스트 가짜에 새 엔드포인트를 더하면 실제 응답을 채록해 변환을 흉내 낸다.
+- 실물은 이번에도 MCP로 프로젝트·언어 작업을 했다. Q 워커 하나를 GitHub·GitLab·후속 포맷 왕복에 재사용했다(컨텍스트 여유).
+
 ## 3. Android (`android-strings`)
 
 - `basePath` 컬럼·배선은 **mobile-strings** M2가 든다 — 2026-10-19 dev에 들어갔다(dev DB 적용, prod는 T5.6). 아래는 그 위의 Android 작업이다.
