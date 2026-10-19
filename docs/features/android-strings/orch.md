@@ -66,3 +66,5 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 
 - **A·E 로컬 dev 통합(push 보류 — 결정 19)** — A 3커밋 + E 4커밋 cherry-pick(`18bee163..6afc8253`), main `pnpm gate` → `gate: ok`. 로그인 KV 점 애니메이션 수정(`1129b2f3` fix · `7a01da6f` DESIGN — 사용자 별도 요청, 지휘자가 직접 TDD)도 같은 로컬 dev에 있다.
 - 2파 시작(A-fix1과 병렬 — B·C는 `lib/adapters/**`·`detect.ts:21` 주석을 건드리지 않는다): B `ctx_821a3d946c2e`(`android-B`, codex gpt-6-astra medium — R3 공급 고리·Y3 포함) · C `ctx_beed5b8fe6c1`(`android-C`, codex gpt-6-astra medium).
+- B 질문 셋(소유 표 밖 진입점 4파일 · 자기 테스트 기대값 정정 · MCP는 새 인자 없이 기존 `baseLocale` 필드 재사용) — 모두 지휘자 승인.
+- **C 완료** — `e64e4f7d` test · `bdc438c4` feat(Android 프리셋 `r` 철자·레거시 표 · `judgeAdd` 거부 · 웹·MCP 진입점). 대상 214 · 격리 67 · typecheck green. ⚠️ 워커 gate 두 번 `FAILED at test` — 무관한 `app/__tests__/seo-metadata.test.ts` 홈 메타데이터 5초 타임아웃(5018ms, 워커 셋 동시 부하). 지휘자가 C 워크트리에서 그 파일만 단독 실행 → 14/14 green. 통합 게이트로 최종 판정. C 터미널 retain.
