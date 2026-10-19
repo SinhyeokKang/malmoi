@@ -299,7 +299,8 @@ ARB는 계획(9)보다 많다. Flutter 앱이 Android·Apple 쪽으로도 뽑혀
    **정답 카탈로그가 UTF-16인 리포는 0개이고 6개 모두 부속 파일이다**:
    Hammerspoon(`Pods/Sparkle` 35) · gnachman/iTerm2(`ThirdParty/Sparkle.framework` 64 + CoreParse 1) · wanderingstan/Lifeslice(Sparkle 사본·템플릿 98) ·
    ResearchKit(`samples/ORKCatalog` 41) · TelegramMessenger/Telegram-iOS(`third-party/libjxl` 1) · Alinto/sope(템플릿 1).
-   지금 survey는 M3 전이라 NUL이 든 파일을 건너뛴다. 이 수는 survey가 아니라 위 바이트 검사로 셌다.
+   이 수는 survey가 아니라 위 바이트 검사로 셌다(M1 당시 survey는 NUL이 든 파일을 건너뛰었다). M3 뒤 같은 SHA로 241파일을 디코드하면 219파일이
+   바이트까지 왕복하고, 22파일(Lifeslice)은 UTF-16이 아니라 바이너리 plist(`bplist00`)라 명시 실패한다 — NUL 비율 판별이 바이너리도 후보로 셌다.
 2. **`Base.lproj/Localizable.strings` 리포 1개** — ResearchKit(`samples/ORKCatalog/…/Base.lproj/Localizable.strings`, 샘플 앱).
    `Base.lproj`에 다른 테이블이 있는 리포까지 세면 4개다(Hammerspoon·Lifeslice — Sparkle 사본 · openfoodfacts/smooth-app — `InfoPlist.strings`).
 3. **xcstrings 원문 셀 없는 키 21.7%** — xcstrings 97개 파일(10개 리포, `sourceLanguage`는 전부 `en`)의 키 10,237개 중 2,218개가
@@ -322,6 +323,19 @@ ARB는 계획(9)보다 많다. Flutter 앱이 Android·Apple 쪽으로도 뽑혀
   설정(eros_fe `jsons/`) · 애니메이션(Telegram `Animations/`) · 테스트 응답(stripe `androidTest/resources`) · 공지(butler `motd/`) ·
   문서 사이트 데이터(CodenameOne `scripts/video-builder`·`docs/website`) · 벤더 워크플로(pixez `plugins/rhttp/.forgejo/workflows`) ·
   자체 덮어쓰기 형식(Shotnix `Localization/translations/` — 키→{언어:값} 다국어 객체).
+
+### 검수 대기 판정 (기능 `/merge` 전 사용자 검수 — android-strings T5.6)
+
+M1이 원문을 보고 정했지만 정답이 갈릴 수 있는 것들이다. 검수에서 바뀌면 판정 JSON을 고치고 재측정한다.
+
+- **mit-cml/appinventor-sources** — 모바일 파일은 Settings.bundle 1항목뿐이다. 정답을 블록 편집기 `messages_{locale}.json`(json-catalog, 21로케일)으로 뒀다. `null`(`no-catalog`)일 수도 있다.
+- **OMARVII/Shotnix** — 정답 `Localization/Localizable.xcstrings`. `scripts/localize.py`가 `Localization/translations/*.json`(자체 형식)으로 덮어쓰므로 사람이 실제로 고치는 곳은 그 JSON일 수 있다.
+- **TelegramMessenger/Telegram-iOS** — 정답 `Telegram/Telegram-iOS/{locale}.lproj/Localizable.strings`(en 하나, 13,386항목 — 번역은 서버 배포), 19로케일 `InfoPlist.strings`는 `alsoValid`.
+- **meshtastic/Meshtastic-Android** — 정답이 `composeResources/values-{locale}/strings.xml`이다. Android 어댑터가 이 경로를 범위에 넣을지는 android-strings T3.4 전에 정한다.
+- **대표가 애매한 멀티모듈** — stripe/stripe-android(`paymentsheet/res`, alsoValid 10) · d4rken-org/butler(`app`, alsoValid 13) · pass-with-high-score/universal-installer(`app` — 문자열은 tv·core가 더 많다) ·
+  didi/DoKit(`Android/dokit`, alsoValid 5) · gnachman/iTerm2(5,020키 `xcstrings/Localizable.xcstrings`, XIB별 xcstrings 73개 중 alsoValid 2) · objective-see/LuLu(같은 꼴).
+- **codenameone/CodenameOne** — `vendored-only`(Zooz 결제 SDK 번들 + base만 있는 호환 샘플).
+- **deckerst/aves** — 정답 ARB, Android values(57로케일 · 9문자열 — 위젯·바로가기)는 `alsoValid`.
 
 ### 실행
 
