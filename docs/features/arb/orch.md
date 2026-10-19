@@ -40,3 +40,5 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 - **결정 10: 비-base 파일에서 그 언어 번역이 없는 키의 `@key`는 키가 살아 있으면(orphaned 아님) 원본 바이트 그대로 남긴다** (2026-10-19 사용자). design §2 규칙 그대로면 첫 Publish가 fluffychat `@key` 5,251 · smooth-app 2,574개를 지운다(Weblate류가 전 언어에 복제). 버리는 것은 orphaned·표면에 없는 키의 `@key`뿐이다. design §2·ARCHITECTURE §1.37 문구는 D2가 고친다.
 - **결정 11: 첫 Publish의 그 밖 정규화(빈 줄 제거 · 혼합 들여쓰기 통일 · 비-base를 base 키 순서로 · 끝 개행 · 빈 값 제거)는 허용한다** — 지휘자 판단(json-catalog 등 기존 재생성 어댑터가 이미 하는 표현 정규화와 같은 부류이고, 셀 밖 의미 변화가 없다). spec 완료 조건 1의 문구는 D2가 고친다.
 - A-fix1 `ctx_6ece85c04583`(A 터미널 재사용, 결정 10) ∥ R `ctx_af0c96c3bcc9`(codex gpt-6-astra medium, A의 첫 세 커밋만, 결정 10·11은 결함으로 치지 않게 알림).
+- **R 완료** — 🔴0 · 🟡5(R1 `l10n.yaml` 대상이 probe 상한 밖이면 탈락 · R2 `en_gb.arb`가 `gb`로 갈림 · R3 `template-arb-file` 기준 언어 미구현 · R4 비-base 정렬이 `@@*` 상대 순서를 뒤집음 · R5 확정→적재→언어 추가·제거→Publish 시나리오 부재) · ⚪(`contract.ts` 표에 비문자열 원본 보존 예외). 병합 없음 위반 없음, 기존 129리포 SHA·1순위·metrics 일치 재확인. 사본 `handoffs/review-A.md`. R 해제.
+- **결정 12: R이 "사용자 결정"으로 올린 셋(R2·R3·R4)은 계획대로 구현한다** — 지휘자 판단(리뷰 권고도 같고, design §2·raw 코드 정책이 이미 답한다 — 범위 축소가 아니다). A-fix2 브리프 `brief-A-fix2.md`, fix1 완료 뒤 보낸다.
