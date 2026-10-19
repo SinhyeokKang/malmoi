@@ -662,7 +662,10 @@ function insertions(
     if (order !== undefined) placed.push({ order, at: before?.at ?? "end", indent });
   }
 
-  const edits: Edit[] = [...groups].map(([at, lines]) => ({ at, end: at, text: lines.map((l) => `${eol}${l}`).join("") }));
+  // 한 offset에는 편집 하나다 — 닫는 태그가 마지막 요소와 같은 줄이면 꼬리 자리가 그 요소 뒤 자리와 같다. 앞 키 뒤 줄이 먼저, 꼬리 줄이 나중이다
+  // (POSTMORTEM 2026-09-16 · apple-strings 리뷰 Y2 — 같은 offset의 편집 둘은 정렬이 입력 순서에 기대 결과가 갈렸다).
+  const at = new Map<number, string>([...groups].map(([offset, lines]) => [offset, lines.map((l) => `${eol}${l}`).join("")]));
+  const edits: Edit[] = [];
   if (tail.length > 0) {
     const { root } = parsed;
     if (root.selfClose !== undefined) {
@@ -671,10 +674,11 @@ function insertions(
       const close = root.closeTag!.start;
       const lineStart = text.lastIndexOf("\n", close - 1) + 1;
       // 닫는 태그가 제 줄에 있으면 그 줄 앞에 줄로 넣고, 아니면(한 줄 파일) 닫는 태그 바로 앞에 줄을 연다.
-      if (lineStart > 0 && /^[ \t]*$/.test(text.slice(lineStart, close))) edits.push({ at: lineStart, end: lineStart, text: tail.map((l) => `${l}${eol}`).join("") });
-      else edits.push({ at: close, end: close, text: `${tail.map((l) => `${eol}${l}`).join("")}${eol}` });
+      if (lineStart > 0 && /^[ \t]*$/.test(text.slice(lineStart, close))) at.set(lineStart, (at.get(lineStart) ?? "") + tail.map((l) => `${l}${eol}`).join(""));
+      else at.set(close, `${at.get(close) ?? ""}${tail.map((l) => `${eol}${l}`).join("")}${eol}`);
     }
   }
+  edits.push(...[...at].map(([offset, insert]) => ({ at: offset, end: offset, text: insert })));
   return edits;
 }
 

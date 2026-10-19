@@ -398,6 +398,15 @@ describe("write — 비기준 파일의 누락 키 삽입 (design §2.1)", () =>
     expect(writeOne("ko", first, [{ key: "a", message: "가", order: 0 }]).content).toBe(first);
   });
 
+  it("닫는 태그가 마지막 요소와 같은 줄이어도 앞 키 뒤 줄이 먼저, 앞 키 없는 줄이 `</resources>` 바로 앞이다 — 같은 offset을 두 번 쓰지 않는다", () => {
+    const one = '<resources>\n    <string name="a">가</string></resources>\n';
+    const entries = [{ key: "z", message: "끝", order: 0 }, { key: "a", message: "가", order: 1 }, { key: "b", message: "나", order: 2 }];
+    const out = writeOne("ko", one, entries).content;
+    expect(out).toBe('<resources>\n    <string name="a">가</string>\n    <string name="b">나</string>\n    <string name="z">끝</string>\n</resources>\n');
+    // 입력 순서와 무관하다.
+    expect(writeOne("ko", one, [...entries].reverse()).content).toBe(out);
+  });
+
   it("basePath 파일(기준 언어)에는 삽입하지 않는다", () => {
     const base = xml('    <string name="a">A</string>');
     const format: DetectedFormat = { adapter: "android-strings", pathTemplate: TEMPLATE, basePath: BASE_PATH, templateLocale: "en", locales: ["en"], currentFiles: [{ path: BASE_PATH, content: base }] };
