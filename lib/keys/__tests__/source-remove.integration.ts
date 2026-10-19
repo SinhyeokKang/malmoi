@@ -11,6 +11,9 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { hashPushToken } from "@/lib/push/token";
 import { countPending } from "@/lib/protection/where";
+import { loadProjectList } from "@/lib/keys/query";
+import type { RemoteTarget } from "@/lib/projects/remote";
+import { formatFromProject } from "@/lib/pull/plan";
 import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
 import { parseLogFilter } from "@/lib/events/filter";
@@ -280,6 +283,19 @@ describe("재추가 = 되살림", () => {
     expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(3);
   });
 
+  /**
+   * ⚠️ **되살림 판정은 basePath를 보지 않는다** (사용자 결정 2026-10-19 — review-B Y3). 같은 경로 템플릿·어댑터면 같은 행(id·slug·이력)을
+   * 잇고, 기준 언어 경로는 지금 리포의 재탐지 값으로 덮는다. basePath만 바뀌었다고 새 행을 만들면 옛 키·번역이 `-2` 행과 갈라진다.
+   */
+  it("basePath만 다르면 같은 행이 되살아나고 새 basePath가 기록된다", async () => {
+    await prisma.translationSurface.update({ where: { id: "s-web" }, data: { basePath: "web/old-base.json" } });
+    expect(await remove("web")).toEqual({ ok: true });
+    const format = { adapter: "json-catalog" as const, pathTemplate: "web/{locale}.json", basePath: "web/en.json", locales: ["en", "ko"] };
+    expect(await readd(snapshot({ format }))).toMatchObject([{ surfaceSlug: "web" }]);
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-web" } })).toMatchObject({ archivedAt: null, slug: "web", basePath: "web/en.json" });
+    expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(2);
+  });
+
   it("되살릴 행의 경로를 다른 활성 소스가 쥐고 있으면 path-conflict이고 되살아나지 않는다", async () => {
     expect(await remove("web")).toEqual({ ok: true });
     await prisma.translationSurface.update({ where: { id: "s-app" }, data: { pathTemplate: "web/{locale}.json" } });
@@ -396,5 +412,34 @@ describe("되살림이 orphan시킨 승인 셀", () => {
     expect(await prisma.stringKey.findUniqueOrThrow({ where: { id: "s-web-hello" } })).toMatchObject({ orphaned: false });
     expect(await prisma.translation.findUniqueOrThrow({ where: { keyId_localeCode: { keyId: "s-web-hello", localeCode: "ko" } } })).toMatchObject({ pendingEditToken: "t1", value: "Edited" });
     expect(await countPending(prisma, "p")).toBe(await tokens());
+  });
+});
+
+/**
+ * **basePath 공급 고리 — 추가 → 표면 행 → pull 포맷 → 원격 상태** (mobile-strings M2 — review-B Y1). 탐지를 지나지 않는 코어
+ * 입력(`AddSurfaceSnapshot.format`)에 basePath를 실어, 표면 생성·strict 첫 적재가 그 값을 쓰고 읽는 쪽 둘이 되살리는지 잰다.
+ * ⚠️ basePath는 치환 경로와 같은 값(`docs/en.json`)이다 — 기존 json 어댑터가 그 파일을 읽어야 첫 적재가 성립한다. 템플릿 밖 경로의
+ * 실물(읽기·Publish 쓰기)은 android-strings T3가 든다.
+ */
+describe("basePath 공급 고리", () => {
+  const format = { adapter: "json-catalog" as const, pathTemplate: "docs/{locale}.json", basePath: "docs/en.json", locales: ["en", "ko"] };
+  const added = () => readd(snapshot({
+    format, paths: ["docs/en.json", "docs/ko.json"], targets: ["docs/en.json", "docs/ko.json"],
+    blobs: new Map([["docs/en.json", '{"hello":"Hello"}'], ["docs/ko.json", '{"hello":"안녕"}']]),
+  }));
+
+  it("새 소스의 표면 행이 basePath를 들고, pull 포맷이 그 값을 되살린다", async () => {
+    expect(await added()).toMatchObject([{ surfaceSlug: "docs", failed: 0 }]);
+    const surface = await prisma.translationSurface.findFirstOrThrow({ where: { projectId: "p", slug: "docs" }, include: { locales: true } });
+    expect(surface.basePath).toBe("docs/en.json");
+    expect(formatFromProject(surface, surface.locales.map((locale) => locale.code)).basePath).toBe("docs/en.json");
+  });
+
+  it("목록의 원격 신호 입력이 그 소스의 basePath·기준 언어를 받는다 — 기준 언어 파일 편집을 셀 재료다", async () => {
+    await added();
+    let targets: readonly RemoteTarget[] = [];
+    await loadProjectList(prisma, "owner", { loadRemote: async (input) => { targets = input; return new Map(); } });
+    expect(targets.flatMap((target) => target.surfaces).find((surface) => surface.pathTemplate === "docs/{locale}.json"))
+      .toMatchObject({ basePath: "docs/en.json", baseLocale: "en" });
   });
 });

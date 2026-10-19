@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  * 기준 언어 전용 자리만 고치면 빠진다. 그래서 치환 자리를 **전수로 고정**하고 갈래마다 이유를 단다. 새 치환 자리가 생기면 이 표에
  * 없어서 red다: 그 자리가 기준 언어를 지나는지 판정해 표에 더한다.
  *
- * - `branched` — 기준 언어가 지나는 자리. 치환 줄(또는 바로 위 두 줄)이 `basePath`를 본다.
+ * - `branched` — 기준 언어가 지나는 자리. 치환 줄(또는 바로 위 두 줄)이 `basePath`를 보고, 그 분기를 재는 동작 테스트가 `BEHAVIOR`에 묶인다.
  * - `change-row` — 언어 변경 행(ADD·REMOVE)만 지난다. 기준 언어는 변경 행이 될 수 없다(`change-plan.ts`가 `base-locale`로 거부하고
  *   추가는 `already-active`다) — 그래서 REMOVE가 `basePath`를 지우는 일이 구조상 없다(`lib/locales/__tests__/base-path.test.ts`가 고정한다).
  * - `adapter` — 어댑터 내부의 탐지 표본·쓰기 원본 조회. 기존 네 어댑터는 `basePath`를 내지 않는다. `basePath`를 내는 어댑터는 자기 판정을 든다.
@@ -43,6 +43,21 @@ const SITES: Record<string, { count: number; kind: Kind }> = {
 
   "components/onboarding/steps/base-locales.tsx": { count: 1, kind: "screen" },
   "components/sources/add-locale-dialog.tsx": { count: 1, kind: "screen" },
+};
+
+/**
+ * **분기의 증거는 동작 테스트다** (review-B R1). 아래 "치환 곁에서 basePath를 본다"는 거친 그물이라, basePath를 *보기만* 하고 기준 언어가 아닌
+ * 치환까지 내는 결함(R1 — `probeTargets`가 없는 `values-en/`을 겨눴다)을 통과시켰다. 그래서 `branched` 자리마다 그 함수를 basePath 픽스처로
+ * 부르는 동작 테스트를 하나씩 묶는다 — 자리가 늘면 이 표도 늘어야 red가 풀린다.
+ */
+const BEHAVIOR: Record<string, { test: string; calls: string }> = {
+  "lib/pull/plan.ts": { test: "lib/pull/__tests__/base-path.test.ts", calls: "resolveLocalePaths(" },
+  "lib/push/payload.ts": { test: "lib/push/__tests__/base-path.test.ts", calls: "selectLocaleFiles(" },
+  "lib/projects/remote-plan.ts": { test: "lib/projects/__tests__/base-path.test.ts", calls: "changedLocaleFileCount(" },
+  "lib/locales/change.ts": { test: "lib/locales/__tests__/base-path.test.ts", calls: "surfacePaths(" },
+  "lib/onboarding/detect.ts": { test: "lib/onboarding/__tests__/base-path-probe.test.ts", calls: "probeTargets(" },
+  "app/(edit)/projects/actions.ts": { test: "app/(edit)/__tests__/onboarding.test.ts", calls: "loadCandidateSample(" },
+  "lib/survey/one.ts": { test: "lib/survey/__tests__/base-path.test.ts", calls: "surveyLocalePath(" },
 };
 
 /** 기준 언어 하나만 다루는 자리 — 치환 대신 `baseFilePath`를 부른다(그래서 위 표에 없다). */
@@ -99,6 +114,16 @@ describe("치환 자리 전수", () => {
       });
     }
     expect(misses).toEqual([]);
+  });
+
+  it("기준 언어가 지나는 자리마다 그 분기를 basePath 픽스처로 재는 동작 테스트가 있다", () => {
+    const branched = Object.entries(SITES).filter(([, site]) => site.kind === "branched").map(([path]) => path).sort();
+    expect(Object.keys(BEHAVIOR).sort()).toEqual(branched);
+    for (const [site, { test, calls }] of Object.entries(BEHAVIOR)) {
+      const text = readFileSync(test, "utf8");
+      expect(text, `${site} → ${test}`).toContain(calls);
+      expect(text, `${site} → ${test}`).toContain("basePath");
+    }
   });
 
   it("기준 언어 하나만 다루는 자리는 baseFilePath를 부른다", () => {

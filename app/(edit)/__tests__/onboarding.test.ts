@@ -55,7 +55,20 @@ const hoisted = vi.hoisted(() => ({
   cookieSet: vi.fn(),
   headerGet: vi.fn(),
   redirect: vi.fn(),
+  /** 재탐지가 basePath를 내는 최소 stub — basePath를 내는 어댑터가 아직 없어 공급 고리를 이것으로 잰다(review-B Y1). */
+  stubBasePath: null as string | null,
 }));
+
+vi.mock("@/lib/adapters", async (original) => {
+  const actual = await original<typeof import("@/lib/adapters")>();
+  return {
+    ...actual,
+    detectFormatWith: (...args: Parameters<typeof actual.detectFormatWith>) => {
+      const detected = actual.detectFormatWith(...args);
+      return detected === undefined || hoisted.stubBasePath === null ? detected : { ...detected, basePath: hoisted.stubBasePath };
+    },
+  };
+});
 
 vi.mock("@/lib/import/run", () => ({ runRepositoryImportFromReader: hoisted.runRepositoryImportFromReader }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: hoisted.loadOpenPrUrl }));
@@ -2256,4 +2269,76 @@ describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
 it("커밋 뒤 캐시 실패는 성공 응답을 뒤집지 않는다", async () => {
 hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache down"); });
  await expect(disconnectGithub()).resolves.toEqual({ ok: true });
+});
+
+/**
+ * **basePath 공급 고리** (mobile-strings M2 — review-B Y1). 클라이언트·MCP가 되돌려 보내는 `basePath`는 **저장하지 않고**
+ * 재탐지 값과 견준다 — 다르면 DB 쓰기 0으로 거부한다. 성공 경로는 재탐지가 basePath를 내는 stub으로 생성 → 표면 행 →
+ * `formatFromProject`까지 잇는다. ⚠️ stub의 basePath는 치환 경로와 같은 값(`i18n/en.json`)이다 — 기존 json 어댑터가
+ * 그 파일을 읽어야 첫 적재가 성립한다. 템플릿 밖 경로의 실물은 android-strings T3가 든다.
+ */
+describe("basePath 공급 고리 — 생성·추가 진입점", () => {
+  afterEach(() => { hoisted.stubBasePath = null; });
+  beforeEach(() => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", repositoryId: "1035512", installationId: "77", baseBranch: "develop" });
+    hoisted.addSurfacesFromSnapshot.mockResolvedValue([{ pathTemplate: "i18n/{locale}.json", surfaceSlug: "i18n", count: 2, failed: 0 }]);
+  });
+  const pick = (basePath?: string) => ({ adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", ...(basePath === undefined ? {} : { basePath }) });
+
+  it("생성: 재탐지가 내지 않은 basePath는 manual-no-match이고 프로젝트·적재가 없다", async () => {
+    const result = await createProject(createInput({ surfaces: [pick("i18n/base.json")] }));
+    expect(result).toMatchObject({ ok: false, error: "manual-no-match" });
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+    expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
+  });
+
+  it("추가: 재탐지가 내지 않은 basePath는 manual-no-match이고 아무것도 안 바뀐다", async () => {
+    const before = structuredClone({ projects: db.projects, surfaces: db.surfaces, translations: db.translations });
+    expect(await addSurfaces({ slug: "acme", picks: [pick("i18n/base.json")] })).toEqual({ ok: false, error: "manual-no-match" });
+    expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
+    expect({ projects: db.projects, surfaces: db.surfaces, translations: db.translations }).toEqual(before);
+  });
+
+  it("재탐지가 basePath를 내는데 고른 값에 없으면 거부한다 — 대조가 양방향이다", async () => {
+    hoisted.stubBasePath = "i18n/en.json";
+    expect(await createProject(createInput({ surfaces: [pick()] }))).toMatchObject({ ok: false, error: "manual-no-match" });
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+  });
+
+  it("생성 결과는 basePath가 없으면 필드를 싣지 않는다 — MCP·화면 응답의 기존 모양 그대로(push 페이로드와 같은 규칙)", async () => {
+    const result = await createProject(createInput());
+    expect(result.ok && result.surfaces.every((surface) => !("basePath" in surface))).toBe(true);
+  });
+
+  it("생성 성공: 재탐지 basePath가 표면 행·적재 페이로드에 실리고 formatFromProject가 그 값을 되살린다", async () => {
+    hoisted.stubBasePath = "i18n/en.json";
+    const result = await createProject(createInput({ surfaces: [pick("i18n/en.json")] }));
+    expect(result).toMatchObject({ ok: true, surfaces: [{ basePath: "i18n/en.json" }] });
+    const created = db.surfaces.find((surface) => surface.projectId !== "p1");
+    expect(created).toMatchObject({ basePath: "i18n/en.json", pathTemplate: "i18n/{locale}.json" });
+    expect(hoisted.applyPushInTransaction.mock.calls[0]?.[2].format.basePath).toBe("i18n/en.json");
+    const { formatFromProject } = await import("@/lib/pull/plan");
+    expect(formatFromProject({ ...created!, nestedByPath: null }, ["en", "ko"]).basePath).toBe("i18n/en.json");
+  });
+
+  it("지연 표본: 서명된 기준 언어는 basePath에서, 다른 언어는 치환 경로에서 읽는다", async () => {
+    const files = [...TREE, { path: "i18n/base.json", sha: "sha-base", size: 100 }];
+    const opened = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map((f) => [f.sha, CATALOG])) });
+    hoisted.openRepoReader.mockResolvedValue(opened);
+    const confirmation = signSampleConfirmation({
+      userId: OWNER, repositoryId: PROBE_OK.repositoryId, connection: `github:${PROBE_OK.installationId}`, ref: "develop", headSha: HEAD_SHA,
+      format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en", "fr", "ko"], basePath: "i18n/base.json", baseLocale: "en" },
+    }, "test-secret-0123456789abcdef", new Date());
+    await loadCandidateSample({ ...sampleRequest(), locale: "en", confirmation });
+    expect(opened.blob.mock.calls.map(([sha]) => sha)).toEqual(["sha-base"]);
+    opened.blob.mockClear();
+    await loadCandidateSample({ ...sampleRequest(), locale: "ko", confirmation });
+    expect(opened.blob.mock.calls.map(([sha]) => sha)).toEqual(["sha-ko"]);
+  });
+
+  it("추가 성공: 재탐지 basePath가 표면 생성 입력으로 간다", async () => {
+    hoisted.stubBasePath = "i18n/en.json";
+    expect(await addSurfaces({ slug: "acme", picks: [pick("i18n/en.json")] })).toMatchObject({ ok: true });
+    expect(hoisted.addSurfacesFromSnapshot.mock.calls[0]?.[1].inputs[0].format.basePath).toBe("i18n/en.json");
+  });
 });

@@ -39,7 +39,8 @@ describe("templatePaths — basePath도 가리킨다", () => {
 describe("probeTargets — 후보의 basePath를 표본으로 내려받는다", () => {
   it("치환 표본에 basePath를 더한다", () => {
     const groups = [{ pathTemplate: ANDROID_TEMPLATE, basePath: ANDROID_BASE, locales: ["ko"] }];
-    expect(probeTargets(groups, [], [])).toEqual([ANDROID_BASE, "res/values-ko/strings.json"]);
+    // basePath 후보의 치환 표본은 트리에 실재하는 것만이다(review-B R1 — `base-path-probe.test.ts`가 다운로드까지 잇는다).
+    expect(probeTargets(groups, [], [ANDROID_BASE, "res/values-ko/strings.json"])).toEqual([ANDROID_BASE, "res/values-ko/strings.json"]);
   });
 
   it("basePath 없는 후보는 지금과 같다", () => {
