@@ -341,7 +341,10 @@
     "repo": "TeamNewPipe/NewPipe",
     "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
     "basePath": "app/src/main/res/values/strings.xml",
-    "note": "112로케일",
+    "alsoValid": [
+      "shared/src/commonMain/composeResources/values-{locale}/strings.xml"
+    ],
+    "note": "112로케일. KMP 이전 중인 shared 모듈의 Compose 리소스(110로케일)도 진짜 카탈로그라 alsoValid(android-strings orch 결정 16 — 사용자 검수 대기)",
     "tier": "A"
   },
   {

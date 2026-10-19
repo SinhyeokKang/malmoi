@@ -336,6 +336,8 @@ M1이 원문을 보고 정했지만 정답이 갈릴 수 있는 것들이다. �
   didi/DoKit(`Android/dokit`, alsoValid 5) · gnachman/iTerm2(5,020키 `xcstrings/Localizable.xcstrings`, XIB별 xcstrings 73개 중 alsoValid 2) · objective-see/LuLu(같은 꼴).
 - **codenameone/CodenameOne** — `vendored-only`(Zooz 결제 SDK 번들 + base만 있는 호환 샘플).
 - **deckerst/aves** — 정답 ARB, Android values(57로케일 · 9문자열 — 위젯·바로가기)는 `alsoValid`.
+- **TeamNewPipe/NewPipe** — 정답 `app/src/main/res/values-{locale}/strings.xml`(112로케일). KMP로 옮기는 중인 `shared/src/commonMain/composeResources/values-{locale}/strings.xml`
+  (110로케일)을 `alsoValid`로 더했다(android-strings orch 결정 16) — Android 탐지는 로케일 수로 그쪽을 1순위로 낸다. 진짜 카탈로그인지·대표가 바뀌어야 하는지 검수한다.
 
 ### 실행
 
