@@ -260,7 +260,8 @@ export type WriteInput = {
    * 싣는다. `entries`는 값이 없는 키를 빼므로 writer가 "이 키가 살아 있는가"를 알 길이 따로 없다.
    *
    * `arb-catalog`만 읽는다 — 그 키의 `@key` 메타데이터를 원본 그대로 남긴다(2026-10-19 사용자 결정). 나머지 writer에게는 값이 없는 키라
-   * 쓸 것이 없다. 없으면 "모른다"이고 그 `@key`는 버려진다.
+   * 쓸 것이 없다. 없으면 "모른다"이다 — 그 이름은 표면에 없는 이름으로 읽혀, orphaned(`orphaned`)가 아니면 그 `@key`가 개발자 주석처럼 원본 위치에
+   * 남는다(fix1 결정 13). 값 없는 키의 자리(base 순서)를 지키려면 이 필드가 있어야 한다.
    */
   untranslated?: readonly { key: string; order?: number }[];
   /**
