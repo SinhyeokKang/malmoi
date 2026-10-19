@@ -73,3 +73,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - R2 `ctx_6e0dfe6f5d16`(codex gpt-6-astra medium, `f52d0252..` 수정분만 — 값 의미가 크게 바뀌었다) ∥ E-fix2 `ctx_1a7b4b6fa08a`(E 터미널 재사용, 결정 17 — `androidValueTags` 공유).
 - **R2 완료** — 🔴1(R2-1 조상 디렉터리 이름으로 방언을 골라 `composeResources/…/res/values-*`가 Compose 의미로 읽힌다) · 🟡2(R2-2 Compose에서 치환하지 않은 이스케이프가 태그 경계를 옮겨 왕복이 깨진다 · R2-3 태그 문법이 NBSP 등 XML 밖 공백을 받아 키 없는 실패로 넘어간다). R1·R2·결정 18·Y2 일반 경로·W1/W2 해소 확인, 병합 없음 위반 없음, 네 코퍼스 1순위 차이 0, 20,000키 1.86MB write 369–459ms. 사본 `handoffs/review-A2.md`. R2 해제.
 - A 터미널 컨텍스트 85% → 해제. A-fix2 `ctx_8eacfa0ee409`(새 워커, `android-A`, claude-opus-5-5 high — R2-1·R2-2·R2-3).
+- **B 완료** — `3bd8ea75`·`37e250d1`·`8a4839d9`(Android 기준 언어 코드를 웹 ③·Add sources·수동 지정·MCP(기존 `baseLocale` 필드)·CLI(`--base` 필수)·재적재에 연결, `planBaseLocaleChange` 거부, basePath 표시, `values/`만 있는 소스의 언어 수 누락 자체 수정). `gate: ok`(17042 + 격리 939). B 터미널 retain. RBC `ctx_f5445ef59a87`(claude-opus-5-5 high, B+C).
