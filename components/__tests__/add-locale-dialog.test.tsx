@@ -457,7 +457,7 @@ describe("Android 언어 추가 Dialog", () => {
     expect(option("pt-BR")).toBeUndefined();
     expect(option("in")).toBeDefined();
     expect(option("pt-rBR")!.textContent).toContain(languageName("pt-BR", "en"));
-    expect(option("pt-rBR")!.innerHTML).toContain("🇧🇷");
+    expect(option("pt-rBR")!.innerHTML).toContain("/flags/br.svg");
     await choose("pt-rBR");
     expect(mocks.previewAdd).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "pt-rBR" });
     expect(dialog()!.textContent).toContain("res/values-pt-rBR/strings.xml");

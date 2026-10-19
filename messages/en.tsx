@@ -3787,6 +3787,7 @@ export const en = {
       codeLabel: "Language code",
       codePlaceholder: "Choose or type a code",
       codeHelp: "Pick one, or type a code: a lowercase language, with an optional region (fr, pt-BR, zh_TW).",
+      androidCodeHelp: "Choose or type an Android language code, such as fr or pt-rBR.",
       chromeLabel: "Language",
       chromePlaceholder: "Choose a language",
       /** 프리셋 목록의 접근 이름. */
@@ -3810,6 +3811,7 @@ export const en = {
       errors: {
         unreadable: "Malmoi can't read this code back from the repository. Add the file in the repository instead.",
         unsupportedLocale: "Chrome extensions don't support this language code.",
+        androidLocaleCode: "Android requires codes such as fr or pt-rBR. Use iw, in, and ji instead of he, id, and yi.",
         alreadyActive: (code: string): string => `${code} is already in this source.`,
         collision: (code: string, existing: string): string => `${code} points to the same file as ${existing}, which this source already has.`,
         removalPending: (code: string): string => `${code} is being removed. Cancel the removal instead.`,
@@ -4540,6 +4542,7 @@ export const en = {
         "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, code dictionary, Flutter ARB, Apple strings file, and Android strings file sources.",
         "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
         "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
+        "android-locale-code": "Android requires codes such as fr or pt-rBR. Use iw, in, and ji instead of he, id, and yi.",
         "already-active": "That language is already in this source.",
         "locale-collision": "This source already has that language, written with different capitalization or separators.",
         "unsafe-path": "The file path for that language isn't safe to write. Ask your developers to check the source's file path.",

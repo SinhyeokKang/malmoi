@@ -2071,6 +2071,7 @@ export const es = {
       codeLabel: "Código de idioma",
       codePlaceholder: "Elige o escribe un código",
       codeHelp: "Elige uno o escribe un código: un idioma en minúsculas, con una región opcional (fr, pt-BR, zh_TW).",
+      androidCodeHelp: "Elige o escribe un código de idioma de Android, como fr o pt-rBR.",
       chromeLabel: "Idioma",
       chromePlaceholder: "Elige un idioma",
       listLabel: "Idiomas",
@@ -2088,6 +2089,7 @@ export const es = {
       errors: {
         unreadable: "Malmoi no puede volver a leer este código desde el repositorio. Añade el archivo en el repositorio.",
         unsupportedLocale: "Las extensiones de Chrome no admiten este código de idioma.",
+        androidLocaleCode: "Android requiere códigos como fr o pt-rBR. Usa iw, in y ji en lugar de he, id e yi.",
         alreadyActive: (code: string): string => `${code} ya está en esta fuente.`,
         collision: (code: string, existing: string): string => `${code} apunta al mismo archivo que ${existing}, que esta fuente ya tiene.`,
         removalPending: (code: string): string => `Se está quitando ${code}. Cancela la eliminación en su lugar.`,

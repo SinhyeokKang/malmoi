@@ -736,7 +736,7 @@ describe("Android 언어 변경 진입점", () => {
     expect(await save("s-web", "hello", "pt-rBR", "Olá")).toMatchObject({ ok: true });
     const made = androidRepository();
     const result = await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined });
-    expect(result).toMatchObject({ outcome: { status: "committed" } });
+    expect(result).toMatchObject({ status: "committed" });
     const sent = made.calls.find(call => call.method === "publishSnapshot")?.args[0] as { changes: { kind: string; path: string; content?: string }[] };
     expect(sent.changes).toContainEqual(expect.objectContaining({ path, content: expect.stringContaining("Olá") }));
     expect(sent.changes.some(change => change.path === "res/values-pt-BR/strings.xml")).toBe(false);
@@ -752,7 +752,7 @@ describe("Android 언어 변경 진입점", () => {
     if (!preview.ok) throw new Error("removal preview refused");
     expect(await removeSourceLocale({ ...input, approval: preview.approval })).toMatchObject({ ok: true });
     const made = androidRepository();
-    expect(await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined })).toMatchObject({ outcome: { status: "committed" } });
+    expect(await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined })).toMatchObject({ status: "committed" });
     const sent = made.calls.find(call => call.method === "publishSnapshot")?.args[0] as { changes: { kind: string; path: string }[] };
     expect(sent.changes.filter(change => change.kind === "delete").map(change => change.path)).toEqual(["res/values-ko/strings.xml"]);
     expect(sent.changes.some(change => change.kind === "delete" && change.path === basePath)).toBe(false);

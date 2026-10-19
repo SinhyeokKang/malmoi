@@ -2062,6 +2062,7 @@ export const ko = {
       codeLabel: "언어 코드",
       codePlaceholder: "코드를 고르거나 입력하세요",
       codeHelp: "목록에서 고르거나 코드를 직접 입력하세요. 소문자 언어 코드 뒤에 지역을 붙일 수 있습니다(fr, pt-BR, zh_TW).",
+      androidCodeHelp: "목록에서 고르거나 fr, pt-rBR 같은 Android 언어 코드를 입력하세요.",
       chromeLabel: "언어",
       chromePlaceholder: "언어를 고르세요",
       listLabel: "언어",
@@ -2079,6 +2080,7 @@ export const ko = {
       errors: {
         unreadable: "Malmoi가 리포지토리에서 이 코드를 다시 읽을 수 없습니다. 리포지토리에서 직접 파일을 추가하세요.",
         unsupportedLocale: "Chrome 확장 프로그램이 지원하지 않는 언어 코드입니다.",
+        androidLocaleCode: "Android에서는 fr, pt-rBR 같은 코드를 사용합니다. he, id, yi 대신 iw, in, ji를 입력하세요.",
         alreadyActive: (code: string): string => `${code} 언어는 이미 이 소스에 있습니다.`,
         collision: (code: string, existing: string): string => `${code} 코드는 이 소스에 이미 있는 ${existing} 코드와 같은 파일을 가리킵니다.`,
         removalPending: (code: string): string => `${code} 언어는 제거 중입니다. 대신 제거를 취소하세요.`,
