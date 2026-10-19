@@ -2,7 +2,7 @@
 
 Add a language to a source or remove one from the source's details, then publish the change to your repository as a file.
 
-Project owners change a source's languages; translators (Editor role) can see each language's status but not change it. Adding and removing work for **JSON catalog**, **YAML catalog**, **Chrome extension messages**, **Code dictionary (one file per language)**, **Flutter ARB**, and **Apple strings file** sources. For a code dictionary containing all languages in one file, change the language objects in the repository; Malmoi reads the change on the next update.
+Project owners change a source's languages; translators (Editor role) can see each language's status but not change it. Adding and removing work for **JSON catalog**, **YAML catalog**, **Chrome extension messages**, **Code dictionary (one file per language)**, **Flutter ARB**, and **Apple strings file** sources. For a code dictionary containing all languages in one file, change the language objects in the repository; for an **Apple String Catalog**, add the language in Xcode. Malmoi reads the change on the next update.
 
 ## Open the Languages card {#languages}
 
@@ -20,7 +20,7 @@ A row can show:
 
 For supported formats, **Remove language** is turned off on the base language's row; choose another [base language](sources.md#base-language) first. Translators see disabled buttons and a description saying only project owners can change languages.
 
-For an all-languages code dictionary, the card has no description or new add or remove actions, including on base and inactive rows. Any remaining addition or removal can still be canceled by a project owner, unless the last publish is unconfirmed and may have included that change. For an inactive language, owners are told to restore the file in the repository and sync; translators see only that its translations are kept.
+For an all-languages code dictionary or an Apple String Catalog, the card has no description or new add or remove actions, including on base and inactive rows. Any remaining addition or removal can still be canceled by a project owner, unless the last publish is unconfirmed and may have included that change. For an inactive language, owners are told to restore the file in the repository and sync; translators see only that its translations are kept.
 
 ## Add a language {#add}
 
@@ -34,7 +34,7 @@ Malmoi refuses a language that is already in the source, one whose file path mat
 
 The new language appears with **Adding**, and translators can open it and translate right away. The file doesn't exist in your repository yet: Publish creates it, once the language has at least one translation. Until then Publish lists the language as **Not included**.
 
-New YAML and per-language code files follow the base file's root, key structure, export, and formatting conventions where applicable. They contain translated keys only, without the base file's comments, `import` statements, or type declarations. If those conventions can't be used safely, Publish stops; cancel the addition or create the file in the repository. See [New language files](../reference/formats.md#languages) for the limits, including later dotted-key insertions. New Flutter ARB files contain `@@locale` and translated keys only, without `@key` metadata. New Apple strings files use the base file's encoding and contain translated keys only. Register the language in your app's code where needed.
+New YAML and per-language code files follow the base file's root, key structure, export, and formatting conventions where applicable. They contain translated keys only, without the base file's comments, `import` statements, or type declarations. If those conventions can't be used safely, Publish stops; cancel the addition or create the file in the repository. See [New language files](../reference/formats.md#languages) for the limits, including later dotted-key insertions. New Flutter ARB files contain `@@locale` and translated keys only, without `@key` metadata. New Apple strings files use the base file's encoding and contain translated keys only. Register the language in your app's code where needed. For Apple strings files, add the new `.lproj` folder to your Xcode project before the language ships in your app, and remove it from the project when you remove a language; otherwise the build can't find the deleted file.
 
 If you add a language that was in this source before, Malmoi brings back its saved translations as unsent edits, so the next Publish sends them.
 

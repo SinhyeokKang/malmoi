@@ -1,10 +1,10 @@
 # Formatos de archivo compatibles
 
-Malmoi lee y escribe catálogos JSON y YAML, mensajes de extensiones de Chrome, diccionarios de código TypeScript o JavaScript, archivos ARB de Flutter y archivos strings de Apple.
+Malmoi lee y escribe catálogos JSON y YAML, mensajes de extensiones de Chrome, diccionarios de código TypeScript o JavaScript, archivos ARB de Flutter, archivos strings de Apple y catálogos String Catalog de Apple.
 
 ## Formatos compatibles {#formats}
 
-Los formatos compatibles son catálogos JSON, catálogos YAML, mensajes de extensiones de Chrome, un diccionario de código por idioma, un diccionario de código que contiene todos los idiomas, archivos ARB de Flutter y archivos strings de Apple. Un solo idioma basta para empezar a editar el texto de origen antes de añadir traducciones.
+Los formatos compatibles son catálogos JSON, catálogos YAML, mensajes de extensiones de Chrome, un diccionario de código por idioma, un diccionario de código que contiene todos los idiomas, archivos ARB de Flutter, archivos strings de Apple y catálogos String Catalog de Apple. Un solo idioma basta para empezar a editar el texto de origen antes de añadir traducciones.
 
 | Formato | Ruta de ejemplo |
 | --- | --- |
@@ -15,6 +15,7 @@ Los formatos compatibles son catálogos JSON, catálogos YAML, mensajes de exten
 | **Diccionario en código (todos los idiomas en un archivo)** | `src/i18n/namespaces/*.ts` |
 | **Flutter ARB** | `lib/l10n/app_{locale}.arb` |
 | **Archivo strings de Apple** | `App/{locale}.lproj/Localizable.strings` |
+| **Apple String Catalog** | `App/Localizable.xcstrings` |
 
 `{locale}` representa un código de idioma como `en`; `*` coincide con un segmento de nombre de archivo dentro de ese directorio.
 
@@ -26,19 +27,23 @@ Los archivos ARB de Flutter pueden llevar el nombre del idioma, como `{locale}.a
 
 Los archivos strings de Apple están en una carpeta `{locale}.lproj`, y cada tabla, como `Localizable.strings` o `InfoPlist.strings`, es su propia fuente. El código de idioma es el nombre de la carpeta; `Base.lproj` no es un idioma y no aparece, y los nombres con una región numérica o una tercera parte, como `es_419` o `zh-Hant-TW`, no se leen como idiomas. Se admiten archivos en UTF-8 o UTF-16. Los archivos de plurales `.stringsdict` no se leen.
 
+Un Apple String Catalog guarda todos los idiomas en un solo archivo `.xcstrings`, y se sugiere como idioma base el idioma de su campo `sourceLanguage`. Las claves que Xcode crea a partir de tu código a menudo no tienen una entrada en ese idioma; Malmoi muestra la propia clave como texto de origen y solo escribe esa entrada si cambias el texto de origen. Las variaciones de plural y de dispositivo, las claves marcadas para no traducir y las claves vacías no se muestran y se quedan en el archivo sin cambios. Un archivo de catálogo de más de 2 MB no se puede cargar; consulta [Límites](limits.md#files).
+
 ## Conserva la estructura del archivo {#file-structure}
 
-Los catálogos YAML, los diccionarios de código y los archivos strings de Apple existentes conservan los comentarios, las líneas en blanco y el orden de las claves. Los catálogos JSON y los mensajes de extensiones de Chrome conservan la representación de su archivo — sangría, contenedores en una línea, escapes y orden de los campos.
+Los catálogos YAML, los diccionarios de código y los archivos strings de Apple existentes conservan los comentarios, las líneas en blanco y el orden de las claves. Los Apple String Catalogs solo cambian las entradas editadas, y una entrada para un idioma que la clave todavía no tiene se añade con el formato de Xcode. Los catálogos JSON y los mensajes de extensiones de Chrome conservan la representación de su archivo — sangría, contenedores en una línea, escapes y orden de los campos.
 
 Los archivos ARB de Flutter conservan la misma representación JSON, y los metadatos `@key` de cada clave y las entradas `@@` se copian de tu archivo sin cambios. Un `@@locale` existente se ajusta al código de idioma del archivo, y la primera publicación mueve cada `@key` justo después de su clave. Un `@key` solo se elimina cuando su clave se quitó del código.
 
 Los archivos strings de Apple conservan su codificación y su marca de orden de bytes, y los valores conservan sus escapes hasta que los cambias. Si una clave aparece dos veces, Malmoi muestra y cambia la última entrada, como el lector de Apple; la línea anterior se queda como está, y la actualización muestra una advertencia sin fallar. Cuando traduces una clave que un archivo de idioma todavía no tiene, Malmoi añade su línea después de la clave que la precede en el archivo del idioma base.
 
+En un Apple String Catalog, un nombre que aparece dos veces se lee como lo lee Xcode: se muestra y se cambia el primero, la copia posterior se queda hasta que Xcode la quita en su siguiente guardado, y la actualización muestra una advertencia sin fallar. Malmoi no añade ni quita claves en un catálogo; Xcode las añade a partir de tu código. Una entrada de plural o de dispositivo no admite un solo valor; si se edita, Publicar se detiene para ese archivo.
+
 Los valores vienen de Malmoi; el archivo existente aporta la estructura o la representación.
 
 ## Añade y quita idiomas {#languages}
 
-Los propietarios del proyecto pueden añadir y quitar idiomas en Malmoi en catálogos JSON y YAML, mensajes de extensiones de Chrome, archivos ARB de Flutter, archivos strings de Apple y diccionarios con un archivo por idioma. Consulta [Añade y quita idiomas](../setup/languages.md#languages). Un diccionario que contiene todos los idiomas en un archivo requiere cambiar los objetos de idioma en el repositorio; su tarjeta no tiene acciones para nuevas adiciones o eliminaciones ni descripción.
+Los propietarios del proyecto pueden añadir y quitar idiomas en Malmoi en catálogos JSON y YAML, mensajes de extensiones de Chrome, archivos ARB de Flutter, archivos strings de Apple y diccionarios con un archivo por idioma. Consulta [Añade y quita idiomas](../setup/languages.md#languages). Un diccionario que contiene todos los idiomas en un archivo requiere cambiar los objetos de idioma en el repositorio, y un Apple String Catalog requiere añadir el idioma en Xcode; su tarjeta no tiene acciones para nuevas adiciones o eliminaciones ni descripción.
 
 Para los archivos nuevos de YAML y de código por idioma, Malmoi toma del archivo base las convenciones de raíz, estructura plana o anidada de claves, forma de exportación y formato, cuando corresponda. La raíz de idioma de YAML debe coincidir con el código del idioma base. Una exportación con nombre conserva su nombre; se rechaza un nombre que contenga el código del idioma base. Solo se escriben claves con traducciones. No se copian los valores del idioma base, comentarios, sentencias `import` ni declaraciones de tipos. Publicar se detiene si no puede crear el archivo con seguridad; cancela la adición o crea el archivo en el repositorio. Una vez creado, las publicaciones posteriores conservan su estructura. Los archivos ARB de Flutter nuevos toman el formato del archivo base y solo contienen `@@locale` y las claves traducidas; los metadatos `@key` no se copian, porque `flutter gen-l10n` los lee del archivo de plantilla. Los archivos strings de Apple nuevos toman la codificación del archivo base y solo contienen las claves traducidas, sin sus comentarios.
 

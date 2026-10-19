@@ -2,7 +2,7 @@
 
 Añade un idioma a una fuente o quita uno desde los detalles de la fuente y publica el cambio en tu repositorio como un archivo.
 
-Los propietarios del proyecto cambian los idiomas de una fuente; los traductores (rol Editor) pueden ver el estado de cada idioma, pero no cambiarlo. Añadir y quitar idiomas funciona en fuentes de **Catálogo JSON**, **Catálogo YAML**, **Mensajes de extensión de Chrome**, **Diccionario en código (un archivo por idioma)**, **Flutter ARB** y **Archivo strings de Apple**. Para un diccionario que contiene todos los idiomas en un archivo, cambia los objetos de idioma en el repositorio; Malmoi lee el cambio en la siguiente actualización.
+Los propietarios del proyecto cambian los idiomas de una fuente; los traductores (rol Editor) pueden ver el estado de cada idioma, pero no cambiarlo. Añadir y quitar idiomas funciona en fuentes de **Catálogo JSON**, **Catálogo YAML**, **Mensajes de extensión de Chrome**, **Diccionario en código (un archivo por idioma)**, **Flutter ARB** y **Archivo strings de Apple**. Para un diccionario que contiene todos los idiomas en un archivo, cambia los objetos de idioma en el repositorio; en un **Apple String Catalog**, añade el idioma en Xcode. Malmoi lee el cambio en la siguiente actualización.
 
 ## Abre la tarjeta Idiomas {#languages}
 
@@ -20,7 +20,7 @@ Una fila puede mostrar:
 
 En los formatos compatibles, **Quitar idioma** está desactivado en la fila del idioma base; elige antes otro [idioma base](sources.md#base-language). Los traductores ven botones desactivados y una descripción que indica que solo los propietarios pueden cambiar idiomas.
 
-En un diccionario con todos los idiomas en un archivo, la tarjeta no tiene descripción ni acciones para nuevas adiciones o eliminaciones, incluidas las filas del idioma base y de los inactivos. Un propietario aún puede cancelar los cambios de idioma pendientes, salvo si la última publicación no está confirmada y puede haber incluido ese cambio. Para un idioma inactivo, los propietarios ven una indicación de restaurar el archivo en el repositorio y sincronizar; los traductores solo ven que se conservan sus traducciones.
+En un diccionario con todos los idiomas en un archivo o en un Apple String Catalog, la tarjeta no tiene descripción ni acciones para nuevas adiciones o eliminaciones, incluidas las filas del idioma base y de los inactivos. Un propietario aún puede cancelar los cambios de idioma pendientes, salvo si la última publicación no está confirmada y puede haber incluido ese cambio. Para un idioma inactivo, los propietarios ven una indicación de restaurar el archivo en el repositorio y sincronizar; los traductores solo ven que se conservan sus traducciones.
 
 ## Añade un idioma {#add}
 
@@ -34,7 +34,7 @@ Malmoi rechaza un idioma que ya está en la fuente, uno cuya ruta de archivo coi
 
 El idioma nuevo aparece como **Añadiendo** y los traductores pueden abrirlo y traducir enseguida. El archivo todavía no existe en tu repositorio: Publicar lo crea, cuando el idioma tiene al menos una traducción. Hasta entonces, la vista previa de Publicar muestra el idioma como **No incluido**.
 
-Los archivos nuevos de YAML y de código por idioma siguen las convenciones del archivo base sobre raíz, estructura de claves, exportación y formato cuando corresponda. Solo contienen claves traducidas, sin los comentarios, sentencias `import` ni declaraciones de tipos del archivo base. Si esas convenciones no se pueden usar con seguridad, Publicar se detiene; cancela la adición o crea el archivo en el repositorio. Consulta [Archivos de idioma nuevos](../reference/formats.md#languages) para ver los límites, incluidas las inserciones posteriores de claves con puntos. Los archivos ARB de Flutter nuevos solo contienen `@@locale` y las claves traducidas, sin metadatos `@key`. Los archivos strings de Apple nuevos usan la codificación del archivo base y solo contienen las claves traducidas. Registra el idioma en el código de tu aplicación cuando sea necesario.
+Los archivos nuevos de YAML y de código por idioma siguen las convenciones del archivo base sobre raíz, estructura de claves, exportación y formato cuando corresponda. Solo contienen claves traducidas, sin los comentarios, sentencias `import` ni declaraciones de tipos del archivo base. Si esas convenciones no se pueden usar con seguridad, Publicar se detiene; cancela la adición o crea el archivo en el repositorio. Consulta [Archivos de idioma nuevos](../reference/formats.md#languages) para ver los límites, incluidas las inserciones posteriores de claves con puntos. Los archivos ARB de Flutter nuevos solo contienen `@@locale` y las claves traducidas, sin metadatos `@key`. Los archivos strings de Apple nuevos usan la codificación del archivo base y solo contienen las claves traducidas. Registra el idioma en el código de tu aplicación cuando sea necesario. En los archivos strings de Apple, añade la nueva carpeta `.lproj` a tu proyecto de Xcode para que el idioma llegue a tu aplicación, y quítala del proyecto cuando quites un idioma; si no, la compilación no encuentra el archivo borrado.
 
 Si añades un idioma que ya estuvo en esta fuente, Malmoi recupera sus traducciones guardadas como ediciones sin enviar, así que la siguiente publicación las envía.
 
