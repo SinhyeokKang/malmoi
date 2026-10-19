@@ -2697,7 +2697,7 @@ export const en = {
       conflicts: "These selections write to the same files. Uncheck a selection to continue.",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
-      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("en-US")} languages · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"} · ${keys}`,
       notListed: "Not listed?",
       setPath: "Set the path yourself",
       /** ② 우측 키·값 표. */

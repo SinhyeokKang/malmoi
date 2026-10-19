@@ -309,7 +309,8 @@ export function NewProject({
     if (chosen === undefined) return;
     sampleGeneration.current += 1;
     setDetail(index);
-    setLocale(chosen.baseLocale);
+    const previewLocale = chosen.basePath !== undefined && chosen.baseLocale === "" ? chosen.basePath : chosen.baseLocale;
+    setLocale(previewLocale);
     setSlugTaken(false);
     setSamples(
       Object.fromEntries(
@@ -319,6 +320,7 @@ export function NewProject({
         ]),
       ),
     );
+    if (previewLocale === chosen.basePath) requestSample(previewLocale, chosen, index);
   }
 
   /** ②의 언어 전환 — detect가 든 셋 밖은 누를 때 받는다 (DESIGN §6.7). */
@@ -326,15 +328,22 @@ export function NewProject({
     setLocale(code);
     const key = sampleKey(code);
     if (samples[key] !== undefined || repo === undefined) return;
+    requestSample(code, candidate, detail);
+  }
+
+  function requestSample(code: string, selected: CandidateSummary | undefined, selectedIndex: number | null) {
+    if (repo === undefined) return;
+    const selectedPath = selected?.pathTemplate ?? pathTemplate;
+    const key = JSON.stringify([repo.fullName, branchValue, selectedIndex, selected?.adapter ?? manual.adapter, selectedPath, code]);
     const generation = sampleGeneration.current;
     setSamples((prev) => ({ ...prev, [key]: { status: "loading" } }));
     void loadCandidateSample({
       ...repoInputOf(repo),
       ref: branchValue,
-      adapter: candidate?.adapter ?? manual.adapter,
-      pathTemplate,
+      adapter: selected?.adapter ?? manual.adapter,
+      pathTemplate: selectedPath,
       locale: code,
-      confirmation: candidate?.confirmation ?? manualCandidate?.confirmation,
+      confirmation: selected?.confirmation ?? manualCandidate?.confirmation,
     }).then(
       (result) => {
         if (generation !== sampleGeneration.current) return;
@@ -347,8 +356,8 @@ export function NewProject({
             ...item,
             samples: [...item.samples.filter((sample) => sample.locale !== code), { locale: code, rows: result.rows, total: result.total }],
           });
-          if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
-          else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
+          if (selectedIndex === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
+          else setCandidates((prev) => prev.map((item, index) => index === selectedIndex ? update(item) : item));
         }
         setAnnounce(result.ok ? undefined : previewFailureText(m, failedPreview(result.error)));
         setSamples((prev) => ({
@@ -635,7 +644,7 @@ export function NewProject({
             candidates,
             picked: detail,
             locale,
-            preview: samples[sampleKey(locale)] ?? { status: "loading" },
+            preview: samples[sampleKey(locale)] ?? { status: candidate?.adapter === "android-strings" ? "unavailable" : "loading" },
             manual,
             manualCandidate,
             manualMatched,

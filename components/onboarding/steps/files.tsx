@@ -378,7 +378,8 @@ function Preview({
   pending: boolean;
 }) {
   const m = useMessages();
-  const locales = candidate?.locales ?? [];
+  const basePreview = candidate?.basePath !== undefined && candidate.baseLocale === "" ? candidate.basePath : undefined;
+  const locales = basePreview === undefined ? candidate?.locales ?? [] : [basePreview, ...candidate!.locales];
   /**
    * 다섯 이상이면 세그먼트가 아니라 `Select`로 접는다. ⚠️ **③의 기준 언어와 경계가 다르다**(그쪽은
    * 열) — 세그먼트는 가로 한 줄이라 칸이 늘면 코드가 잘리고, 라디오는 감싸므로 줄만 는다.
@@ -415,7 +416,7 @@ function Preview({
               {locales.map((code) => (
                 <SelectItem disabled={pending} key={code} value={code}>
                   {/* ⚠️ 세그먼트 칸에는 국기가 있다 — 접혔다고 빠지면 같은 로케일이 두 가지로 보인다. */}
-                  <LocaleFlag code={code} />
+                  {code !== basePreview && <LocaleFlag code={code} />}
                   {m.newProject.files.preview.option(code, keysFor(code))}
                 </SelectItem>
               ))}
@@ -433,7 +434,7 @@ function Preview({
             value={state.locale}
             onChange={value => { if (!pending) onLocale(value); }}
             /* 국기 ReactNode가 icon 슬롯에 서며 기존 치수·장식 의미를 유지한다. */
-            options={locales.map((code) => ({ value: code, label: code, icon: <LocaleFlag code={code} /> }))}
+            options={locales.map((code) => ({ value: code, label: code, icon: code === basePreview ? undefined : <LocaleFlag code={code} /> }))}
           /></fieldset>
         )}
         {/* 경로는 감긴다 — 후보 행은 말줄임 + `title`이라 터치에서 전문이 닿는 자리가 여기다(responsive-app A5 · 시안 AT7). */}

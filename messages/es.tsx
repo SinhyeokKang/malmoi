@@ -1290,7 +1290,7 @@ export const es = {
       previewCandidate: (path: string) => `Vista previa de ${path}`,
       conflicts: "Estas selecciones escriben en los mismos archivos. Desmarca una selección para continuar.",
       keys: (n: number): string => (n === 1 ? "1 clave" : `${n.toLocaleString("es")} claves`),
-      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("es")} idiomas · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("es")} ${locales === 1 ? "idioma" : "idiomas"} · ${keys}`,
       notListed: "¿No aparece?",
       setPath: "Indicar la ruta manualmente",
       preview: {

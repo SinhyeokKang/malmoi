@@ -1353,3 +1353,19 @@ it.each([{ locales: [] }, { locales: ["ko", "zh-rCN"] }])("#306 Android $locales
     expect(mocks.loadCandidateSample).toHaveBeenCalledTimes(2);
   }
 });
+
+it("#306 지연 안내는 기준 파일 요청 중에만 표시된다", async () => {
+  vi.useFakeTimers();
+  try {
+    const basePath = "app/src/main/res/values/strings.xml";
+    const pending = deferred<{ ok: false; error: "unavailable" }>();
+    mocks.loadCandidateSample.mockReturnValueOnce(pending.promise);
+    mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate("app/src/main/res/values-{locale}/strings.xml"), adapter: "android-strings", basePath, baseLocale: "", locales: [], samples: [] }] });
+    await files();
+    await act(async () => { await vi.advanceTimersByTimeAsync(8_000); });
+    expect(document.body.textContent).toContain(en.common.slow);
+    await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
+    expect(document.body.textContent).not.toContain(en.common.slow);
+    expect(document.body.textContent).toContain(en.newProject.files.preview.unavailable);
+  } finally { vi.useRealTimers(); }
+});
