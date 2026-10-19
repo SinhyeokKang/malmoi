@@ -2358,3 +2358,16 @@ it("Android 수동 지정은 values 경로를 유도하고 기준 파일의 지�
   expect(await loadCandidateSample({ ...raw, locale: "en", confirmation: result.candidate.confirmation })).toMatchObject({ ok: true, rows: [{ key: "title", value: "English" }] });
   expect(await confirmManualFormat({ ...raw, baseLocale: "de" })).toEqual({ ok: false, error: "manual-no-match" });
 });
+
+it("#306 서명된 Android 기준 파일을 코드 없이 미리 읽고 다른 경로는 거부한다", async () => {
+  const basePath = "app/src/main/res/values/strings.xml";
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const opened = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [{ path: basePath, sha: "base", size: 100 }] }, blobs: new Map([["base", '<resources><string name="title">Preview</string></resources>']]) });
+  hoisted.openRepoReader.mockResolvedValue(opened);
+  const confirmation = signSampleConfirmation({ userId: OWNER, repositoryId: PROBE_OK.repositoryId, connection: `github:${PROBE_OK.installationId}`, ref: "develop", headSha: HEAD_SHA, format: { adapter: "android-strings", pathTemplate, basePath, baseLocale: "", locales: [] } }, "test-secret-0123456789abcdef", new Date());
+  const raw = { ...sampleRequest(), adapter: "android-strings", pathTemplate, confirmation };
+  expect(await loadCandidateSample({ ...raw, locale: basePath })).toMatchObject({ ok: true, rows: [{ key: "title", value: "Preview" }] });
+  opened.blob.mockClear();
+  expect((await loadCandidateSample({ ...raw, locale: "other/values/strings.xml" })).ok).toBe(false);
+  expect(opened.blob).not.toHaveBeenCalled();
+});

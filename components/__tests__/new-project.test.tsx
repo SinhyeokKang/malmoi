@@ -1330,3 +1330,26 @@ it("Android ③은 기준 파일 코드 입력을 요구하고 관측 언어와 
   await click(button("Create project"));
   expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [expect.objectContaining({ adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" })] }));
 });
+
+it.each([{ locales: [] }, { locales: ["ko", "zh-rCN"] }])("#306 Android $locales는 기준 코드 입력 전에 기준 파일 표본을 요청한다", async ({ locales }) => {
+  const basePath = "app/src/main/res/values/strings.xml";
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const pending = deferred<{ ok: true; rows: { key: string; value: string }[]; total: number }>();
+  mocks.loadCandidateSample.mockReturnValueOnce(pending.promise);
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(pathTemplate), adapter: "android-strings", basePath, baseLocale: "", locales, samples: [] }] });
+  await files();
+  expect(mocks.loadCandidateSample).toHaveBeenCalledWith(expect.objectContaining({ locale: basePath }));
+  expect(document.querySelector('[role="radio"][data-state="checked"]')?.textContent).toContain(basePath);
+  await act(async () => pending.resolve({ ok: true, rows: [{ key: "title", value: "Base preview" }], total: 1 }));
+  expect(document.body.textContent).toContain("Base preview");
+  expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  if (locales.length === 0) expect(document.body.textContent).toContain("1 language ·");
+  else {
+    mocks.loadCandidateSample.mockResolvedValueOnce({ ok: true, rows: [{ key: "title", value: "번역 표본" }], total: 1 });
+    await click([...document.querySelectorAll<HTMLElement>('[role="radio"]')].find(node => node.textContent === "ko")!);
+    expect(document.body.textContent).toContain("번역 표본");
+    await click([...document.querySelectorAll<HTMLElement>('[role="radio"]')].find(node => node.textContent === basePath)!);
+    expect(document.body.textContent).toContain("Base preview");
+    expect(mocks.loadCandidateSample).toHaveBeenCalledTimes(2);
+  }
+});
