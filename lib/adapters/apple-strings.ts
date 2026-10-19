@@ -327,8 +327,9 @@ function insertions(text: string, all: readonly StringsSlot[], slots: ReadonlyMa
   const sorted = [...missing].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || compareKeys(a.key, b.key));
   for (const entry of sorted) {
     const order = entry.order;
-    const before = order === undefined ? undefined
-      : [...anchors, ...placed].filter((a) => a.order < order).sort((a, b) => b.order - a.order)[0];
+    // 한 번 훑어 순서상 바로 앞 키를 고른다 — 새 파일에 수천 키를 한 번에 번역해도 정렬을 키마다 되풀이하지 않는다.
+    let before: (typeof placed)[number] | undefined;
+    if (order !== undefined) for (const a of [anchors, placed]) for (const c of a) if (c.order < order && (before === undefined || c.order > before.order)) before = c;
     const style = before?.style ?? last;
     const line = `${style.indent}${encodeStringsLiteral(entry.key)}${style.separator}${encodeStringsLiteral(entry.message)};`;
     if (before === undefined || before.at === "end") tail.push(line);
