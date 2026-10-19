@@ -88,3 +88,6 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **E-fix3 완료·로컬 통합** — rebase 후 두 의도 보존(`ac022b13`·`bd24e609`·`1f9c2960`), `gate: ok`(17178 + 격리 940). E 터미널 retain.
 - C-fix1 진행 중 — 격리 게이트에서 무관한 `translation-list-performance.integration.ts` 30초 타임아웃(부하) 1회, 재실행 예정.
 - **B-fix1 완료·로컬 통합** — `7b645f29` test · `b2f6a6f5` fix(RBC Y1–Y4·결정 23–26·W3–W5), `gate: ok`(17216 + 격리 947, 소스 스캔 부하 타임아웃 1회 재실행 green). B 5커밋 cherry-pick 충돌 없음. B 터미널 retain.
+- **C-fix1 완료·로컬 통합** — `5cf7dabc`·`e1a87f15`·`5a4e1d4b`(Android 코드 술어를 잎 `lib/locale-code.ts`로 · 레거시 국기 · 생성 파일 정확 바이트), `gate: ok`(17197 + 격리 945, 성능 테스트 부하 타임아웃 1회 재실행 green). C 터미널 retain.
+- **통합 게이트(main 단독)** — A·A-fix1·A-fix2·B·B-fix1·C·C-fix1·D·E·E-fix1–3 + 로그인 KV 수정 → `gate: ok`(격리 postgres 포함). tasks T3.0d·T3.1·T3.2·T3.2c·T3.4 체크(T3.2b·T3.3은 수동 확인이 Q 몫이라 남긴다).
+

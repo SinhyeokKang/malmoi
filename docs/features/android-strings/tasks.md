@@ -24,10 +24,10 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
 - `basePath` 컬럼·배선은 **mobile-strings** M2가 든다 — 2026-10-19 dev에 들어갔다(dev DB 적용, prod는 T5.6). 아래는 그 위의 Android 작업이다.
 - M2가 이 스펙으로 넘긴 것: 실제 어댑터로만 닿는 시나리오 테스트(비-null basePath가 탐지 → 생성 → 표면 → Publish 경로까지 — M2는 stub 탐지로만 고정했다)는 T3.1에,
   화면 자리·표시 전용 select는 T3.2b에 붙인다.
-- [ ] **T3.0d `@xml-tools/parser` 도입·실측** — exact 버전 고정, SELF-HOSTING §3 체크리스트, `minimumReleaseAge`·빌드 스크립트 확인, offset 단위(JS 문자열
+- [x] **T3.0d `@xml-tools/parser` 도입·실측** — exact 버전 고정, SELF-HOSTING §3 체크리스트, `minimumReleaseAge`·빌드 스크립트 확인, offset 단위(JS 문자열
       인덱스 여부·BOM·CRLF)·주석·CDATA·self-closing 노드 위치를 `.scratch/`에서 실측. 검증: 실측 결과를 design §2.1에 기록. 의존성 추가는 쓰는 곳이 생기는
       T3.2 커밋에 합친다(쓰는 곳 없는 의존성만 dev에 나가지 않게).
-- [ ] **T3.1 테스트** — 범위 · 값 decode/encode 왕복 속성 · 공백 규칙(앞뒤·연속 공백·개행이면 따옴표로 감쌈) · 따옴표 감싼 값 형 유지 · CDATA 유지 · 자식 태그 그대로 ·
+- [x] **T3.1 테스트** — 범위 · 값 decode/encode 왕복 속성 · 공백 규칙(앞뒤·연속 공백·개행이면 따옴표로 감쌈) · 따옴표 감싼 값 형 유지 · CDATA 유지 · 자식 태그 그대로 ·
       `translatable="false"`·`<plurals>`·`<string-array>` 바이트 보존(unmanaged 보고) · 주석 속 `<string>`·`tools:` 속성·self-closing·`<resources/>`·`&#8230;`·`%%`·
       이스케이프 안 된 `'` 원본 · 중복 `name`(`duplicate-key`) · `name="__proto__"` · 빈 값 쓰기(`planClearability`) · CRLF(T3.0d 실측 반영) · 퇴화 출력 왕복 ·
       `values/` base 경로(`basePath`) · `zh-rCN` 코드 그대로 · `b+`·`values-night`·`values-car`·`values-en-rGB-v21` 제외(진입점 `detectCandidatesAcross`) ·
@@ -36,7 +36,7 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       왕복(렌더 + `undeliverable` 분류에서 blocking 없음) ·
       `contract.ts` 매트릭스 편입 · 실 어댑터 basePath 공급 고리(탐지 → `create_project`/`add_sources` → `TranslationSurface.basePath` → `formatFromProject`·원격 상태 →
       Publish의 base 경로). 검증: red.
-- [ ] **T3.2 구현 + 배선** — arb T1.3 손 목록 + "실측 정정"(`SUPPORTED_ADAPTERS` 추가, 사전 라벨 — MCP `add_locale` 설명·`unsupported-format`·랜딩 본문의 포맷 나열 포함) + `languageName`·`flagFor`의 `-r` 정규화 + survey 판정 비교가 `basePath`를 읽음
+- [x] **T3.2 구현 + 배선** — arb T1.3 손 목록 + "실측 정정"(`SUPPORTED_ADAPTERS` 추가, 사전 라벨 — MCP `add_locale` 설명·`unsupported-format`·랜딩 본문의 포맷 나열 포함) + `languageName`·`flagFor`의 `-r` 정규화 + survey 판정 비교가 `basePath`를 읽음
       (mobile-strings M1 판정 JSON). 검증: `pnpm test` green → 껍데기 테스트가 `values/`·`values-*/strings.xml`을 내려받는다 → `pnpm gate` green.
       커밋: `feat(adapters): add Android strings adapter`
 - [ ] **T3.2b 기준 언어 코드 입력** — `BaseLocaleState`와 두 소비자(온보딩 ③ · Add sources 모달 `components/sources/add-sources-modal.tsx:195-198`)에 Android
@@ -47,13 +47,13 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       `source-detail-modal.tsx`·`sources-screen.tsx`)과 표시 전용 select 둘(`lib/mcp/tools/project.ts` MCP 소스 목록 · `lib/sources/query.ts`)에 basePath를 싣는다.
       검증: 순수 판정 테스트 + `pnpm gate` green + `/runtime-test`로 ③ 입력·Add sources 입력(기존 프로젝트에 `values/`만 있는 소스 추가, 제거 후 재추가 복구)·
       Sources 표시 확인 **(수동)**. 커밋: `feat(onboarding): ask for the Android base language`
-- [ ] **T3.2c 기준 언어 변경 거부·언어 추가 철자** — `planBaseLocaleChange`의 `android-strings` 거부 코드 + 문구, Android 프리셋 `r` 철자 변환(레거시 표 `he→iw`·`id→in`·`yi→ji`),
+- [x] **T3.2c 기준 언어 변경 거부·언어 추가 철자** — `planBaseLocaleChange`의 `android-strings` 거부 코드 + 문구, Android 프리셋 `r` 철자 변환(레거시 표 `he→iw`·`id→in`·`yi→ji`),
       `judgeAdd`의 `r` 없는 지역 거부(웹·MCP 공통 코어). 검증: `change-plan`·`add-plan` 단위 테스트 + `pnpm gate` green.
       커밋: `feat(locales): use Android resource spelling for new languages`
 - [ ] **T3.3 저장 검증** — `lib/keys/save.ts` 코어에서 인라인 태그 불일치 거부(design §3.1): `KeySavePlan` 새 코드, 워크스페이스 footer Alert·셀 `aria-invalid`,
       사전 3벌, MCP 영어 응답. 검증: 순수 함수 테스트 + 코어 테스트(웹·MCP 두 껍데기) + `pnpm gate` green + `/runtime-test`로 거부 표시 확인 **(수동)**.
       커밋: `feat(translations): reject saves that break Android inline tags`
-- [ ] **T3.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 착수 전 `composeResources`(Meshtastic)를 범위에 넣을지 정한다. 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
+- [x] **T3.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 착수 전 `composeResources`(Meshtastic)를 범위에 넣을지 정한다. 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
       `resource-limit` 거부 수 보고. 커밋 없음.
 - [ ] **T3.5 실물 (수동)** — `/roundtrip`. 전제: Android SDK·JDK, 폐기용 리포. 검증: 고친 셀 외 diff 0, Gradle `assembleDebug` 통과.
       ⚠️ 2026-10-19 한 머신에는 JDK·Android SDK가 없었다 — 착수 때 머신을 확인하고 설치는 사용자 승인 뒤(arb는 Flutter를 brew cask로 설치했다). 폐기용 리포는 새로 만들어
