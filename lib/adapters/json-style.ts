@@ -161,7 +161,7 @@ const NON_ASCII_UNIT = /[-￿]/g;
  * `escapeNonAscii`면 그 결과에서 코드 유닛 > `0x7f`만 한 번 더 치환한다. 코드 **유닛**이라 이모지
  * 하나가 `\uXXXX` 둘로 나가고, 그게 정확히 원본이 하던 일이다.
  */
-function quote(s: string, style: JsonStyle): string {
+export function quote(s: string, style: JsonStyle): string {
   let out = JSON.stringify(s);
   if (style.escapeNonAscii) {
     out = out.replace(NON_ASCII_UNIT, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);

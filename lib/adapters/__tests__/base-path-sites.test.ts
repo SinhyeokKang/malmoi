@@ -37,6 +37,7 @@ const SITES: Record<string, { count: number; kind: Kind }> = {
   "lib/adapters/yaml-catalog.ts": { count: 2, kind: "adapter" },
   "lib/adapters/code-dict.ts": { count: 4, kind: "adapter" },
   "lib/adapters/shared.ts": { count: 1, kind: "adapter" },
+  "lib/adapters/arb-catalog.ts": { count: 1, kind: "adapter" },
 
   // 다섯 자리가 파일 안 helper(`surveyLocalePath`) 하나로 모였고, 기준 언어 전용 diff 자리는 `baseFilePath`다.
   "lib/survey/one.ts": { count: 1, kind: "branched" },

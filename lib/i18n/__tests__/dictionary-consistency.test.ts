@@ -103,6 +103,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "newProject.formats.yaml-catalog.example",
     "newProject.formats.code-dict.example",
     "newProject.formats.ts-dict.example",
+    // 제품 이름(Flutter ARB)은 번역하지 않는다 — 라벨과 예시가 세 사전에서 같다.
+    "newProject.formats.arb-catalog",
     "newProject.files.manual.baseLocalePlaceholder",
     "members.invite.placeholder",
     // 낱말 없는 조합 — 값을 `·`·`—`·`#`·괄호로만 잇는다
@@ -162,6 +164,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "newProject.formats.yaml-catalog.example",
     "newProject.formats.code-dict.example",
     "newProject.formats.ts-dict.example",
+    // 제품 이름(Flutter ARB)은 번역하지 않는다 — 라벨과 예시가 세 사전에서 같다.
+    "newProject.formats.arb-catalog",
     "newProject.files.manual.baseLocalePlaceholder",
     // 낱말 없는 조합 — 값을 `·`·`—`·`#`·괄호로만 잇는다
     "repositorySync.cause",

@@ -1,0 +1,296 @@
+import { parse as parseYaml } from "yaml";
+import { localeFromPath } from "./chrome-locales";
+import { observeJsonStyle, quote, stripBom } from "./json-style";
+import { compareKeys, hasStrongLocale, looksLikeLocale, orderedEntries, rankTemplateCandidates, splitLocaleSuffix, verifySamples, type CatalogVerdict } from "./shared";
+import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
+import { causeMessage } from "@/lib/cause";
+
+/**
+ * Flutter `gen-l10n`의 ARB — `lib/l10n/app_<locale>.arb` (arb design §2).
+ *
+ * 엔트리는 최상위 `"key": "string"`뿐이다. ICU 문자열(`{count, plural, …}`)은 **통짜 문자열**로 다룬다(PRODUCT §4.2 — 복수형 편집은 비범위).
+ *
+ * ⚠️ **원본에서 표현 말고도 나르는 것이 있는 첫 재생성 어댑터다.** `@key` 메타데이터와 `@@*` 전역 항목은 번역자가 로케일별로 고치는 값이
+ * 아니라 개발자가 쓰는 소스 키 메타데이터라 소유자가 코드다 — 그래서 DB에 넣지 않고(2026-10-19 사용자 결정, 스키마 0) **같은 로케일
+ * 원본 파일의 텍스트 구간을 바이트 그대로** 나른다. 키마다 출처가 하나이고 원본과 DB를 견줘 고르는 코드가 없으므로 병합이 아니다
+ * (B3.4의 "원본에만 있는 키는 원본 엔트리 그대로"와 같은 형).
+ */
+
+/** `<dir>/<locale>.arb` · `<dir>/<prefix><locale>.arb`. 디렉터리 없는 루트 파일도 받는다. */
+export const ARB_FILE = /^((?:[^/]*\/)*)([^/]+)\.arb$/;
+
+/** gen-l10n 설정 파일. 리포 루트의 것만 본다(arb design §2). */
+const L10N_CONFIG = "l10n.yaml";
+/** `l10n.yaml`이 `arb-dir`을 생략했을 때 gen-l10n이 쓰는 값. */
+const DEFAULT_ARB_DIR = "lib/l10n";
+
+const BOM = "﻿";
+
+/** 최상위 항목 하나. `value`는 원본의 **값 텍스트 그대로**다 — 나를 때 다시 직렬화하지 않는다. */
+export type ArbMember = { name: string; value: string };
+
+/**
+ * 최상위 항목을 파일 순서대로 낸다. 중복 이름도 그대로 둔다(read가 warning으로 알린다). JSON이 아니거나 루트가 객체가 아니면 `undefined`.
+ *
+ * ⚠️ **`JSON.parse`로 먼저 검증하고 그다음 훑는다.** 훑기는 값의 경계만 찾고 해석은 하지 않으므로, 검증된 입력에서만 경계가 참이다.
+ */
+export function parseArb(text: string): ArbMember[] | undefined {
+  const t = stripBom(text);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(t);
+  } catch {
+    return undefined;
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+
+  const members: ArbMember[] = [];
+  let i = skipWs(t, 0) + 1; // `{`
+  for (;;) {
+    i = skipWs(t, i);
+    if (t[i] === "}") break;
+    const nameEnd = skipString(t, i);
+    const name = JSON.parse(t.slice(i, nameEnd)) as string;
+    i = skipWs(t, nameEnd) + 1; // `:`
+    const start = skipWs(t, i);
+    const end = skipValue(t, start);
+    members.push({ name, value: t.slice(start, end) });
+    i = skipWs(t, end);
+    if (t[i] === ",") i += 1;
+  }
+  return members;
+}
+
+function skipWs(t: string, i: number): number {
+  while (i < t.length && (t[i] === " " || t[i] === "\t" || t[i] === "\n" || t[i] === "\r")) i += 1;
+  return i;
+}
+
+/** `"`에서 시작해 닫는 `"` 다음 위치. */
+function skipString(t: string, i: number): number {
+  i += 1;
+  while (i < t.length && t[i] !== '"') i += t[i] === "\\" ? 2 : 1;
+  return i + 1;
+}
+
+function skipValue(t: string, i: number): number {
+  const ch = t[i];
+  if (ch === '"') return skipString(t, i);
+  if (ch === "{" || ch === "[") {
+    let depth = 0;
+    while (i < t.length) {
+      const c = t[i];
+      if (c === '"') {
+        i = skipString(t, i);
+        continue;
+      }
+      if (c === "{" || c === "[") depth += 1;
+      else if (c === "}" || c === "]") {
+        depth -= 1;
+        if (depth === 0) return i + 1;
+      }
+      i += 1;
+    }
+    return i;
+  }
+  while (i < t.length && !/[\s,}\]]/.test(t[i]!)) i += 1;
+  return i;
+}
+
+/** `@foo` → `foo`. `@@*`(전역)와 엔트리는 `undefined`. */
+function metaKeyOf(name: string): string | undefined {
+  return name.startsWith("@") && !name.startsWith("@@") ? name.slice(1) : undefined;
+}
+
+/** 같은 이름이 여럿이면 마지막만 — `JSON.parse`의 의미와 같다. */
+function lastWins(members: readonly ArbMember[]): ArbMember[] {
+  const last = new Map<string, number>();
+  members.forEach((m, i) => last.set(m.name, i));
+  return members.filter((m, i) => last.get(m.name) === i);
+}
+
+/** 엔트리 값(`@`로 시작하지 않는 이름의 값)이 절반 이상 문자열이면 ARB다. 엔트리가 없으면 정보 없음이다(빈 스텁·`@@locale`만). */
+function arbVerdict(content: string): CatalogVerdict {
+  const members = parseArb(content);
+  if (members === undefined) return "no";
+  const values = lastWins(members).filter((m) => !m.name.startsWith("@")).map((m) => m.value);
+  if (values.length === 0) return "unknown";
+  const strings = values.filter((v) => v.startsWith('"')).length;
+  return strings * 2 >= values.length ? "yes" : "no";
+}
+
+/** 1패스가 내려받을 설정 파일 — 경로만으로는 `arb-dir`을 모른다. */
+export function arbProbePaths(paths: readonly string[]): string[] {
+  return paths.includes(L10N_CONFIG) ? [L10N_CONFIG] : [];
+}
+
+type L10nConfig = { arbDir: string; templateFile?: string };
+
+/** 못 읽으면 `undefined` — 설정이 탐지를 막지 않는다. */
+function readL10nConfig(content: string | undefined): L10nConfig | undefined {
+  if (content === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(content);
+  } catch {
+    return undefined;
+  }
+  const record = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+  const field = (name: string): string | undefined => {
+    const v = Object.hasOwn(record, name) ? record[name] : undefined;
+    return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+  };
+  const arbDir = (field("arb-dir") ?? DEFAULT_ARB_DIR).replace(/^\.\//, "").replace(/\/+$/, "");
+  const templateFile = field("template-arb-file");
+  return templateFile === undefined ? { arbDir } : { arbDir, templateFile };
+}
+
+function matchesConfig(pathTemplate: string, config: L10nConfig): boolean {
+  const at = pathTemplate.lastIndexOf("/");
+  const dir = at === -1 ? "" : pathTemplate.slice(0, at);
+  if (dir !== config.arbDir) return false;
+  if (config.templateFile === undefined) return true;
+  return localeFromPath(pathTemplate, `${dir === "" ? "" : `${dir}/`}${config.templateFile}`) !== undefined;
+}
+
+function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
+  const byTemplate = new Map<string, Set<string>>();
+  for (const path of paths) {
+    const m = ARB_FILE.exec(path);
+    if (!m) continue;
+    const [, dir = "", base = ""] = m;
+    // ⚠️ **접두사 분리를 먼저 본다.** `app_en`은 그 자체로 `looksLikeLocale`(3글자 + `_` + 2글자)을 통과해, 통째 판정을 먼저 하면
+    // Flutter 기본 이름(`app_en.arb`)이 전부 `{locale}.arb`의 로케일 `app_en`으로 잡힌다. `en_US`는 오른쪽 조각(`US`)이 로케일 모양이
+    // 아니라 분리가 실패하고 통째로 남는다. 대가: 소문자 지역(`en_gb.arb`)은 접두사 `en_`으로 읽힌다 — gen-l10n 관례가 아니다.
+    const split = splitLocaleSuffix(base) ?? (looksLikeLocale(base) ? { prefix: "", locale: base } : undefined);
+    if (split === undefined) continue;
+    const template = `${dir}${split.prefix}{locale}.arb`;
+    (byTemplate.get(template) ?? byTemplate.set(template, new Set()).get(template)!).add(split.locale);
+  }
+  // `.arb` 확장자가 신호라 i18n 경로 신호를 요구하지 않는다(Flutter 기본 `lib/l10n`은 `I18N_HINT`에 없다).
+  const groups = [...byTemplate].filter(([, s]) => hasStrongLocale(s)).map(([pathTemplate, locales]) => ({ pathTemplate, locales }));
+  const verified = rankTemplateCandidates(groups).filter((g) => !probe || verifySamples(g.pathTemplate, g.locales, probe, arbVerdict));
+
+  // ⚠️ **좁히기는 검증 뒤다** — 설정이 가리키는 후보가 검증에서 떨어졌는데 좁히기를 먼저 하면 리포 전체가 후보 0이 된다.
+  // ⚠️ **어댑터 안에서 순서를 바꾸는 것으로는 안 된다** — `detectCandidatesAcross`가 전부 다시 정렬한다. 남기는 집합을 바꿔야 진입점의 1순위가 바뀐다.
+  const config = probe !== undefined && paths.includes(L10N_CONFIG) ? readL10nConfig(probe(L10N_CONFIG)) : undefined;
+  const narrowed = config === undefined ? [] : verified.filter((g) => matchesConfig(g.pathTemplate, config));
+  return (narrowed.length > 0 ? narrowed : verified).map((g) => ({ adapter: "arb-catalog" as const, pathTemplate: g.pathTemplate, locales: [...g.locales] }));
+}
+
+function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
+  return detectCandidates(paths, probe)[0];
+}
+
+function read(format: DetectedFormat, files: readonly { path: string; content: string }[]): ReadResult {
+  const locales: ReadLocale[] = [];
+  const errors: AdapterError[] = [];
+  for (const file of files) {
+    const locale = localeFromPath(format.pathTemplate, file.path);
+    if (locale === undefined) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripBom(file.content));
+    } catch (cause) {
+      errors.push({ path: file.path, code: "parse-failed", detail: causeMessage(cause) });
+      continue;
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      errors.push({ path: file.path, code: "root-not-object" });
+      continue;
+    }
+    const members = parseArb(file.content) ?? [];
+    const seen = new Set<string>();
+    const warned = new Set<string>();
+    for (const { name } of members) {
+      if (seen.has(name) && !warned.has(name)) {
+        errors.push({ path: file.path, code: "duplicate-property", key: name });
+        warned.add(name);
+      }
+      seen.add(name);
+    }
+    const entries: LocaleEntry[] = [];
+    for (const { name, value } of lastWins(members)) {
+      if (name.startsWith("@")) continue;
+      const message: unknown = JSON.parse(value);
+      // 문자열이 아닌 엔트리 값은 gen-l10n도 거부한다. writer가 그 구간을 그대로 남기므로 잃는 값이 없다(unmanaged).
+      if (typeof message !== "string") {
+        errors.push({ path: file.path, code: "value-not-string", key: name });
+        continue;
+      }
+      entries.push({ key: name, message, order: entries.length });
+    }
+    entries.sort((a, b) => compareKeys(a.key, b.key));
+    locales.push({ locale, entries });
+  }
+  locales.sort((a, b) => compareKeys(a.locale, b.locale));
+  return { locales, errors, nested: false };
+}
+
+/**
+ * 엔트리는 `orderedEntries` 순서로 DB에서, `@key`는 그 키 바로 뒤에, 나머지(`@@*`·문자열이 아닌 엔트리 값)는 원본에서 바로 앞에 있던
+ * **출력되는** 엔트리 뒤에(없으면 맨 앞) 원본 텍스트 그대로 놓는다. 출력이 다시 원본이 되면 같은 배치를 낳는다(고정점).
+ *
+ * - `@key`는 짝 키를 출력할 때만 낸다 — orphaned·미번역·짝 없는 `@key`는 버린다(arb design §2).
+ * - `@@locale`은 **원본에 그 항목이 있을 때만** 경로의 코드로 낸다 — 원본 값과 견주지 않는다. 원본이 없는 새 파일에는 맨 앞에 늘 낸다.
+ *   표현 출처(기준 언어 파일)의 `@key`·`@@*`는 싣지 않는다 — 그 파일의 것이지 새 언어의 것이 아니다.
+ */
+function write(format: DetectedFormat, input: WriteInput): string | null {
+  const usable = orderedEntries(input.entries);
+  // 원본은 위치가 아니라 경로로 고른다 — 호출부가 여러 파일을 실어도 남의 로케일 구간을 나르지 않는다.
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
+  const original = format.currentFiles?.find((c) => c.path === path)?.content;
+  if (usable.length === 0 && original === undefined) return null;
+  const style = observeJsonStyle(original ?? format.representationSource);
+  const member = (name: string, value: string) => `${style.indent}${quote(name, style)}: ${value}`;
+  const localeValue = quote(input.locale, style);
+
+  const lines: string[] = [];
+  if (original === undefined) {
+    lines.push(member("@@locale", localeValue));
+    for (const e of usable) lines.push(member(e.key, quote(e.message, style)));
+  } else {
+    const written = new Set(usable.map((e) => e.key));
+    const meta = new Map<string, string>();
+    /** 앞선 출력 엔트리 → 그 뒤에 붙는 항목들. `null`은 맨 앞이다. */
+    const after = new Map<string | null, string[]>();
+    let anchor: string | null = null;
+    // 깨진 원본은 나를 구간이 없다 — 표현만 읽고 `@@locale`도 내지 않는다(있었는지 모른다).
+    for (const m of lastWins(parseArb(original) ?? [])) {
+      const metaKey = metaKeyOf(m.name);
+      if (metaKey !== undefined) {
+        meta.set(metaKey, m.value);
+        continue;
+      }
+      if (written.has(m.name)) {
+        anchor = m.name;
+        continue;
+      }
+      // 엔트리였던 문자열 값은 DB가 주인이다 — 출력하지 않기로 했으면 그 값도 남지 않는다.
+      if (!m.name.startsWith("@@") && m.value.startsWith('"')) continue;
+      const value = m.name === "@@locale" ? localeValue : m.value;
+      (after.get(anchor) ?? after.set(anchor, []).get(anchor)!).push(member(m.name, value));
+    }
+    lines.push(...(after.get(null) ?? []));
+    for (const e of usable) {
+      lines.push(member(e.key, quote(e.message, style)));
+      const m = meta.get(e.key);
+      if (m !== undefined) lines.push(member(`@${e.key}`, m));
+      lines.push(...(after.get(e.key) ?? []));
+    }
+  }
+
+  const eol = style.eol;
+  const body = lines.length === 0 ? "{}" : `{${eol}${lines.join(`,${eol}`)}${eol}}`;
+  return `${style.bom ? BOM : ""}${body}${eol}`;
+}
+
+export const arbCatalog: Adapter = {
+  name: "arb-catalog",
+  layout: "per-locale",
+  writeStrategy: "regenerate",
+  detect,
+  detectCandidates,
+  read,
+  write,
+};

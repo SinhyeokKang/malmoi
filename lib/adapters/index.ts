@@ -1,3 +1,4 @@
+import { arbCatalog } from "./arb-catalog";
 import { chromeLocales } from "./chrome-locales";
 import { codeDict } from "./code-dict";
 import { jsonCatalog } from "./json-catalog";
@@ -11,6 +12,7 @@ export { jsonCatalog } from "./json-catalog";
 export { yamlCatalog } from "./yaml-catalog";
 export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
+export { arbCatalog } from "./arb-catalog";
 export { namespaceOf, compareKeys, catalogVerdict, matchGlobPaths, pathSignals } from "./shared";
 export * from "./types";
 
@@ -26,7 +28,7 @@ export * from "./types";
  * 단 **경로만으로는 후보를 못 낸다** — 내용을 봐야 알 수 있어서, 1패스에서 내려받을 파일을 고르는
  * `tsDictProbePaths`가 그 자리를 맡는다.
  */
-export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict];
+export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict, arbCatalog];
 
 /**
  * ⚠️ **한 리포에 로케일 포맷이 둘 이상일 수 있다.** bugshot-2가 그렇다 — `_locales`(4키,

@@ -2516,6 +2516,7 @@ export const en = {
       "yaml-catalog": { label: "YAML catalog", example: "config/locales/{locale}.yml" },
       "code-dict": { label: "Code dictionary (one file per language)", example: "src/locales/{locale}.ts" },
       "ts-dict": { label: "Code dictionary (all languages in one file)", example: "src/i18n/namespaces/*.ts" },
+      "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
     },
     /**
      * 첫 적재 결과 헤드라인 — **0건이 아니면 성공 문구를 그대로 쓰지 않는다** (ARCHITECTURE §0 불변식 9).

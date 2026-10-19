@@ -1167,6 +1167,7 @@ export const es = {
       "yaml-catalog": { label: "Catálogo YAML", example: "config/locales/{locale}.yml" },
       "code-dict": { label: "Diccionario en código (un archivo por idioma)", example: "src/locales/{locale}.ts" },
       "ts-dict": { label: "Diccionario en código (todos los idiomas en un archivo)", example: "src/i18n/namespaces/*.ts" },
+      "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
     },
     imported: (count: number, failed: number): string =>
       failed === 0

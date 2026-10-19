@@ -1173,6 +1173,7 @@ export const ko = {
       "yaml-catalog": { label: "YAML 카탈로그", example: "config/locales/{locale}.yml" },
       "code-dict": { label: "코드 사전(언어별 파일)", example: "src/locales/{locale}.ts" },
       "ts-dict": { label: "코드 사전(모든 언어를 한 파일에)", example: "src/i18n/namespaces/*.ts" },
+      "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
     },
     imported: (count: number, failed: number): string =>
       failed === 0

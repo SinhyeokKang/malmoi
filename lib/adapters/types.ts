@@ -1,7 +1,7 @@
 import type { FileEncoding } from "@/lib/file-encoding";
 
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict";
+export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {
@@ -27,8 +27,8 @@ export type DetectedFormat = {
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
    * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.
-   * - 재생성(`chrome-locales`·`json-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
-   *   읽는다. 없으면 기본값으로 계속 만든다.
+   * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
+   *   읽는다. 없으면 기본값으로 계속 만든다. ⚠️ `arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간도 나른다(값은 아니다).
    * 그래서 pull은 어댑터 종류와 무관하게 blob **내용**을 받는다 (ARCHITECTURE §2). 값은 어느 쪽도 안 읽는다.
    */
   currentFiles?: readonly AdapterFile[];
@@ -112,7 +112,7 @@ export type LocaleEntry = {
    * 코드에서 사라진 키. DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
    *
    * **처리가 writer 방식마다 다르다** (ARCHITECTURE §1.1):
-   * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
+   * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
    * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
@@ -195,7 +195,7 @@ export type AdapterErrorCode = (typeof ADAPTER_ERROR_CODES)[number];
 const ERROR_KIND = {
   "parse-failed": "failure", "parse-crashed": "failure", "root-not-object": "failure", "no-default-export": "failure",
   "invalid-chrome-key": "failure", "missing-message-field": "failure", "value-not-message-object": "failure",
-  // yaml-catalog(surgical)만 낸다 — 숫자·불린 스칼라가 파일에 남는다.
+  // yaml-catalog(surgical) — 숫자·불린 스칼라가 파일에 남는다. arb-catalog(regenerate)도 낸다 — 문자열이 아닌 엔트리 값의 원본 구간을 그대로 나른다.
   "value-not-string": "unmanaged",
   // json-catalog(regenerate)만 낸다 — DB에 없는 값이라 다음 Publish가 지운다.
   "value-not-string-or-container": "failure",
@@ -269,7 +269,7 @@ export type Adapter = {
    * write 방식. **`layout`과 별개 축이다** (2026-09-02 분리).
    *
    * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `orderedEntries`의 결정성 규칙(§1.1)을
-   *   지나야 한다 (`chrome-locales`·`json-catalog`).
+   *   지나야 한다 (`chrome-locales`·`json-catalog`·`arb-catalog`).
    * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
    *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`).
    *

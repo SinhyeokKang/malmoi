@@ -198,7 +198,8 @@
                   "json-catalog",
                   "yaml-catalog",
                   "code-dict",
-                  "ts-dict"
+                  "ts-dict",
+                  "arb-catalog"
                 ]
               },
               "pathTemplate": {
