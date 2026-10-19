@@ -168,6 +168,12 @@ function acceptedPaths(v: Verdict | undefined): string[] {
   return [v.correctCatalogPath, ...(v.alsoValid ?? [])];
 }
 
+/** 후보가 정답인가 — 템플릿이 인정 경로에 있고, 대표 정답이 `basePath`를 들면 그것도 같다(android-strings T3.2). */
+function accepts(v: Verdict | undefined, c: { pathTemplate: string; basePath?: string }): boolean {
+  if (!acceptedPaths(v).includes(c.pathTemplate)) return false;
+  return v?.basePath === undefined || c.pathTemplate !== v.correctCatalogPath || c.basePath === v.basePath;
+}
+
 export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Verdict[]): SurveySummary {
   const byRepo = new Map(verdicts.map((v) => [v.repo, v]));
   const rows = [...surveys].sort((a, b) => compareKeys(a.repo, b.repo));
@@ -185,15 +191,12 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   const correctRank: Record<string, number> = {};
   const misdetectedSupported: RepoSurvey[] = [];
   for (const s of supported) {
-    const accepted = acceptedPaths(byRepo.get(s.repo));
+    const v = byRepo.get(s.repo);
     // 후보 목록에서 **인정 경로 중 가장 앞선 것**의 순위. 여럿이 맞을 수 있다.
-    const ranks = accepted
-      .map((want) => s.candidates.findIndex((c) => c.pathTemplate === want))
-      .filter((i) => i !== -1);
-    const idx = ranks.length === 0 ? -1 : Math.min(...ranks);
+    const idx = s.candidates.findIndex((c) => accepts(v, c));
     const label = idx === -1 ? "없음" : String(idx + 1);
     correctRank[label] = (correctRank[label] ?? 0) + 1;
-    if (s.chosen !== undefined && !accepted.includes(s.chosen.pathTemplate)) misdetectedSupported.push(s);
+    if (s.chosen !== undefined && !accepts(v, s.chosen)) misdetectedSupported.push(s);
   }
   // 미지원 포맷 리포에서 후보를 낸 것도 오탐이다 — 우리 어댑터가 맞을 수 있는 정답이 없다.
   const falseOnUnsupported = withCandidate.filter((s) => byRepo.get(s.repo)?.correctCatalogPath === null);
@@ -379,11 +382,9 @@ function buildRepoTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<string,
   ];
   const lines = rows.map((s) => {
     const v = byRepo.get(s.repo);
-    const accepted = acceptedPaths(v);
     const want = v?.correctCatalogPath ?? null;
-    const ranks = accepted.map((w) => s.candidates.findIndex((c) => c.pathTemplate === w)).filter((i) => i !== -1);
-    const idx = ranks.length === 0 ? -1 : Math.min(...ranks);
-    const hit = s.chosen !== undefined && accepted.includes(s.chosen.pathTemplate);
+    const idx = s.candidates.findIndex((c) => accepts(v, c));
+    const hit = s.chosen !== undefined && accepts(v, s.chosen);
     const mark =
       v === undefined
         ? "❔"

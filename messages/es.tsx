@@ -271,7 +271,7 @@ export const es = {
     },
     closing: {
       title: "Empieza con los archivos que ya tienes",
-      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS, de extensiones de Chrome, de Flutter ARB, de Apple strings o de String Catalog, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
+      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS, de extensiones de Chrome, de Flutter ARB, de Apple strings, de String Catalog o de Android strings, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
       links: { label: "Más información", formats: "Formatos compatibles", aiAgents: "Agentes de IA", faq: "Preguntas frecuentes" },
     },
     mockup: {
@@ -1170,6 +1170,7 @@ export const es = {
       "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
       "apple-strings": { label: "Archivo strings de Apple", example: "App/{locale}.lproj/Localizable.strings" },
       "apple-xcstrings": { label: "Apple String Catalog", example: "App/Localizable.xcstrings" },
+      "android-strings": { label: "Archivo strings de Android", example: "app/src/main/res/values-{locale}/strings.xml" },
     },
     imported: (count: number, failed: number): string =>
       failed === 0

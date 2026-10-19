@@ -42,6 +42,11 @@ export function assemblePushInput(input: {
 }): AssembledPushInput {
   const { paths, probe, format } = input;
 
+  // 기준 언어 파일이 템플릿 밖(`basePath`, Android `values/`)이면 코드가 리포에 없다 — en 우선 추정이 그 파일의 실제 언어와 무관한 코드를 고른다
+  // (android-strings design §2.4). 호출부(`--base`·온보딩 입력)가 정하고 포맷의 언어 목록에도 더한다.
+  if (format.basePath !== undefined && input.baseLocale === undefined) {
+    fail(`a base locale is required: ${format.basePath} has no locale code in its path`);
+  }
   if (input.baseLocale !== undefined && !format.locales.includes(input.baseLocale)) {
     fail(
       `base locale ${input.baseLocale} is not among the detected locales (${format.locales.slice().sort().join(", ")})`,
@@ -52,7 +57,8 @@ export function assemblePushInput(input: {
 
   const adapter = adapterFor(format);
   const files = selectLocaleFiles(adapter.layout, format, paths, probe, baseLocale);
-  const read = adapter.read(format, files);
+  // basePath 파일의 언어는 기준 언어다 — 어댑터가 그 파일을 `templateLocale`로 읽는다(`android-strings`).
+  const read = adapter.read(format.basePath === undefined ? format : { ...format, templateLocale: baseLocale }, files);
 
   // read 에러를 여기서 판정하지 않는다 — CLI는 exit 1로 죽이고 온보딩은 화면에 수를 보인다.
   return { read, files, baseLocale };

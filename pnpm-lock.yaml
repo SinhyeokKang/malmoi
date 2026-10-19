@@ -32,6 +32,9 @@ importers:
       '@vercel/blob':
         specifier: 2.8.0
         version: 2.8.0
+      '@xml-tools/parser':
+        specifier: 1.0.12
+        version: 1.0.12
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2159,6 +2162,9 @@ packages:
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
 
+  '@xml-tools/parser@1.0.12':
+    resolution: {integrity: sha512-YNIPbmr/7ClPpWyk0MLImLBLyVLgW+BeOkbd4UDp8w0tCcgU8lmA4karXBF9EQwaQzDTzaBbJtmSA0G2NKKlPA==}
+
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
@@ -2249,6 +2255,9 @@ packages:
 
   character-reference-invalid@2.0.1:
     resolution: {integrity: sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw==}
+
+  chevrotain@7.1.1:
+    resolution: {integrity: sha512-wy3mC1x4ye+O+QkEinVJkPf5u2vsrDIYW9G7ZuwFl6v/Yu0LwUuT2POsb+NUWApebyxfkQq6+yDfRExbnI5rcw==}
 
   chokidar@5.0.0:
     resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
@@ -3233,6 +3242,9 @@ packages:
   readdirp@5.1.1:
     resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
     engines: {node: '>= 20.19.0'}
+
+  regexp-to-ast@0.5.0:
+    resolution: {integrity: sha512-tlbJqcMHnPKI9zSrystikWKwHkBqu2a/Sgw01h3zFjvYrMxEDYHzzoMZnUrbIfpTFEsoRnnviOXNCzFiSc54Qw==}
 
   remark-gfm@4.0.1:
     resolution: {integrity: sha512-1quofZ2RQ9EWdeN34S79+KExV1764+wCUGop5CPL1WGdD0ocPpu91lzPGbwWMECpEpd42kJGQwzRfyov9j4yNg==}
@@ -5556,6 +5568,10 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
 
+  '@xml-tools/parser@1.0.12':
+    dependencies:
+      chevrotain: 7.1.1
+
   agent-base@7.1.4: {}
 
   ajv@8.20.0:
@@ -5633,6 +5649,10 @@ snapshots:
   character-entities@2.0.2: {}
 
   character-reference-invalid@2.0.1: {}
+
+  chevrotain@7.1.1:
+    dependencies:
+      regexp-to-ast: 0.5.0
 
   chokidar@5.0.0:
     dependencies:
@@ -6830,6 +6850,8 @@ snapshots:
   react@19.2.8: {}
 
   readdirp@5.1.1: {}
+
+  regexp-to-ast@0.5.0: {}
 
   remark-gfm@4.0.1:
     dependencies:

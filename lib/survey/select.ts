@@ -1,3 +1,4 @@
+import { ANDROID_NOT_SOURCE, ANDROID_STRINGS_FILE, isAndroidLocale } from "../adapters/android-strings";
 import { NOT_SOURCE, STRINGS_FILE } from "../adapters/apple-strings";
 import { XCSTRINGS_FILE } from "../adapters/apple-xcstrings";
 import { ARB_FILE, arbProbePaths } from "../adapters/arb-catalog";
@@ -88,6 +89,21 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
     (lprojGroups.get(key) ?? lprojGroups.set(key, []).get(key)!).push({ locale: m[2] ?? "", path: p });
   }
   for (const [, files] of lprojGroups) {
+    for (const f of enFirst(files).slice(0, MAX_PER_SHAPE_GROUP)) wanted.add(f.path);
+  }
+  // ── Android `strings.xml` — 리소스 디렉터리마다 기준 파일(`values/`) + 언어 파일 상한까지 ─────────────
+  //
+  // 모듈·flavor가 많은 리포(stripe-android 551파일)가 예산을 다 먹지 않게 `.lproj`와 같은 상한을 둔다. 기준 파일은 언어 코드가 없어 늘 담는다 —
+  // 빠지면 어댑터가 그 디렉터리를 검증하지 못하고 기준 언어를 읽지 못한다. 한정자가 언어가 아닌 파일(`values-night/`)은 담지 않는다.
+  const resGroups = new Map<string, Array<{ locale: string; path: string }>>();
+  for (const p of allPaths) {
+    const m = ANDROID_STRINGS_FILE.exec(p);
+    if (!m || ANDROID_NOT_SOURCE.test(p)) continue;
+    const [, dir = "", qualifier] = m;
+    if (qualifier === undefined) wanted.add(p);
+    else if (isAndroidLocale(qualifier)) (resGroups.get(dir) ?? resGroups.set(dir, []).get(dir)!).push({ locale: qualifier, path: p });
+  }
+  for (const [, files] of resGroups) {
     for (const f of enFirst(files).slice(0, MAX_PER_SHAPE_GROUP)) wanted.add(f.path);
   }
   // ARB는 확장자가 곧 신호이고 리포당 한 디렉터리라 전부 담는다. 루트 `l10n.yaml`은 탐지가 읽는 설정이다(`arbProbePaths`).

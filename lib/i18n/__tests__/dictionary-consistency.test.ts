@@ -106,6 +106,7 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     // 제품 이름(Flutter ARB)은 번역하지 않는다 — 라벨과 예시가 세 사전에서 같다.
     "newProject.formats.arb-catalog",
     "newProject.formats.apple-strings.example",
+    "newProject.formats.android-strings.example",
     // Xcode의 파일 종류 이름(String Catalog)이다 — Xcode UI가 영어뿐이라 개발자가 보는 이름 그대로 둔다.
     "newProject.formats.apple-xcstrings",
     "newProject.files.manual.baseLocalePlaceholder",
@@ -170,6 +171,7 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     // 제품 이름(Flutter ARB)은 번역하지 않는다 — 라벨과 예시가 세 사전에서 같다.
     "newProject.formats.arb-catalog",
     "newProject.formats.apple-strings.example",
+    "newProject.formats.android-strings.example",
     // Xcode의 파일 종류 이름(String Catalog)이다 — Xcode UI가 영어뿐이라 개발자가 보는 이름 그대로 둔다.
     "newProject.formats.apple-xcstrings",
     "newProject.files.manual.baseLocalePlaceholder",

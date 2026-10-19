@@ -1,7 +1,7 @@
 import type { FileEncoding } from "@/lib/file-encoding";
 
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog" | "apple-strings" | "apple-xcstrings";
+export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog" | "apple-strings" | "apple-xcstrings" | "android-strings";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {

@@ -430,8 +430,8 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
    * ⚠️ **옛 이름은 "ts-dict만 자동 탐지에서 빠져 있다"였고 본문이 그것을 안 쟀다** (2026-09-14 2차
    * 리뷰): 빈 문자열 probe면 다섯이 전부 0을 내므로 `> 0`이 **어떤 구현에서도 참**이었다.
    */
-  it("ADAPTERS가 8개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
-    expect(ADAPTERS).toHaveLength(8);
+  it("ADAPTERS가 9개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
+    expect(ADAPTERS).toHaveLength(9);
     const tsDict = ADAPTERS.find((a) => a.name === "ts-dict")!;
     const source = 'const en = { "a": "A" };\nconst ko = { "a": "B" };\nexport const ns = { en, ko };';
     expect(tsDict.detectCandidates(["src/i18n/x.ts", "src/i18n/y.ts"], () => source)).toHaveLength(1);

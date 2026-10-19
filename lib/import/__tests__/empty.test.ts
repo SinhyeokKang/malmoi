@@ -34,6 +34,24 @@ describe("verifyEmptyCatalog", () => {
   }
 });
 
+/** Android — 기준 언어 파일이 `values/`(basePath)다. 그 파일의 언어는 저장된 기준 언어이고, 빈 `<resources/>`가 빈 카탈로그다. */
+describe("verifyEmptyCatalog — android-strings basePath", () => {
+  const paths = ["app/src/main/res/values/strings.xml", "app/src/main/res/values-ko/strings.xml"];
+  const input = (base: string, ko = "<resources/>") => ({
+    stored: { adapter: "android-strings" as const, pathTemplate: "app/src/main/res/values-{locale}/strings.xml", baseLocale: "en", basePath: paths[0]! },
+    paths, blobs: new Map([[paths[0]!, base], [paths[1]!, ko]]),
+  });
+  it("빈 `<resources/>`와 주석만 있는 `<resources>`를 인식한다", () => {
+    expect(verifyEmptyCatalog(input("<resources/>"))).toBe(true);
+    expect(verifyEmptyCatalog(input('<?xml version="1.0"?>\n<resources>\n    <!-- none -->\n</resources>\n'))).toBe(true);
+  });
+  it("엔트리·문법 오류가 있으면 아니다", () => {
+    expect(verifyEmptyCatalog(input('<resources><string name="a">A</string></resources>'))).toBe(false);
+    expect(verifyEmptyCatalog(input("<resources>"))).toBe(false);
+    expect(verifyEmptyCatalog(input("<resources/>", '<resources><string name="a">가</string></resources>'))).toBe(false);
+  });
+});
+
 /** BOM이 붙은 빈 `{}` — read는 BOM을 벗기는데(audit #57) 이 판정의 두 번째 `JSON.parse`가 벗기지 않아 던졌다(B7a r1). */
 describe("verifyEmptyCatalog — BOM", () => {
   it("BOM이 붙은 빈 json-catalog를 빈 카탈로그로 인식하고 던지지 않는다", () => {

@@ -242,12 +242,13 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
 }
 
 /**
- * Flutter 앱의 iOS·macOS 셸인가 — 템플릿이 `<root>ios/`·`<root>macos/` 아래이고 `<root>pubspec.yaml`이 있다. 셸의 `.strings`는 권한 문구 같은 플랫폼
+ * Flutter 앱의 iOS·macOS·Android 셸인가 — 템플릿이 `<root>ios/`·`<root>macos/`·`<root>android/` 아래이고 `<root>pubspec.yaml`이 있다. Android 셸
+ * (`android/app/src/main/res/values/strings.xml` — 대개 `app_name` 하나)도 같은 이유로 ARB 정답을 누를 수 있다(android-strings orch 결정 7). 셸의 `.strings`는 권한 문구 같은 플랫폼
  * 몫이고 앱 문자열은 ARB다. 재측정(T2.3)에서 smooth-app(ARB 128 · `ios/Runner` 129로케일)·Mono-Dash의 ARB 정답을 눌러 `detectCandidatesAcross`가
  * 맨 뒤로 보낸다. 빼지 않는다 — 둘째 소스로 연결한 표면의 CI가 탐지 목록에서 자기 템플릿을 찾는다.
  */
 export function isFlutterShell(pathTemplate: string, paths: ReadonlySet<string>): boolean {
-  const m = /^((?:[^/]*\/)*?)(?:ios|macos)\//.exec(pathTemplate);
+  const m = /^((?:[^/]*\/)*?)(?:ios|macos|android)\//.exec(pathTemplate);
   return m !== null && paths.has(`${m[1] ?? ""}pubspec.yaml`);
 }
 

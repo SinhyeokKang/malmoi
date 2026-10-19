@@ -1,0 +1,270 @@
+[
+ {
+  "raw": "Hello",
+  "aapt2": "Hello"
+ },
+ {
+  "raw": "  lead   and   trail  ",
+  "aapt2": "lead and trail"
+ },
+ {
+  "raw": "\"  quoted   spaces  \"",
+  "aapt2": "  quoted   spaces  "
+ },
+ {
+  "raw": "Don\\'t",
+  "aapt2": "Don't"
+ },
+ {
+  "raw": "say \\\"hi\\\"",
+  "aapt2": "say \"hi\""
+ },
+ {
+  "raw": "a\\nb\\tc",
+  "aapt2": "a\nb\tc"
+ },
+ {
+  "raw": "line1\n    line2",
+  "aapt2": "line1 line2"
+ },
+ {
+  "raw": "\\@home",
+  "aapt2": "@home"
+ },
+ {
+  "raw": "\\?mark",
+  "aapt2": "?mark"
+ },
+ {
+  "raw": "\\u0041\\u00e9",
+  "aapt2": "Aé"
+ },
+ {
+  "raw": "a &amp; b &lt; c &#8230;",
+  "aapt2": "a & b < c …"
+ },
+ {
+  "raw": "<![CDATA[<b>x</b>]]>",
+  "aapt2": "<b>x</b>"
+ },
+ {
+  "raw": "a\\xb",
+  "aapt2": "axb"
+ },
+ {
+  "raw": "a\\\\b",
+  "aapt2": "a\\b"
+ },
+ {
+  "raw": "100%%",
+  "aapt2": "100%%"
+ },
+ {
+  "raw": "a \"b  c\" d",
+  "aapt2": "a b  c d"
+ },
+ {
+  "raw": "\"Don't\"",
+  "aapt2": "Don't"
+ },
+ {
+  "raw": "<![CDATA[a\\nb  \"c  d\" \\'e\\']]>",
+  "aapt2": "a\nb c  d 'e'"
+ },
+ {
+  "raw": "a &quot;b  c&quot; d",
+  "aapt2": "a b  c d"
+ },
+ {
+  "raw": "a&#92;nb",
+  "aapt2": "a\nb"
+ },
+ {
+  "raw": " @x",
+  "aapt2": "@x"
+ },
+ {
+  "raw": "a@b?c",
+  "aapt2": "a@b?c"
+ },
+ {
+  "raw": "\\u0041x",
+  "aapt2": "Ax"
+ },
+ {
+  "raw": "\\U0041",
+  "aapt2": "U0041"
+ },
+ {
+  "raw": "abc\\",
+  "aapt2": "abc"
+ },
+ {
+  "raw": "a\tb",
+  "aapt2": "a b"
+ },
+ {
+  "raw": "\\#x",
+  "aapt2": "#x"
+ },
+ {
+  "raw": "a<!-- c -->b",
+  "aapt2": "ab"
+ },
+ {
+  "raw": "\\uD83D\\uDE00",
+  "aapt2": ""
+ },
+ {
+  "raw": "😀",
+  "aapt2": "😀"
+ },
+ {
+  "raw": "a&#160;&#160;b",
+  "aapt2": "a  b"
+ },
+ {
+  "raw": "\"abc",
+  "aapt2": "abc"
+ },
+ {
+  "raw": "\"a \" b ",
+  "aapt2": "a  b"
+ },
+ {
+  "raw": "a&#13;b",
+  "aapt2": "a b"
+ },
+ {
+  "raw": "a  &amp;  b",
+  "aapt2": "a & b"
+ },
+ {
+  "raw": "  &amp;  ",
+  "aapt2": "&"
+ },
+ {
+  "raw": "a <!-- c --> b",
+  "aapt2": "a b"
+ },
+ {
+  "raw": "a <![CDATA[ ]]> b",
+  "aapt2": "a b"
+ },
+ {
+  "raw": "\\\"  a",
+  "aapt2": "\" a"
+ },
+ {
+  "raw": "a\\n b",
+  "aapt2": "a\n b"
+ },
+ {
+  "raw": "a \\n b",
+  "aapt2": "a \n b"
+ },
+ {
+  "raw": "\\t a",
+  "aapt2": "\t a"
+ },
+ {
+  "raw": "\\u12",
+  "aapt2": "\u0012"
+ },
+ {
+  "raw": "x\\",
+  "aapt2": "x"
+ },
+ {
+  "raw": "",
+  "aapt2": ""
+ },
+ {
+  "raw": "   ",
+  "aapt2": ""
+ },
+ {
+  "raw": "\"\"",
+  "aapt2": ""
+ },
+ {
+  "raw": "\" \"",
+  "aapt2": " "
+ },
+ {
+  "raw": "a\\'b\\'c",
+  "aapt2": "a'b'c"
+ },
+ {
+  "raw": "\\\\n",
+  "aapt2": "\\n"
+ },
+ {
+  "raw": "&#x41;&#66;",
+  "aapt2": "AB"
+ },
+ {
+  "raw": "tab\\tend ",
+  "aapt2": "tab\tend"
+ },
+ {
+  "raw": "mixed \"  q  \" tail  ",
+  "aapt2": "mixed   q   tail"
+ },
+ {
+  "raw": "\\n",
+  "aapt2": "\n"
+ },
+ {
+  "raw": "\\n\\n",
+  "aapt2": "\n\n"
+ },
+ {
+  "raw": "a\\u0020\\u0020b",
+  "aapt2": "a  b"
+ },
+ {
+  "raw": " \\u0020a",
+  "aapt2": " a"
+ },
+ {
+  "raw": "‘curly’ “quotes”",
+  "aapt2": "‘curly’ “quotes”"
+ },
+ {
+  "raw": "@",
+  "aapt2": "@"
+ },
+ {
+  "raw": "?",
+  "aapt2": "?"
+ },
+ {
+  "raw": "a\\@b",
+  "aapt2": "a@b"
+ },
+ {
+  "raw": "日本語",
+  "aapt2": "日本語"
+ },
+ {
+  "raw": "%1$s and %2$d",
+  "aapt2": "%1$s and %2$d"
+ },
+ {
+  "raw": "a\\\"b\\\"",
+  "aapt2": "a\"b\""
+ },
+ {
+  "raw": "\\'",
+  "aapt2": "'"
+ },
+ {
+  "raw": "a &gt; b",
+  "aapt2": "a > b"
+ },
+ {
+  "raw": "]]&gt;",
+  "aapt2": "]]>"
+ }
+]

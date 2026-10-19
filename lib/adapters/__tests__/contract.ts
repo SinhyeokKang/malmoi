@@ -97,6 +97,24 @@ function xcstringsSource(keys: readonly string[]): string {
   return `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`;
 }
 
+/**
+ * `android-strings`(`res/values-{locale}/strings.xml`)의 원본. XML 주석과 `translatable="false"` 엔트리를 둔다 — 둘 다 바이트 그대로 남아야 한다.
+ * 키는 `name` 속성이라 XML 속성 이스케이프를 지난다(`"`·`&`·`<`).
+ */
+function androidSource(keys: readonly string[]): string {
+  const attr = (k: string) => k.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+  return [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    "<resources>",
+    "    <!-- 사람이 넣은 주석 — 보존돼야 한다 -->",
+    '    <string name="app_id" translatable="false">com.example</string>',
+    ...keys.map((k) => `    <string name="${attr(k)}">${srcVal(k)}</string>`),
+    `    <string name="${ORPHAN_KEY}">${ORPHAN_SOURCE_VALUE}</string>`,
+    "</resources>",
+    "",
+  ].join("\n");
+}
+
 /** `multi-locale` 어댑터의 원본 파일을 만든다 — 치환 대상이 원본에 있어야 한다. */
 function tsSource(keys: readonly string[]): string {
   const body = () =>
@@ -168,6 +186,14 @@ export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_K
         pathTemplate: "App/Localizable.xcstrings",
         locales: ["ko", "en"],
         currentFiles: [{ path: "App/Localizable.xcstrings", content: xcstringsSource(keys) }],
+      };
+    // 기준 언어 파일(`values/`)이 아닌 언어 파일로 잰다 — 계약의 삽입·create 검사가 비기준 파일의 규칙이다. basePath 갈래는 어댑터 테스트가 잰다.
+    case "android-strings":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "app/src/main/res/values-{locale}/strings.xml",
+        locales: ["en"],
+        currentFiles: [{ path: "app/src/main/res/values-en/strings.xml", content: androidSource(keys) }],
       };
   }
 }
@@ -276,6 +302,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
   if (creates && adapter.create) {
     const source = adapter.name === "yaml-catalog" ? "en:\n    donor: BASE_ONLY\n"
       : adapter.name === "apple-strings" ? "/* BASE_ONLY comment */\n\"donor\" = \"BASE_ONLY\";\n"
+      : adapter.name === "android-strings" ? '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <!-- BASE_ONLY comment -->\n    <string name="donor">BASE_ONLY</string>\n</resources>\n'
       : "export default {\n    donor: 'BASE_ONLY',\n};\n";
     const fresh = { ...fmt, currentFiles: undefined, representationSource: source };
     const input = { locale: "fr", baseLocale: "en", entries: entriesFor(CONTRACT_KEYS) };
@@ -645,6 +672,19 @@ function baseFixture(adapter: Adapter): { format: DetectedFormat; basePath: stri
         basePath: path,
         files: new Map([[path, `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`]]),
         paths: [{ path }],
+      };
+    }
+    // 기준 언어 파일이 템플릿 밖(`values/`)이다 — 그 파일의 언어는 `templateLocale`이 말한다(android-strings design §2.3).
+    case "android-strings": {
+      const xml = (keep: string, added?: string) =>
+        `<resources>\n    <string name="keep">${keep}</string>\n${added ? `    <string name="added">${added}</string>\n` : ""}</resources>\n`;
+      const basePath = "app/src/main/res/values/strings.xml";
+      const fr = "app/src/main/res/values-fr/strings.xml";
+      return {
+        format: { adapter: adapter.name, pathTemplate: "app/src/main/res/values-{locale}/strings.xml", basePath, templateLocale: "en", locales: ["en", "fr"] },
+        basePath,
+        files: new Map([[basePath, xml("S_keep", BASE_ADDED_VALUE)], [fr, xml("S_fr_keep")]]),
+        paths: [{ path: basePath, locale: "en" }, { path: fr, locale: "fr" }],
       };
     }
     case "ts-dict": {

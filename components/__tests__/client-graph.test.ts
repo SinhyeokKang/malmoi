@@ -597,9 +597,11 @@ describe("클라이언트 그래프", () => {
       // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
       "lib/events/payload.ts",
       "lib/events/view.ts",
+      // 언어 이름이 Android 철자의 지역(`zh-rCN`)을 푸는 정규화(android-strings) — 로케일 코드 판정 잎(import 0)이다.
+      "lib/locale-code.ts",
       // 언어 만료 행의 글리프·문장이 "리포가 요청대로인가"를 Publish 결과와 같은 판정으로 읽는다(locale-add 시안 P3) — import 0인 잎이다.
       "lib/locales/reached.ts",
-      // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
+      // 언어 이름 — 온보딩 ③이 같은 함수를 쓴다. 잎 `lib/locale-code.ts` 하나만 문다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",
       // 결과 키가 읽는 상태 정본도 잎이다 — 문구는 모두 인자로 받은 사전에서 고른다.

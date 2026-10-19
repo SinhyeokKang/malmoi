@@ -201,7 +201,8 @@
                   "ts-dict",
                   "arb-catalog",
                   "apple-strings",
-                  "apple-xcstrings"
+                  "apple-xcstrings",
+                  "android-strings"
                 ]
               },
               "pathTemplate": {

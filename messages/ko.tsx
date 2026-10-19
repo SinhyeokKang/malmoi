@@ -275,7 +275,7 @@ export const ko = {
     },
     closing: {
       title: "이미 있는 번역 파일에서 시작하세요",
-      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램, Flutter ARB, Apple strings, String Catalog 번역 파일을 지원합니다. GitHub 또는 GitLab.com 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
+      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램, Flutter ARB, Apple strings, String Catalog, Android strings 번역 파일을 지원합니다. GitHub 또는 GitLab.com 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
       links: { label: "자세히 알아보기", formats: "지원 파일 형식", aiAgents: "AI 에이전트", faq: "자주 묻는 질문" },
     },
     // 목업 데이터는 가상 프로젝트의 리포 내용(원문 en·de·fr 값)이라 화면 언어와 함께 바꾸지 않는다.
@@ -1176,6 +1176,7 @@ export const ko = {
       "arb-catalog": { label: "Flutter ARB", example: "lib/l10n/app_{locale}.arb" },
       "apple-strings": { label: "Apple strings 파일", example: "App/{locale}.lproj/Localizable.strings" },
       "apple-xcstrings": { label: "Apple String Catalog", example: "App/Localizable.xcstrings" },
+      "android-strings": { label: "Android strings 파일", example: "app/src/main/res/values-{locale}/strings.xml" },
     },
     imported: (count: number, failed: number): string =>
       failed === 0

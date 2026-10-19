@@ -10,7 +10,7 @@ import { surfaceOwnership, type SurfacePaths } from "@/lib/surfaces/plan";
  */
 
 /** 로케일별 파일을 생성·삭제할 수 있는 포맷만 — 공유 파일(`ts-dict`)의 언어 구성 변경은 범위 밖이다. */
-const SUPPORTED_ADAPTERS: ReadonlySet<string> = new Set(["json-catalog", "chrome-locales", "yaml-catalog", "code-dict", "arb-catalog", "apple-strings"]);
+const SUPPORTED_ADAPTERS: ReadonlySet<string> = new Set(["json-catalog", "chrome-locales", "yaml-catalog", "code-dict", "arb-catalog", "apple-strings", "android-strings"]);
 
 export function supportsLocaleChanges(adapterName: string | null): boolean {
   return adapterName !== null && SUPPORTED_ADAPTERS.has(adapterName);

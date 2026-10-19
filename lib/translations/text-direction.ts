@@ -1,3 +1,5 @@
+import { displayLocaleCode } from "@/lib/locale-code";
+
 /**
  * 로케일 코드 → 값 셀의 `dir`·`lang` (malmoi#91).
  *
@@ -28,7 +30,8 @@ type TextInfoLocale = Intl.Locale & { getTextInfo?: () => { direction?: string }
 export function localeTextAttrs(code: string): { dir: TextDirection; lang: string | undefined } {
   let locale: TextInfoLocale;
   try {
-    locale = new Intl.Locale(code.replaceAll("_", "-"));
+    // Android 철자(`iw-rIL`)는 `Intl.Locale`이 던진다 — 지역만 BCP 47로 읽는다(android-strings design §2.2).
+    locale = new Intl.Locale(displayLocaleCode(code).replaceAll("_", "-"));
   } catch {
     return { dir: "auto", lang: undefined };
   }

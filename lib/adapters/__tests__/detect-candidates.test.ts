@@ -134,7 +134,7 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
    * ⚠️ **`X.length - X.length`를 세지 않는다** (2026-09-14 2차 리뷰). 그렇게 쓰면 ts-dict를 다시 빼도
    * green이다 — **어댑터마다 후보를 실제로 내게 해서** 센다.
    */
-  it("여덟 어댑터가 전부 자동 탐지에 참여한다 — 하나라도 빠지면 red다", () => {
+  it("아홉 어댑터가 전부 자동 탐지에 참여한다 — 하나라도 빠지면 red다", () => {
     const cases: Record<string, { paths: string[]; probe: FileProbe }> = {
       "chrome-locales": { paths: ["_locales/en/messages.json", "_locales/ko/messages.json"], probe: () => '{"a":{"message":"A"}}' },
       "json-catalog": { paths: ["locales/en.json", "locales/ko.json"], probe: () => '{"a":"A"}' },
@@ -144,6 +144,7 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
       "arb-catalog": { paths: ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"], probe: () => '{"@@locale":"en","a":"A"}' },
       "apple-strings": { paths: ["App/en.lproj/Localizable.strings", "App/ko.lproj/Localizable.strings"], probe: () => '"a" = "A";\n' },
       "apple-xcstrings": { paths: ["App/Localizable.xcstrings"], probe: () => '{"sourceLanguage":"en","strings":{"a":{}},"version":"1.0"}' },
+      "android-strings": { paths: ["app/src/main/res/values/strings.xml", "app/src/main/res/values-ko/strings.xml"], probe: () => '<resources><string name="a">A</string></resources>' },
     };
     for (const adapter of ADAPTERS) {
       const c = cases[adapter.name]!;

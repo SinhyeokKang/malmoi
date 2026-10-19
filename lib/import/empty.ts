@@ -14,8 +14,9 @@ export function verifyEmptyCatalog(input: {
 }): boolean {
   const targets = templatePaths(input.stored.adapter, input.stored.pathTemplate, input.paths, input.stored.basePath);
   if (targets.length === 0) return false;
+  // basePath 파일에는 언어 코드가 없다 — 그 언어가 저장된 기준 언어임을 `templateLocale`로 알려야 어댑터가 읽는다(android-strings).
   const format: DetectedFormat = { adapter: input.stored.adapter, pathTemplate: input.stored.pathTemplate,
-    ...(input.stored.basePath === null ? {} : { basePath: input.stored.basePath }), locales: [] };
+    ...(input.stored.basePath === null ? {} : { basePath: input.stored.basePath, templateLocale: input.stored.baseLocale }), locales: [] };
   const adapter = adapterFor(format);
   let bytes = 0;
   const locales = new Set<string>();

@@ -26,6 +26,7 @@ describe("supportsLocaleChanges", () => {
     ["code-dict", true],
     ["arb-catalog", true],
     ["apple-strings", true],
+    ["android-strings", true],
     ["ts-dict", false],
     // 한 파일에 전 언어가 있다 — ts-dict와 같다(apple-strings design §2.3).
     ["apple-xcstrings", false],

@@ -101,8 +101,9 @@ export function formatFromProject(
     ...(cols.nested === null ? {} : { nested: cols.nested }),
     // 파일별 관측값이 있으면 write가 이걸 먼저 본다 (ARCHITECTURE §1.35).
     ...((byPath) => (byPath === undefined ? {} : { nestedByPath: byPath }))(nestedByPathOf(cols.nestedByPath)),
-    // null을 필드 부재로 접는다 — 기존 표면의 포맷 모양이 그대로다.
-    ...(cols.basePath === null ? {} : { basePath: cols.basePath }),
+    // null을 필드 부재로 접는다 — 기존 표면의 포맷 모양이 그대로다. basePath 파일에는 언어 코드가 없어 그 언어(기준 언어)를 `templateLocale`로 싣는다 —
+    // 빠지면 어댑터 read가 기준 파일을 못 읽어 렌더의 B3.4(원본이 기준 키 집합을 정한다)가 원본에 없는 DB 키를 기준 파일에 넣는다(android-strings design §2.3).
+    ...(cols.basePath === null ? {} : { basePath: cols.basePath, templateLocale: baseLocale }),
   };
 }
 
