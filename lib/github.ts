@@ -55,7 +55,10 @@ function createApp(): App {
   return app;
 }
 
-/** UTF-16 blob 생성 동시 요청 한도. 65파일을 8개씩이면 9라운드 — 호출당 ~0.5s로도 `maxDuration=60` 안이고, 설치 토큰의 secondary rate limit(동시 요청)에도 여유가 있다. */
+/**
+ * UTF-16 blob 생성 동시 요청 한도. 65파일(iTerm2 규모)을 8개씩이면 9라운드다 — 호출당 ~0.5s라는 **가정**(실측 아님)에서 `maxDuration=60` 안에 들고,
+ * 설치 토큰의 secondary rate limit(동시 요청)에도 여유가 있다.
+ */
 const BLOB_CONCURRENCY = 8;
 
 /** `createGitClient`가 고정 토큰을 쥐기 전의 여유. 만료 시각을 모르면(형이 다르면) 새로 받지 않는다 — 판정은 아래 형 검사가 한다. */
@@ -420,7 +423,7 @@ export async function createGitClient(
      */
     async publishSnapshot({ branch, baseSha, changes, summary }) {
       const payload = buildTreePayload(changes, baseSha);
-      // 순차 POST는 UTF-16 65파일(iTerm2 규모)에서 `maxDuration=60`을 넘긴다. 결과는 입력 인덱스 자리에 꽂아
+      // 순차 POST는 UTF-16 65파일(iTerm2 규모)에서 `maxDuration=60`을 넘길 위험이 있다(호출당 ~0.5s 가정 — 실측 아님). 결과는 입력 인덱스 자리에 꽂아
       // 트리 항목 순서가 완료 순서에 흔들리지 않게 한다(export 결정성).
       const pending: number[] = [];
       for (const [i, change] of changes.entries()) {
