@@ -81,3 +81,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **X-fix2 완료·통합** — `2e25c69e` 주석만(`LocaleEntry.order`·`orphaned` 어댑터 나열, 낡은 "blob ≤37" → ≤40 네 곳). docs/에 같은 낡은 숫자 없음(지휘자 grep). X 해제.
 - `3e24b51d` POSTMORTEM — GitLab JSON blob API의 UTF-16 변환(재발 방지 grep: 로케일 내용 읽기는 `/raw` 하나).
 - tasks T5.1–T5.3 체크 — **tasks 체크 안 된 항목 0.**
+- **push** `f5dd5d12..2706ed46`(D3 + X-fix2 + POSTMORTEM + android-strings 인계 `2706ed46`). dev CI success(run 39249113582). 워크트리 `apple-X`·`apple-D` 정리(cherry `+` 0), 남은 워커 0. **끝.**
