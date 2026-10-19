@@ -51,3 +51,5 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - A-fix1 `ctx_d9f2f948b036`(A 터미널 재사용 — R1·Y1·Y2·Y4·Y5). Y3은 사용자 결정 대기.
 - **결정 12: 완료 조건 3을 "정답을 빼앗지 않는다 — `-`·오탐이 새 후보로 바뀐 것은 보고 대상"으로 완화한다** (2026-10-19 사용자). R Y3의 5리포(CodenameOne · google-api-objectivec · swift-package-manager · open-u60-pro · EasyWatermark)는 통과로 보고하고, Android 정답 둘(open-u60-pro·EasyWatermark)은 android-strings가 이겨야 할 항목으로 그 스펙에 넘긴다(런 마무리 때). spec 문구는 D2.
 - **A-fix1 완료** — 커밋 3개(`6bd30d91` R1 디코더를 plutil 의미로 — 소문자 `\u`는 그대로, bare `\U`는 NUL, 8진은 NeXTSTEP 바이트 표(plutil 채록 128개), 짝 없는 서로게이트는 파일 명시 실패, 키·값 고정값 41개 · `56b07b58` Y1·Y2 · `8ca90f12` Y4·Y5 — 강등을 끄면 red 확인). `gate: ok`(16582 + 격리 923). 고정 SHA 네 코퍼스 1순위 diff 0·metrics 동일 → 기준선 커밋 그대로. 디코더가 의미를 크게 바꿔 수정분만 재리뷰 R2 `ctx_4bfde992eb4e`(codex gpt-6-astra medium, `9959e9ad..HEAD`).
+- **R2 완료** — 🔴1(R2-1 8진 `\401`–`\775` 253개를 NUL로 오독 — Apple은 하위 8비트로 줄여 NeXTSTEP 표로 읽는다, 키·값 506건) · 🟡1(R2-2 표현 불가 리터럴의 진입점 회귀 테스트 부재 — 동작 자체는 fail-closed로 맞다). Y1·Y2·Y4·Y5 해소, 그 밖 이스케이프 1,316회·인코더 206회 Apple과 일치. 사본 `handoffs/review-A2.md`. R2 해제.
+- A-fix2 `ctx_c30f87ada05a`(R2-1·R2-2). 수정이 좁고 기대값이 plutil 채록 표라 재리뷰 없이 지휘자가 diff·표 출처를 본다.
