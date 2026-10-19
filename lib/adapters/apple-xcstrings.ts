@@ -213,8 +213,8 @@ function hasDuplicateNames(value: JValue): boolean {
   return value.members.some((m) => hasDuplicateNames(m.value));
 }
 
-/** 언어 셀. `value`는 `stringUnit.value` 문자열이 있을 때만 — 없으면(`variations` 등) 읽지 않는 셀이다. */
-type Cell = { node: JObject; value: JString | undefined };
+/** 언어 셀. `value`는 `stringUnit.value` 문자열이 있을 때만 — 없으면(`variations`·`null` 등) 읽지 않는 셀이다. */
+type Cell = { value: JString | undefined };
 /** `duplicated` — 이 키(또는 그 안)에 같은 이름이 둘이다. 앞의 것을 읽고 쓰며, 가려진 사본은 바이트 그대로다. */
 type CatalogKey = { name: string; node: JObject; translate: boolean; localizations: JObject | undefined; cells: Map<string, Cell>; duplicated: boolean };
 /** `duplicatedRoot` — 루트(`sourceLanguage` 등)에 같은 이름이 둘이다. */
@@ -242,23 +242,34 @@ function parseCatalog(text: string): { ok: true; catalog: Catalog } | { ok: fals
   const keys: CatalogKey[] = [];
   const seen = new Map<string, CatalogKey>();
   for (const member of strings.members) {
+    const node = member.value;
+    // ⚠️ 키 단위는 가려진 사본도 객체여야 한다 — Xcode 26.6 `xcstringstool compile`이 뒤 사본의 `null`·문자열에 실패한다(빈 객체 사본은 받는다).
+    // 언어 셀 단위와 다르다(아래) — 깊이마다 Xcode가 읽는 대로 따른다.
+    if (node.type !== "object") return bad(`string ${JSON.stringify(member.name)} is not an object`);
     const shadowing = seen.get(member.name);
-    // 가려진 사본은 읽지 않는다 — 모양이 무엇이든 Xcode가 다음 저장에서 지운다. 알림만 앞 키에 단다.
+    // 가려진 사본은 읽지 않는다 — Xcode가 다음 저장에서 지운다. 알림만 앞 키에 단다.
     if (shadowing !== undefined) {
       shadowing.duplicated = true;
       continue;
     }
-    const node = member.value;
-    if (node.type !== "object") return bad(`string ${JSON.stringify(member.name)} is not an object`);
     const flag = memberOf(node, "shouldTranslate")?.value;
     const localizations = memberOf(node, "localizations")?.value;
     if (localizations !== undefined && localizations.type !== "object") return bad(`localizations of ${JSON.stringify(member.name)} is not an object`);
     const cells = new Map<string, Cell>();
     for (const cell of localizations?.members ?? []) {
+      // 같은 언어는 앞 사본이다 — 뒤 사본은 자료형과 무관하게 읽지 않는다. Xcode 26.6 `compile`이 뒤 사본의 `null`·문자열·숫자·배열을 무시하고 앞
+      // 값을 낸다(RX-Y1 — 픽스처 `xcode-dup-locale-*`). 자료형 검사보다 먼저 건너뛰어야 결정 14가 이 깊이에서도 선다. 경고는 `hasDuplicateNames`가 단다.
+      if (cells.has(cell.name)) continue;
+      // `null`은 Xcode가 "그 언어 값 없음"으로 읽는다 — 읽지 않는 셀이다. 자리는 이 `null`이 차지한다: 셀을 덧붙이면 Xcode가 여전히 앞의 `null`을 읽어
+      // 값이 전달되지 않으므로 write는 `write-slot-not-scalar`로 알린다. 뒤 사본이 정상이어도 채택하지 않는다(Xcode도 쓰지 않는다).
+      if (cell.value.type === "other" && cell.value.raw === "null") {
+        cells.set(cell.name, { value: undefined });
+        continue;
+      }
       if (cell.value.type !== "object") return bad(`localization ${JSON.stringify(cell.name)} of ${JSON.stringify(member.name)} is not an object`);
       const unit = memberOf(cell.value, "stringUnit")?.value;
       const value = unit?.type === "object" ? memberOf(unit, "value")?.value : undefined;
-      if (!cells.has(cell.name)) cells.set(cell.name, { node: cell.value, value: value?.type === "string" ? value : undefined });
+      cells.set(cell.name, { value: value?.type === "string" ? value : undefined });
     }
     // 빈 키(`Text("")`가 만든다 — 코퍼스 카탈로그 6개 중 3개)는 번역할 문자열이 아니고, 적재 계약(`IncomingKey.key` min 1)이 페이로드 **전체**를 거부한다.
     // `shouldTranslate: false`처럼 읽지도 쓰지도 않고 파일에 남긴다(code-review 🔴1).

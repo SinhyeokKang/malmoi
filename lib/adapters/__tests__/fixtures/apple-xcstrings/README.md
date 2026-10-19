@@ -38,6 +38,20 @@ Xcode 26.6의 `xcrun xcstringstool sync <file> --stringsdata <data> --skip-marki
 파일이고, `output`은 위와 같은 `sync`로 Xcode 26.6이 다시 저장한 것이다. **모든 깊이에서 앞의 것이 남고 뒤의 사본은 지워진다** — 어댑터가 앞의 것을
 읽고 쓰는 근거다(지휘자 결정 14).
 
+## 같은 언어 셀의 가려진 사본 — `xcode-dup-locale-*.xcstrings` (RX-Y1)
+
+공백 없는 손 작성 입력이고, 기대값은 Xcode 26.6 `xcrun xcstringstool compile <file> --output-directory <dir>`가 낸 `de.lproj/Localizable.strings`를
+`plutil -convert json`으로 읽어 채록했다(2026-10-19).
+
+| 파일 | 입력 | Xcode compile |
+|---|---|---|
+| `xcode-dup-locale-later-null.xcstrings` | `"de": {…"FIRST"}`, 뒤에 `"de": null` | exit 0 · `de`의 `k` = `FIRST` |
+| `xcode-dup-locale-later-string.xcstrings` | `"de": {…"FIRST"}`, 뒤에 `"de": "shadow"` | exit 0 · `k` = `FIRST` |
+| `xcode-dup-locale-first-null.xcstrings` | `"de": null`, 뒤에 `"de": {…"SECOND"}` | exit 0 · **`de.lproj` 없음**(앞의 `null` = 값 없음, 뒤 사본을 쓰지 않는다) |
+
+같은 방법으로 본 경계(픽스처 없이 테스트에 박았다): 뒤 언어 사본이 숫자·배열·빈 객체·`stringUnit: 5`여도 `FIRST` · 짝 없는 `"de": null`은 그 언어만
+없음 · 짝 없는 `"de": "x"`·앞 사본 `{}`·`"localizations": null`은 exit 1 · **키 단위는 가려진 사본이 `null`·문자열이면 exit 1**(빈 객체 사본은 받는다).
+
 채록한 Xcode 26.6 직렬화 규칙(테스트가 이 파일로 고정한다):
 
 - 키·필드·언어 코드는 코드 유닛 순이다(옛 Xcode 파일은 키가 대소문자 무시 순이다 — Malmoi는 키를 삽입하지 않으므로 상관없다).

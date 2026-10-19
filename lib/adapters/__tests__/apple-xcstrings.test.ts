@@ -115,6 +115,42 @@ describe("JSON 의미 — RFC 8259를 그대로 따른다", () => {
     expect(back).toBe(input);
   });
 
+  /**
+   * RX-Y1 — 가려진 언어 셀은 자료형과 무관하게 앞의 것이다. Xcode 26.6 `xcstringstool compile`은 뒤 사본이 `null`·문자열·숫자·배열이어도 무시하고
+   * `de`에 FIRST를 낸다(픽스처 README 채록). 결정 14를 모든 깊이에 적용한다.
+   */
+  it.each(["later-null", "later-string"])("가려진 언어 셀이 객체가 아니어도 앞 사본이다 — %s (Xcode compile: de = FIRST)", (name) => {
+    const raw = fixture(`xcode-dup-locale-${name}.xcstrings`);
+    expect(readOf(raw).errors).toEqual([{ path: PATH, code: "duplicate-property", key: "k" }]);
+    expect(valuesOf(raw)).toEqual({ de: { k: "FIRST" }, en: { k: "k" } });
+    expect(writeOne(raw, "de", [{ key: "k", message: "EDITED" }])).toEqual({ content: raw.replace('"FIRST"', '"EDITED"'), errors: [] });
+  });
+
+  /**
+   * 대조 — 앞 사본이 `null`이면 Xcode는 그 언어를 "값 없음"으로 읽고 뒤 정상 사본을 쓰지 않는다(compile: `de.lproj` 없음). 뒤 사본을 채택하지 않는다.
+   * 자리는 그 `null`이 차지한다 — 셀을 새로 덧붙이면 Xcode가 여전히 앞의 `null`을 읽어 값이 전달되지 않으므로 쓰기는 `write-slot-not-scalar`로 알린다.
+   */
+  it("대조: 앞 사본이 null이면 뒤 정상 사본을 채택하지 않는다 (Xcode compile: de 없음)", () => {
+    const raw = fixture("xcode-dup-locale-first-null.xcstrings");
+    expect(valuesOf(raw)).toEqual({ de: {}, en: { k: "k" } });
+    expect(readOf(raw).errors).toEqual([{ path: PATH, code: "duplicate-property", key: "k" }, { path: PATH, code: "value-not-string", key: "k" }]);
+    expect(writeOne(raw, "de", [{ key: "k", message: "X" }])).toEqual({ content: raw, errors: [{ path: PATH, code: "write-slot-not-scalar", key: "k" }] });
+  });
+
+  it("짝 없는 null 언어 셀도 값 없음이다 — 파일 실패가 아니고 다른 언어는 읽는다 (Xcode compile: 그 언어만 없음)", () => {
+    const raw = catalog({ k: { localizations: { de: null, fr: unit("F") } } });
+    expect(valuesOf(raw)).toEqual({ de: {}, en: { k: "k" }, fr: { k: "F" } });
+    expect(readOf(raw).errors).toEqual([{ path: PATH, code: "value-not-string", key: "k" }]);
+  });
+
+  /** 키 단위는 다르다 — Xcode 26.6은 가려진 사본이라도 `null`·문자열이면 컴파일을 실패한다(빈 객체 사본은 받는다). 그대로 따른다. */
+  it.each([
+    ["null", '{"sourceLanguage":"en","strings":{"k":{},"k":null},"version":"1.0"}'],
+    ["문자열", '{"sourceLanguage":"en","strings":{"k":{},"k":"x"},"version":"1.0"}'],
+  ])("키의 가려진 사본이 %s이면 Xcode처럼 파일 실패다 (Xcode compile: exit 1)", (_label, raw) => {
+    expect(parseFailed(raw)).toEqual(["parse-failed"]);
+  });
+
   it("루트의 같은 이름도 앞의 것이고 키 없는 경고다", () => {
     const raw = '{"sourceLanguage":"en","sourceLanguage":"de","strings":{"k":{}},"version":"1.0"}';
     expect(valuesOf(raw)).toEqual({ en: { k: "k" } });
