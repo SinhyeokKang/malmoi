@@ -37,23 +37,15 @@ Translators never touch Git: they sign in, edit, and hit **Publish**.
       └──────────────────────────────────────────────────────────┘
 ```
 
-Connect a repository and Malmoi detects the translation files and loads them —
-no commit needed before you see your strings. After that, a nightly sync picks
-up new commits once a day, or an optional generated workflow delivers them on
-every push, and **Publish** sends saved edits back as one pull request.
-The two sides are never merged: an update replaces Malmoi's values with the
-repository's (unless edits are waiting or a Malmoi pull request is still open),
-and Publish writes Malmoi's values back.
-
-GitLab.com repositories work the same way. You connect GitLab with a personal
-access token (`api` scope), Publish opens one merge request, and Malmoi
-generates a `.gitlab-ci.yml` job instead of a GitHub Actions workflow.
+Connect a repository and Malmoi detects and loads its translation files. New
+commits come in nightly, or on every push with the generated workflow;
+**Publish** sends saved edits back as one pull request. The two sides are never
+merged — the repository decides which keys exist, Malmoi holds the values.
+GitLab.com works the same way, with a personal access token and a merge request.
 
 [Create your first project →](https://mal-moi.com/docs/create)
 
 ## Features
-
-Search from either header for the docs; sign in to also find your projects, Malmoi's pages, and your text, with key results limited to nonarchived projects and sources after the first sync, excluding removed keys and languages.
 
 <table>
 <tr>
@@ -62,8 +54,7 @@ Search from either header for the docs; sign in to also find your projects, Malm
 ### Find, then edit
 
 A source tree and key list on one side, the selected key in every language on
-the other. Search covers key names, source text, and saved translations, and
-one **Save** writes every changed language of a key at once.
+the other. Search covers key names, source text, and translations.
 
 </td>
 <td width="50%">
@@ -75,9 +66,8 @@ one **Save** writes every changed language of a key at once.
 
 ### Preview every change before it's sent
 
-Publish lists each key × language change before it writes anything. An open
-pull request is replaced instead of opening a second one. Publish never writes
-to the base branch — merging stays with your reviewers.
+Publish lists each key × language change before writing anything, and never
+writes to the base branch — merging stays with your reviewers.
 
 </td>
 <td width="50%">
@@ -89,9 +79,8 @@ to the base branch — merging stays with your reviewers.
 
 ### Every change, on the record
 
-Logs records edits, syncs, and publishes with who performed them and what
-happened. Translation edits include the value before and after. History is
-kept for the life of the project.
+Logs records edits, syncs, and publishes — who did what, with translation
+values before and after — for the life of the project.
 
 </td>
 <td width="50%">
@@ -103,11 +92,9 @@ kept for the life of the project.
 
 ### One workflow file
 
-Malmoi generates the GitHub Actions workflow, or the `.gitlab-ci.yml` job for a
-GitLab project. Every push to the base branch
-brings new keys into Malmoi and marks translations whose source text changed as
-**Needs review** — unless unsent edits are holding syncing back. It also
-collects code references, so each key shows where your code uses it.
+A generated GitHub Actions workflow (or GitLab CI job) brings new keys in on
+every push, flags translations whose source changed as **Needs review**, and
+shows where your code uses each key.
 
 </td>
 <td width="50%">
@@ -116,39 +103,17 @@ collects code references, so each key shows where your code uses it.
 </tr>
 </table>
 
-- **Unsent edits hold back syncing** — while any saved edit is unpublished, or
-  a Malmoi pull request is still open, a repository update loads nothing (the
-  workflow log says `deferred`). Merge or close the pull request and the next
-  update goes through. Only a project owner can discard unsent edits (Sync or
-  Revert).
-- **Add or remove languages** — project owners can request language files for JSON and YAML catalogs, Chrome messages, Flutter ARB files, Apple strings files, Android strings files, and code dictionaries with one file per language. Publish creates or deletes the file in the same pull request; removed translations stay in Malmoi and return when you add the language again. Dictionaries and Apple String Catalogs with all languages in one file require repository changes
+- **Unsent edits are safe** — while edits are unpublished or a Malmoi pull
+  request is open, repository updates wait instead of overwriting them.
+- **Add or remove languages** — Publish creates or deletes the file; removed
+  translations come back if you add the language again
   ([details](https://mal-moi.com/docs/setup/languages)).
-- **Removed keys are kept** — bring the code back and its translations return.
-- **Nightly sync** — once a night (18:00 UTC), for active, connected projects
-  whose first sync has succeeded: saved changes nobody published go out as a
-  pull request, and otherwise new commits on the base branch come in — so the
-  workflow is optional, though only the workflow collects code references
-  ([details](https://mal-moi.com/docs/sync/nightly)).
-- **Two roles** — owners manage the repository, settings, and members; editors
-  translate and publish. Invite teammates by email and pick a role per invite.
-- **English, Korean, or Spanish interface** — pick a language from the
-  footer of any public page or from Preferences once you're signed in; your
-  account remembers it across devices. The docs come in all three languages
-  (screenshots show the English interface), and the privacy policy in English
-  and Korean. New visitors always start in English
-  ([details](https://mal-moi.com/docs/account/preferences)).
-- **Light and dark themes** — choose Light, Dark, or System in Preferences;
-  Malmoi follows your device by default and remembers your choice with your account
-  ([details](https://mal-moi.com/docs/account/preferences#theme)).
-- **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
-  claude.ai custom connector and sign in through your browser: you choose what the app may do on a consent screen
-  and never see or copy a token. Connected apps are listed on the MCP connector
-  page, where you can disconnect each one. Clients that only take a header
-  (such as Cursor) use a personal token that expires. Either way, the agent can
-  do only what you can in each project, and only what you allowed; its edits
-  are saved as yours.
-  Malmoi itself never calls an AI model
-  ([details](https://mal-moi.com/docs/ai-agents)).
+- **Nothing is deleted** — keys removed from code keep their translations.
+- **Two roles** — owners manage settings and members; editors translate and publish.
+- **AI agents over MCP** — connect Claude Code, Codex, or claude.ai and sign in
+  through your browser; agents can do only what you can. Malmoi itself never
+  calls an AI model ([details](https://mal-moi.com/docs/ai-agents)).
+- **English, Korean, or Spanish**, light or dark — interface and docs.
 
 ## Supported file formats
 
@@ -164,80 +129,50 @@ collects code references, so each key shows where your code uses it.
 | Apple String Catalog | `ios/App/Localizable.xcstrings` |
 | Android strings file | `app/src/main/res/values-{locale}/strings.xml` |
 
-Existing YAML catalogs, code dictionaries, Apple strings files, and Android strings files keep comments, blank lines, and key order;
-Apple String Catalogs change only the edited cells, in Xcode's layout, and read keys without a source-language entry as their own source text;
-JSON catalogs and Chrome messages keep indentation, one-line containers,
-escapes, and field order. Flutter ARB files also keep each key's `@key` metadata and the `@@` entries from your file;
-ICU messages (plurals, selects) are shown and saved as whole strings. Apple strings files stay in their UTF-8 or UTF-16 encoding;
-`.stringsdict` plurals, String Catalog variations, and Android `<plurals>`, `<string-array>`, and `translatable="false"` entries are kept as they are, not edited.
-Android values are shown with escapes resolved; inline tags such as `<xliff:g>` stay as text, and a translation must keep the base language's tags — change only the words between them. A literal `<` is shown and typed as `&lt;`.
-Android's `values/strings.xml` has no language code, so you enter the base language when you connect it (and the workflow needs `base-locale`); it can't be changed later. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
-sends them in one pull request (one merge request on GitLab).
-New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed — for Apple strings files, add the new `.lproj` to your Xcode project (and remove it there when you remove a language); for Android apps that limit languages with `resConfigs` or `localeFilters`, add the new language there.
-New Android languages use Android's resource spelling, such as `pt-rBR`.
-A single file larger than 2 MB, such as a large String Catalog, can't be loaded.
-[Limits →](https://mal-moi.com/docs/reference/limits)
+Publish keeps each file's layout — comments, blank lines, key order,
+indentation, encoding — as far as the format allows. Plurals (ICU, `.stringsdict`,
+Android `<plurals>`) are kept but not edited. One project can mix several
+sources and formats. Format-specific rules — such as Android's base language
+and inline tags — are in the [format reference](https://mal-moi.com/docs/reference/formats);
+size caps are in [Limits](https://mal-moi.com/docs/reference/limits).
 
 ## What Malmoi doesn't do
 
 Malmoi is a pipeline between your repository and your team, not a translation
-platform. These are deliberate omissions, not a roadmap:
-
-- Translation memory, machine translation, or AI translation
-- ICU plural and select syntax
-- Approval workflows or fine-grained permissions
-- Real-time co-editing, in-context editing, screenshots, translator notes
-
-If you need those, a dedicated platform such as Crowdin or Tolgee is a better
-fit.
+platform. By design, it has no translation memory or machine/AI translation,
+no ICU plural editing, no approval workflows or fine-grained permissions, and
+no real-time co-editing, in-context editing, screenshots, or translator notes.
+If you need those, a platform such as Crowdin or Tolgee is a better fit.
 
 ## Under the hood
 
-**Exports are deterministic.** The same database state and original files produce byte-identical
-files, so Publish can compare file hashes (Git blob SHAs) and commit only the
-files that changed. A non-deterministic writer would open a meaningless pull
-request every night.
+**Exports are deterministic.** The same data and original files produce
+byte-identical files, so Publish commits only the files that actually changed.
 
-**On GitHub, commits come from the GitHub App, not from people.** Sign-in and
-repository writes use separate GitHub credentials, so a translator leaving the
-organization doesn't break the pipeline. GitLab has no equivalent for every
-plan, so a GitLab project writes as the person whose token it uses; if that
-token expires or its owner leaves, the project shows **Disconnected** until a
-project owner reconnects it with their own token.
+**On GitHub, commits come from the GitHub App, not from people,** so a
+translator leaving the organization doesn't break the pipeline. GitLab writes
+as the person whose token the project uses.
 
 More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Korean).
 
 ## Self-hosting
 
-Use mal-moi.com, or run the same app on your own server.
-
-| | mal-moi.com | Self-hosted |
-| --- | --- | --- |
-| Infrastructure | Run for you | One Linux server with Docker Compose: the app, PostgreSQL 17, an upload volume, a nightly scheduler, behind your HTTPS proxy |
-| Updates | Every release goes live on its own | You update one release at a time; every app release `v<x.y.z>` publishes `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>` |
-| Where data lives | Supabase (Tokyo) and Vercel | Your server's database and upload volume |
-| Sign-in and email | GitHub, GitLab, and Google sign-in; invitations through Resend | One or more of GitHub, GitLab.com, and Google sign-in, through OAuth apps you register; a Resend domain you register (required); a GitHub App you register to connect GitHub repositories (optional — without it, the installation connects GitLab.com only) |
-| Limits | 3 active owned projects per person | The same, except for operators you list in `OPERATOR_EMAILS` |
-| Support | GitHub Issues | The latest release only, through GitHub Issues, best effort |
-| Cost | Free | Free software; you pay for the server, domain, and Resend |
-| Analytics and SEO | Cookieless page-view counts; public pages indexed | No page-view counting; every page `noindex` |
-
-Kubernetes, multiple instances, air-gapped networks, GitHub Enterprise, and
-GitLab Self-Managed aren't supported. Installing, updating, backups, key rotation, and
-troubleshooting are in the
-[self-hosting guide](https://mal-moi.com/docs/self-hosting).
+Use mal-moi.com, or run the same app on one Linux server with Docker Compose
+(app, PostgreSQL 17, a nightly scheduler, behind your HTTPS proxy). Every
+release publishes `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`. You bring the OAuth
+apps for sign-in, a Resend domain for invitations, and optionally a GitHub App
+to connect GitHub repositories. Kubernetes, multiple instances, GitHub
+Enterprise, and GitLab Self-Managed aren't supported.
+[Self-hosting guide →](https://mal-moi.com/docs/self-hosting)
 
 ## Privacy
 
-On mal-moi.com, Malmoi sends data to six services and no one else: GitHub, GitLab (if you sign in with it or connect a personal access token), Google (if you sign
-in with it), Supabase (database, Tokyo), Vercel (hosting, profile and project pictures, cookieless page-view counts on the public pages), and Resend
-(invitation emails, tracking off).
+mal-moi.com sends data only to GitHub, GitLab and Google (if you use them),
+Supabase (database, Tokyo), Vercel (hosting, pictures, cookieless page-view
+counts), and Resend (invitation emails). A self-hosted installation uses the
+operator's own server instead of Supabase and Vercel, and its privacy policy is
+the operator's own.
 [Full policy →](https://mal-moi.com/privacy)
-
-A self-hosted installation sends data to GitHub, GitLab (if you sign in with it or connect a personal access token), Google (if you sign in with it),
-and Resend (invitation emails) — plus wherever its operator runs the server,
-database, and uploads. It has no page-view counting. Its privacy policy is the
-operator's own, linked from that site's `/privacy`.
 
 ## Development
 
