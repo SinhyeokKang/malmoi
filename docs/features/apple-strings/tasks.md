@@ -65,12 +65,12 @@ M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없�
 
 ## 5. 문서 (문서별 커밋)
 
-- [ ] **T5.1 `docs(PRODUCT)`** — §0 포맷 수(arb 뒤 여섯), §2 포지셔닝 문구, §4.1 지원 포맷(arb가 더한 "Flutter ARB" 줄 옆), §7.2 언어 추가·제거 지원 포맷 목록(`xcstrings` 비지원), 비목표(`Base.lproj`).
-- [ ] **T5.2 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, 파일 인코딩 경로와 API 예산(UTF-16 blob — M3가 §3 Publish 단계 4 옆에 적었다. design의 "§3.1"은 절 번호가 어긋난 것이었다), 값 표현 표(design §3), §0 불변식 3의
+- [x] **T5.1 `docs(PRODUCT)`** — §0 포맷 수(arb 뒤 여섯), §2 포지셔닝 문구, §4.1 지원 포맷(arb가 더한 "Flutter ARB" 줄 옆), §7.2 언어 추가·제거 지원 포맷 목록(`xcstrings` 비지원), 비목표(`Base.lproj`).
+- [x] **T5.2 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, 파일 인코딩 경로와 API 예산(UTF-16 blob — M3가 §3 Publish 단계 4 옆에 적었다. design의 "§3.1"은 절 번호가 어긋난 것이었다), 값 표현 표(design §3), §0 불변식 3의
       수술적 표면 목록에 `apple-strings`·`apple-xcstrings`, xcstrings 셀 삽입 규칙(ts-dict와의 차이), 키 = 원문 규칙. §1.9는 27차(26차가 arb).
       같은 커밋 밖에서 CLAUDE.md 코어 원칙 두 줄을 맞춘다(`docs(CLAUDE)`, 미러 `pnpm sync:agents`): "pull은 값을 병합하지 않는다"의 수술적 치환 목록에 두 어댑터,
       "언어도 삭제하지 않는다"의 되살림 목록에 `apple-strings`.
-- [ ] **T5.3 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록. ACTIONS에는 arb가 만든 `adapter` 허용값 목록이 있다 —
+- [x] **T5.3 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록. ACTIONS에는 arb가 만든 `adapter` 허용값 목록이 있다 —
       두 이름을 더하고 "v3 action은 모른다" 문구를 따른다. 가이드는 `reference/formats.md`·`setup/languages.md`·`faq.md` + AUTHORING 사실 대조 행(arb D2가 고친 자리).
       **가이드 커밋은 T2.2·T4.2의 사전 라벨이 dev에 들어간 뒤.**
 - 폴더 정리는 이 스펙에서 하지 않는다 — 네 폴더를 android-strings T5.5에서 함께 지운다.

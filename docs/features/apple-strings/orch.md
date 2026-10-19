@@ -77,3 +77,7 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **X dev 통합** — 5커밋 cherry-pick(`634a7e9d..16a7eecc`). main `gate: ok`. tasks T4.0–T4.2 체크(T4.3 재측정 몫 완료, 실물 몫은 Q2).
 - **push** `4ee4d801..f5dd5d12`(X). 3파: Q2 `ctx_768c21e98194`(Q1 터미널 재사용 — xcstrings 왕복 + Xcode 재저장 diff 0) ∥ D3 `ctx_f193a166279e`(D 터미널 재사용). A 워크트리 정리(cherry `+` 0), A 해제.
 - **Q2 완료** — `App/Catalog.xcstrings`(Xcode 26.6 xcstringstool sync가 직렬화 — 키=원문, `shouldTranslate:false`, 복수형 variations, `needs_review`, ja 셀 누락, `\u0001`·이모지)를 `rt-strings`의 둘째 소스 `app-2`로 연결: 편집 0 드라이런 같음·sendable 0 → PR #6(+13 −1, hunk 3 = 편집 셀 셋: ko `needs_review` 값(state 유지) · ja 삽입 · en 원문 셀 삽입 `translated`) → 원격 blob = 머지 파일 = 렌더 → 재push 드라이런 같음. **Xcode 재저장 diff 0** — 단 GUI 저장이 아니라 xcstringstool sync(프로브 키로 강제, stale 표시 유무 둘 다, 필드 순서를 바꾼 음성 대조는 잡음). `xcodebuild` 머지 전후 통과. 언어 추가·제거 미리보기·제거 → `unsupported-format`. 결함 0. tasks T4.3 체크. Q 워커 해제.
+- **D3 완료·통합** — 문서별 커밋 7개(`765e4d13..48fab398`: ARCHITECTURE 27차 xcstrings 표·§1.45 결정 14–17·GitLab `/raw` · ACTIONS · PRODUCT(결정 13 pbxproj) · DIRECTORY · README · spec/design · 가이드 en·ko·es + AUTHORING), `gate: ok`. 가이드 게이트가 금지어 'source language'/'idioma de origen'을 잡아 D3가 고쳤다. D 해제.
+- **X-fix2 완료·통합** — `2e25c69e` 주석만(`LocaleEntry.order`·`orphaned` 어댑터 나열, 낡은 "blob ≤37" → ≤40 네 곳). docs/에 같은 낡은 숫자 없음(지휘자 grep). X 해제.
+- `3e24b51d` POSTMORTEM — GitLab JSON blob API의 UTF-16 변환(재발 방지 grep: 로케일 내용 읽기는 `/raw` 하나).
+- tasks T5.1–T5.3 체크 — **tasks 체크 안 된 항목 0.**
