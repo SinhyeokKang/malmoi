@@ -94,3 +94,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **push** `d37f166d..87a71d51`(A·B·C·D·E 전부 + 수정 라운드 + 로그인 KV 수정 `1129b2f3`·`7a01da6f`). CI run 39279101921.
 - 3파: Q `ctx_94dc0d689582`(main 체크아웃, claude-opus-5-5 medium — `/runtime-test` 뒤 `/roundtrip` T3.5, SDK brew 설치 · `i18n-android-check` 생성) ∥ D2 `ctx_88997b607343`(D 터미널 재사용). Q가 main을 쓰는 동안 cherry-pick·build 금지. A·B·C·E 터미널은 Q 결함용으로 retain.
 - **D2 완료** — 문서별 커밋 8개(`7b304226..ff35fc3f`: ARCHITECTURE 28차 재측정·§1.46 재작성 · CLAUDE+AGENTS 파서 함정 셋 · PRODUCT · ACTIONS · DIRECTORY · README · spec/design · 가이드 en·ko·es + AUTHORING), `gate: ok`(17233). 브리프 밖으로 CLAUDE.md "pull은 값을 병합하지 않는다"와 ARCHITECTURE 불변식 2·4에 `formatted` 나르기 한 문장 — 지휘자가 diff를 읽고 수용(결정 18이 arb `@key`와 같은 부류로 정했다). 통합은 Q가 main을 놓은 뒤(가이드는 앱이 서빙한다). D 터미널 retain(Q 결과가 문서와 다르면 D3).
+- Q 결함 **#306**(온보딩 ② Android 후보 미리보기가 "Still working"에 멈춘다 — 빈 `baseLocale` 키, `values/`만 있는 후보는 영원히) → B-fix2 `ctx_690e73bc7aec`(B 터미널, 착수 확인).
