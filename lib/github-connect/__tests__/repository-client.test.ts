@@ -60,3 +60,31 @@ it("GitHub 리더의 sizes는 스냅샷의 size를 쓰고 원격 호출 0이다"
   expect(await reader.sizes(snapshot, ["en.json", "ko.json"])).toEqual({ status: "ok", sizes: new Map([["en.json", 20]]) });
   expect(mocks.request).not.toHaveBeenCalled();
 });
+
+it("UTF-16 blob을 경로로 읽고 Publish는 base64 blob SHA를 트리에 싣는다", async () => {
+  const content = '"a" = "안녕";\n';
+  const bytes = Buffer.concat([Buffer.from([255, 254]), Buffer.from(content, "utf16le")]);
+  const client = await createGitClient("owner", "repo", "10", "42");
+  mocks.request.mockImplementation(async (route: string) => {
+    if (route.startsWith("GET") && route.includes("/git/blobs/")) return { data: { encoding: "base64", content: bytes.toString("base64") } };
+    if (route.startsWith("GET") && route.includes("/git/ref/")) return { data: { object: { sha: "old" } } };
+    return { data: { sha: route.endsWith("/blobs") ? "encoded-blob" : "created" } };
+  });
+  expect(await client.getBlobText("sha", "ko.strings")).toEqual({ content, encoding: "utf-16le-bom" });
+  await client.publishSnapshot({ branch: "sync", baseSha: "base", summary: "2 files", changes: [
+    { kind: "upsert", path: "ko.strings", content, encoding: "utf-16le-bom", inBase: true },
+    { kind: "upsert", path: "en.json", content: "{}", inBase: true },
+  ] });
+  expect(mocks.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/blobs", { owner: "owner", repo: "repo", content: bytes.toString("base64"), encoding: "base64" });
+  expect(mocks.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/trees", { owner: "owner", repo: "repo", base_tree: "base", tree: [
+    { path: "ko.strings", mode: "100644", type: "blob", sha: "encoded-blob" },
+    { path: "en.json", mode: "100644", type: "blob", content: "{}" },
+  ] });
+});
+it("GitHub 두 리더는 손상된 UTF-16을 parse-failed로 거부한다", async () => {
+  const client = await createGitClient("owner", "repo", "10", "42");
+  const reader = await openRepoReader("owner", "repo", "10", "42");
+  mocks.request.mockResolvedValue({ data: { encoding: "base64", content: Buffer.from("fffe00d8", "hex").toString("base64") } });
+  await expect(client.getBlobText("sha", "bad.strings")).rejects.toMatchObject({ code: "parse-failed", path: "bad.strings" });
+  await expect(reader.blob("sha", "bad.strings")).rejects.toMatchObject({ code: "parse-failed", path: "bad.strings" });
+});

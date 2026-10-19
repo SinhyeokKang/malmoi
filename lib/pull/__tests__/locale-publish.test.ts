@@ -726,3 +726,17 @@ describe("결정적 언어 계획 거부 (R-B2 🟡 Y2)", () => {
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 });
+
+it("원본 인코딩을 보존하고 새 파일은 basePath 파일 인코딩을 상속한다", async () => {
+  const loaded = state({ localeCodes: ["en", "ko", "fr"] });
+  const surface = loaded.surfaces[0]!;
+  surface.pathTemplate = "{locale}.strings";
+  surface.basePath = "Base.strings";
+  const made = createFakeGitClient({ refSha: { "heads/dev": "h" }, tree: { h: [
+    { path: "Base.strings", sha: "e" }, { path: "ko.strings", sha: "k" },
+  ] }, blobs: { e: EN, k: KO }, blobEncodings: { e: "utf-16be-bom", k: "utf-16le" } });
+  const out = await renderProject(PROJECT, projectFormats(loaded.surfaces), made.client);
+  expect(out.local.find(f => f.path === "Base.strings")?.encoding).toBe("utf-16be-bom");
+  expect(out.local.find(f => f.path === "ko.strings")?.encoding).toBe("utf-16le");
+  expect(out.local.find(f => f.path === "fr.strings")?.encoding).toBe("utf-16be-bom");
+});
