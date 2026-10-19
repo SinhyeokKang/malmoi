@@ -49,3 +49,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **R 완료** — 🔴1(R1 `\u`·bare `\U`·`\400`을 Apple 파서와 다르게 디코드 — 키도 틀리게 적재) · 🟡5(Y1 CRLF 줄 주석 뒤 삽입이 CR/LF를 가름 · Y2 EOF 같은 offset 삽입 두 개 · Y3 비Apple 정답 5리포의 1순위 변경이 완료 조건 3 문구 위반 · Y4 첫 적재 시나리오가 DB 행에서 멈춤 · Y5 Flutter 2패스 테스트가 강등 분기를 안 밟음). P 차단 결함 없음(주석의 "60초를 넘긴다" 단정은 D2가 "가정"으로). 계획과 다른 점 1–8 전부 수용. 사본 `handoffs/review-A.md`. R 해제.
 - **결정 11: `es_419`·`zh-Hant-TW`는 공용 `looksLikeLocale` 한계로 문서화하고 이 스펙에서 넓히지 않는다** — 지휘자 판단(기존 어댑터·locale-add·chrome-codes와 같은 판정, 공용 정책 확장은 범위 밖). 문서는 D2.
 - A-fix1 `ctx_d9f2f948b036`(A 터미널 재사용 — R1·Y1·Y2·Y4·Y5). Y3은 사용자 결정 대기.
+- **결정 12: 완료 조건 3을 "정답을 빼앗지 않는다 — `-`·오탐이 새 후보로 바뀐 것은 보고 대상"으로 완화한다** (2026-10-19 사용자). R Y3의 5리포(CodenameOne · google-api-objectivec · swift-package-manager · open-u60-pro · EasyWatermark)는 통과로 보고하고, Android 정답 둘(open-u60-pro·EasyWatermark)은 android-strings가 이겨야 할 항목으로 그 스펙에 넘긴다(런 마무리 때). spec 문구는 D2.
