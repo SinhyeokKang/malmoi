@@ -25,7 +25,7 @@ export function renderSurfaceWorkflowStep(input: {
   apiUrl?: string;
 }): string {
   return [
-    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3",
+    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4",
     "        with:",
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${input.slug}`,
@@ -82,7 +82,7 @@ export function renderProjectWorkflowYaml(input: {
     + surfaces.map((surface) => renderSurfaceWorkflowStep({ slug, ...surface, ...(apiUrl === undefined ? {} : { apiUrl }) })).join("\n");
 }
 
-/** action(`malmoi-i18n-push-v3`)의 `api-url` 기본값 — 이 origin이면 줄을 내지 않는다(출력이 줄 도입 전과 바이트 단위로 같다). */
+/** action(`malmoi-i18n-push-v4`)의 `api-url` 기본값 — 이 origin이면 줄을 내지 않는다(출력이 줄 도입 전과 바이트 단위로 같다). */
 const PRODUCTION_ORIGIN = HOSTED_PRODUCTION_ORIGIN;
 
 /**
