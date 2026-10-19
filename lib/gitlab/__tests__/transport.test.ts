@@ -12,6 +12,25 @@ import { createFakeGitLabFetch, violatesAddressContract } from "./fake-fetch";
  * 최소 GitLab transport (gitlab-repositories tasks §2 B2) — 숫자 id 주소 · 주입된 fetch 한 번(자체 재시도 0) · 오류 분류.
  */
 
+describe("getRaw — 로케일 blob의 저장 바이트", () => {
+  /** JSON blob API는 UTF-16 파일을 UTF-8(+BOM)로 바꾼 사본을 준다(apple-strings Q1 결함 D1) — 바이트를 JSON으로 풀지 않고 그대로 준다. */
+  it("본문을 바이트 그대로 주고 같은 주소 계약·오류 분류를 지난다", async () => {
+    const bytes = new Uint8Array([0xff, 0xfe, 0x22, 0x00]);
+    const fake = createFakeGitLabFetch({
+      "GET /projects/1/repository/blobs/s/raw": () => new Response(bytes),
+      "GET /projects/1/repository/blobs/gone/raw": { status: 404 },
+    });
+    const transport = createGitLabTransport("t", { fetch: fake.fetch });
+    expect(await transport.getRaw(projectPath("1", "repository/blobs/s/raw"))).toEqual(bytes);
+    expect(fake.calls[0]!.headers.get("PRIVATE-TOKEN")).toBe("t");
+    const missing = await transport.getRaw(projectPath("1", "repository/blobs/gone/raw")).catch((error: unknown) => error);
+    expect(missing).toBeInstanceOf(GitLabHttpError);
+    expect(classifyGitLabFailure(missing)).toBe("not-found");
+    await expect(transport.getRaw("/projects/group%2Fapp/repository/blobs/s/raw")).rejects.toThrow();
+    expect(fake.calls).toHaveLength(2);
+  });
+});
+
 describe("주소 계약 — 숫자 id로만 부른다", () => {
   it("projectPath는 숫자 id만 받는다 — 이름·인코딩 경로는 주소가 되기 전에 던진다", () => {
     expect(projectPath("87515176")).toBe("/projects/87515176");

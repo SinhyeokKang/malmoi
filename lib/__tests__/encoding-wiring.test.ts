@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { planPullChanges } from "../pull/plan";
 import { blobSha } from "../githash";
 import { encodeFileContent } from "../file-encoding";
-import { buildCommitActions, decodeBlob } from "../gitlab/plan";
+import { buildCommitActions } from "../gitlab/plan";
 import { fileProbe, unreadableLocaleFiles } from "../../scripts/format";
 
 const content = '"hello" = "안녕 😀";\n';
@@ -27,10 +27,8 @@ it("GitLab은 UTF-16만 base64로 보내고 UTF-8 본문은 유지한다", () =>
     { action: "create", file_path: "en.json", content: "{}", encoding: "text" },
   ]);
 });
-it("GitLab 디코더는 경로로 UTF-16을 판별하고 손상은 parse-failed로 거부한다", () => {
-  expect(decodeBlob({ encoding: "base64", content: bytes.toString("base64") }, "ko.strings")).toEqual({ content, encoding });
-  expect(() => decodeBlob({ encoding: "base64", content: "/v/YAA==" }, "ko.strings")).toThrow(expect.objectContaining({ code: "parse-failed", path: "ko.strings" }));
-});
+// GitLab 읽기 쪽의 UTF-16 판별·손상 거부는 `/raw` 바이트를 읽는 클라이언트에서 잰다 — `lib/gitlab/__tests__/client.test.ts`("getBlobText")·`encoding.test.ts`
+// (JSON blob API는 UTF-16을 UTF-8+BOM 사본으로 바꿔 주므로 그 본문을 푸는 순수 디코더는 실물과 다른 입력을 재고 있었다 — apple-strings Q1 결함 D1).
 it("CI probe가 UTF-16을 읽으며 손상된 선택 파일은 unreadable로 남긴다", () => {
   const root = mkdtempSync(join(tmpdir(), "encoding-wiring-"));
   try {
@@ -44,7 +42,8 @@ it("CI probe가 UTF-16을 읽으며 손상된 선택 파일은 unreadable로 남
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 describe("로케일 리더의 바이트 경계", () => {
-  it.each(["lib/github.ts", "lib/gitlab/plan.ts", "scripts/format.ts", "lib/survey/run.ts"])("%s에 직접 UTF-8 디코드가 없다", path => {
+  // GitLab 리더는 `client.ts`의 `readBlobText`다 — `/raw` 바이트를 이 경계로 판별한다(apple-strings Q1 결함 D1 뒤 `plan.ts`의 base64 디코더를 지웠다).
+  it.each(["lib/github.ts", "lib/gitlab/client.ts", "scripts/format.ts", "lib/survey/run.ts"])("%s에 직접 UTF-8 디코드가 없다", path => {
     const source = readFileSync(path, "utf8");
     expect(source).not.toMatch(/\.toString\(\s*(["']utf-?8["'])?\s*\)|readFileSync\([^;]*?["']utf-?8["']|new TextDecoder\(/);
     expect(source).toMatch(/decodeLocaleFile/);
