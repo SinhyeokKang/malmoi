@@ -150,7 +150,7 @@
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 | `arb-catalog` | `<dir>/<prefix>_{locale}.arb` (예 `lib/l10n/app_{locale}.arb`) | 최상위 `string`(ICU 통짜) | per-locale | regenerate | 모바일 코퍼스 Flutter 리포 14개(학습 10 · 홀드아웃 4 — 1순위 14/14, 26차 §1.9). ⚠️ **regenerate인데 키별 내용(`@key`)을 원본에서 나른다** — §1.37 |
 | `apple-strings` | `<dir>/{locale}.lproj/<table>.strings` (예 `ios/App/{locale}.lproj/Localizable.strings`) | `"key" = "value";`의 값 리터럴 | per-locale | **surgical** | 모바일 코퍼스 `.strings` 정답 리포 8개(학습 6 · 홀드아웃 2 — 1순위 7/8, 27차 §1.9). ⚠️ **UTF-16 파일을 원본 인코딩·BOM 그대로 돌려쓴다** — §1.45 |
-| `apple-xcstrings` | `<dir>/<table>.xcstrings` (예 `ios/App/Localizable.xcstrings` — 모든 언어가 한 파일) | `localizations.<code>.stringUnit.value` | **multi-locale** | **surgical** | 모바일 코퍼스 Apple 리포(2026-10-19 — 재측정은 §1.9). ⚠️ **자리 없는 로케일 셀을 삽입한다** — `ts-dict`와 반대다(§1.45) |
+| `apple-xcstrings` | `<dir>/<table>.xcstrings` (예 `ios/App/Localizable.xcstrings` — 모든 언어가 한 파일) | `localizations.<code>.stringUnit.value` | **multi-locale** | **surgical** | 모바일 코퍼스 xcstrings 정답 리포 9개(학습 8 · 홀드아웃 1 — 1순위 8/9, 27차 §1.9). ⚠️ **자리 없는 로케일 셀을 삽입한다** — `ts-dict`와 반대다(§1.45) |
 
 ### read 오류의 갈래 — 실패 · "관리하지 않는 항목" · 경고 (2026-09-24, B2 r3 · QA5 · B7a r1)
 
@@ -161,11 +161,11 @@
 
 | 갈래 | 코드 | 왜 |
 |---|---|---|
-| **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(ts-dict·code-dict) · `value-not-string`(yaml 숫자·불린) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
+| **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(ts-dict·code-dict) · `value-not-string`(yaml 숫자·불린 · apple-xcstrings 복수형·기기별 `variations` 셀과 Xcode가 값 없음으로 읽는 `null` 언어 셀) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
 | **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key` · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
-| **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함 · apple-strings — 같은 키의 엔트리 둘, 2026-10-19) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. ⚠️ **같은 이름의 컨테이너도 마지막만 걷는다** (2026-09-27, audit #4 — code-dict `collect`) — 앞의 것까지 걸으면 `{ a: { x }, a: { y } }`의 `a.x`(런타임에 없다)가 적재되고, 무관한 편집의 write가 그것을 마지막 `a`에 삽입했다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다. ⚠️ **`.strings`는 데이터 파일인데 warning이다** — Apple 파서도 나중 값을 쓰고 writer가 그 리터럴만 고쳐 잃는 값이 없다(§1.45). failure였다면 정답 리포 PayForMe(중복 2)·CodenameOne(18)의 대상 CI가 영구 red다 |
+| **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함 · apple-strings — 같은 키의 엔트리 둘 · apple-xcstrings — 같은 JSON 이름, 키·언어 셀·필드·루트 모든 깊이, 2026-10-19) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. ⚠️ **같은 이름의 컨테이너도 마지막만 걷는다** (2026-09-27, audit #4 — code-dict `collect`) — 앞의 것까지 걸으면 `{ a: { x }, a: { y } }`의 `a.x`(런타임에 없다)가 적재되고, 무관한 편집의 write가 그것을 마지막 `a`에 삽입했다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다. ⚠️ **`.strings`는 데이터 파일인데 warning이다** — Apple 파서도 나중 값을 쓰고 writer가 그 리터럴만 고쳐 잃는 값이 없다(§1.45). failure였다면 정답 리포 PayForMe(중복 2)·CodenameOne(18)의 대상 CI가 영구 red다. ⚠️ **`.xcstrings`의 같은 이름은 앞의 것이 이긴다**(Xcode 26.6 xcstringstool 실측 — `JSON.parse`는 뒤의 것이다). read·write 모두 앞 사본이고 가려진 뒤 사본은 바이트 그대로다(Xcode가 다음 저장에서 지운다 — 정답 리포 HealthGPT의 `LLM Settings`) |
 | **failure** — 불확실한 키 | `key-shadowed`(ts-dict의 후행 spread·동적 computed, code-dict write) | ts-dict는 read에서도 나온다. 불완전 read를 성공으로 접지 않으며, 재적재는 오류가 있으면 orphan 처리를 억제한다 |
-| (write 코드) | `write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed) |
+| (write 코드) | `write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed). apple-xcstrings가 복수형·`null` 셀에 값을 쓰려 하면 `write-slot-not-scalar`(blocking — yaml 비스칼라·ts-dict 비리터럴과 같은 형)다 |
 
 ⚠️ **같은 "숫자 값"이 어댑터에 따라 갈린다** — yaml은 남고 json은 지워진다. 코드를 합치면 이 구분이 사라진다.
 ⚠️ **개수는 적재 결과(Sources 첫 Sync 결과 문장 · Home Sync 결과)에만 선다** — 소스에 영속하는 컬럼이 없고, CI push는 read 오류를
@@ -568,6 +568,9 @@ ICU(`{count, plural, …}`·`select`)는 **통짜 문자열**이다 — 풀지�
 - **판별은 경로와 원본 바이트로 한다** — `.strings` 경로에서만 UTF-16 BOM·NUL을 보고 UTF-16 LE·BE(BOM 유무)를 고른다. 다른 경로의 바이트는 지금처럼 UTF-8이다.
 - **읽기**: 리더가 경로를 받아 `decodeLocaleFile`을 지나고, `GitClient.getBlobText(sha, path)`가 `{ content, encoding? }`를 준다. 웹(온보딩·Sync)과
   CI(`scripts/format.ts`)가 같은 판별을 지난다 — 한쪽에만 걸면 POSTMORTEM 2026-09-09의 부류다.
+  ⚠️ **GitLab은 `/repository/blobs/:sha/raw`로 읽는다**(`readBlobText` → `transport.getRaw` — Sync·Publish 렌더·미리보기·야간·온보딩 리더 공통, 2026-10-19 Q1 D1).
+  JSON blob API(`/repository/blobs/:sha`)와 files API는 UTF-16 파일을 **UTF-8+BOM으로 변환한 사본**을 base64로 준다 — 그것을 읽으면 편집 0에도 렌더가
+  바뀌어 Publish가 파일 전체를 UTF-8+BOM으로 바꿔 커밋했다. 원본 바이트는 `/raw`만 준다. `lib/gitlab/__tests__/encoding.test.ts`의 가짜 GitLab이 그 실측 동작을 흉내 낸다.
 - **쓰기**: 렌더 출력은 자기 원본의 인코딩·BOM으로 인코드한다. 새 언어 파일(§5.10.4)은 그 소스의 기준 언어 파일 인코딩을 물려받는다.
   GitHub은 바뀐 UTF-16 파일만 `POST /git/blobs`(base64)로 만들고, GitLab은 그 action만 `encoding: "base64"`다(§3 단계 4).
 - **`blobSha`는 인코드한 바이트로 잰다**(§2) — UTF-8 파일의 SHA는 이 경계 변경 전과 같고, 고치지 않은 UTF-16 파일의 SHA는 원본과 같다.
@@ -617,19 +620,43 @@ ICU(`{count, plural, …}`·`select`)는 **통짜 문자열**이다 — 풀지�
   (§1.37의 ARB `template-arb-file`과 같은 필드). 로케일 집합은 `strings.*.localizations`의 키 합집합 + `sourceLanguage`다.
 - 엔트리는 `localizations.<code>.stringUnit.value`가 있는 셀이다. `shouldTranslate: false` 키와 `variations`(복수형·기기별)는 엔트리가 아니고 **바이트 그대로 남는다.**
   `extractionState`는 해석하지 않는다 — 파일에 있는 키는 `stale`이어도 엔트리다(키 존재의 정본은 파일).
+  - **복수형**: 원문 셀이 `variations`면 키 전체를 싣지 않고 `value-not-string`(unmanaged)을 키당 한 번 낸다. 번역 셀만 `variations`면 그 셀만 빠진다.
+    그 셀에 값을 쓰려 하면 `write-slot-not-scalar`(blocking)다 — ⚠️ 번역자가 그 셀에 값을 넣으면 Publish가 막히고 수술적 표면은 비울 수 없어(`cannot-clear`)
+    Revert 말고는 푸는 길이 없다. 기존 수술적 어댑터와 같은 한계라 그대로 둔다.
+  - **빈 키 `""`는 엔트리가 아니다**(SwiftUI `Text("")`) — 적재 계약 `IncomingKey.key`가 min(1)이라 하나만 실어도 페이로드 전체가 거부됐다.
+    `shouldTranslate: false`처럼 읽지도 쓰지도 않는다. 어댑터 왕복·survey는 계약 스키마를 지나지 않아 이 부류를 못 본다.
+  - **적재 경계를 못 지나는 언어 코드**(`isPathSafeLocale`·`isLocaleShaped` 불통과)는 엔트리·로케일에서 뺀다 — 셀은 파일에 남는다. 하나라도 실으면 페이로드 전체가 거부된다.
+  - **같은 이름은 Xcode 의미다**(2026-10-19 지휘자 결정 14 — 앞의 것이 이긴다, `duplicate-property` 경고·CI green). 깊이마다 Xcode 26.6 `xcstringstool compile` 채록을 따른다:
+    언어 셀은 앞 사본을 자료형과 무관하게 읽고(앞이 정상이면 그 값, 앞이 `null`이면 **그 언어 값 없음** — 뒤 정상 사본을 채택하지 않는다), 짝 없는 `null` 언어 셀도
+    그 언어만 없다(`value-not-string`). 그 셀에 쓰면 `write-slot-not-scalar`다 — 새 사본을 덧붙여도 Xcode가 앞의 `null`을 읽어 값이 전달되지 않는다.
+    **키 단위** 가려진 사본이 `null`·문자열이면 Xcode가 파일을 못 읽으므로 `parse-failed`다(빈 객체 사본은 받는다). 픽스처는 `lib/adapters/__tests__/fixtures/apple-xcstrings/`(출처는 그 README).
+  - **템플릿은 와일드카드 없는 파일 경로 하나다**(`App/Localizable.xcstrings`) — multi-locale이지만 글롭이 아니다. `*`·`{locale}`이 든 경로는 후보가 아니다.
 - **키 = 원문**: SwiftUI가 만든 키는 원문 자체이고 `sourceLanguage` 셀이 없는 경우가 흔하다. 그때 **키 문자열을 기준 값으로 읽는다.** 쓸 때 DB의 기준 값이
   키 문자열과 같으면 기준 셀을 쓰지 않고(첫 Publish diff 0), 다르면 원문 셀을 아래 삽입 규칙으로 넣는다(Xcode가 카탈로그에서 원문을 고칠 때와 같다).
   저장 코어는 실제 원문 셀이 있는 키와 키로 대신한 키를 구별하지 않는다 — 거부 판정을 두지 않으므로 셀 존재를 나를 스키마·오류 코드·UI가 없다.
   같은 DB → 같은 출력이고, 다음 push는 삽입된 셀의 값을 읽는다. 키는 여전히 파일(코드)이 정하므로 불변식 1과 충돌하지 않는다.
-- **자리 없는 로케일 셀은 삽입한다** — `"<code>" : { "stringUnit" : { "state" : "translated", "value" : "…" } }` 블록을 `localizations` 안 코드 유닛 순
-  자리에, Xcode 출력 서식(2칸 들여쓰기, `" : "`, 콤마 규칙)으로 넣는다. 서식이 다르면 다음 Xcode 저장이 diff를 다시 만든다 — Xcode 고정점은 실물(`/roundtrip`)로만 잰다.
+- **자리 없는 로케일 셀은 삽입한다**(`Adapter.insertsMissingCells: true` — 이 어댑터만) — `"<code>" : { "stringUnit" : { "state" : "translated", "value" : "…" } }` 블록을
+  `localizations` 안 코드 유닛 순 자리에, Xcode 26.6 출력 서식(2칸 들여쓰기, `" : "`, 콤마 규칙, 빈 객체 `{\n\n<들여쓰기>}`, 끝 개행 없음)으로 넣는다. 키는 넣지 않는다 —
+  키는 Xcode가 소스에서 뽑는다. 이스케이프는 `JSON.stringify`와 같다(`/`·U+007F·비ASCII 그대로, C0는 소문자 `\u00xx`) — Xcode 채록과 52값 일치(리뷰 RX). 서식이 다르면 다음 Xcode 저장이 diff를 다시 만든다 — Xcode 고정점은 실물(`/roundtrip`)로만 잰다.
   ⚠️ **`ts-dict`는 반대다** — 같은 multi-locale·수술적인데 자리가 없으면 쓰지 않는다(`write-slot-missing` 보류 · `write-locale-object-missing` 거부, §3).
   ts-dict는 삽입 지점이 파일 형태(어느 로케일 객체의 어디)에 달려 위험만 늘지만, xcstrings는 셀의 자리가 JSON 구조로 정해진다.
 - **전달 판정도 삽입을 따른다.** 경로 선택(`lib/pull/run.ts`)과 Publish 미리보기(`lib/publish/read.ts`)는 multi-locale·수술적 원본에서 자리 없는 셀을 보류로 봤다 —
-  그대로면 PR에는 `foo.fr`이 삽입되는데 미리보기는 "보류"를 말하고 미전달 토큰도 남는다. 두 판정은 어댑터 성질(셀 삽입 가능)로 갈리고, xcstrings는
-  **키가 파일에 있으면 어느 로케일 셀이든 전달 대상**이다. ts-dict의 보류는 그대로다. 경로 선택·미리보기·렌더·토큰 해제가 같은 판정을 보는지 통합 테스트가 고정한다.
+  그대로면 PR에는 `foo.fr`이 삽입되는데 미리보기는 "보류"를 말하고 미전달 토큰도 남는다. 판정은 `cellSlot(adapter, files, locale, key)`(`lib/pull/undeliverable.ts`) 하나이고
+  경로 선택(`slotlessCells` — `planDelivery`)과 미리보기의 multi-locale 갈래가 같이 부른다. 셀을 넣는 어댑터는 **키가 파일에 있으면 어느 로케일 셀이든 전달 대상**이고,
+  키가 어느 파일에도 없으면(코드가 지웠다) 보류다. ts-dict는 `keySlot` 그대로다. 경로 선택·미리보기·렌더·토큰 해제가 같은 판정을 보는지 통합 테스트
+  (`lib/pull/__tests__/apple-xcstrings-delivery.test.ts`·`apple-xcstrings-publish.integration.ts`)가 고정한다.
+  ⚠️ **빈 값 경고(`write-empty-unsupported`)는 `cellSlot`이 아니라 strict `keySlot`을 본다** — 비울 수 없는 것은 실제로 있는 셀이다. 원문 셀이 없는 키의 기준 값 비움은
+  `sourceText` 폴백이라 "물리적 JSON 셀 유무만 본다"로 줄여 말하지 않는다.
 - `state`: Malmoi가 새로 쓴 셀은 `translated`다. 기존 셀의 값을 바꿀 때 `state`는 건드리지 않는다(`needs_review`를 Malmoi가 풀지 않는다).
-- 언어 추가·제거는 비지원이다(`SUPPORTED_ADAPTERS` 밖 — `create`가 없고 `write-create-unsupported`). 화면 분기는 `supportsLocaleChanges`에서 파생된다(§5.10).
+- 언어 추가·제거는 비지원이다 — `SUPPORTED_ADAPTERS` 밖이라 `addLocale`·`previewLocaleRemoval`이 그 앞에서 `unsupported-format`으로 거부하고, `create`가 없어
+  `write-create-unsupported`에는 닿지 않는다. 화면 분기는 `supportsLocaleChanges`에서 파생된다(§5.10).
+- **탐지**: 언어 목록이 파일 안에 있어 1패스 후보가 내려받을 경로를 정할 수 없다(`sampleOrder`가 빈 로케일에서 0개) — 그래서 **씨앗** `xcstringsProbePaths`(2개)가 내려받는다
+  (ts-dict 씨앗과 같은 자리, §3.1). 순서는 `Localizable.xcstrings` → 예제·테스트 아님 → 얕은 경로 → 경로순이고, `Pods/`·`build/`·`fastlane/`·`*.framework/`·`*.app/`은
+  apple-strings와 같은 `NOT_SOURCE`로 거른다. 어댑터 간 순위는 `keepOwnOrder`가 xcstrings 자리를 자기 순서로 다시 채우고, Flutter 셸 강등(`isFlutterShell`)에 xcstrings도 든다.
+- **파일당 2MB 예산**(`lib/onboarding/budget.ts` — 모든 어댑터 공용)이 단일 파일 카탈로그에 걸린다 — 정답 9개 중 iTerm2(7.1MB)·Shotnix(2.2MB)는 첫 적재가
+  `resource-limit`이다(2026-10-19 지휘자 결정 15 — 예산은 그대로 두고 보고한다, arb의 smooth-app과 같은 판정). 그 카탈로그가 탐지를 통째로 막지 않게
+  **자동 씨앗은 트리가 준 크기로 2MB 초과 카탈로그를 건너뛴다**(결정 16 — `probeTargets`의 `knownSizes`, `exceedsFileBudget`). 수동으로 고른 큰 파일은 그대로 `resource-limit`이다.
+  ⚠️ **GitLab 트리에는 크기가 없어** 큰 카탈로그가 여전히 씨앗이 되고 내려받기 예산이 탐지를 `resource-limit`으로 끝낸다(결정 17 — 크기 조회 호출을 더하지 않은 한계).
 
 **왜 둘 다 병합이 아닌가.** 값은 DB에서만 오고 원본에서는 **자리**(범위·삽입 위치)와 **표현**(인코딩·이스케이프 형태·서식)만 가져온다. 누락 키·셀 삽입은
 그 셀의 출처가 DB 하나이고, 원문 셀 생략은 DB의 기준 값이 키와 같은지 보는 것이지 원본 값과 견주는 것이 아니다. 원본 값과 DB 값을 견줘 고르는 코드가 생기면 이 근거가 깨진다.
@@ -847,12 +874,39 @@ ARB 없는 dev 코드로 같은 SHA를 다시 재도 같은 값이었다(기준�
   | b123400/xliffie | xcstrings | `-` → `Xliffie/Progress/{locale}.lproj/ProgressWindowController.strings` |
   | rosuH/EasyWatermark | Android | `-` → `iosApp/iosApp/{locale}.lproj/InfoPlist.strings`(실제 iOS 테이블) |
 
-  aside 감점은 배제가 아니라는 공용 규칙대로 셋(Tests·Examples·Fixtures)이 유일 후보로 1순위가 됐다. xcstrings 정답 셋은 `apple-xcstrings`가, Android 정답 둘은
-  android-strings가 이겨야 할 항목이다.
+  aside 감점은 배제가 아니라는 공용 규칙대로 셋(Tests·Examples·Fixtures)이 유일 후보로 1순위가 됐다. Android 정답 둘은 android-strings가 이겨야 할 항목이다.
+  **xcstrings 정답 셋(FirebaseUI-iOS·Loop·xliffie)은 `apple-xcstrings` 뒤 정답이 1순위다**(아래 27차 xcstrings) — 이 표에 남는 보고 항목은 다섯이다.
 
 **판정**: 기존 코퍼스 회귀 0, ARB 1순위 14/14 유지, `.strings` 1순위 7/8·고정점 100%·손실 0·삽입이 기존 바이트를 건드린 파일 0이라 `apple-strings`를 지원 포맷으로 낸다.
 
-**27차 — `apple-xcstrings`** — (자리. `apple-xcstrings` 배치의 재측정이 채운다.)
+**27차 — `apple-xcstrings` 추가 · 고정 SHA** — `.strings` 회차의 기준선 핀으로 네 코퍼스를 쟀다. 리뷰 수정(중복 언어 셀 · 큰 카탈로그 씨앗) 뒤 모바일 둘을 다시 재도
+1순위 diff 0 · metrics 바이트 동일이라 기준선 갱신은 한 번이다.
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 리포별 1순위 vs 기준선 | diff 0 | diff 0 |
+| `metrics` 전체(`ms` 제외) | 기준선과 바이트 동일 | 기준선과 바이트 동일 |
+
+| 지표 (모바일, xcstrings) | 학습 48 | 홀드아웃 12 |
+|---|---|---|
+| xcstrings 정답 · 1순위 | 8 · **7/8**(Shotnix 8순위) | 1 · **1/1** |
+| ARB · `.strings` · Android 정답의 1순위 | 그대로 | 그대로 |
+| 지원 포맷 탐지(전 포맷) | 22/40 → 27/40 | (인계에 없음) |
+| 오탐(지원 포맷) | 4/22 → 3/27 | (인계에 없음) |
+| 정답 1순위 | 18 → 24 | 6 → 7 |
+| 왕복 의미 동일 · 바이트 고정점 | 30/30 · 30/30 | 전부 |
+| 조용한 손실 | 0 | 0 |
+| `value-not-string`(복수형 셀, unmanaged) · 키 충돌 | 1 → 68 · 21 → 22(HealthGPT) | (인계에 없음) |
+
+- 바뀐 1순위 8개가 전부 xcstrings 정답 리포의 정답이다 — FirebaseUI-iOS·Loop·xliffie(`.strings` 후보 → 정답), HealthGPT·SwiftUIKit·iTerm2·Applite·LuLu(`-` → 정답).
+- Shotnix는 기준선부터 같은 json 오탐(`Localization/translations/app.{locale}.json` — `translations/` i18n 신호가 이긴다)이 1순위이고 정답 카탈로그는 8순위다. 빼앗은 것이 아니라 그대로다.
+- **보조 측정 — 정답 카탈로그 9개**(모든 언어 × 모든 키를 채운 렌더): 고정점·의미 동일·적재 계약 통과 9/9, **원본 바이트가 출력에 그대로 남은 파일 9/9**(바뀐 것은 삽입과
+  빈 객체 안쪽 공백뿐 — 문자 단위 대조), 넣은 셀 5,767(FirebaseUI-iOS 5,392). **원문 셀 없는 키** 2,207/7,837 = 28.2%(iTerm2 4,959키가 0%) · iTerm2 제외 76.7% ·
+  리포 중앙값 96.2% — 키 = 원문 규칙이 정답 리포 대부분의 기본 경로다. 복수형 셀 거부(`write-slot-not-scalar`) 15셀(Shotnix 13 · Applite 2).
+- 파일당 2MB 초과 정답 카탈로그 2/9(iTerm2 7.1MB · Shotnix 2.2MB) — 첫 적재 `resource-limit`(§1.45, 결정 15). survey는 예산을 걸지 않아 위 표에 드러나지 않는다.
+
+**판정**: 기존 코퍼스 회귀 0, 다른 포맷의 정답 1순위 불변, xcstrings 정답 1순위 8/9(남은 하나는 기존 오탐 그대로)·고정점 100%·손실 0·삽입이 기존 바이트를 건드린 파일 0이라
+`apple-xcstrings`를 지원 포맷으로 낸다. Xcode로 열어 저장해도 diff 0인지는 실물(`/roundtrip`)이 잰다.
 
 **판정 넷**
 
@@ -1491,13 +1545,15 @@ Action 밖으로 나와야 했다. `lib/onboarding`에 넣으면 그 루트의 "
   `sampleOrder(locales)`(en 우선 → 코드 유닛 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
   다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
 - **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 +
-  **`ts-dict` 씨앗 2 × 8**(2026-09-14) + **ARB 설정 `l10n.yaml` 1**(2026-10-19) = **blob ≤ 38**. 온보딩 한 번의 호출은
-  `ref 1 + commit 1 + tree 1 + blob ≤38`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
+  **`ts-dict` 씨앗 2 × 8**(2026-09-14) + **ARB 설정 `l10n.yaml` 1**(2026-10-19) + **String Catalog 씨앗 2**(2026-10-19, §1.45) = **blob ≤ 40**. 온보딩 한 번의 호출은
+  `ref 1 + commit 1 + tree 1 + blob ≤40`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
   그대로 응답 시간이고, `maxDuration`이 60초다.
 - ⚠️ **`ts-dict` 씨앗만 입력의 성격이 다르다.** 앞의 둘은 1패스가 만든 **후보 그룹**인데 그 어댑터는
   내용을 봐야 판단할 수 있어 1패스 후보가 0이다 — `probeTargets`가 **리포 경로 전체**를 받아
   `tsDictProbePaths`로 씨앗을 만든다. 그 인자는 **기본값이 없다**: 있으면 안 넘긴 호출부가 조용히
-  통과하고 그 경로에서만 후보가 사라진다(`scripts/smoke-github.ts`가 실제로 그 상태였다).
+  통과하고 그 경로에서만 후보가 사라진다(`scripts/smoke-github.ts`가 실제로 그 상태였다). String Catalog 씨앗(`xcstringsProbePaths`)도 같은 입력을 쓴다.
+- **`knownSizes`도 기본값 없는 인자다**(2026-10-19, 결정 16) — 트리가 준 크기(`knownSizesOf(snapshot.files)`, 새 원격 호출 없음)로 카탈로그 씨앗만 파일당 상한 초과를 건너뛴다.
+  다른 어댑터의 표본 선택은 그대로다. 크기를 모르면(GitLab 트리) 건너뛰지 않는다 — 작다고 보지 않는 fail-closed다.
 
 **첫 적재는 기존 push 경로를 그대로 지난다** (`lib/onboarding/ingest.ts`):
 
