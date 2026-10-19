@@ -1312,7 +1312,7 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
                         DB 세션의 session 콜백에는 token이 아니라 user가 와서 실을 곳이 없다
 .github/actions/malmoi-i18n-push/action.yml
                         **대상 리포가 참조하는 composite action**(외부 계약, 정본은 ACTIONS.md).
-                        ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v3다(v1·v2는 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
+                        ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v4다(v1·v2·v3는 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
                         셋업 계약은 scripts/__tests__/action-setup이 센다(store 캐시 없음 · setup-node 자동 캐시 끔)
 .gitlab/malmoi-i18n-push/push.sh · run.ts
                         **GitLab 프로젝트의 CI가 실행하는 원본**(action.yml의 짝, 2026-10-12 D5). 대상 리포의 생성 job이 이 리포를 불변 태그
