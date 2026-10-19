@@ -86,3 +86,20 @@ it("대조: pubspec.yaml이 없으면 `android/`는 셸이 아니다 — 언어�
   const paths = [...reader.files.keys()];
   expect(detectCandidatesAcross(paths).map((c) => c.adapter)).toEqual(["android-strings", "arb-catalog"]);
 });
+
+it("같은 tier의 여섯 모듈은 probe 상한 다섯까지만 실제 후보로 반환한다", async () => {
+  vi.stubEnv("APP_SIGNING_SECRET", "s".repeat(32));
+  const modules = ["a", "b", "c", "d", "e", "f"];
+  for (const module of modules) {
+    for (const suffix of ["", "-de", "-fr", "-ko"]) {
+      reader.files.set(`${module}/src/main/res/values${suffix}/strings.xml`, '<resources><string name="title">Title</string></resources>');
+    }
+  }
+  const result = await detect();
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.candidates.map(c => c.pathTemplate)).toEqual(modules.slice(0, 5).map(m => `${m}/src/main/res/values-{locale}/strings.xml`));
+  expect(result.candidates.every(c => c.baseLocale === "" && c.locales.length === 3)).toBe(true);
+  expect(reader.reads).toHaveLength(20);
+  expect(reader.reads.some(path => path.startsWith("f/"))).toBe(false);
+});
