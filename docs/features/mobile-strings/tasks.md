@@ -34,11 +34,11 @@
 
 ## M3 `.strings` 인코딩 경계 (자체 `/push`)
 
-- [ ] **M3a 인코딩 테스트** (`/tdd`) — `decodeFileBytes`·`encodeFileContent` 왕복(5 인코딩) · `.strings` 아닌 경로는 판별 안 함 ·
+- [x] **M3a 인코딩 테스트** (`/tdd`) — `decodeFileBytes`·`encodeFileContent` 왕복(5 인코딩) · `.strings` 아닌 경로는 판별 안 함 ·
       `encodeFileContent(s, "utf-8")`가 `Buffer.from(s, "utf8")`와 바이트 같음 · UTF-8 BOM이 문자열에 남음 · UTF-16 신호 없는 입력(BOM 없는 짧은 ASCII)은 UTF-8 ·
       비가역 입력(BOM + 짝 없는 서로게이트 `FF FE 00 D8`·BOM 뒤 홀수 길이·유효하지 않은 UTF-8)은 **명시 실패**(U+FFFD로 바뀌지 않음) · 인코딩한 바이트 기준 `blobSha` · `planPullChanges`(`lib/pull/plan.ts:252-283`)에
       변경 없는 UTF-16 파일을 넣으면 upsert 0 · 소스 테스트 "`.strings`를 UTF-8로 직접 읽는 로케일 리더 0곳". 검증: red.
-- [ ] **M3b 인코딩 경로** — `AdapterFile.encoding`, 리더 넷(GitHub `lib/github.ts:322·409` · GitLab `lib/gitlab/plan.ts:93` · CLI `scripts/format.ts:25`) +
+- [x] **M3b 인코딩 경로** — `AdapterFile.encoding`, 리더 넷(GitHub `lib/github.ts:322·409` · GitLab `lib/gitlab/plan.ts:93` · CLI `scripts/format.ts:25`) +
       survey `lib/survey/run.ts:63` NUL 스킵 교체, GitHub UTF-16 파일의 `POST /git/blobs`(base64) · GitLab `encoding: "base64"`, `blobSha` 바이트 기준
       (호출자 `lib/pull/plan.ts:266` · `scripts/ingest.ts:147`), 렌더 출력의 인코딩 상속.
       검증: `pnpm gate` green, 기존 2코퍼스 25차 표와 같고 M0 기준선과 리포별 1순위 diff 0(UTF-8 리포 회귀 0).

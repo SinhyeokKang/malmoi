@@ -66,3 +66,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **RC 완료** — 🔴1(`LocaleFileParseError`가 기존 실패 장치를 우회해 처리되지 않은 예외로 나간다 — CLI push가 `reportFailure` 없이 죽고(무관한 표본이어도), 온보딩 탐지 전체 장애, 미리보기 Try again, 야간 매일 예외. i18n-ally 모양 트리로 재현. survey만 파일별로 잡아 top-1 diff 0이 이를 가렸다) · 🟡3(ARCHITECTURE가 아직 "`POST /git/blobs` 안 부름" · GitLab `path=""` 기본값 · survey `failure`가 핀 기록에서 리포를 뺌) · ⚪8. 사본 `handoffs/review-C.md`. RC 해제. 사용자 결정 → 결정 10.
 - C-fix1 보냄 `ctx_4698d430bf27` — R1·Y1–3·⚪1/2/4/5, ⚪3/6/7은 apple-strings로 넘김, `--verdicts` 붙인 고정 survey 재측정.
 - **C-fix1 완료** — 커밋 3개(`b9df2e87` test · `ea11c814` fix · `5f4bbd87` docs), gate ok(16328 + 격리 914). `--verdicts` 포함 고정 survey 학습 109·홀드아웃 20 top-1 diff 0, 탐지·오탐·정답 순위 지표 기준선과 같음. ⚪3/6/7·실제 호스트 왕복은 apple-strings로 넘김. 🔴이 진입점 여럿에 걸쳐 수정분만 독립 재검증 RC2 `ctx_0c184b2823db`(codex gpt-6-astra medium) 시작. C 터미널 retain.
+- **RC2 통과** — 신규 🔴·🟡 0(관련 15파일 393테스트·첫 적재 오프라인 검증). 한계: 실제 호스트·DB 포함 야간 전체 실행은 안 함(공용 실행·경고 경로 테스트로 확인). 사본 `handoffs/review-C2.md`. RC2 해제.
+- **C dev 통합** — 8커밋 cherry-pick(`..82bd2e84`). main `pnpm gate` → `gate: ok`(16328 + 격리 914). tasks M3a·M3b 체크.
