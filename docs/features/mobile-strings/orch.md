@@ -47,3 +47,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **A dev 통합** — 10커밋 cherry-pick(`..78e447c1`). main 체크아웃 `pnpm gate` 1차는 `api-contract.test.ts` 두 건 5s 타임아웃(부하 평균 121 — 다른 워커 게이트 동시 실행, 단독 재실행 54/54 통과)으로 red였고, 2차 `gate: ok`(16172 passed). tasks M0 체크.
 - **push** `3b0af99e..c46880fb`(M0). A 워크트리·터미널 정리.
 - D 시작 `ctx_9abe3a7004aa`(`ms-D`, claude-opus-5-5 medium).
+- **B 완료** — 커밋 3개(`84133c37` test · `545c7cfc` 마이그레이션(오프라인 생성, dev DB 미적용) · `441d4049` 배선), `gate: ok`(16239 + 격리 909). 고정 SHA survey 학습·홀드아웃 1순위 diff 0, `ms` 외 JSON 동일. 계획과 다른 점 7개(경로 함수 서명 확장 · 지문은 basePath 있을 때만 튜플에 덧붙임 · 되살림 판정은 basePath 무시 · 온보딩 pick이 basePath를 실음 · 수동 지정은 basePath 없음 · 가짜 DB 행 · 409 본문) → RB가 판정. B 터미널 retain.
+- RB 시작 `ctx_5be45de722d2`(codex gpt-6-astra medium, 첫 세 커밋만). 같은 때 B에게 미룬 survey 다섯 자리를 새 Dispatch `ctx_632a76c10979`로 보냄(A가 dev에 있어 rebase 후 진행, 새 커밋만).
