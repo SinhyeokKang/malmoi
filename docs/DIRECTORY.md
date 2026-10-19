@@ -660,6 +660,8 @@ lib/
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
                         index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 25) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
+                        base-path(baseFilePath — 기준 언어 파일 경로 = basePath ?? 템플릿 치환. import 0인 잎이라 lib/locales도 쓴다.
+                        치환 자리 전수와 분기별 동작 테스트는 __tests__/base-path-sites.test.ts가 센다 — mobile-strings M2) ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
