@@ -1455,6 +1455,10 @@ export const es = {
         tryAgain: "Intentar de nuevo",
         saveFailed: { title: "No pudimos guardar esta clave", body: "Tu texto sigue aquí. Vuelve a intentarlo o guárdalo dentro de un momento." },
         saveUnknown: { title: "No pudimos confirmar el guardado", body: "Tu texto sigue aquí. Revisa los valores actuales antes de volver a guardar." },
+        inlineMarkupInvalid: {
+          title: (locales: string): string => `Etiquetas no válidas en ${locales}`,
+          body: "No se guardó nada. Revisa las etiquetas y sus cierres. Para escribir < como texto, usa &lt;.",
+        },
         inlineTagsMismatch: {
           title: (locales: string): string => `Las etiquetas de ${locales} no coinciden con el idioma base`,
           body: "No se guardó nada. Mantén las etiquetas del idioma base tal como están y traduce solo el texto entre ellas.",

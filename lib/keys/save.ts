@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { normalizeTranslationValue } from "@/lib/translations/draft";
-import { androidInlineTagsMatch } from "./android-inline-tags";
+import { androidInlineTagsIssue } from "./android-inline-tags";
 
 /**
  * 번역값 저장 판정. **유일한 사용자 mutation이다** — 키·로케일 CRUD는 없다.
@@ -60,7 +60,7 @@ export type KeySaveInputType = z.infer<typeof KeySaveInput>;
 export type KeySavePlan =
   | { ok: true; writes: { localeCode: string; value: string }[] }
   | { ok: false; error: "empty" | "too-many" | "payload-too-large" }
-  | { ok: false; error: "duplicate-locale" | "unknown-locale" | "too-long" | "cannot-clear" | "inline-tags-mismatch"; localeCodes: string[] };
+  | { ok: false; error: "duplicate-locale" | "unknown-locale" | "too-long" | "cannot-clear" | "inline-tags-mismatch" | "inline-markup-invalid"; localeCodes: string[] };
 
 /**
  * **수술적 표면의 비-base 셀은 비울 수 없다** (delivery-invariants D2 · 감사 #2). 수술적 writer는 값을 지울 줄 몰라 비운 셀은 원본
@@ -111,9 +111,12 @@ export function planKeySave(
     // 같은 저장의 base 변경도 비교 기준이다. 빈 base는 export와 같이 원문으로 폴백한다.
     const base = writes.find(write => write.localeCode === surface.baseLocale)?.value
       ?? (surface.baseLocale === null ? null : current.get(surface.baseLocale));
-    const mismatched = writes.filter(write => write.localeCode !== surface.baseLocale
-      && !androidInlineTagsMatch(base || surface.sourceText, write.value));
-    if (mismatched.length > 0) return { ok: false, error: "inline-tags-mismatch", localeCodes: mismatched.map(write => write.localeCode) };
+    const issues = writes.filter(write => write.localeCode !== surface.baseLocale)
+      .map(write => ({ localeCode: write.localeCode, issue: androidInlineTagsIssue(base || surface.sourceText, write.value) }));
+    for (const error of ["inline-markup-invalid", "inline-tags-mismatch"] as const) {
+      const localeCodes = issues.filter(item => item.issue === error).map(item => item.localeCode);
+      if (localeCodes.length > 0) return { ok: false, error, localeCodes };
+    }
   }
   return { ok: true, writes };
 }

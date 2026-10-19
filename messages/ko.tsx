@@ -1463,6 +1463,10 @@ export const ko = {
         tryAgain: "다시 시도",
         saveFailed: { title: "이 키를 저장하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 시도하거나 잠시 후 저장하세요." },
         saveUnknown: { title: "저장되었는지 확인하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 저장하기 전에 현재 값을 확인하세요." },
+        inlineMarkupInvalid: {
+          title: (locales: string): string => `${locales} 번역의 태그 형식이 잘못되었습니다`,
+          body: "아무것도 저장하지 않았습니다. 태그 형식과 닫는 태그를 확인하세요. < 문자를 입력하려면 &lt;로 쓰세요.",
+        },
         inlineTagsMismatch: {
           title: (locales: string): string => `${locales} 번역의 태그가 기준 언어와 다릅니다`,
           body: "아무것도 저장하지 않았습니다. 기준 언어의 태그는 그대로 두고 태그 사이의 텍스트만 번역하세요.",

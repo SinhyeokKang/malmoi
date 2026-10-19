@@ -2944,6 +2944,10 @@ export const en = {
         tryAgain: "Try again",
         saveFailed: { title: "We couldn't save this key", body: "Your text is still here. Try again, or save it in a moment." },
         saveUnknown: { title: "We couldn't confirm the save", body: "Your text is still here. Check the current values before saving again." },
+        inlineMarkupInvalid: {
+          title: (locales: string): string => `Invalid tags in ${locales}`,
+          body: "Nothing was saved. Check the tags and their closing tags. To write < as text, use &lt;.",
+        },
         inlineTagsMismatch: {
           title: (locales: string): string => `Tags don't match the base language in ${locales}`,
           body: "Nothing was saved. Keep the base language's tags as they are and translate only the text between them.",

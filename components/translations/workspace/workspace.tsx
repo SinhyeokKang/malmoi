@@ -120,6 +120,7 @@ type FooterStatus =
   | { kind: "not-ready" }
   | { kind: "save-unknown" }
   | { kind: "inline-tags-mismatch"; locales: string[] }
+  | { kind: "inline-markup-invalid"; locales: string[] }
   /** 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2) — 아무것도 저장되지 않았다. 입력은 그대로 남는다. */
   | { kind: "cannot-clear"; locales: string[] }
   /**
@@ -608,6 +609,7 @@ function WorkspaceBody(props: WorkspaceProps) {
           : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
           : result.error === "key-unavailable" ? { kind: "key-gone" }
           : result.error === "not-ready" ? { kind: "not-ready" }
+          : result.error === "inline-markup-invalid" && "localeCodes" in result ? { kind: "inline-markup-invalid", locales: result.localeCodes }
           : result.error === "inline-tags-mismatch" && "localeCodes" in result ? { kind: "inline-tags-mismatch", locales: result.localeCodes }
           : result.error === "cannot-clear" && "localeCodes" in result ? { kind: "cannot-clear", locales: result.localeCodes }
           : { kind: "save-failed" });
@@ -1120,7 +1122,7 @@ function WorkspaceBody(props: WorkspaceProps) {
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
-                invalid={footerStatus?.kind === "inline-tags-mismatch" || footerStatus?.kind === "cannot-clear" || footerStatus?.kind === "removal-pending" ? { locales: footerStatus.locales, describedBy: footerAlertId } : undefined}
+                invalid={footerStatus?.kind === "inline-markup-invalid" || footerStatus?.kind === "inline-tags-mismatch" || footerStatus?.kind === "cannot-clear" || footerStatus?.kind === "removal-pending" ? { locales: footerStatus.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
                     alertId={footerAlertId}
@@ -1229,14 +1231,15 @@ function Footer({ alertId, dirty, frozen, savable, status, saving, resultRef, sa
   );
 }
 
-function InlineTagsAlert({ locales }: { locales: string[] }) {
+function InlineTagsAlert({ locales, invalid = false }: { locales: string[]; invalid?: boolean }) {
   const m = useMessages();
   const uiLocale = useUiLocale();
-  const text = m.translations.workspace.footer.inlineTagsMismatch;
+  const text = invalid ? m.translations.workspace.footer.inlineMarkupInvalid : m.translations.workspace.footer.inlineTagsMismatch;
   return <Alert variant="danger" title={text.title(locales.map(code => languageName(code, uiLocale)).join(", "))}>{text.body}</Alert>;
 }
 
 const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { m: Messages; onCheck: () => void; slug: string; storageBlocked: boolean; status: FooterStatus }) => ReactNode>> = {
+  "inline-markup-invalid": ({ status }) => status.kind === "inline-markup-invalid" && <InlineTagsAlert locales={status.locales} invalid />,
   "inline-tags-mismatch": ({ status }) => status.kind === "inline-tags-mismatch" && <InlineTagsAlert locales={status.locales} />,
   // 거부 단위는 키 전체다 — 제목이 로케일을, 본문이 "아무것도 저장되지 않았다"를 말한다(delivery-invariants D2).
   "cannot-clear": ({ m, status }) => status.kind === "cannot-clear" && (

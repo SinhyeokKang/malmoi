@@ -1,12 +1,27 @@
 /**
- * DB·화면 값은 XML 문서가 아니다 — 일반 텍스트의 <·&와 엔티티 표기를 다시 디코딩하지 않는다.
- * 태그만 세고 닫힘을 검사한다. 어순에 따라 태그 위치는 바뀔 수 있지만 이름·속성·개수는 보존해야 한다.
+ * DB·화면에서 문자 <는 &lt;로 남는다(결정 14). 원시 꺾쇠는 태그 문법을 따라야 한다.
  */
 export function androidInlineTagsMatch(base: string, value: string): boolean {
+  return androidInlineTagsIssue(base, value) === null;
+}
+
+export type AndroidInlineTagsIssue = "inline-tags-mismatch" | "inline-markup-invalid";
+
+export function androidInlineTagsIssue(base: string, value: string): AndroidInlineTagsIssue | null {
   const expected = inlineTags(base);
+  // 기준 셀 자체는 편집 가능하다. 잘못된 기준 때문에 모든 번역 저장이 막히지 않도록 토큰만 비교한다.
+  if (expected === null) return sameTags(tagShapedTokens(base), tagShapedTokens(value)) ? null : "inline-tags-mismatch";
   const actual = inlineTags(value);
-  return expected !== null && actual !== null
-    && expected.length === actual.length && expected.every((tag, index) => tag === actual[index]);
+  if (actual === null) return "inline-markup-invalid";
+  return sameTags(expected, actual) ? null : "inline-tags-mismatch";
+}
+
+function sameTags(expected: string[], actual: string[]): boolean {
+  return expected.length === actual.length && expected.every((tag, index) => tag === actual[index]);
+}
+
+function tagShapedTokens(text: string): string[] {
+  return (text.match(/<\/?[:_\p{L}](?:"[^"]*"|'[^']*'|[^<>"'])*>/gu) ?? []).sort();
 }
 
 const NAME = /[:_\p{L}][:_\p{L}\p{N}\p{M}.\-]*/uy;
@@ -38,10 +53,7 @@ function inlineTags(text: string): string[] | null {
     const closing = text[cursor] === "/";
     if (closing) cursor++;
     const name = nameAt();
-    if (name === undefined) {
-      if (closing) return null;
-      continue;
-    }
+    if (name === undefined) return null;
     if (closing) {
       spaces();
       if (text[cursor++] !== ">" || stack.pop() !== name) return null;
