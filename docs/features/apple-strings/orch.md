@@ -58,3 +58,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **push** `166366f5..e8d9b97c`(P + A + D + README 배지). P 워크트리·브랜치 정리, P 해제.
 - 2파 시작: X `ctx_c1617a9a9844`(새 워크트리 `apple-X`, claude-opus-5-5 high — A 터미널은 컨텍스트가 찼고 Q1 결함용으로 남긴다) · Q1 `ctx_2cd29204845e`(main 체크아웃, claude-opus-5-5 medium — 폐기용 리포 `SinhyeokKang/i18n-strings-check` 생성 + GitLab `ox501501/malmoi-gitlab-test`에 UTF-16 파일) · D2 `ctx_a3c5956caef3`(D 터미널 재사용 — 시작 영수증은 `outcome_unknown`이었지만 터미널이 브리프 작업 중인 것을 확인). Q1이 main을 쓰는 동안 cherry-pick·build 금지.
 - `e8d9b97c` dev CI success(run 39232996535).
+- **D2 완료** — 문서별 커밋 6개(`f68406cc` ARCHITECTURE 27차 `.strings` 표·결정 10–12·이스케이프 의미·병렬 blob(0.5s 가정) · `3bb4f10c` ACTIONS · `3c81b969` DIRECTORY · `8def6c5a` PRODUCT · `d25997e8` spec/design · `9fa7673d` 가이드 en·ko·es + AUTHORING — `.strings`만), `gate: ok`(16589). 통합은 Q1 뒤(가이드는 앱이 서빙한다 — QA 중 HMR). D 터미널 retain, 미룬 몫은 D3. `lib/github.ts` 주석의 "60초를 넘긴다" 단정은 코드라 A-fix3 `ctx_065fa2355ca2`(A 터미널 재사용, 문구만).
