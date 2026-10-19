@@ -187,6 +187,15 @@ describe("arb-catalog write", () => {
     ].join("\n"));
   });
 
+  /** 리뷰 R4 — 비-base는 base 키 순서로 다시 쓰여 메시지 순서가 원본과 달라진다. 그때도 전역 항목끼리의 원본 순서는 지킨다. */
+  it("메시지 순서가 뒤집혀도 `@@*`끼리의 원본 상대 순서를 지킨다", () => {
+    const original = '{\n  "a": "A",\n  "@@x-one": "1",\n  "b": "B",\n  "@@x-two": "2"\n}\n';
+    const reversed: LocaleEntry[] = [{ key: "b", message: "B", order: 0 }, { key: "a", message: "A", order: 1 }];
+    const out = write("en", reversed, original);
+    expect(out).toBe('{\n  "b": "B",\n  "a": "A",\n  "@@x-one": "1",\n  "@@x-two": "2"\n}\n');
+    expectFixedPoint("en", reversed, out);
+  });
+
   it("`@@locale`은 원본에 있을 때만, 값은 경로의 코드로 낸다 — 원본 값과 견주지 않는다", () => {
     const list = entries([["a", "가"]]);
     expect(write("ko", list, '{\n  "a": "A"\n}\n')).toBe('{\n  "a": "가"\n}\n');

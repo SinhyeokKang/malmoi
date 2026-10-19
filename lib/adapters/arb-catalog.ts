@@ -230,8 +230,13 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
 }
 
 /**
- * 엔트리는 `orderedEntries` 순서로 DB에서, `@key`는 그 키 바로 뒤에, 나머지(`@@*`·문자열이 아닌 엔트리 값)는 원본에서 바로 앞에 있던
- * **출력되는** 엔트리 뒤에(없으면 맨 앞) 원본 텍스트 그대로 놓는다. 출력이 다시 원본이 되면 같은 배치를 낳는다(고정점).
+ * 엔트리는 `orderedEntries` 순서로 DB에서, `@key`는 그 키 바로 뒤에, 나머지(`@@*`·주석 `@x`·문자열이 아닌 엔트리 값 — "나르는 항목")는
+ * 원본 텍스트 그대로 놓는다. 출력이 다시 원본이 되면 같은 배치를 낳는다(고정점).
+ *
+ * **나르는 항목의 자리 규칙**: 각 항목은 원본에서 바로 앞에 있던 **출력되는** 엔트리(없으면 맨 앞)에 묶인다. 출력은 그 엔트리 뒤에 내되,
+ * 나르는 항목끼리의 **원본 상대 순서를 먼저 지킨다** — 앞 항목이 아직 못 나갔으면 뒤 항목은 묶인 엔트리를 지나도 기다렸다가 앞 항목 바로
+ * 뒤에 나간다(리뷰 R4). 비-base는 base 키 순서로 다시 쓰여 메시지 순서가 원본과 달라지므로, 엔트리 자리만 따르면 `@@x-one`·`@@x-two`가
+ * 뒤집힌다. 두 규칙이 부딪치면 상대 순서가 이긴다.
  *
  * - `@key`는 짝 키를 출력할 때 그 바로 뒤에 낸다. 짝 키가 **표면에 살아 있는데 이 로케일만 값이 없으면**(`input.untranslated`) 값 없이
  *   그 키가 설 자리에 `@key`만 남긴다(2026-10-19 사용자 결정 — Weblate류가 비-base 파일마다 복제해 둔 메타데이터를 첫 Publish가 수천 줄 지웠다).
@@ -264,8 +269,8 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
     const ghosts = new Set(missing.map((u) => u.key));
     const orphaned = new Set([...(input.orphaned ?? []), ...input.entries.filter((e) => e.orphaned === true).map((e) => e.key)]);
     const meta = new Map<string, string>();
-    /** 앞선 출력 엔트리 → 그 뒤에 붙는 항목들. `null`은 맨 앞이다. */
-    const after = new Map<string | null, string[]>();
+    /** 나르는 항목 — 원본 순서 그대로. `anchor`는 원본에서 바로 앞에 있던 출력 엔트리이고 `null`은 맨 앞이다. */
+    const carried: { anchor: string | null; line: string }[] = [];
     let anchor: string | null = null;
     // 깨진 원본은 나를 구간이 없다 — 표현만 읽고 `@@locale`도 내지 않는다(있었는지 모른다).
     for (const m of lastWins(parseArb(original) ?? [])) {
@@ -273,7 +278,7 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
       if (metaKey !== undefined) {
         if (written.has(metaKey) || ghosts.has(metaKey)) meta.set(metaKey, m.value);
         // 표면에 아예 없는 이름의 `@x`는 개발자 주석이다(smooth-app의 구획 주석) — `@@*`처럼 원본 위치에 남긴다. orphaned 키의 것만 버린다.
-        else if (!orphaned.has(metaKey)) (after.get(anchor) ?? after.set(anchor, []).get(anchor)!).push(member(m.name, m.value));
+        else if (!orphaned.has(metaKey)) carried.push({ anchor, line: member(m.name, m.value) });
         continue;
       }
       if (written.has(m.name)) {
@@ -283,9 +288,19 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
       // 엔트리였던 문자열 값은 DB가 주인이다 — 출력하지 않기로 했으면 그 값도 남지 않는다.
       if (!m.name.startsWith("@@") && m.value.startsWith('"')) continue;
       const value = m.name === "@@locale" ? localeValue : m.value;
-      (after.get(anchor) ?? after.set(anchor, []).get(anchor)!).push(member(m.name, value));
+      carried.push({ anchor, line: member(m.name, value) });
     }
-    lines.push(...(after.get(null) ?? []));
+    const emitted = new Set<string>();
+    let next = 0;
+    /** 묶인 엔트리가 이미 나간 항목을 원본 순서대로 낸다 — 앞 항목이 막히면 거기서 멈춘다(상대 순서 우선). */
+    const flush = () => {
+      for (; next < carried.length; next += 1) {
+        const item = carried[next]!;
+        if (item.anchor !== null && !emitted.has(item.anchor)) return;
+        lines.push(item.line);
+      }
+    };
+    flush();
     // `orderedEntries`가 정한 순서에 끼우려고 미번역 키에 빈 값이 아닌 자리표를 싣는다(메시지는 쓰지 않는다).
     const slots = orderedEntries([...usable, ...[...new Map(missing.map((u) => [u.key, u])).values()].map((u) => ({ ...u, message: "-" }))]);
     for (const e of slots) {
@@ -297,7 +312,8 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
       lines.push(member(e.key, quote(e.message, style)));
       const m = meta.get(e.key);
       if (m !== undefined) lines.push(member(`@${e.key}`, m));
-      lines.push(...(after.get(e.key) ?? []));
+      emitted.add(e.key);
+      flush();
     }
   }
 
