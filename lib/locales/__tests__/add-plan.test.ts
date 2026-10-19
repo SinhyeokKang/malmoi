@@ -182,3 +182,17 @@ describe("planLocaleAdd — addable codes are observable", () => {
     expect(read.locales.map(l => l.locale)).toEqual([code]);
   });
 });
+
+
+describe("Android 언어 추가", () => {
+  const surface = { id: "android", adapterName: "android-strings", pathTemplate: "res/values-{locale}/strings.xml" };
+  it.each(["pt-rBR", "zh-rCN", "fr", "iw", "in", "ji", "iw-rIL"])("%s 철자로 파일을 만든다", code => {
+    expect(planLocaleAdd(input({ surface, code }))).toEqual({ ok: true, action: "create", path: `res/values-${code}/strings.xml` });
+  });
+  it.each(["pt-BR", "pt_BR", "zhCN", "zh-Hant", "pt-rbr", "car", "he", "id", "yi", "he-rIL"])("%s는 Android 철자를 안내하며 거부한다", code => {
+    expect(planLocaleAdd(input({ surface, code }))).toEqual({ ok: false, error: "android-locale-code" });
+  });
+  it("다른 포맷의 지역·현대 언어 코드는 그대로 받는다", () => {
+    for (const code of ["pt-BR", "he", "id", "yi"]) expect(planLocaleAdd(input({ code })).ok).toBe(true);
+  });
+});

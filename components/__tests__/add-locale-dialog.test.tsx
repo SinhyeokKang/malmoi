@@ -445,3 +445,34 @@ describe("다시 추가 경로의 수 — 0·1·2, 세 사전(#294)", () => {
     });
   }
 });
+
+
+describe("Android 언어 추가 Dialog", () => {
+  const android = () => detail([], { connection: { adapterName: "android-strings", pathTemplate: "res/values-{locale}/strings.xml", format: "Android strings file" } });
+  it("Android 코드·이름·국기를 보여 주고 같은 코드를 미리보기와 실행에 보낸다", async () => {
+    mocks.previewAdd.mockResolvedValue({ ok: true, action: "create", path: "res/values-pt-rBR/strings.xml", revive: 0 });
+    mocks.add.mockResolvedValue({ ok: true, action: "create", path: "res/values-pt-rBR/strings.xml", reissued: 0 });
+    await open(android());
+    await openAdd();
+    expect(option("pt-BR")).toBeUndefined();
+    expect(option("in")).toBeDefined();
+    expect(option("pt-rBR")!.textContent).toContain(languageName("pt-BR", "en"));
+    expect(option("pt-rBR")!.innerHTML).toContain("🇧🇷");
+    await choose("pt-rBR");
+    expect(mocks.previewAdd).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "pt-rBR" });
+    expect(dialog()!.textContent).toContain("res/values-pt-rBR/strings.xml");
+    await act(async () => { await user().click(confirm()); });
+    expect(mocks.add).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web", localeCode: "pt-rBR" });
+  });
+  it("잘못된 철자는 입력 오류로 표시하고 추가를 막는다", async () => {
+    mocks.previewAdd.mockResolvedValue({ ok: false, error: "android-locale-code" });
+    await open(android());
+    await openAdd();
+    expect(dialog()!.textContent).toContain("pt-rBR");
+    await act(async () => { await user().type(combobox(), "pt-BR"); });
+    await key(combobox(), "Enter");
+    expect(combobox().getAttribute("aria-invalid")).toBe("true");
+    expect(dialog()!.textContent).toContain("iw");
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
+  });
+});
