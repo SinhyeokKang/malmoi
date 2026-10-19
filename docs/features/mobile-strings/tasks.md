@@ -12,7 +12,7 @@
       기록하고 이후 재측정이 같은 SHA로 돌게** 한다(survey에 SHA 고정 입력이 없으면 그 배선이 이 태스크다 — 테스트 먼저, `pnpm gate` green,
       커밋 `feat(survey): pin corpus repos to recorded commits`). 25차 표와의 차이는 상류 변경으로 따로 설명하고, 새 기준선이 회귀 비교의 기준이다.
       검증: 같은 SHA로 두 번 돌린 보고서가 리포별로 같다. 보고서 자체는 커밋 없음(`.scratch/`).
-- [ ] **M1 모바일 코퍼스** — 2026-10-19 표본에서 **보유 기준**(그 포맷 파일을 가진 리포 — spec의 "순증"과 다르다) ARB 9 · Apple 35 · Android 24 리포를
+- [x] **M1 모바일 코퍼스** — 2026-10-19 표본에서 **보유 기준**(그 포맷 파일을 가진 리포 — spec의 "순증"과 다르다) ARB 9 · Apple 35 · Android 24 리포를
       후보로, 학습/홀드아웃을 나눠 `docs/adapter-survey/`에 `repos-mobile.txt`·`repos-mobile-heldout.txt`·판정 JSON을 만든다. 정답 경로는 사람이
       원문을 보고 판정한다(23차 관행). Android 정답은 템플릿(`values-{locale}`)과 `basePath`(`values/`)의 쌍이라 판정 JSON에 `basePath` 필드를 둔다
       (survey 비교 배선은 android-strings T3.2). 함께 센다: UTF-16 `.strings` 리포 수, `Base.lproj/Localizable.strings` 리포 수, xcstrings 원문 셀 없는 키 비율.
