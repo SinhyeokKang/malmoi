@@ -29,6 +29,7 @@
 19. **A는 B와 함께 push한다 — B가 dev에 들어가기 전에는 push하지 않는다** — 지휘자 판단(R R3, 리뷰 권고). A만 배포되면 온보딩이 `values-*` 코드를 Android 기준으로 확정해 `values/`를 다른 언어로 조용히 적재한다(R 재현: de → English). 임시 서버 가드보다 배포 묶음이 단순하다. A·E·D·로그인 KV 수정은 로컬 dev에 통합해 두고, B 통합 뒤 한 번에 push한다.
 20. **`android/security-certification-resources`의 새 단일 언어 후보는 보고 대상 오탐이다** — 지휘자 판단(apple 결정 12와 같은 기준: 정답을 빼앗지 않았고 `-`가 후보로 바뀐 것). spec 완료 조건 3 문구는 D2가 apple과 같이 맞춘다.
 21. **쓸 수 있는가(`androidValueTags` 통과)는 모든 Android 셀 저장에 건다 — 기준 언어 셀 포함. 태그 불일치 비교(결정 13·15)는 비기준 셀에만 건다** — 지휘자 판단(E-fix2 질문). 저장은 됐는데 Publish가 `write-parse-failed`로 막히는 값을 만들지 않는 것이 결정 17의 요지다. 기준 셀 편집도 검사하지 않으면 깨진 기준이 생겨 결정 15 폴백이 상시 경로가 된다. 결정 15의 목적(영구 저장 불가 없음)은 글자 `<`를 `&lt;`로 쓰면 저장된다는 것으로 지킨다.
+22. **태그 속성 값의 XML 금지 문자(U+0001·U+FFFE 등)는 이번에 막지 않고 알려진 한계로 적는다** — 지휘자 판단(A-fix2 범위 밖 메모). 우리 파서·재파싱은 통과하고 aapt2가 거부할 수 있는 드문 입력이다. 결과는 대상 리포 빌드 red로 드러나 조용한 손실이 아니다. D2가 ARCHITECTURE 한계 목록에 적는다.
 
 ## 배치
 
@@ -74,3 +75,5 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **R2 완료** — 🔴1(R2-1 조상 디렉터리 이름으로 방언을 골라 `composeResources/…/res/values-*`가 Compose 의미로 읽힌다) · 🟡2(R2-2 Compose에서 치환하지 않은 이스케이프가 태그 경계를 옮겨 왕복이 깨진다 · R2-3 태그 문법이 NBSP 등 XML 밖 공백을 받아 키 없는 실패로 넘어간다). R1·R2·결정 18·Y2 일반 경로·W1/W2 해소 확인, 병합 없음 위반 없음, 네 코퍼스 1순위 차이 0, 20,000키 1.86MB write 369–459ms. 사본 `handoffs/review-A2.md`. R2 해제.
 - A 터미널 컨텍스트 85% → 해제. A-fix2 `ctx_8eacfa0ee409`(새 워커, `android-A`, claude-opus-5-5 high — R2-1·R2-2·R2-3).
 - **B 완료** — `3bd8ea75`·`37e250d1`·`8a4839d9`(Android 기준 언어 코드를 웹 ③·Add sources·수동 지정·MCP(기존 `baseLocale` 필드)·CLI(`--base` 필수)·재적재에 연결, `planBaseLocaleChange` 거부, basePath 표시, `values/`만 있는 소스의 언어 수 누락 자체 수정). `gate: ok`(17042 + 격리 939). B 터미널 retain. RBC `ctx_f5445ef59a87`(claude-opus-5-5 high, B+C).
+- **A-fix2 완료** — `322b5716` test · `f29723ba` fix(R2-1 방언은 `values-*` 바로 앞 리소스 디렉터리로 · R2-2 Compose 치환하지 않은 매치의 경계를 제자리로, 두 방언 태그 왕복 2,000값 생성 테스트 · R2-3 태그 공백 = XML S만, NBSP 태그는 키 붙은 `write-parse-failed`). `gate: ok` 첫 실행(17164 + 격리 940). 재측정 생략(세 변경 모두 1순위·metrics를 못 움직인다 — 코퍼스의 compose 템플릿이 전부 `composeResources/`로 끝난다). 지휘자가 diff 확인 후 재리뷰 없이 로컬 dev cherry-pick. 결정 22. A 터미널 retain.
+
