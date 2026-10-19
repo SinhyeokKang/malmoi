@@ -75,3 +75,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **X-fix1 완료** — `ab00fd0b` Y1(가려진 언어 셀은 자료형과 무관하게 무시 — xcstringstool compile 채록 픽스처) · `4f104ee9` Y2(`probeTargets`가 트리의 알려진 크기를 받아 2,000,000바이트 넘는 카탈로그를 씨앗에서 건너뛴다). 8 red → green, `gate: ok`(16736 + 격리 932), 모바일 1순위·metrics 기준선과 동일. 지휘자가 Y2 diff 확인.
 - **결정 17: GitLab 트리에는 크기가 없어 큰 카탈로그는 GitLab 탐지에서 여전히 `resource-limit`이다 — 이 스펙에서 크기 조회 호출을 더하지 않고 한계로 적는다** — 지휘자 판단(크기를 모르면 작다고 보지 않는 fail-closed가 맞고, 2MB 넘는 String Catalog를 가진 GitLab 리포는 코퍼스에 없다). D3가 문서화.
 - **X dev 통합** — 5커밋 cherry-pick(`634a7e9d..16a7eecc`). main `gate: ok`. tasks T4.0–T4.2 체크(T4.3 재측정 몫 완료, 실물 몫은 Q2).
+- **push** `4ee4d801..f5dd5d12`(X). 3파: Q2 `ctx_768c21e98194`(Q1 터미널 재사용 — xcstrings 왕복 + Xcode 재저장 diff 0) ∥ D3 `ctx_f193a166279e`(D 터미널 재사용). A 워크트리 정리(cherry `+` 0), A 해제.
