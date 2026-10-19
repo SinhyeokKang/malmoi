@@ -36,6 +36,9 @@ const CONFIG = [
   /(^|\/)\.tx\/config$/,
 ];
 
+/** `<dir>/<locale>.lproj/<table>.strings` — 그룹 키를 만드는 데만 쓴다. */
+const LPROJ_FILE = /^((?:[^/]*\/)*)([^/]+)\.lproj\/([^/]+\.strings)$/;
+
 /** 읽을 파일 수 상한. 넘으면 잘라내고 `truncated`로 알린다. */
 const FILE_BUDGET = 1200;
 /**
@@ -68,7 +71,26 @@ export type FileSelection = {
 };
 
 export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
-  const wanted = new Set<string>(allPaths.filter(path => path.endsWith(".strings")));
+  const wanted = new Set<string>();
+  // ── Apple `.strings` — `.lproj` 그룹(디렉터리 · 테이블)마다 상한까지 ─────────────
+  //
+  // ⚠️ **전부 담으면 큰 iOS 리포가 예산을 다 먹는다** (apple-strings T2.0b). 테이블(스토리보드마다 하나) × 언어(수백)라 수천 개이고,
+  // 아래 `FILE_BUDGET`이 경로 사전순으로 잘라 `Localizable.strings`나 다른 포맷의 후보가 빠진다 — 접두사 그룹과 같은 함정이다.
+  // `.lproj` 밖의 `.strings`는 그대로 담는다(디코드 실패 보고가 그 파일을 본다).
+  const lprojGroups = new Map<string, Array<{ locale: string; path: string }>>();
+  for (const p of allPaths) {
+    if (!p.endsWith(".strings")) continue;
+    const m = LPROJ_FILE.exec(p);
+    if (!m) {
+      wanted.add(p);
+      continue;
+    }
+    const key = `${m[1] ?? ""}{}.lproj/${m[3] ?? ""}`;
+    (lprojGroups.get(key) ?? lprojGroups.set(key, []).get(key)!).push({ locale: m[2] ?? "", path: p });
+  }
+  for (const [, files] of lprojGroups) {
+    for (const f of enFirst(files).slice(0, MAX_PER_SHAPE_GROUP)) wanted.add(f.path);
+  }
   // ARB는 확장자가 곧 신호이고 리포당 한 디렉터리라 전부 담는다. 루트 `l10n.yaml`은 탐지가 읽는 설정이다(`arbProbePaths`).
   for (const path of allPaths) if (ARB_FILE.test(path)) wanted.add(path);
   for (const path of arbProbePaths(allPaths)) wanted.add(path);

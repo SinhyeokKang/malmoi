@@ -177,6 +177,27 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
     expect(r.paths.length).toBeLessThanOrEqual(1200);
   });
 
+  /**
+   * apple-strings T2.0b — 큰 iOS 리포는 테이블 × 언어로 `.strings`가 수천 개다(스토리보드마다 테이블, 언어 300개). 전부 담으면 `FILE_BUDGET`이
+   * 경로 사전순으로 잘라 `Localizable.strings`나 다른 포맷의 후보가 통째로 빠진다 — 접두사 그룹과 같은 함정이다.
+   */
+  it(".lproj 그룹(디렉터리 · 테이블)마다 상한까지만 고르고 en을 먼저 담는다", () => {
+    const locales = Array.from({ length: 40 }, (_, i) => `a${String.fromCharCode(97 + (i % 26))}${i >= 26 ? "-X" : ""}`);
+    const tables = Array.from({ length: 60 }, (_, i) => `Story${String(i).padStart(2, "0")}`);
+    const ios = ["en", ...locales].flatMap((l) => [...tables, "Localizable"].map((t) => `App/${l}.lproj/${t}.strings`));
+    const r = selectSurveyFiles([...ios, "zz/i18n/en.json", "zz/i18n/ko.json"]);
+    expect(r.truncated).toBe(false);
+    // 다른 포맷의 후보가 사전순 절단에 밀려나지 않는다.
+    expect(r.paths).toEqual(expect.arrayContaining(["zz/i18n/en.json", "zz/i18n/ko.json"]));
+    const localizable = r.paths.filter((p) => p.endsWith("/Localizable.strings"));
+    expect(localizable).toHaveLength(12);
+    expect(localizable).toContain("App/en.lproj/Localizable.strings");
+    expect(r.paths.filter((p) => p.endsWith("/Story00.strings"))).toHaveLength(12);
+    // 같은 테이블이라도 디렉터리가 다르면 다른 그룹이다.
+    const two = selectSurveyFiles(["A/en.lproj/L.strings", "B/en.lproj/L.strings", "A/ko.lproj/L.strings"]).paths;
+    expect(two).toEqual(["A/en.lproj/L.strings", "A/ko.lproj/L.strings", "B/en.lproj/L.strings"]);
+  });
+
   it("결정적이다 — 입력 순서를 바꿔도 같은 목록", () => {
     const p = ["src/i18n/ko.json", "src/i18n/en.json", "public/_locales/en/messages.json", "public/_locales/ko/messages.json"];
     expect(selectSurveyFiles(p).paths).toEqual(selectSurveyFiles([...p].reverse()).paths);
