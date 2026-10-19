@@ -198,7 +198,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 가이드 스크린샷 stale | `pnpm guide:check [--json]` — 읽기 전용, **결과가 어떻든 exit 0**(인자 오류만 2). ⚠️ **`pnpm test`의 게이트가 아니다** — 찍을 수 있는 런타임이 로컬뿐이다. `/guide`·`/guide-shots`·`/push` 4단계가 이 출력을 인용한다(판정을 복제하지 않는다) |
 | self-hosted 기동 전 판정 | `pnpm preflight` — 필수 설정(`MALMOI_ORIGIN` 등)의 누락·형식을 이름과 사유 코드로만 찍고 실패면 exit 1. 값은 찍지 않는다. 읽기 전용 |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
-| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N]` (읽기 전용, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
+| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N] [--pins <파일>] [--write-pins <파일>]` (읽기 전용, `--write-pins`가 측정한 리포별 커밋 SHA를 기록하고 `--pins`가 그 SHA로 받는다 — 상류 변경이 회귀 비교를 못 움직이게 한다, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
 | GitLab 스모크 | `pnpm smoke:gitlab` (**읽기만**·DB 없음 — 실 API라 `pnpm test` 밖이다. 입력 `GITLAB_TEST_TOKEN`·`GITLAB_TEST_PROJECT`는 개발자 테스트 입력이라 `.env.example`·preflight에 없다. 응답 본문·토큰을 찍지 않는다) |
 | Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. **고아 후보를 삭제 없이 목록으로만** 낸다) |
