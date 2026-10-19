@@ -119,6 +119,19 @@ function arbVerdict(content: string): CatalogVerdict {
   return strings * 2 >= values.length ? "yes" : "no";
 }
 
+/**
+ * 1패스 후보 목록에서 **설정이 가리키는 ARB 후보를 맨 앞으로** — 나머지 순서는 그대로다(리뷰 R1).
+ *
+ * probe 상한(`PROBE_LIMITS.jsonLike`)이 1패스 순위로 자르므로, 설정 대상이 경로 신호로 밀리면 내용이 안 와서 2패스 검증에서 떨어졌다.
+ * 셸이 설정을 먼저 읽고 이 순서로 `probeTargets`에 넘긴다 — 예산은 그대로이고 밀려나는 것은 순위 끝 후보다.
+ */
+export function arbConfiguredFirst(candidates: readonly DetectedFormat[], configContent: string | undefined): DetectedFormat[] {
+  const config = readL10nConfig(configContent);
+  if (config === undefined) return candidates.slice();
+  const hit = (c: DetectedFormat) => c.adapter === "arb-catalog" && matchesConfig(c.pathTemplate, config);
+  return [...candidates.filter(hit), ...candidates.filter((c) => !hit(c))];
+}
+
 /** 1패스가 내려받을 설정 파일 — 경로만으로는 `arb-dir`을 모른다. */
 export function arbProbePaths(paths: readonly string[]): string[] {
   return paths.includes(L10N_CONFIG) ? [L10N_CONFIG] : [];

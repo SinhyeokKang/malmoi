@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor, detectCandidatesAcross } from "@/lib/adapters";
+import { arbConfiguredFirst, arbProbePaths } from "@/lib/adapters/arb-catalog";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import { compareKeys } from "@/lib/adapters/shared";
 import type { AdapterFile, DetectedFormat } from "@/lib/adapters/types";
@@ -89,9 +90,16 @@ async function detectIn(userId: string, target: RepoTarget, ref: string): Promis
   const paths = snapshot.files.map((f) => f.path);
   // 1패스: probe 없이 경로 모양만. code-dict는 여기서 후보가 0개이고 probe가 그것을 **만든다**.
   // ⚠️ 세 번째 인자가 **경로 전체**다 — ts-dict는 1패스 후보가 0이라 씨앗을 여기서만 만들 수 있다.
-  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
+  // ⚠️ ARB 설정(`l10n.yaml`)을 **먼저** 읽는다 — 그것이 가리키는 후보가 1패스 순위로 probe 상한 밖에 밀리면 2패스가 내용 없이 만나
+  // 검증에서 떨어뜨린다(리뷰 R1). 설정 파일은 원래도 표본 하나라 예산은 그대로이고, 같은 파일을 두 번 읽지 않는다.
+  const configPaths = arbProbePaths(paths);
   let files: AdapterFile[];
-  try { files = await readFiles(reader, snapshot, targets); }
+  try {
+    const config = configPaths.length === 0 ? [] : await readFiles(reader, snapshot, configPaths);
+    const firstPass = arbConfiguredFirst(detectCandidatesAcross(paths), config[0]?.content);
+    const targets = probeTargets(firstPass, codeDictCandidatePaths(paths), paths).filter((path) => !configPaths.includes(path));
+    files = [...config, ...await readFiles(reader, snapshot, targets)];
+  }
   catch (error) {
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
     throw error;
