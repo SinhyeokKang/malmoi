@@ -5,11 +5,10 @@
 
 <p align="center">
   <a href="https://github.com/SinhyeokKang/malmoi/releases/latest"><img src="https://img.shields.io/github/v/release/SinhyeokKang/malmoi?filter=v*&amp;style=flat" alt="Latest release" /></a>
-  <img src="https://img.shields.io/badge/formats-JSON%20%7C%20YAML%20%7C%20TS%2FJS%20%7C%20Chrome%20__locales%20%7C%20Flutter%20ARB%20%7C%20Apple%20strings-4493F8?style=flat" alt="Supported formats: JSON, YAML, TS/JS dictionaries, Chrome _locales, Flutter ARB, Apple strings and String Catalogs" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/price-free-08C?style=flat" alt="Free, no paid plans" />
   <a href="https://mal-moi.com/docs/ai-agents"><img src="https://img.shields.io/badge/MCP-supported-8A63D2?style=flat" alt="MCP server for coding agents" /></a>
   <a href="https://mal-moi.com/docs/self-hosting"><img src="https://img.shields.io/badge/self--hosting-Docker-2496ED?style=flat" alt="Self-hosting with Docker Compose" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License: MIT" /></a>
 </p>
 
 <p align="center">
