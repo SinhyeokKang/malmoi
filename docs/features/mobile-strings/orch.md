@@ -32,12 +32,13 @@
 | RA | A 리뷰 | 없음 | A | Codex `gpt-6-astra` medium | A 워크트리 읽기 | 대기 |
 | RB | B 리뷰 | 없음 | B | Codex `gpt-6-astra` medium | B 워크트리 읽기 | 대기 |
 | RC | C1+C2 리뷰 | 없음 | C2 | Claude Opus 5.5 high | C 워크트리 읽기 | 대기 |
+| S | 후속 스펙 갱신 — 이 런에서 바뀐 결정·실측을 `docs/features/{arb,apple-strings,android-strings}/`에 스펙별 커밋으로 반영(핀 재측정·모바일 코퍼스 실측·되살림 규칙·수동 지정·UTF-8 명시 실패·RC 이관 셋·B 미룬 항목·검수 7묶음) | 그 세 폴더 | C 통합 | 지휘자 | main | 대기 |
 
 겹침: A↔B·C는 `lib/survey/`(결정 6), B↔C는 결정 5의 파일들, A↔D는 `docs/adapter-survey/`(D는 A 뒤). 1파: A ∥ B ∥ C1. A 통합 → D 시작 + B·C에 survey 몫 전달. B 통합·push → C2.
 
 push 순서: A 통합 뒤 push(M0) → B 통합 뒤 push(M2, tasks "자체 `/push`") → C 통합 뒤 push(M3). D는 문서라 다음 push에 얹는다.
 
-tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용은 지휘자) · M3a→C1 · M3b→C2 · 문서 절(정본 승격·폴더 정리)→범위 밖(각 어댑터 스펙 T5). 주인 없는 항목 0.
+tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용은 지휘자) · M3a→C1 · M3b→C2 · 문서 절(정본 승격·폴더 정리)→범위 밖(각 어댑터 스펙 T5). 주인 없는 항목 0. 후속 스펙 반영→S(2026-10-19 사용자).
 
 ## 진행
 
