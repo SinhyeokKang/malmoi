@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RepoReader } from "@/lib/repo-host/reader";
 
 /**
@@ -6,18 +6,20 @@ import type { RepoReader } from "@/lib/repo-host/reader";
  * 있어 경로만 보는 1패스에서는 후보가 될 수 없다 — 씨앗(`xcstringsProbePaths`)이 내려받지 않으면 2패스에 내용이 없어 **조용히** 사라진다. 모든 파일을 읽는
  * CLI·survey에서는 안 보이므로 실제 `detectFormats`를 가짜 리더로 돌려 **실제로 읽은 경로**와 최종 후보를 함께 본다.
  */
-const reader = vi.hoisted(() => ({ files: new Map<string, string>(), reads: [] as string[] }));
+/** `unsized` — 트리가 크기를 싣지 않는 경로(GitLab 트리처럼). 크기는 리더의 `sizes`가 따로 답한다. */
+const reader = vi.hoisted(() => ({ files: new Map<string, string>(), reads: [] as string[], unsized: new Set<string>() }));
 
 vi.mock("@/lib/onboarding-run/access", () => ({
-  checkRepoAccess: async () => ({ status: "ok", host: "github", repoOwner: "owner", repoName: "repo", installationId: "10", repositoryId: "42", defaultBranch: "main" }),
+  checkRepoAccess: async () => ({ status: "ok", host: "github", repoOwner: "owner", repoName: "repo", installationId: "10", repositoryId: "42", defaultBranch: "main",
+    connect: { status: "ok", installationId: "10", repoOwner: "owner", repoName: "repo" } }),
 }));
 vi.mock("@/lib/repo-host", () => ({
   openRepoReader: async (): Promise<RepoReader> => ({
     snapshot: async () => ({
       status: "ok", headSha: "a".repeat(40), headCommittedAt: "2026-10-19T00:00:00Z",
-      files: [...reader.files].map(([path, content]) => ({ path, sha: `sha:${path}`, size: content.length })),
+      files: [...reader.files].map(([path, content]) => ({ path, sha: `sha:${path}`, ...(reader.unsized.has(path) ? {} : { size: content.length }) })),
     }),
-    sizes: async (snapshot, paths) => ({ status: "ok", sizes: new Map(snapshot.files.filter((f) => paths.includes(f.path)).map((f) => [f.path, f.size!])) }),
+    sizes: async (_snapshot, paths) => ({ status: "ok", sizes: new Map(paths.flatMap((p) => { const c = reader.files.get(p); return c === undefined ? [] : [[p, c.length] as const]; })) }),
     blob: async (sha) => {
       const path = sha.slice("sha:".length);
       reader.reads.push(path);
@@ -29,6 +31,7 @@ vi.mock("@/lib/repo-host", () => ({
 afterEach(() => {
   reader.files.clear();
   reader.reads.length = 0;
+  reader.unsized.clear();
   vi.unstubAllEnvs();
 });
 
@@ -105,4 +108,76 @@ it("Flutter 앱: ARB가 예산 안에서 1순위이고 셸의 `.strings`·`.xcst
   const rest = result.candidates.slice(1).map((c) => c.adapter);
   expect(rest).toContain("apple-xcstrings");
   expect(rest.every((a) => a === "apple-strings" || a === "apple-xcstrings")).toBe(true);
+});
+
+/**
+ * **RX-Y2 · 지휘자 결정 16** — 씨앗은 트리가 알려 준 크기가 파일당 예산(2,000,000 바이트)을 넘는 카탈로그를 건너뛰고 다음 후보를 고른다. 전에는 큰 카탈로그
+ * 하나가 씨앗에 들면 내려받기 예산이 탐지 **전체**를 `resource-limit`으로 끝내 같은 리포의 정상 `.strings`·xcstrings 후보까지 사라졌다(정답 리포
+ * iTerm2 7.1MB · Shotnix 2.2MB). 그 카탈로그는 어차피 적재할 수 없다 — 사용자가 직접 고르면 지금처럼 `resource-limit`이다.
+ */
+const BIG = 2_000_001;
+/** 유효한 카탈로그인데 파일이 예산보다 크다 — 셀 값 하나로 키운다. */
+const bigCatalog = () => {
+  const head = catalog("en", ["en", "de", "fr", "ja", "ko", "es"]);
+  return head.replace('"Hello en"', `"${"x".repeat(BIG)}"`);
+};
+
+describe("큰 카탈로그 — 씨앗에서 건너뛴다", () => {
+  it("큰 카탈로그가 1순위 자리여도 탐지가 실패하지 않고 정상 `.strings`·카탈로그 후보가 남는다", async () => {
+    vi.stubEnv("APP_SIGNING_SECRET", "s".repeat(32));
+    for (const locale of ["en", "de", "ja"]) {
+      for (const table of ["AAbout", "Account", "Alerts", "InfoPlist", "LaunchScreen", "Main", "Settings"]) reader.files.set(`App/${locale}.lproj/${table}.strings`, `"${table}.t" = "T";\n`);
+    }
+    // 사전순으로 정상 카탈로그보다 앞이다 — 크기를 안 보면 씨앗 1순위다.
+    reader.files.set("A/Localizable.xcstrings", bigCatalog());
+    reader.files.set("App/Localizable.xcstrings", catalog("en", ["en", "de", "fr", "ja", "ko"]));
+    reader.files.set("App/mul.lproj/Main.xcstrings", catalog("en", ["en", "de"]));
+    expect(reader.files.get("A/Localizable.xcstrings")!.length).toBeGreaterThan(2_000_000);
+
+    const result = await detect();
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    expect(reader.reads).not.toContain("A/Localizable.xcstrings");
+    // 씨앗 둘·합계 예산은 그대로다 — 큰 파일 자리를 다음 후보가 채운다.
+    expect(reader.reads).toEqual(expect.arrayContaining(["App/Localizable.xcstrings", "App/mul.lproj/Main.xcstrings"]));
+    expect(reader.reads).toHaveLength(5 * 3 + 2);
+    expect(result.candidates[0]).toMatchObject({ adapter: "apple-xcstrings", pathTemplate: "App/Localizable.xcstrings" });
+    expect(result.candidates.some((c) => c.adapter === "apple-strings")).toBe(true);
+    expect(result.candidates.map((c) => c.pathTemplate)).not.toContain("A/Localizable.xcstrings");
+  });
+
+  it("큰 카탈로그뿐인 리포에서도 `.strings` 후보가 남는다", async () => {
+    vi.stubEnv("APP_SIGNING_SECRET", "s".repeat(32));
+    for (const locale of ["en", "de"]) reader.files.set(`App/${locale}.lproj/Localizable.strings`, '"a" = "A";\n');
+    reader.files.set("App/Localizable.xcstrings", bigCatalog());
+    const result = await detect();
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    expect(reader.reads).not.toContain("App/Localizable.xcstrings");
+    expect(result.candidates.map((c) => c.adapter)).toEqual(["apple-strings"]);
+  });
+
+  /** 트리가 크기를 주지 않는 호스트(GitLab)에서는 모르는 크기를 작다고 보지 않는다 — 지금 동작 그대로 씨앗이 되고, 내려받기 예산이 리더의 `sizes`로 거부한다. */
+  it("트리에 크기가 없으면 지금처럼 씨앗이 되고 예산이 탐지를 `resource-limit`으로 끝낸다", async () => {
+    vi.stubEnv("APP_SIGNING_SECRET", "s".repeat(32));
+    for (const locale of ["en", "de"]) reader.files.set(`App/${locale}.lproj/Localizable.strings`, '"a" = "A";\n');
+    reader.files.set("App/Localizable.xcstrings", bigCatalog());
+    reader.unsized.add("App/Localizable.xcstrings");
+    expect(await detect()).toEqual({ ok: false, error: "resource-limit" });
+  });
+
+  it("사용자가 큰 카탈로그를 직접 고르면 지금처럼 `resource-limit`이다", async () => {
+    vi.stubEnv("APP_SIGNING_SECRET", "s".repeat(32));
+    reader.files.set("App/Localizable.xcstrings", bigCatalog());
+    const { createProjectFromRepo } = await import("@/lib/onboarding-run/create");
+    const prisma = {
+      projectMember: { count: async () => 0 },
+      user: { findUnique: async () => null },
+      project: { findUnique: async () => null },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+    const result = await createProjectFromRepo(prisma, { userId: "user" }, {
+      owner: "owner", repo: "repo", slug: "big", name: "Big", baseBranch: "main", manual: true,
+      surfaces: [{ adapter: "apple-xcstrings", pathTemplate: "App/Localizable.xcstrings", baseLocale: "en" }],
+    });
+    expect(result).toMatchObject({ ok: false, error: "resource-limit" });
+    expect(reader.reads).toEqual([]);
+  });
 });

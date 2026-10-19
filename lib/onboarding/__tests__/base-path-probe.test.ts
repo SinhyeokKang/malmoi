@@ -32,7 +32,7 @@ function repo(paths: readonly string[]) {
 describe("probeTargets → readFiles — basePath 후보", () => {
   it("values-en/이 없으면 그 경로를 겨누지 않고, basePath와 실재하는 치환 파일만 내려받는다", async () => {
     const paths = [BASE, KO];
-    const targets = probeTargets([group], [], paths);
+    const targets = probeTargets([group], [], paths, new Map());
     expect(targets).not.toContain(EN);
     expect([...targets].sort()).toEqual([KO, BASE].sort());
     const { snapshot, reader } = repo(paths);
@@ -41,7 +41,7 @@ describe("probeTargets → readFiles — basePath 후보", () => {
 
   it("values-en/이 함께 있으면 셋 다 내려받는다 — 재탐지가 무엇을 기준으로 볼지는 어댑터가 정한다", async () => {
     const paths = [BASE, KO, EN];
-    const targets = probeTargets([group], [], paths);
+    const targets = probeTargets([group], [], paths, new Map());
     expect([...targets].sort()).toEqual([BASE, EN, KO].sort());
     const { snapshot, reader } = repo(paths);
     await expect(readFiles(reader, snapshot, targets)).resolves.toHaveLength(3);
@@ -49,14 +49,14 @@ describe("probeTargets → readFiles — basePath 후보", () => {
 
   it("basePath가 트리에 없으면 그것도 겨누지 않는다 — 존재하지 않는 경로를 크기 조회에 넘기지 않는다", async () => {
     const paths = [KO];
-    const targets = probeTargets([group], [], paths);
+    const targets = probeTargets([group], [], paths, new Map());
     expect(targets).toEqual([KO]);
     const { snapshot, reader } = repo(paths);
     await expect(readFiles(reader, snapshot, targets)).resolves.toHaveLength(1);
   });
 
   it("basePath 없는 후보는 지금처럼 치환 표본이다 — 탐지 후보는 트리에서 왔으므로 실재한다", () => {
-    expect(probeTargets([{ pathTemplate: "i18n/{locale}.json", locales: ["en", "ko"] }], [], ["i18n/en.json", "i18n/ko.json"]))
+    expect(probeTargets([{ pathTemplate: "i18n/{locale}.json", locales: ["en", "ko"] }], [], ["i18n/en.json", "i18n/ko.json"], new Map()))
       .toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 });

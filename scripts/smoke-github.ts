@@ -16,7 +16,7 @@ import { requireEnv } from "../lib/env";
 import { en } from "../messages/en";
 import { createGitClient, openRepoReader, probeRepo } from "../lib/github";
 import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budget";
-import { formatLabel, makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
+import { formatLabel, knownSizesOf, makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
 import { syncBranchFor } from "../lib/pull/sync-branch";
 import { loadLocalEnv, scriptPrisma } from "./local";
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
       const codeDict = codeDictCandidatePaths(paths);
       // ⚠️ **경로 전체를 함께 넘긴다** — ts-dict 씨앗이 여기서만 만들어진다. 안 넘기면 스모크가
       // 프로덕션과 다른 후보 목록을 낸다(그 리포에서 ts-dict가 통째로 빠진다).
-      const targets = probeTargets(jsonLike, codeDict, paths).filter((path) => !configPaths.includes(path));
+      const targets = probeTargets(jsonLike, codeDict, paths, knownSizesOf(snapshot.files)).filter((path) => !configPaths.includes(path));
       console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length + configPaths.length}개`);
 
       checkDownloadBudget([...configPaths, ...targets], snapshot.files);

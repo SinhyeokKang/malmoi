@@ -1,5 +1,6 @@
 import { adapterFor } from "@/lib/adapters";
 import { xcstringsProbePaths } from "@/lib/adapters/apple-xcstrings";
+import { exceedsFileBudget } from "@/lib/onboarding/budget";
 import { arbProbePaths } from "@/lib/adapters/arb-catalog";
 import { tsDictProbePaths } from "@/lib/adapters/ts-dict";
 import { compareKeys, sampleOrder } from "@/lib/adapters/shared";
@@ -42,6 +43,13 @@ export function probeTargets(
    * 필수 인자면 컴파일러가 잡는다. 후보가 없는 호출은 `[]`를 **명시적으로** 넘긴다.
    */
   repoPaths: readonly string[],
+  /**
+   * 트리가 알려 준 파일 크기(`snapshot.files[].size` — GitHub 트리는 싣고 GitLab 트리는 싣지 않는다). 카탈로그 씨앗만 쓴다(지휘자 결정 16 · RX-Y2):
+   * 파일당 예산을 넘는 카탈로그를 씨앗에 넣으면 내려받기 예산이 탐지 **전체**를 `resource-limit`으로 끝내 같은 리포의 정상 후보까지 사라진다.
+   * 그 카탈로그는 어차피 적재할 수 없으니 건너뛰고 다음 후보를 고른다. ⚠️ **크기를 모르면 건너뛰지 않는다** — 작다고 보지 않고 지금처럼 씨앗이 되어
+   * 내려받기 예산(리더의 `sizes`)이 판정한다. 기본값을 두지 않는다 — 빠뜨린 호출부가 조용히 옛 동작을 타지 않게 한다(위 `repoPaths`와 같은 이유).
+   */
+  knownSizes: ReadonlyMap<string, number>,
   limits: { jsonLike: number; codeDict: number } = PROBE_LIMITS,
 ): string[] {
   const out = new Set<string>();
@@ -64,8 +72,17 @@ export function probeTargets(
   // ARB 탐지가 루트 `l10n.yaml`의 `arb-dir`로 후보를 좁힌다 — 2패스에 내용이 없으면 설정을 못 본다.
   for (const path of arbProbePaths(repoPaths)) out.add(path);
   // String Catalog는 언어 목록이 파일 안에 있어 1패스 후보가 0이다 — ts-dict처럼 경로로 씨앗을 고른다(apple-strings design §5).
-  for (const path of xcstringsProbePaths(repoPaths)) out.add(path);
+  const fits = (path: string) => {
+    const size = knownSizes.get(path);
+    return size === undefined || !exceedsFileBudget(size);
+  };
+  for (const path of xcstringsProbePaths(repoPaths.filter(fits))) out.add(path);
   return [...out];
+}
+
+/** 트리 항목 중 크기를 아는 것만 — `probeTargets`의 `knownSizes`. 크기가 없는 항목(GitLab 트리)은 넣지 않는다 — 0으로 세지 않는다. */
+export function knownSizesOf(files: readonly { path: string; size?: number }[]): Map<string, number> {
+  return new Map(files.flatMap((f) => (f.size === undefined ? [] : [[f.path, f.size] as const])));
 }
 
 /** 내려받은 blob을 어댑터가 받는 동기 probe로. 없는 경로는 `undefined`다 — 어댑터가 그것을 "미검증"으로 읽는다. */

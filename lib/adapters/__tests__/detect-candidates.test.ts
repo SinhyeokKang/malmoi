@@ -193,7 +193,7 @@ describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
     const content = '{\n  "sourceLanguage" : "en",\n  "strings" : {\n    "ok" : {\n\n    }\n  },\n  "version" : "1.0"\n}';
     const paths = [path];
     expect(detectCandidatesAcross(paths)).toEqual([]);
-    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
+    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths, new Map());
     expect(downloads).toEqual([path]);
     const blobs = new Map(downloads.map(p => [p, content]));
     const found = detectCandidatesAcross(paths, makeProbe(blobs));
@@ -210,7 +210,7 @@ describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
     const { planConfirmedFormat } = await import("@/lib/onboarding/confirm");
     const path = pathTemplate.replace("{locale}", "en").replace("*", "common");
     const paths = [path];
-    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
+    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths, new Map());
     expect(downloads).toContain(path);
     const blobs = new Map(downloads.map(p => [p, content]));
     const found = detectCandidatesAcross(paths, makeProbe(blobs));

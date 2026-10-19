@@ -16,7 +16,7 @@ import { connectionEvidence, projectReadTarget, REPO_COLUMNS, repoLocatorOf, rep
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
-import { ingestTargets, makeProbe, probeTargets, summarizeCandidates, type CandidateSummary } from "@/lib/onboarding/detect";
+import { ingestTargets, knownSizesOf, makeProbe, probeTargets, summarizeCandidates, type CandidateSummary } from "@/lib/onboarding/detect";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { resolveLocalePaths } from "@/lib/pull/plan";
@@ -97,7 +97,7 @@ async function detectIn(userId: string, target: RepoTarget, ref: string): Promis
   try {
     const config = configPaths.length === 0 ? [] : await readFiles(reader, snapshot, configPaths);
     const firstPass = arbConfiguredFirst(detectCandidatesAcross(paths), config[0]?.content);
-    const targets = probeTargets(firstPass, codeDictCandidatePaths(paths), paths).filter((path) => !configPaths.includes(path));
+    const targets = probeTargets(firstPass, codeDictCandidatePaths(paths), paths, knownSizesOf(snapshot.files)).filter((path) => !configPaths.includes(path));
     // 설정을 넘겨 합계 예산을 이어 잰다 — 따로 재면 설정만큼 상한 밖으로 빠진다(재리뷰 Y1).
     files = [...config, ...await readFiles(reader, snapshot, targets, config)];
   }

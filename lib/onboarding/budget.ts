@@ -26,6 +26,14 @@ function fail(_reason: string): never { throw new IngestBudgetError(); }
 
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 2_000_000;
+
+/**
+ * 크기만으로 파일당 예산을 넘는가 — 내려받기 **전에** 고를 수 있는 자리(온보딩의 카탈로그 씨앗)가 쓴다. 판정은 아래 `checkDownloadBudget`과 같은 상한이다.
+ * 모르는 크기를 넘기지 않는다 — 호출부가 "모름"을 따로 다룬다(작다고 보지 않는다).
+ */
+export function exceedsFileBudget(size: number): boolean {
+  return !Number.isSafeInteger(size) || size < 0 || size > MAX_FILE_BYTES;
+}
 const MAX_TOTAL_BYTES = 10_000_000;
 
 /**

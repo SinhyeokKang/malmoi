@@ -63,13 +63,13 @@ const TS_FORMAT: DetectedFormat = {
 describe("probeTargets — 내려받을 blob 경로", () => {
   it("후보마다 `sampleOrder(locales)`와 같은 파일을 고른다 — en 우선, 코드 유닛 순, 3개", () => {
     const c = json("src/locales/{locale}.json", ["ko", "en", "ja", "fr"]);
-    const targets = probeTargets([c], [], []);
+    const targets = probeTargets([c], [], [], new Map());
     expect(targets).toEqual(sampleOrder(new Set(c.locales)).map((l) => `src/locales/${l}.json`));
     expect(targets).toEqual(["src/locales/en.json", "src/locales/fr.json", "src/locales/ja.json"]);
   });
 
   it("en이 없으면 코드 유닛 순 앞 3개다", () => {
-    expect(probeTargets([json("i18n/{locale}.json", ["zh", "ko", "ja", "de"])], [], [])).toEqual([
+    expect(probeTargets([json("i18n/{locale}.json", ["zh", "ko", "ja", "de"])], [], [], new Map())).toEqual([
       "i18n/de.json",
       "i18n/ja.json",
       "i18n/ko.json",
@@ -77,19 +77,19 @@ describe("probeTargets — 내려받을 blob 경로", () => {
   });
 
   it("로케일이 3개 미만이면 있는 만큼만이다", () => {
-    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [])).toEqual(["i18n/en.json", "i18n/ko.json"]);
+    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [], new Map())).toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 
   it("루트 `l10n.yaml`을 함께 내려받는다 — 2패스 ARB 탐지가 `arb-dir`로 후보를 좁힌다", () => {
     const arb: DetectedFormat = { adapter: "arb-catalog", pathTemplate: "lib/l10n/app_{locale}.arb", locales: ["en", "ko"] };
     const paths = ["l10n.yaml", "lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"];
-    expect(probeTargets([arb], [], paths)).toEqual(["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb", "l10n.yaml"]);
-    expect(probeTargets([arb], [], paths.slice(1))).toEqual(["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"]);
+    expect(probeTargets([arb], [], paths, new Map())).toEqual(["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb", "l10n.yaml"]);
+    expect(probeTargets([arb], [], paths.slice(1), new Map())).toEqual(["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"]);
   });
 
   it("code-dict 그룹도 같은 규칙으로 고른다 — `{locale}` 치환에 확장자가 따라온다", () => {
     const group = { pathTemplate: "src/locale/{locale}.ts", locales: new Set(["ko", "en", "ja", "fr"]) };
-    expect(probeTargets([], [group], [])).toEqual(["src/locale/en.ts", "src/locale/fr.ts", "src/locale/ja.ts"]);
+    expect(probeTargets([], [group], [], new Map())).toEqual(["src/locale/en.ts", "src/locale/fr.ts", "src/locale/ja.ts"]);
   });
 
   it("상한: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = 21이다 (ARCHITECTURE §3.1)", () => {
@@ -100,7 +100,7 @@ describe("probeTargets — 내려받을 blob 경로", () => {
       pathTemplate: `code${i}/{locale}.ts`,
       locales: new Set(locales),
     }));
-    const targets = probeTargets(jsonLike, codeDict, []);
+    const targets = probeTargets(jsonLike, codeDict, [], new Map());
     expect(targets).toHaveLength(21);
     // 순위 밖 후보의 파일은 하나도 없다 — 내려받지 않은 후보는 5)에서 미검증 탈락이고, 그 사실을 화면이 말한다.
     expect(targets.some((p) => p.startsWith("dir5/") || p.startsWith("dir6/") || p.startsWith("code2/"))).toBe(false);
@@ -111,12 +111,12 @@ describe("probeTargets — 내려받을 blob 경로", () => {
 
   it("같은 경로는 한 번만 낸다", () => {
     const a = json("i18n/{locale}.json", ["en", "ko"]);
-    const targets = probeTargets([a, { ...a }], [], []);
+    const targets = probeTargets([a, { ...a }], [], [], new Map());
     expect(targets).toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 
   it("후보가 없으면 빈 배열이다", () => {
-    expect(probeTargets([], [], [])).toEqual([]);
+    expect(probeTargets([], [], [], new Map())).toEqual([]);
   });
 
   /**
@@ -131,7 +131,7 @@ describe("probeTargets — 내려받을 blob 경로", () => {
       "src/sidepanel/lib/util.ts",
       "src/sidepanel/lib/other.ts",
     ];
-    const targets = probeTargets([], [], repo);
+    const targets = probeTargets([], [], repo, new Map());
     expect(targets).toContain("src/i18n/namespaces/app.ts");
     expect(targets).toContain("src/i18n/namespaces/common.ts");
     // i18n 신호가 없는 디렉터리는 안 받는다 — `.ts`는 어디에나 있다.
@@ -139,8 +139,8 @@ describe("probeTargets — 내려받을 blob 경로", () => {
   });
 
   it("경로가 비면 씨앗도 없다 — 다른 어댑터의 동작은 그대로다", () => {
-    expect(probeTargets([], [], [])).toEqual([]);
-    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [])).toEqual(["i18n/en.json", "i18n/ko.json"]);
+    expect(probeTargets([], [], [], new Map())).toEqual([]);
+    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [], new Map())).toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 
   /**
@@ -158,7 +158,7 @@ describe("probeTargets — 내려받을 blob 경로", () => {
     const repo = Array.from({ length: 9 }, (_, d) =>
       Array.from({ length: 12 }, (_, f) => `src/i18n/g${d}/f${String(f).padStart(2, "0")}.ts`),
     ).flat();
-    const targets = probeTargets(jsonLike, codeDict, repo);
+    const targets = probeTargets(jsonLike, codeDict, repo, new Map());
     expect(targets).toHaveLength(37);
     // 씨앗 몫이 정확히 16이다 — 디렉터리 2개를 넘거나 파일 8개를 넘으면 여기서 red다.
     expect(targets.filter((p) => p.startsWith("src/i18n/")).length).toBe(16);
@@ -411,7 +411,7 @@ describe("summarizeCandidates — `samples` 확장 (ARCHITECTURE §3.1)", () => 
 
   /** `probeTargets`가 실제로 내려받는 것만 담는다 — 그 밖의 파일을 쓰면 이 맵에 없어서 red다. */
   const downloaded = (): Map<string, string> =>
-    new Map(probeTargets([c], [], []).map((p) => [p, body(p)] as const));
+    new Map(probeTargets([c], [], [], new Map()).map((p) => [p, body(p)] as const));
 
   afterEach(() => {
     vi.restoreAllMocks();
