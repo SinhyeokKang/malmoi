@@ -223,12 +223,13 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
       errors.push({ path: file.path, code: "parse-failed", detail: parsed.detail });
       continue;
     }
-    // Apple처럼 나중 값이 이긴다 — 키 대입은 Map이라 `__proto__`도 own 키다.
+    // Apple처럼 나중 값이 이긴다 — 키 대입은 Map이라 `__proto__`도 own 키다. write도 그 나중 리터럴만 고쳐 잃는 번역이 없으므로
+    // code-dict·ts-dict와 같은 경고(`duplicate-property`)다 — 대상 리포 CI를 red로 만들지 않는다(지휘자 결정 2026-10-19).
     const effective = new Map<string, StringsSlot>();
     const duplicated = new Set<string>();
     for (const slot of parsed.entries) {
       if (effective.has(slot.key) && !duplicated.has(slot.key)) {
-        errors.push({ path: file.path, code: "duplicate-key", key: slot.key });
+        errors.push({ path: file.path, code: "duplicate-property", key: slot.key });
         duplicated.add(slot.key);
       }
       effective.set(slot.key, slot);

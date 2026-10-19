@@ -210,6 +210,7 @@ const ERROR_KIND = {
   "duplicate-key": "failure",
   // code-dict·ts-dict — 코드 객체의 같은 키. JS 의미대로 마지막이 적재되고 write도 그 자리를 고친다(B7a r1, 2026-09-24 사용자 결정):
   // 잃는 번역이 없으므로 **대상 리포 CI를 red로 만들지 않는다**(docs/ACTIONS.md §3). 실패로도 unmanaged로도 세지 않는다.
+  // apple-strings도 같다 — `.strings`의 같은 키는 Apple 의미대로 나중 값이고 write도 그 리터럴만 고친다(2026-10-19 지휘자 결정).
   "duplicate-property": "warning",
   "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-create-unsupported": "failure", "write-locale-object-missing": "failure",
   "write-empty-unsupported": "failure",

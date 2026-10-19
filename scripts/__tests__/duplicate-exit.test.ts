@@ -66,6 +66,22 @@ it("code-dict 중복 프로퍼티는 경고 한 줄과 함께 exit 0이고 적�
 }, 60000);
 
 /**
+ * apple-strings도 같은 판정이다(지휘자 결정 2026-10-19 — design §2.1 "보고"). Apple 의미대로 나중 값이 적재되고 write도 그 리터럴만 고쳐 잃는 번역이
+ * 없다. 재측정에서 `.strings` 정답 리포 PayForMe가 중복 2건이라 `duplicate-key`면 그 리포 CI가 영구 red였다.
+ */
+it("apple-strings 중복 키는 경고 한 줄과 함께 exit 0이고 적재를 보낸다", async () => {
+  const url = await fakeServer();
+  const dir = fixtureRepo({
+    "App/en.lproj/Localizable.strings": '"a" = "first";\n"b" = "B";\n"a" = "A";\n',
+    "App/ko.lproj/Localizable.strings": '"a" = "가";\n"b" = "나";\n',
+  });
+  const result = await push(dir, url);
+  expect(result.code, result.out).toBe(0);
+  expect(received).toEqual(["/api/push"]);
+  expect(result.out).toMatch(/App\/en\.lproj\/Localizable\.strings {2}a — /);
+}, 60000);
+
+/**
  * **`unmanaged`도 red가 아니다** (2026-10-01 doc-check C2 사용자 판정 · ARCHITECTURE §1 "read 오류의 두 갈래"). surgical writer가
  * 파일에 그대로 남기는 값(코드의 식·YAML 숫자)이라 잃는 번역이 없다 — 서버 적재가 통과시키는 항목으로 대상 리포 CI를 막지 않는다.
  */

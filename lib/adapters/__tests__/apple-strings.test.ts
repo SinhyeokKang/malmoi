@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { appleStrings, decodeStringsLiteral, encodeStringsLiteral, tokenizeStrings } from "../apple-strings";
 import { detectCandidatesAcross } from "../index";
-import type { DetectedFormat, LocaleEntry } from "../types";
+import { adapterErrorKind, type DetectedFormat, type LocaleEntry } from "../types";
 import { planClearability } from "@/lib/keys/save";
 
 /**
@@ -93,10 +93,12 @@ describe("read", () => {
     expect(entriesOf("en", "NSCameraUsageDescription = \"Camera\";\n")).toEqual({ NSCameraUsageDescription: "Camera" });
   });
 
-  it("중복 키 — 나중 값이 엔트리이고 duplicate-key를 알린다", () => {
-    const result = readOne("en", '"a" = "first";\n"a" = "second";\n');
-    expect(result.locales[0]?.entries).toEqual([{ key: "a", message: "second", order: 0 }]);
-    expect(result.errors).toEqual([{ path: pathOf("en"), code: "duplicate-key", key: "a" }]);
+  /** code-dict·ts-dict와 같은 경고다 — 잃는 번역이 없어 대상 리포 CI를 red로 만들지 않는다(지휘자 결정 2026-10-19, design §2.1의 "보고"). */
+  it("중복 키 — 나중 값이 엔트리이고 duplicate-property 경고를 알린다", () => {
+    const result = readOne("en", '"a" = "first";\n"a" = "second";\n"a" = "third";\n');
+    expect(result.locales[0]?.entries).toEqual([{ key: "a", message: "third", order: 0 }]);
+    expect(result.errors).toEqual([{ path: pathOf("en"), code: "duplicate-property", key: "a" }]);
+    expect(adapterErrorKind("duplicate-property")).toBe("warning");
   });
 
   it('"__proto__" 키가 own property로 남는다', () => {
