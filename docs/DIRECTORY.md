@@ -675,6 +675,11 @@ lib/
                         렌더 경로(표현 불가 리터럴의 write-parse-failed 포함)를, lib/pull/__tests__/apple-strings-publish.integration.ts(`pnpm test:projects:postgres`)가
                         확정 → 첫 적재 → 미리보기·첫/둘째 Publish 바이트(UTF-16LE+BOM·CRLF) → 언어 추가·제거를 잰다.
                         Flutter 셸 판정 isFlutterShell은 apple-strings.ts에 있고 강등·keepOwnOrder는 index.ts의 detectCandidatesAcross가 한다(어댑터 간 순위)
+                        apple-xcstrings.ts는 insertsMissingCells: true를 단 유일한 어댑터이고 씨앗 xcstringsProbePaths를 낸다(경로 거름은 apple-strings의 NOT_SOURCE).
+                        __tests__/apple-xcstrings.test.ts가 read·write·중복 이름·삽입 서식을, __tests__/fixtures/apple-xcstrings/(Xcode 26.6 xcstringstool 채록 +
+                        MIT 리포 원본 — 출처는 그 README)가 골든 바이트를, lib/onboarding-run/__tests__/detect-apple-xcstrings.test.ts가 씨앗·probe 예산·큰 카탈로그 건너뛰기를,
+                        lib/pull/__tests__/apple-xcstrings-delivery.test.ts가 cellSlot 판정의 일치를, lib/pull/__tests__/apple-xcstrings-publish.integration.ts가
+                        확정 → 첫 적재 → 미리보기·PR 바이트·토큰 해제 → 다음 Publish를 잰다
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
@@ -885,6 +890,7 @@ lib/
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   pull/undeliverable.ts 전달 불가 셀의 좌표 보류(잎) — writer 오류를 보류(비-base 파일 부재 · 키 자리 없음)와 거부로
                         가르고 캡처 편집을 실린 것/보류된 것으로 나눈다. 미리보기(publish/read)는 같은 판정을 행 단위로 따로 든다
+                        cellSlot(셀 하나의 자리 — 셀을 넣는 어댑터는 키가 있으면 자리, 그 밖은 keySlot)을 경로 선택과 미리보기가 같이 부른다
   import/locales.ts     localesToKeep — 다운로드 실패 로케일을 재탐지 목록에 되살린다(경로 → 로케일은 onboarding/confirm의
                         localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다). ⚠️ 심볼릭 링크된 언어 파일도 센다 — 만료의 관측(pull/locales)과 이 한 군데만 다르다(ARCHITECTURE §5.10.2)
   import/observe.ts     observeSurfaceLocales(tree, surface) — 같은 head 야간 방문·야간 적재 만료의 base 관측. pull/locales의 observeLocaleFiles에 위임하는 얇은 껍데기(순수)
@@ -908,7 +914,8 @@ lib/
                         execution.fetch()를 넘긴다 · 응답을 통째로 로그하지 않는다(GET /projects에 runners_token이 실린다)) · client(GitClient·
                         RepoReader·브랜치·건강성의 GitLab 구현, DB를 모른다 — 토큰은 lib/repo-host가 참조 연결에서 열어 넘긴다) · plan(원격 응답의
                         순수 판정 — 모양이 다른 응답을 "없음"·"빈 목록"으로 접지 않는다). server-only를 붙이지 않은 것은 lib/github.ts와 같은 이유다
-                        (smoke-gitlab이 프로덕션 경로를 지난다)
+                        (smoke-gitlab이 프로덕션 경로를 지난다). ⚠️ blob 읽기는 transport.getRaw로 /repository/blobs/:sha/raw다 — JSON blob·files API는
+                        UTF-16을 UTF-8+BOM으로 바꿔 준다. __tests__/encoding.test.ts의 가짜 GitLab이 그 실측 동작을 흉내 낸다
   github-wait.ts        GitHub 대기 마감(GITHUB_WAIT_MS 8초) 하나 — 목록 원격 신호·probe·열린 PR·계정 조회가 같은 값을
                         읽는다(ARCHITECTURE §6.5.2). octokit을 물지 않는 잎이라 lib/github를 mock한 테스트에서도 실물이 돈다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
