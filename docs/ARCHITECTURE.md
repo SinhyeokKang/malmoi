@@ -39,6 +39,7 @@
    ⚠️ **소스 키 메타데이터(ARB `@key`)도 원본이 준다** (2026-10-19, arb) — `arb-catalog`는 그 로케일 원본 파일의 `@key` 구간을 바이트 그대로
    그 키 바로 뒤로 나른다. 값이 아니라 개발자가 템플릿에 쓰는 **소스 키 메타데이터**이고 소유자가 코드라 DB에 넣지 않는다. `@key`의 출처는
    원본뿐이고 DB에 견줄 짝이 없으므로 **고르는 코드가 없다** — B3.4의 "원본에만 있는 키는 원본 엔트리 그대로"와 같은 형이다(§1.37).
+   Android `<string>`의 `formatted` 속성도 같은 부류다(2026-10-19, android-strings 결정 18) — 새 언어 파일·비-base 삽입에 **기준 파일**의 속성 원문을 나른다(§1.46).
    ⚠️ **야간 서버 적재도 "push 시점"이고, 자동 적재의 사전 보류 입력은 둘이 됐다** (2026-09-30, nightly-sync) — 미전달 편집 수 · "Malmoi PR이
    열려 있나". 야간은 그 앞에 base head SHA 동일성으로 **스킵**(`upToDate` — 적재할 새 커밋이 없다)을 가르는데, 그것은 보류가 아니다. 셋 다 값이
    아니라 **적재를 할지**만 정하고, 보류의 결과는 적재 **전체**라 셀을 고르지 않는다.
@@ -51,7 +52,7 @@
    ⚠️ **언어 제거도 삭제가 아니다** (2026-10-14, locale-add · §5.10) — 리포 파일 삭제와 앱 비활성(`orphaned`)일 뿐 로케일 행·번역·이력은 그대로이고, 같은 코드의 재추가가 같은 행을 되살린다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`·`android-strings`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 미리보기와 실행의 공통 `planDelivery`가 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 키·파일 부재로 이미 보류된 셀은 이 전체 거부에서 제외한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
-4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4), **소스 키 메타데이터**(ARB `@key`·`@@*`, §1.37)를 준다.
+4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4), **소스 키 메타데이터**(ARB `@key`·`@@*`, §1.37 · Android `formatted`, §1.46)를 준다.
    ⚠️ **언어 추가·제거 요청(`LocaleChange`)도 "DB 상태"다** (2026-10-14, locale-add) — 같은 요청 행 + 같은 원본이면 같은 파일 집합·같은 바이트다.
    ADD의 새 파일 표현은 그 소스의 **기준 언어 파일 하나**에서만 빌린다(형제 파일 중 아무거나가 아니다).
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
@@ -150,7 +151,7 @@
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 | `arb-catalog` | `<dir>/<prefix>_{locale}.arb` (예 `lib/l10n/app_{locale}.arb`) | 최상위 `string`(ICU 통짜) | per-locale | regenerate | 모바일 코퍼스 Flutter 리포 14개(학습 10 · 홀드아웃 4 — 1순위 14/14, 26차 §1.9). ⚠️ **regenerate인데 키별 내용(`@key`)을 원본에서 나른다** — §1.37 |
 | `apple-strings` | `<dir>/{locale}.lproj/<table>.strings` (예 `ios/App/{locale}.lproj/Localizable.strings`) | `"key" = "value";`의 값 리터럴 | per-locale | **surgical** | 모바일 코퍼스 `.strings` 정답 리포 8개(학습 6 · 홀드아웃 2 — 1순위 7/8, 27차 §1.9). ⚠️ **UTF-16 파일을 원본 인코딩·BOM 그대로 돌려쓴다** — §1.45 |
-| `android-strings` | `<dir>/values-{locale}/strings.xml` (예 `app/src/main/res/values-{locale}/strings.xml` · `src/main` 없는 `<모듈>/res/…` · Compose Multiplatform `composeResources/values-{locale}/strings.xml`) | `<resources>` 직속 `<string name>`의 안쪽 내용 | per-locale | **surgical** | 모바일 코퍼스 Android 정답 리포(2026-10-19 — 재측정은 §1.9). ⚠️ **기준 언어 파일 `values/strings.xml`이 템플릿 밖이다** — `TranslationSurface.basePath`, §1.46 |
+| `android-strings` | `<dir>/values-{locale}/strings.xml` (예 `app/src/main/res/values-{locale}/strings.xml` · `src/main` 없는 `<모듈>/res/…` · Compose Multiplatform `composeResources/values-{locale}/strings.xml`) | `<resources>` 직속 `<string name>`의 안쪽 내용 | per-locale | **surgical** | 모바일 코퍼스 Android 정답 리포 19개(학습 15 · 홀드아웃 4 — 1순위 19/19(alsoValid 3 포함), 28차 §1.9). ⚠️ **기준 언어 파일 `values/strings.xml`이 템플릿 밖이다** — `TranslationSurface.basePath`, §1.46 |
 | `apple-xcstrings` | `<dir>/<table>.xcstrings` (예 `ios/App/Localizable.xcstrings` — 모든 언어가 한 파일) | `localizations.<code>.stringUnit.value` | **multi-locale** | **surgical** | 모바일 코퍼스 xcstrings 정답 리포 9개(학습 8 · 홀드아웃 1 — 1순위 8/9, 27차 §1.9). ⚠️ **자리 없는 로케일 셀을 삽입한다** — `ts-dict`와 반대다(§1.45) |
 
 ### read 오류의 갈래 — 실패 · "관리하지 않는 항목" · 경고 (2026-09-24, B2 r3 · QA5 · B7a r1)
@@ -162,8 +163,8 @@
 
 | 갈래 | 코드 | 왜 |
 |---|---|---|
-| **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(ts-dict·code-dict) · `value-not-string`(yaml 숫자·불린 · apple-xcstrings 복수형·기기별 `variations` 셀과 Xcode가 값 없음으로 읽는 `null` 언어 셀) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
-| **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key` · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
+| **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(ts-dict·code-dict) · `value-not-string`(yaml 숫자·불린 · apple-xcstrings 복수형·기기별 `variations` 셀과 Xcode가 값 없음으로 읽는 `null` 언어 셀 · android-strings `<plurals>`·`<string-array>`·리소스 참조 값 `@string/x`·`?attr/x`) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
+| **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key`(android-strings 같은 `name` 포함 — aapt2 빌드 오류, §1.46) · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
 | **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함 · apple-strings — 같은 키의 엔트리 둘 · apple-xcstrings — 같은 JSON 이름, 키·언어 셀·필드·루트 모든 깊이, 2026-10-19) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. ⚠️ **같은 이름의 컨테이너도 마지막만 걷는다** (2026-09-27, audit #4 — code-dict `collect`) — 앞의 것까지 걸으면 `{ a: { x }, a: { y } }`의 `a.x`(런타임에 없다)가 적재되고, 무관한 편집의 write가 그것을 마지막 `a`에 삽입했다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다. ⚠️ **`.strings`는 데이터 파일인데 warning이다** — Apple 파서도 나중 값을 쓰고 writer가 그 리터럴만 고쳐 잃는 값이 없다(§1.45). failure였다면 정답 리포 PayForMe(중복 2)·CodenameOne(18)의 대상 CI가 영구 red다. ⚠️ **`.xcstrings`의 같은 이름은 앞의 것이 이긴다**(Xcode 26.6 xcstringstool 실측 — `JSON.parse`는 뒤의 것이다). read·write 모두 앞 사본이고 가려진 뒤 사본은 바이트 그대로다(Xcode가 다음 저장에서 지운다 — 정답 리포 HealthGPT의 `LLM Settings`) |
 | **failure** — 불확실한 키 | `key-shadowed`(ts-dict의 후행 spread·동적 computed, code-dict write) | ts-dict는 read에서도 나온다. 불완전 read를 성공으로 접지 않으며, 재적재는 오류가 있으면 orphan 처리를 억제한다 |
 | (write 코드) | `write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed). apple-xcstrings가 복수형·`null` 셀에 값을 쓰려 하면 `write-slot-not-scalar`(blocking — yaml 비스칼라·ts-dict 비리터럴과 같은 형)다 |
@@ -664,48 +665,95 @@ ICU(`{count, plural, …}`·`select`)는 **통짜 문자열**이다 — 풀지�
 
 ### 1.46 Android 어댑터 — `android-strings` (2026-10-19, android-strings)
 
-`res/values*/strings.xml`(Compose Multiplatform `composeResources/values*/strings.xml` 포함)을 다루는 수술적 치환이다(§1.4). `<string>`의 **안쪽 내용 범위**만
+`res/values*/strings.xml`(Compose Multiplatform `composeResources/values*/strings.xml` 포함 — 결정 2)을 다루는 수술적 치환이다(§1.4). `<string>`의 **안쪽 내용 범위**만
 다시 인코드한 값으로 바꾸고, 범위 밖 바이트(XML 선언·주석·빈 줄·들여쓰기·속성 순서와 따옴표·엔티티)는 건드리지 않는다. 예외는 비-base 누락 키의
-**삽입**(아래)뿐이다. 치환은 뒤에서 앞으로 하고 인접한 두 범위가 같은 위치를 두 번 쓰지 않는다(POSTMORTEM 2026-09-16). 빈 값은 불변식 3의 수술적
+**삽입**(아래)뿐이다. 치환은 뒤에서 앞으로 하고, 같은 offset에 떨어지는 삽입 둘은 하나로 합친다(POSTMORTEM 2026-09-16의 부류). 빈 값은 불변식 3의 수술적
 규칙을 따른다(`cannot-clear`).
 
-- **파서는 읽기·offset 전용이다** — `@xml-tools/parser`(+ 전이 `chevrotain`)의 CST가 요소·내용·주석·CDATA·속성마다 `startOffset`·`endOffset`을 준다.
-  **XML을 다시 직렬화하지 않는다** — 직렬화는 들여쓰기·주석·속성 따옴표·엔티티를 바꿔 고정점을 깬다(`yaml`을 CST로 쓰는 것과 같은 이유. Weblate(lxml)·
-  Tolgee(DOM)가 둘 다 다시 직렬화해 빈 줄·떠 있는 주석을 잃는다).
-- **엔트리는 `<resources>` 직속 `<string name="…">`뿐이다.** `translatable="false"`·`<plurals>`·`<string-array>`는 엔트리가 아니고 바이트 그대로 남는다
-  (unmanaged 보고 — 다음 Publish에서 살아남으므로 `partial-import`가 아니다, 위 오류 갈래 표). 주석 안의 `<string>`은 엔트리가 아니다. `tools:` 속성은
-  보존만 한다. self-closing `<string name="x"/>`는 빈 값 엔트리, `<resources/>`는 0엔트리다. 키 대입은 `Object.create(null)`(`name="__proto__"`).
-- **중복 `name`은 `duplicate-key` 실패다** — aapt2가 같은 리소스의 중복을 빌드 오류로 내므로 대상 리포 빌드가 이미 red인 입력이다. Apple은 플랫폼이
-  중복을 받아(나중 값 승리) 경고로 낮췄지만(§1.45) Android는 반대다.
+- **파서는 읽기·offset 전용이다** — `@xml-tools/parser` **1.0.12** exact(전이 `chevrotain` 7.1.1 → `regexp-to-ast` 0.5.0, 셋 다 install 스크립트 없음 · Apache-2.0)의 CST가
+  요소·내용·주석·CDATA·속성마다 `startOffset`·`endOffset`을 준다(JS 문자열 인덱스, 끝은 포함). **XML을 다시 직렬화하지 않는다** — 직렬화는 들여쓰기·주석·
+  속성 따옴표·엔티티를 바꿔 고정점을 깬다(`yaml`을 CST로 쓰는 것과 같은 이유. Weblate(lxml)·Tolgee(DOM)가 둘 다 다시 직렬화해 빈 줄·떠 있는 주석을 잃는다).
+  ⚠️ **파서의 함정 셋을 어댑터가 막는다**: UTF-8 BOM을 받지 않아(`Expecting OPEN`) BOM을 건너뛰고 좌표를 1 민다 · 16진 문자 참조를 잘못 자른다(`&#x41;` →
+  `CharRef "&#x4"` + 글 `"1;"`) — 그래서 엔티티는 파서 토큰이 아니라 원문 구간에서 푼다 · 닫는 태그 이름 불일치(`<string>…</strong>`)·같은 속성 반복·복구한 CST를
+  통과시킨다 — 어댑터가 직접 거부한다. 1.78MB(20,000 `<string>`) 파싱 226ms.
+- **엔트리는 `<resources>` 직속 `<string name="…">`뿐이다.** `<plurals>`·`<string-array>`·리소스 참조 값(`@string/x`·`@null`·`?attr/x`)은 `value-not-string`
+  (unmanaged — 위 오류 갈래 표)이고 바이트 그대로 남는다. `translatable="false"`는 알리지 않고 건너뛴다(xcstrings `shouldTranslate: false`와 같다). 주석 안의
+  `<string>`은 엔트리가 아니다. `tools:` 속성은 보존만 한다. self-closing `<string name="x"/>`는 빈 값 엔트리, `<resources/>`는 0엔트리다. 키 대입은
+  `Object.create(null)`(`name="__proto__"`).
+- **중복 `name`은 `duplicate-key` 실패다**(결정 8) — aapt2가 같은 리소스의 중복을 빌드 오류로 내므로 대상 리포 빌드가 이미 red인 입력이다. Apple은 플랫폼이
+  중복을 받아(나중 값 승리) 경고로 낮췄지만(§1.45) Android는 반대다. 코퍼스의 Android 1순위 18리포에서 0건이라 정답 리포의 CI를 영구 red로 만들지 않는다.
 
-#### 값의 표현 — 이스케이프는 풀고 인라인 태그는 그대로
+#### 값 문법 — DB·화면 값 (결정 14)
 
-| 파일 표기 | DB·화면 값 | 저장 검증 |
+DB·화면 값은 다음 토큰의 나열이다. 정본은 `androidValueTags`(`lib/adapters/android-strings.ts`)와 디코더·인코더다.
+
+| 토큰 | 뜻 | 파일에서 오는 것 |
 |---|---|---|
-| `<string>` 안쪽 | Android 런타임 규칙대로 **푼** 문자열(`\'`·`\"`·`\n`·`\t`·`\@`·`\?`·`\uXXXX`·엔티티, 따옴표 밖 연속 공백 접기). 자식 태그(`<xliff:g>`·`<b>`)는 **태그 문자열 그대로** | 인라인 태그가 기준 언어 값과 같은 집합이고 잘 닫혔는지 — 아니면 저장 거부(아래) |
+| `<…>` | **언제나 실제 자식 요소의 태그 원문**(시작·끝·self-closing, `<xliff:g>`·`<b>`·`<a href="…">`) | 자식 요소 그대로. 속성 값 안의 엔티티(`&amp;`)는 원문 그대로 |
+| `&lt;` | 글자 `<` | `&lt;`·`&#60;`·`&#x3C;`·CDATA 안 `<` |
+| `&amp;` | 글자 `&` — **바로 뒤가 `lt;`·`amp;`일 때만** 이렇게 쓴다 | `&amp;lt;` → 값 `&amp;lt;`(파일 `&lt;`의 값 `&lt;`와 갈린다). 그 밖의 `&`는 맨 `&`다 |
+| 그 밖의 글자 | 글자 그대로 | `&gt;`·`&quot;`·`&apos;`·`&#NNN;`·`&#xHH;`와 이스케이프는 푼다 |
 
-- **인코더**(값 → 파일 표기): `'`·`"`는 백슬래시, 선행 `@`·`?`만 백슬래시(중간 글자는 이스케이프하지 않는다 — translate-toolkit #5064), 태그 밖 `&`·`<`는
-  엔티티, 개행은 `\n`. **앞뒤 공백이 있거나 공백이 둘 이상 이어지면 값 전체를 `"…"`로 감싼다** — 안 그러면 aapt가 공백을 접어 재적재 때 값이 달라지는
-  조용한 손실이다(Weblate 규칙). 원본이 따옴표로 감싼 값이면 그 형을 유지하고, CDATA 원본은 CDATA로 둔다. `%%`·`formatted="false"`는 값 표현에 영향이 없다.
-- 인코더는 순수 함수이고 `decode(encode(v)) === v`와 `encode(decode(원본 리터럴)) === 원본 리터럴`(정규형일 때)을 속성 테스트로 고정한다. 원본이
-  비정규형(이스케이프 안 된 `'` 같은 aapt 오류 원본 포함)이면 그 셀이 **바뀌었을 때만** 정규형으로 다시 쓴다. CRLF는 CRLF로, 퇴화 출력(`<resources/>`)은
-  다음 read·write의 입력으로 왕복한다.
+- **왜 `&lt;`를 풀지 않나** — 엔티티를 다 풀면 파일의 `&lt;b&gt;`(`Html.fromHtml`이 읽는 글)와 자식 태그 `<b>`가 같은 DB 문자열이 되어, 셀을 고친 Publish가
+  글↔태그를 뒤집고 저장 검증도 둘을 못 가린다(2026-10-19 사용자, RE U1). `&amp;` 규칙은 파일 `&amp;lt;`와 `&lt;`를 가르는 쪽이 fail-safe라서다.
+  ⚠️ 저장 값에서 다른 글자 앞의 `&amp;`도 글자 `&`로 읽힌다 — 다음 적재가 `&`로 정규화한다(뜻은 같다).
+- **태그 문법은 XML 그대로다**(`androidValueTags(value): string[] | undefined`) — 이름, 시작 태그의 속성(따옴표 값 · `<` 없음 · `&`는 완전한 엔티티·문자 참조 ·
+  같은 이름 반복 없음), 끝 태그는 속성 없음, 시작·끝 짝 맞음. 태그 안의 공백은 XML `S`(`[ \t\r\n]`)뿐이다 — NBSP·U+2028·U+3000이 든 태그는 쓸 수 없다.
+  문자 참조는 전체 형식만 받는다(`&#12abc;` 거부 — 파일 읽기도 같다). 쓸 수 없는 값은 그 파일의 키가 붙은 `write-parse-failed`이고, write·create는 **쓴 파일
+  전체를 다시 파싱**한다. 미리보기는 키가 붙은 기준 파일 실패를 "기준 파일을 못 읽음"이 아니라 writer 경고로 낸다(키 없는 실패만 `base-file-unreadable`) — 실행은
+  writer-warnings로 Git 쓰기 0 · 전달 확인 0이다.
 
-#### 인라인 태그 불일치 저장은 코어에서 거부한다
+#### 방언 둘 — aapt2(`res/`)와 Compose(`composeResources/`)
 
-판정 `androidInlineTagsMatch(base, value)`(`lib/keys/android-inline-tags.ts` — 어댑터 토크나이저에 기대지 않는 순수 문자열 함수)를 저장 코어
-`lib/keys/save.ts`가 `planClearability` 옆에서 부른다. 웹 저장 Action과 MCP `set_translations`가 같은 코어를 지나 **함께** 막히고(`KeySavePlan`의 새 거부
-코드, 아무것도 저장되지 않는다), 화면은 그 셀에 `aria-invalid`를 건다. 기준 언어 셀 자체는 검증하지 않는다(비교 기준이 그 셀이다). push로 기준 언어의
-태그가 바뀌어 기존 번역이 어긋나도 **Publish는 막지 않고 그대로 낸다** — 보류·병합이 없고, 그 셀을 다음에 저장할 때 거부된다. 선례: Weblate는
-`xml-tags` 검사로 경고만 하고 Tolgee는 `<xliff:g>`를 텍스트로 바꿔 태그를 잃는다.
+**방언은 `values-{locale}/strings.xml` 바로 앞 리소스 디렉터리가 정한다**(`dialectOf`) — 그 디렉터리가 `composeResources/`로 끝나면 Compose, 아니면 aapt2다.
+조상 디렉터리 이름으로 고르면 `composeResources/…/res/values-*`가 Compose로 읽힌다(R2-1). 탐지·read·write·create가 이 함수 하나를 부른다.
+기대값은 플랫폼 도구 채록이다(`lib/adapters/__tests__/fixtures/android-strings/` — 출처는 그 README).
 
-#### 기준 언어 파일 — `basePath` (2026-10-19, mobile-strings M2 · android-strings)
+| | aapt2 (`res/`) | Compose (`composeResources/`) |
+|---|---|---|
+| 채록 | aapt2 2.20-15978811(Google Maven jar) — 값 67 · 스팬 36 · 인코더 출력 재컴파일 29 | `compose-gradle-plugin` 1.12.2 `handleSpecialCharacters` + DOM `textContent` — 값 42 · 인코더 출력 재해석 24 |
+| 공백 | 따옴표 밖 ASCII `isspace`를 하나로 접는다. **스팬 태그 시작·끝에서 접기와 `"` 구간이 둘 다 다시 시작**되고, 스팬이 없을 때만 앞뒤를 자른다 | 접지 않는다. `"` 구간이 없다(따옴표는 글자) |
+| 이스케이프 | `\n`·`\t`·`\uXXXX`를 풀고 그 밖 `\x` → `x`. 서로게이트·NUL `\u`는 버린다(aapt2와 같다). `<xliff:g>`는 스팬이 아니다 | `\n`·`\t`·`\uXXXX`(정확히 4자리)·`\\`만 푼다. `\'`·`\"`·`\@`·`\?`는 역슬래시째 남는다. 서로게이트 쌍은 그 글자다 |
+| 인코더 | `'`·`"`는 백슬래시, 선행 `@`·`?`만 백슬래시(translate-toolkit #5064), 개행 `\n`. 스팬이 없으면 앞뒤 공백·연속 공백이 있을 때 값 전체를 `"…"`로 감싸고(원본이 감쌌으면 그 형 유지), **스팬이 있으면 스팬 경계 사이 구간마다** 연속 공백이 있을 때만 그 구간을 감싼다(값 전체 감쌈이 aapt2에서 공백을 잃는다 — R1) | 감싸지 않는다. 치환하지 않은 이스케이프 매치 안의 태그 경계도 제자리에 둔다(R2-2) |
+
+- 두 방언 모두 줄 끝을 LF로 정규화한 뒤 푼다(XML 파서와 같다). CDATA 원본은 CDATA로 둔다. 짝 없는 서로게이트·NUL이 나오는 Compose 원문은 담을 수 없어 `parse-failed`다.
+- 인코더는 순수 함수이고 `decode(encode(v)) === v`를 두 방언의 생성 값 2,000건(짝 맞는 태그 포함)으로, `encode(decode(원본))`이 정규형 원본과 같음을 채록으로 고정한다.
+  원본이 비정규형(이스케이프 안 된 `'` 같은 aapt 오류 원본 포함)이면 그 셀이 **바뀌었을 때만** 다시 쓴다. 스팬이 있는 값을 새로 쓰면 원본이 값 전체를 감쌌어도
+  구간별 감쌈으로 바뀐다(바뀌지 않은 셀은 그대로). CRLF는 CRLF로, 퇴화 출력(`<resources/>`)은 다음 read·write의 입력으로 왕복한다.
+- 알려진 디코더 차이: 따옴표로 감싼 스팬 값 `"  <b>x</b>  "`은 스팬 경계 초기화 뒤 `  <b>x</b> `다(aapt2 채록과 같다 — 픽스처 README).
+
+#### `formatted` 속성은 기준 파일에서 나른다 (결정 18)
+
+새 언어 파일 생성과 비-base 누락 키 삽입은 기준 파일 `<string>`의 `formatted` 속성 원문(따옴표 형 포함)을 **바이트 그대로** 붙인다. 값은 DB에서만 온다.
+`formatted`는 코드가 소유한 키 메타데이터이고 DB에 짝이 없어 키마다 출처가 하나다 — ARB `@key`(§1.37)와 같은 부류이고 병합이 아니다. 빼면 `%s %d` 같은 값의
+새 파일이 aapt2 빌드 오류(`multiple substitutions specified in non-positional format`)다. 삽입 출처는 렌더가 수술적 비-base 쓰기에 싣는 기준 파일
+(`representationSource`)이다. Compose 변환기는 `formatted`를 읽지 않는다 — 복사는 하지만 의미가 없다(해롭지도 않다).
+
+#### 저장 검증 — 쓸 수 있는가 + 인라인 태그 (결정 13·15·17·21)
+
+저장 코어 `lib/keys/save.ts`(`planKeySave`)가 Android 표면(`adapterName === "android-strings"`)의 쓰기 목록에 두 판정을 건다. 웹 저장 Action과 MCP `set_translations`가
+같은 코어를 지나 **함께** 막히고, 걸린 셀이 하나라도 있으면 키 전체가 거부된다(아무것도 저장되지 않는다 — MCP 배치의 다른 키는 저장된다). 화면은 그 셀에
+`aria-invalid`를 건다. 순서는 `cannot-clear` → `inline-markup-invalid` → `inline-tags-mismatch`다.
+
+- **쓸 수 있는가**(`inline-markup-invalid`) — writer와 **같은 문법**(`androidValueTags`)을 통과해야 한다(결정 17). 저장은 됐는데 Publish가 `write-parse-failed`로
+  막히는 값을 만들지 않으려는 것이라 **기준 언어 셀을 포함한 모든 Android 셀**에 건다(결정 21). 태그를 시작하지 못하는 `<`가 대표 사례이고, 글자 `<`는 `&lt;`로 쓰면 저장된다.
+- **태그 불일치**(`inline-tags-mismatch`) — **비-base 셀에만** 건다. 비교 기준은 같은 저장의 기준 셀 저장 후 값이고, 비면 `sourceText`로 폴백한다(결정 13).
+  판정 `androidInlineTagsIssue`(`lib/keys/android-inline-tags.ts` — 태그 집합 비교용 정규화만 들고 문법은 어댑터 것을 쓴다)는 이름·속성값·개수·self-closing 형을
+  보고 속성 순서·따옴표 종류·태그 위치는 보지 않는다. **기준 값이 태그 열로 파싱되지 않으면 비교를 건너뛴다**(결정 15) — 결정 21로 깨진 기준이 저장으로 더 생기지
+  않아 옛 데이터에만 남는 경로이고, 그때도 번역의 쓸 수 있는가는 본다.
+- push로 기준 언어의 태그가 바뀌어 기존 번역이 어긋나도 **Publish는 막지 않고 그대로 낸다** — 보류·병합이 없고, 그 셀을 다음에 저장할 때 거부된다.
+  선례: Weblate는 `xml-tags` 검사로 경고만 하고 Tolgee는 `<xliff:g>`를 텍스트로 바꿔 태그를 잃는다.
+
+#### 기준 언어 파일 — `basePath`·`templateLocale` (2026-10-19, mobile-strings M2 · android-strings)
 
 `values/strings.xml`에는 언어 코드가 없어 `{locale}` 치환으로 표현되지 않는다. 그래서 탐지가 관측한 base 파일 경로를 `DetectedFormat.basePath`로 내고
 additive 컬럼 `TranslationSurface.basePath String?`에 저장한다. **다른 어댑터는 언제나 null이다.** `{locale}` 치환은 그대로 두고, 기준 언어 경로가 들어가는
-자리만 `basePath ?? 치환`으로 갈린다(경로 계산 `resolveLocalePaths`·`selectLocaleFiles`·`templatePaths`·`probeTargets` 등 — 소스 테스트가 basePath 표면에서
-base 경로를 치환으로 만드는 자리를 센다). 하나라도 빠지면 base 경로가 없던 `values-en/strings.xml`로 계산된다.
+자리만 `basePath ?? 치환`으로 갈린다(`baseFilePath`, `lib/adapters/base-path.ts` — 치환 자리 전수는 `__tests__/base-path-sites.test.ts`가 센다). 하나라도 빠지면
+base 경로가 없던 `values-en/strings.xml`로 계산된다.
 
+- **그 파일의 언어는 `DetectedFormat.templateLocale`이 말한다.** read는 `basePath` 파일을 `templateLocale`로 읽고(없으면 그 파일을 읽지 않는다), writer는
+  `templateLocale === locale`일 때만 그 파일을 원본으로 쓴다. 싣는 자리: 저장된 표면 `formatFromProject`(저장된 `baseLocale`) · 적재 깔때기 `assemblePushInput` ·
+  빈 카탈로그 검증 · survey(리포에 없는 코드).
 - **경로 안전**: `basePath`에도 `isPathSafeRepoPath`를 push 스키마·`resolveLocalePaths` 두 경계에서 건다(POSTMORTEM 2026-09-09).
 - **CI 대조**: CLI가 리포에서 다시 탐지해 `basePath`도 내고 `checkFormat` 비교 항목에 든다 — 등록값과 다르면 `format mismatch`다(경로 이전과 같은 취급).
   action 입력은 늘리지 않는다. 옛 CLI가 `basePath` 없이 보낸 페이로드는 null 표면에서 mismatch가 아니다(null과 undefined가 같다).
@@ -713,30 +761,54 @@ base 경로를 치환으로 만드는 자리를 센다). 하나라도 빠지면 
 - **되살림은 basePath를 보지 않는다**(§5.9) — 템플릿·어댑터가 같으면 옛 행(id·slug·번역·이력)을 되살리고 `basePath`는 재탐지값으로 덮는다(`lib/surfaces/plan-revival.ts`).
 - **비-base 파일의 누락 키는 삽입한다.** `create`는 값 있는 키만 쓰므로 언어 파일을 만든 뒤 다른 키를 번역하면 그 파일에 자리가 없고, per-locale
   `write-slot-missing`은 거부라(§3) Publish 전체가 막힌다. 그래서 비-base `values-*/strings.xml`에서는 base 키 순서상 바로 앞 키의 `<string>` 뒤(그런 키가
-  없으면 `</resources>` 앞)에 `<string name="…">…</string>`을 넣고 줄바꿈·들여쓰기는 이웃 엔트리에서 빌린다. 삽입도 범위 치환과 같은 뒤→앞 적용에 든다.
-  **`basePath` 파일에는 삽입하지 않는다** — base 키 집합은 원본이 정한다(§3 "base 키 집합", B3.4).
-- **기준 언어 코드는 사람이 정한다** — 온보딩 ③·Add sources가 코드를 입력받고(`isLocaleShaped` + 관측된 다른 로케일과 중복 거부), CLI는 Android 표면에서
-  `--base`가 없으면 거부한다(`pickBaseLocale`의 en 우선이 `values/`의 실제 언어와 무관한 코드를 고를 수 있다). 생성 워크플로가 `base-locale`을 박는다.
+  없으면 `</resources>` 앞)에 `<string name="…">…</string>`을 넣고 줄바꿈·들여쓰기는 이웃 엔트리에서 빌린다(`formatted`는 위 절). 삽입도 범위 치환과 같은 뒤→앞
+  적용에 든다. **`basePath` 파일에는 삽입하지 않는다** — base 키 집합은 원본이 정한다(§3 "base 키 집합", B3.4).
+- **기준 언어 코드는 사람이 정한다** — 탐지 후보는 기준 언어를 추정하지 않는다(`baseLocale: ""`). 온보딩 ③·Add sources ②가 코드를 입력받고, 수동 지정은
+  `values-{locale}` → `values`로 `basePath`를 유도한다. MCP `create_project`·`add_sources`는 새 인자 없이 기존 `baseLocale` 필드를 쓴다. 서버는 `isLocaleShaped`·경로
+  안전을 보고 **관측된 번역 코드와 같으면 거부한다** — `values/`와 `values-<기준 코드>/`가 함께 있는 리포도 거부를 유지한다(결정 25 — 같은 코드 행 둘을 허용하는 변경은
+  범위가 크다. 거부 문구가 그 상황을 말한다). 확정 포맷에 `templateLocale`·`locales`를 채운다. CLI는 Android 표면에서 `--base`가 없으면 `a base locale is required
+  (--base / base-locale)`로, 관측 코드와 같으면 `must be a valid locale code distinct from the observed translation locales`로 실패한다(`assemblePushInput` —
+  `pickBaseLocale`의 en 우선이 `values/`의 실제 언어와 무관한 코드를 고를 수 있다). 생성 워크플로(GitHub·GitLab)는 이미 확정 `base-locale`을 박는다.
   `tools:locale`은 읽지 않는다(Weblate·Tolgee 선례).
-- **기준 언어 변경은 거부한다**(`planBaseLocaleChange`) — `basePath`는 늘 기준 언어 코드에 매핑되므로, en→ko로 바꾸면 ko 값이 `values/`에 쓰이고 en은 없던
-  `values-en/`으로 간다. 잘못 넣었으면 소스를 제거하고 다시 추가한다. 같은 이유로 기준 언어는 제거할 수 없어 **언어 제거가 `values/strings.xml`을 delete로
-  만드는 경로가 없다**(§5.10 — 회귀 테스트가 `values-en/`과 `values/`가 공존하고 base가 en인 경우까지 고정한다).
+  ⚠️ **탐지가 모르는 기준 언어를 기본 선택으로 채우면 안 된다** — 서버가 그 값을 사용자 결정으로 읽어 `values/`를 다른 언어로 조용히 적재한다(리뷰 R3 재현: de → English).
+- **기준 언어 변경은 거부한다**(`planBaseLocaleChange` → `android-base-fixed`, 같은 값은 noop) — `basePath`는 늘 기준 언어 코드에 매핑되므로, en→ko로 바꾸면 ko 값이
+  `values/`에 쓰이고 en은 없던 `values-en/`으로 간다. Sources 상세는 OWNER에게도 언어 선택·저장 컨트롤 없이 읽기 전용 값과 안내 문장을 보인다(결정 24 — 서버 거부는
+  그물로 남는다). 잘못 넣었으면 소스를 제거하고 다시 추가한다. 같은 이유로 기준 언어는 제거할 수 없어 **언어 제거가 `values/strings.xml`을 delete로 만드는 경로가
+  없다**(§5.10 — 회귀 테스트가 `values-en/`과 `values/`가 공존하고 base가 en인 경우까지 고정한다).
 
-#### 로케일 코드·탐지
+#### 로케일 코드·탐지·라벨
 
-- 코드는 디렉터리 이름 그대로다(`ko`·`zh-rCN`·`iw` — "파일명이 코드의 진실"). `b+…` 형식과 언어가 아닌 한정자(`values-night`·`values-car`·`values-en-rGB-v21`)는
-  `isLocaleShaped`가 통과시키므로 탐지(`detectCandidatesAcross`)에서 거른다. 표시용 `languageName`·`flagFor`·텍스트 방향은 어댑터를 묻지 않고 `-r` 지역만
-  풀어(`zh-rCN` → `zh-CN`) 해석한다 — 저장 코드는 바꾸지 않는다.
-- **언어 추가 철자**: 지역이 붙은 새 언어는 `pt-rBR` 꼴만 받는다 — `judgeAdd`가 `r` 없는 `-지역`을 거부하고(웹·MCP 공통 코어, chrome의 `isChromeLocaleCode`
-  분기와 같은 자리), 추가 Dialog 프리셋은 레거시 표(`he → iw`·`id → in`·`yi → ji`, Weblate `ANDROID_CODES` 선례)를 먼저 적용해 Android 철자로 보인다.
-  `values-pt-BR/`은 Android 리소스 시스템이 인식하지 않아 번역이 조용히 빠진다.
-- `create`(§5.10.4)는 기준 파일의 **뼈대만**(XML 선언·`<resources>` 루트와 네임스페이스 속성) 복제하고 값 있는 활성 키만 쓴다 — 주석·`translatable="false"`·
-  `<plurals>`·기준 값은 복사하지 않는다.
-- 멀티 모듈(`app/`·`feature/*/`)은 모듈마다 후보다. `values/`만 있는 단일 언어 소스도 후보다. Flutter·크로스플랫폼 리포의 `android/app/src/main/res/values/strings.xml`
-  (대개 `app_name` 하나) 껍데기가 ARB·Apple 정답의 1순위를 빼앗지 않는지는 진입점 테스트와 재측정(§1.9)이 본다.
+- 코드는 디렉터리 이름 그대로다(`ko`·`zh-rCN`·`iw` — "파일명이 코드의 진실"). **Android 언어 한정자 술어는 잎 `isAndroidLocale`(`lib/locale-code.ts`) 하나다** —
+  `^[a-z]{2,3}(-r[A-Z]{2})?$`이고 `car`는 뺀다. 그래서 `b+…` 형식과 언어가 아닌 한정자(`values-night`·`values-car`·`values-de-land`·`values-en-rGB-v21`)는 언어가 아니다.
+  어댑터 탐지, 언어 추가 판정(`planLocaleAdd`), **서버 적재가 경로에서 코드를 복원하는 자리**(`templatePaths`·`localesToKeep`·CLI — `localeOfTemplatePath(…, adapter)`,
+  결정 26)가 같은 술어를 쓴다. 범용 `isLocaleShaped`만 보면 `values-car`·`values-de-land`가 언어로 실린다(RBC Y1).
+- 표시용 `languageName`·`flagFor`·텍스트 방향은 어댑터를 묻지 않고 `-r` 지역만 풀어(`displayLocaleCode` — `zh-rCN` → `zh-CN`) 해석한다. 저장 코드는 바꾸지 않는다.
+  레거시 코드 `iw`·`in`의 국기도 잇는다.
+- **언어 추가 철자**: 지역이 붙은 새 언어는 `pt-rBR` 꼴만 받는다 — `planLocaleAdd`(미리보기·실행 `judgeAdd`가 함께 부르는 순수 판정, 웹·MCP 공통)가
+  `android-locale-code`로 `r` 없는 `-지역`과 현대 별칭 `he`·`id`·`yi`를 거부한다(자동 치환하지 않는다 — 입력 코드가 저장·응답·경로에서 바뀌지 않게). 추가 Dialog
+  프리셋은 레거시 표(`he → iw`·`id → in`·`yi → ji`, Weblate `ANDROID_CODES` 선례)를 먼저 적용해 Android 철자로 보인다. `values-pt-BR/`은 Android 리소스 시스템이
+  인식하지 않아 번역이 조용히 빠진다. 받는 코드 전부가 같은 어댑터의 탐지에서 같은 코드로 관측되는지 생성 테스트가 잰다.
+- `create`(§5.10.4)는 기준 파일의 **뼈대만**(XML 선언·`<resources>` 루트와 `xmlns:*`) 복제하고 값 있는 활성 키만 쓴다 — 주석·`translatable="false"`·`<plurals>`·
+  기준 값은 복사하지 않는다. 예외는 `formatted`(위 절)다.
+- **탐지**: `values/strings.xml`이 없는 디렉터리는 후보가 아니다(기본값 없는 flavor 오버레이). 리소스 디렉터리는 `res`·`composeResources`만이고 `build/`는 소스가 아니다.
+  순위는 main 소스셋(`main`·`commonMain`·`androidMain`) → flavor·빌드 타입 → 테스트·예제, 같은 신호면 경로 **세그먼트** 비교다. 어댑터 간 순위의 언어 수에
+  basePath를 1로 센다(`languageCount` — Android만 basePath를 내므로 기존 순위 불변). `values/`만 있는 단일 언어 소스도 후보다.
+  Flutter 셸 강등(`isFlutterShell`)이 `android/`에도 걸린다(결정 7) — ARB 정답 6리포의 `android/` 후보가 ARB 1순위를 빼앗지 않는다.
+- **라벨·slug는 모듈 디렉터리다**(결정 23, `lib/surfaces/plan.ts`) — `app`·`settings`·`stripe-core`·`shared`처럼 `src/<set>`·`res`·`composeResources`를 건너뛴다.
+  모두 `res`로 접히던 것을 prod에 Android 표면이 없을 때 바꿨다(slug는 URL·워크플로 job·MCP의 영구 식별자다). 다른 어댑터의 라벨은 그대로다.
 
-**왜 병합이 아닌가.** 값은 DB에서만 오고 원본에서는 **자리**(안쪽 범위·삽입 위치)와 **표현**(따옴표 형·CDATA·들여쓰기)만 가져온다. 인라인 태그 검증은
-DB의 기준 언어 값과 저장하려는 값을 견주는 **저장 거부**이고, 원본 값과 DB 값을 견줘 하나를 고르지 않는다.
+#### 알려진 한계
+
+- **probe 예산 밖 모듈은 조용히 빠진다** — `strings.xml` 후보가 `PROBE_LIMITS.jsonLike`(5)를 넘으면 여섯째 모듈부터 후보에 오르지 않고, 잘렸다는 신호가 화면에 없다
+  (`lib/onboarding-run/__tests__/detect-android-strings.test.ts`가 계약으로 고정, RBC W2). 정답 1순위는 지켜지고(코퍼스 19/19) 수동 지정으로 추가할 수 있다.
+  basePath 후보는 기준 파일 1 + 표본 3 = blob 4개를 쓴다.
+- **태그 속성 값의 XML 금지 문자(U+0001·U+FFFE·U+FFFF 등)는 막지 않는다**(결정 22) — 우리 파서·재파싱은 통과하고 aapt2가 거부할 수 있는 드문 입력이다. 결과는 대상
+  리포 빌드 red로 드러나 조용한 손실이 아니다.
+- `b+sr+Latn` 형식 한정자·언어가 아닌 한정자의 문자열은 비범위다(PRODUCT §4.2).
+
+**왜 병합이 아닌가.** 값은 DB에서만 오고 원본에서는 **자리**(안쪽 범위·삽입 위치)와 **표현**(따옴표 형·CDATA·들여쓰기), 그리고 코드가 소유한 키 메타데이터
+`formatted`만 가져온다 — 키마다 출처가 하나다. 인라인 태그 검증은 DB의 기준 언어 값과 저장하려는 값을 견주는 **저장 거부**이고, 원본 값과 DB 값을 견줘 하나를
+고르지 않는다.
 
 ### 1.9 어댑터 범용성 실측 — 근거와 재측정 규칙
 
@@ -984,6 +1056,40 @@ ARB 없는 dev 코드로 같은 SHA를 다시 재도 같은 값이었다(기준�
 
 **판정**: 기존 코퍼스 회귀 0, 다른 포맷의 정답 1순위 불변, xcstrings 정답 1순위 8/9(남은 하나는 기존 오탐 그대로)·고정점 100%·손실 0·삽입이 기존 바이트를 건드린 파일 0이라
 `apple-xcstrings`를 지원 포맷으로 낸다. Xcode로 열어 저장해도 diff 0인지는 실물(`/roundtrip`)이 잰다.
+
+**28차 (2026-10-19, android-strings — `android-strings` 추가 · 고정 SHA)** — 네 코퍼스 모두 커밋된 기준선(`docs/adapter-survey/baseline/`)의 핀 SHA로 쟀다.
+리뷰 수정(aapt2 스팬 경계·Compose 방언·태그 문법 — §1.46) 뒤 다시 재도 네 코퍼스 1순위가 그대로였고, 판정 JSON 변경(NewPipe, 결정 16)만큼 모바일 기준선을 한 번 더 갱신했다.
+방언 선택(마지막 리소스 디렉터리)·태그 공백 수정은 코퍼스의 Compose 템플릿이 전부 `composeResources/`로 끝나 1순위·지표를 못 움직여 다시 재지 않았다.
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 리포별 1순위 vs 기준선 | diff 0 | diff 0 |
+| `metrics` 전체(`ms` 제외) | 기준선과 바이트 동일 | 기준선과 바이트 동일 |
+
+| 지표 (모바일, Android) | 학습 48 | 홀드아웃 12 |
+|---|---|---|
+| Android 정답 · 1순위가 정답(대표 + alsoValid) | 15 · **15/15** | 4 · **4/4** |
+| 다른 포맷(ARB · `.strings` · xcstrings) 정답의 1순위 | 그대로 | 그대로 |
+| 지원 포맷 탐지(전 포맷) | 30/40 → **40/40** | 9/11 → **11/11** |
+| 오탐(지원 포맷) | 3/27 → **2/40** | 2/9 → **1/11** |
+| 왕복 의미 동일 · 바이트 고정점 | 44/44 · 44/44 | 11/11 · 11/11 |
+| 조용한 손실 · `resource-limit`(Android 정답 19) | 0 · 0 | 0 · 0 |
+| `value-not-string`(unmanaged) | 68 → 374 | 3 → 118 |
+| 중복 `name`(`duplicate-key`) | 0 | 0 |
+
+- **Android가 1순위인 정답 18리포 전부 대표 정답의 `basePath`까지 일치**한다(판정 비교가 `Verdict.basePath`까지 본다). Android 고정점 100%(`surgicalEditHunks` 1)·손실 0.
+- 1순위가 정답이지만 Android 대표가 아닌 셋 — stripe-android `hcaptcha/res/…`(107로케일 alsoValid, 대표 paymentsheet 8순위) · NewPipe
+  `shared/src/commonMain/composeResources/…`(110로케일 — 결정 16으로 alsoValid, 대표 `app/src/main/res/…` 2순위, `/merge` 전 사용자 검수 대기) · open-u60-pro(iOS `.strings`
+  alsoValid 유지 — Android 정답은 3순위, 2언어 대 2언어에서 깊이가 iOS를 앞세운다). **27차가 넘긴 EasyWatermark는 Android 정답이 1순위가 됐다.**
+- `value-not-string` 증가는 Android `<plurals>`·`<string-array>`·리소스 참조(unmanaged)다.
+- `resource-limit`은 Android 정답 파일 집합(대표 템플릿 + basePath)을 GitHub 트리 크기로 셌다 — 최대 파일 221KB(Meshtastic), 최대 합계 5.71MB·112파일(NewPipe). 한도 2MB/10MB/200파일.
+- **Flutter 셸** — ARB 정답 14 중 6리포(aves · eros_fe · OpenScan · smooth-app · pixez-flutter · Mono-Dash)가 `android/` Android 후보를 가진다. 전부 ARB 1순위 유지(`isFlutterShell`이
+  `android/`에 걸린다 — 결정 7). Apple 정답(moedict)·CodenameOne도 Apple 1순위 그대로다.
+- **보고 항목 하나** — 정답 없는 `android/security-certification-resources`(테스트 앱 19개의 `values/`만)가 `-`에서 단일 언어 Android 후보로 바뀌었다. 정답을 빼앗지 않았고
+  `-`가 후보로 바뀐 것이라 27차와 같은 기준(spec 완료 조건 3 — 정답을 빼앗지 않는다)으로 통과다(결정 20).
+
+**판정**: 기존 코퍼스 회귀 0, 다른 포맷의 정답 1순위 불변, Android 정답 1순위 19/19(alsoValid 3 포함)·`basePath` 일치·고정점 100%·손실 0·`resource-limit` 0이라
+`android-strings`를 지원 포맷으로 낸다. Gradle `assembleDebug`가 Publish 결과를 받는지는 실물(`/roundtrip`)이 잰다.
 
 **판정 넷**
 
@@ -2888,7 +2994,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   code-dict는 기준 코드가 든 named export 이름과 `__proto__` 프로퍼티를 거부한다. 값·키 인용과 끝 쉼표를 따르고 BOM은 쓰지 않으며 세미콜론은 고정한다.
   기준 파일 없음·지원하지 않는 생성 규약은 `write-create-unsupported`, 파싱 실패는 `write-parse-failed`다. **생성 실패는 `content: null`과 blocking 오류를 함께 내며 보류로 낮추지 않는다.** 값 0개만 `null`과 빈 오류를 낸다.
   Chrome의 `placeholders`·`description`은 복사하지 않는다. ARB는 기준 파일의 `@key`·`@@*`를 복사하지 않고 `@@locale`만 새 언어 코드로 쓴다(§1.37).
-  `apple-strings`는 기준 파일의 **인코딩·BOM만** 물려받고 주석·값은 빌리지 않는다(§1.45). `android-strings`는 기준 파일(`basePath`)의 XML 선언·`<resources>` 뼈대만 복제한다(§1.46). `apple-xcstrings`는 `ts-dict`처럼 `create`가 없다(multi-locale). 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 같은 DB 입력으로 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  `apple-strings`는 기준 파일의 **인코딩·BOM만** 물려받고 주석·값은 빌리지 않는다(§1.45). `android-strings`는 기준 파일(`basePath`)의 XML 선언·`<resources>` 뼈대만 복제하고, 키마다 기준 `<string>`의 `formatted` 속성만 나른다(§1.46). `apple-xcstrings`는 `ts-dict`처럼 `create`가 없다(multi-locale). 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 같은 DB 입력으로 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
   **새 파일은 듬성할 수 있다** — 이후 값이 생긴 키의 부모 맵이 그 파일에 없으면 기존 수술적 삽입은 남은 경로를 점 리터럴 키(`"a.b.c"`)로 넣는다. 중첩 조회 런타임에서 그 키를 읽는지와 새 언어의 import·지원 언어 목록 등록은 대상 리포가 책임진다. PR 본문 안내는 기존 제거 안내를 유지한다.
   미전달 ADD의 경로가 이미 base에 있으면 **그 언어만** `proposal-path-exists`로 보류하고 나머지 편집은 나간다. **값 0개 ADD는 파일을 내지 않고** Publish 작업으로 세지 않는다(미리보기가 `empty`로 알린다).
 - **조기 종료 · 전부 보류**: 셀 편집 0·`maxUpdatedAt = null`이어도 언어 변경 작업이 있으면 실행하고(`at: null`이면 `lastPulledAt`을 쓰지 않는다), **번역이 전부 보류여도 안전한 삭제는 전달한다.**
