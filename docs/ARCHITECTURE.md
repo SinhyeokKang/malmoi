@@ -4068,6 +4068,10 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
   **`delivered: null`을 `false`로 접지 않는다**. `list_keys`의 `languageChanges`는 입력 `surfaceSlug` 소스 하나의 것이고 전 소스 상태는 `get_project`가 준다. 기존 필드(`locales` 등)는 이름·모양을 바꾸지 않고 필드만 더했다.
   `remove_locale`의 destructive 표시는 확인창의 근거다 — 제거가 미전달 편집을 버리고, 추가 취소도 같은 도구라 같은 등급이다.
 - **`create_project`가 첫 적재까지다** — `runFirstIngest`를 도구로 따로 두지 않는다(§3.1). `requirePush: true`(POSTMORTEM 2026-09-27).
+- **`create_project`·`add_sources` 후보의 `basePath`는 선택 필드다** (2026-10-19, mobile-strings M2) — 기준 언어 파일이 `{locale}` 치환으로 표현되지 않는
+  포맷만 `detect_formats` 후보에 실려 나가고 에이전트가 그대로 되돌려 보낸다. 웹 Action과 **같은 입력 스키마**(`CreateProjectInput`·`AddSurfacesInput`)다.
+  ⚠️ **저장하지 않고 견준다** — 서명된 포맷(`planSampleConfirmations`)과 재탐지(`planConfirmedFormat`) 둘 다와 같아야 하고, 한쪽에만 있어도
+  `manual-no-match`·쓰기 0이다. 없음과 null은 같다. 생성 결과의 `sources[]`는 값이 있을 때만 `basePath`를 싣는다(push 페이로드와 같은 규칙).
 - ⚠️ **push 토큰 원문이 도구 결과로 나간다**(`create_project`·`rotate_push_token`, 2026-09-28 사용자) — 결과는 에이전트 대화(= LLM
   공급자)에 실린다. 받아들인 근거: 프로젝트 한정 · `/api/push` 한 곳의 쓰기 · 재발급이 곧 폐기이고, 어차피 그 토큰이 가는 곳이 그
   에이전트가 쓰는 리포의 secret이다. 결과 요약은 **`gh secret set PUSH_TOKEN --repo OWNER/REPO`의 표준입력**으로 넘기라고 말한다 —
