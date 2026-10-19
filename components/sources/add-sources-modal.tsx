@@ -1,5 +1,6 @@
 "use client";
 
+import { validBaseInput } from "@/lib/onboarding/base-input";
 import { unstable_rethrow } from "next/navigation";
 import { useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
@@ -115,7 +116,14 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
    */
   const rejected = conflicts.filter(conflict => candidates.some((c, index) => c.pathTemplate === conflict.path && checked.has(index) && !locked.has(index)));
   const conflictLine = (conflict: { path: string; surfaceSlugs: string[] }) => conflict.surfaceSlugs.length ? `${conflict.path} · ${conflict.surfaceSlugs.join(", ")}` : conflict.path;
-  const blockInput = { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length + rejected.length };
+  const observedLocales = (c: CandidateSummary) => c.basePath === undefined || c.baseLocale === ""
+    ? c.locales : c.locales.filter(code => code !== c.baseLocale);
+  const validatedFormats = selection.formats.map(format => {
+    const candidate = candidates.find(c => c.pathTemplate === format.pathTemplate);
+    const valid = candidate !== undefined && validBaseInput({ ...candidate, locales: observedLocales(candidate) }, format.baseLocale);
+    return { ...format, baseLocale: valid ? format.baseLocale : "" };
+  });
+  const blockInput = { detecting, detectError: !!detectError, formats: validatedFormats, conflicts: selection.conflicts.length + rejected.length };
   // ⚠️ ①은 기준 언어를 보지 않는다 — 그 값을 정하는 컨트롤이 ②에만 있다(`planAddStep`).
   const stepReason = planAddStep(m, blockInput);
   const addReason = planAddBlock(m, blockInput);
@@ -147,7 +155,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
           setAdding(true);
           void (async () => {
             try {
-              const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
+              const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, ...(c.basePath === undefined ? {} : { basePath: c.basePath }), baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
               if (result.ok) { setAdded(result.results); commit.wait(); }
               else { setError(result.error); setConflicts(result.conflicts ?? []); }
             } catch { setUnknown(true); }
@@ -193,7 +201,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     </> : <div className="flex flex-col gap-4">
       {/* ③과 같은 블록이다(A4) — 손 사본을 두지 않는다. 기본 선택은 이번 탐지값이다(`bases`가 후보 인덱스로 든다). */}
       <SurfaceBaseLocales disabled={pending} surfaces={fresh.map(({ c, index }) => ({
-        pathTemplate: c.pathTemplate, locales: c.locales, baseLocale: bases[index] ?? c.baseLocale,
+        pathTemplate: c.pathTemplate, ...(c.basePath === undefined ? {} : { basePath: c.basePath }), locales: observedLocales(c), baseLocale: bases[index] ?? c.baseLocale,
         keyCounts: Object.fromEntries(c.samples.map(sample => [sample.locale, sample.total])),
       }))} onBaseLocale={(position, value) => {
         const target = fresh[position];

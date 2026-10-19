@@ -1305,3 +1305,21 @@ it("arrow scanning a different repo blocks Next until explicit confirmation with
   await click(button("Next"));
   expect(mocks.detectRepoFormats).toHaveBeenLastCalledWith({owner: "acme", repo: "mobile", ref: "main"});
 });
+
+it("Android ③은 기준 파일 코드 입력을 요구하고 관측 언어와 중복되면 생성을 막는다", async () => {
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const basePath = "app/src/main/res/values/strings.xml";
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(pathTemplate), adapter: "android-strings", basePath, locales: ["de"], baseLocale: "", samples: [], outputPaths: [basePath, pathTemplate.replace("{locale}", "de")] }] });
+  await naming();
+  expect(document.body.textContent).toContain(basePath);
+  const code = field("base-locale");
+  expect(code.value).toBe("");
+  expect(button("Create project").disabled).toBe(true);
+  await input(code, "de");
+  expect(code.getAttribute("aria-invalid")).toBe("true");
+  expect(button("Create project").disabled).toBe(true);
+  await input(code, "en");
+  expect(button("Create project").disabled).toBe(false);
+  await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [expect.objectContaining({ adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" })] }));
+});

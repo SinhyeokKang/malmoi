@@ -125,7 +125,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, fo
             더 좁은 쪽이 이긴다 — 한 열에서 경로 칸의 `col-span-2`가 남으면 암묵 둘째 열이 서므로 `col-span-1`로 되돌리고, 세 칸 사이는 위 선만 남게 Repository의 왼쪽 선을 뗀다. DOM 순서 불변. */}
         {/* ⚠️ 경로 셀이 형제 둘과 같은 14다 — 13이었던 것은 옛 `text-mono`(13/18)가 강제한 값이고, mono를 걷으면서 핸드오프의 14로 돌아왔다 (DESIGN §4.1·§6.66) */}
         <dl className="grid grid-cols-[minmax(0,1fr)_180px_280px] text-sm @max-[850px]:grid-cols-2 @max-form:grid-cols-1">
-          <Fact layout="stacked" className="min-w-0 px-4 py-3.5 @max-[850px]:col-span-2 @max-form:col-span-1" label={m.sources.path}><span className="wrap-anywhere">{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</span></Fact>
+          <Fact layout="stacked" className="min-w-0 px-4 py-3.5 @max-[850px]:col-span-2 @max-form:col-span-1" label={m.sources.path}><span className="wrap-anywhere">{detail.connection.basePath && <>{slashBreaks(detail.connection.basePath)}<br /></>}{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</span></Fact>
           <Fact layout="stacked" className="border-border border-l px-4 py-3.5 @max-[850px]:border-t @max-[850px]:border-l-0" label={m.sources.format}>{detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}</Fact>
           <Fact layout="stacked" className="border-border min-w-0 border-l px-4 py-3.5 @max-[850px]:border-t @max-form:border-l-0" label={m.sources.repository}><span className="wrap-anywhere">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</span></Fact>
         </dl>

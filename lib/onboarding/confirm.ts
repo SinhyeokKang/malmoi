@@ -1,3 +1,4 @@
+import { validBaseInput } from "./base-input";
 import { ADAPTERS, detectFormatWith, isAdapterName, matchGlobPaths } from "@/lib/adapters";
 import { compareKeys, exceedsGlobBudget, looksLikeLocale } from "@/lib/adapters/shared";
 import type { AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
@@ -91,8 +92,8 @@ export function planConfirmedFormat(
   if (detected.pathTemplate !== input.pathTemplate) return { status: "rejected", reason: "template-mismatch" };
   // 기준 언어 경로도 고른 값과 재탐지가 같아야 한다 — 저장하는 것은 재탐지 값이고, 고른 값만 있는 경로를 저장하지 않는다.
   if ((input.basePath ?? null) !== (detected.basePath ?? null)) return { status: "rejected", reason: "template-mismatch" };
-  // 기준 로케일은 **반환된** locales에 있어야 한다 — 입력이 아니라 재탐지가 본 것이다.
-  if (!detected.locales.includes(input.baseLocale)) return { status: "rejected", reason: "base-locale-missing" };
+  // Android 기준 코드는 번역 파일의 코드와 달라야 한다. 다른 포맷은 재탐지가 관측한 코드만 고른다.
+  if (!(detected.adapter === "android-strings" ? validBaseInput(detected, input.baseLocale) : detected.locales.includes(input.baseLocale))) return { status: "rejected", reason: "base-locale-missing" };
 
-  return { status: "ok", format: detected, baseLocale: input.baseLocale };
+  return { status: "ok", format: detected.basePath === undefined || detected.adapter !== "android-strings" ? detected : { ...detected, templateLocale: input.baseLocale, locales: [...detected.locales, input.baseLocale].sort(compareKeys) }, baseLocale: input.baseLocale };
 }

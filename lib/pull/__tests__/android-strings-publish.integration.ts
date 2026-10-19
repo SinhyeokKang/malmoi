@@ -26,8 +26,21 @@ import { projectFormats, renderProject } from "@/lib/pull/run";
 
 import { createFakeGitClient, isGitMutation } from "./fake-client";
 
-const github = vi.hoisted(() => ({ client: null as unknown }));
-vi.mock("@/lib/repo-host", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
+const github = vi.hoisted(() => ({ client: null as unknown, files: {} as Record<string, string> }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/onboarding-run/access", async orig => ({ ...(await orig<object>()), checkRepoAccess: async () => ({
+  status: "ok", host: "github", repoOwner: "o", repoName: "r", repositoryId: "1", installationId: "2", defaultBranch: "main",
+  connect: { status: "ok", installationId: "2", repoOwner: "o", repoName: "r" },
+}) }));
+vi.mock("@/lib/projects/open-pr", async orig => ({ ...(await orig<object>()), loadOpenPrUrl: async () => null }));
+vi.mock("@/lib/repo-host", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client,
+  openRepoReader: async () => ({
+    snapshot: async () => ({ status: "ok", headSha: "1".repeat(40), headCommittedAt: "2026-10-19T00:00:00.000Z",
+      files: Object.entries(github.files).map(([path, content]) => ({ path, sha: path, size: Buffer.byteLength(content) })) }),
+    blob: async (path: string) => github.files[path],
+    sizes: async (_snapshot: unknown, paths: string[]) => ({ status: "ok", sizes: new Map(paths.map(path => [path, Buffer.byteLength(github.files[path]!)])) }),
+  }),
+}));
 
 /**
  * **Android `strings.xml` 소스의 전 경로 — 탐지 → 첫 적재(basePath) → 번역 → Publish(기준 파일 = `values/`) → 언어 추가 → 다른 키 번역 → 두 번째 Publish**
@@ -265,5 +278,76 @@ describe("Android — 쓸 수 없는 태그", () => {
     expect(await publish()).toMatchObject({ status: "skipped", reason: "writer-warnings" });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
     expect(await prisma.deliveryConfirmation.count({ where: { projectId: "p" } })).toBe(0);
+  });
+});
+
+/** MCP 진입점에서 서명 소비·첫 적재를 거쳐 Publish가 보내는 파일까지 잇는다. */
+describe("Android 생성·추가 진입점", () => {
+  async function context() {
+    const grants: import("@/lib/mcp/grant").TokenGrant[] = ["project:create", "project:settings", "translation:write"];
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "android-token", grants, allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    return { prisma, subject: { userId: "owner", credential: { kind: "api-token" as const, tokenHash: "android-token" }, grants, scope: { kind: "all" as const } }, now: new Date(), origin: null };
+  }
+  async function candidate() {
+    vi.stubEnv("APP_SIGNING_SECRET", "android-base-signing-secret");
+    const { detectFormats } = await import("@/lib/onboarding-run/detect");
+    const result = await detectFormats(prisma, OWNER, { owner: "o", repo: "r", ref: "main" });
+    expect(result.ok).toBe(true);
+    if (!result.ok || !result.candidates[0]) throw new Error(JSON.stringify(result));
+    expect(result.candidates[0].baseLocale).toBe("");
+    return { ...result.candidates[0], baseLocale: "en" };
+  }
+  async function assertPublish(projectId: string, slug: string, surfaceId: string, surfaceSlug: string, basePath: string, koPath: string) {
+    for (const [localeCode, value] of [["en", "New home"], ["ko", "새 홈"]]) {
+      const key = await prisma.stringKey.findFirstOrThrow({ where: { surfaceId, key: "title" } });
+      expect(await applyKeySave(prisma, { projectId, surfaceId, surfaceSlug, keyId: key.id, userId: "owner", credential: undefined, changes: [{ localeCode: localeCode!, value: value! }] })).toMatchObject({ ok: true });
+    }
+    fake({ ...FILES, ...github.files });
+    const preview = await readPublishPreview(prisma, projectId, slug);
+    expect([...preview.changedFiles].sort()).toEqual([basePath, koPath].sort());
+    const made = fake({ ...FILES, ...github.files });
+    expect(await runSync(prisma, { projectId, slug, trigger: "manual", requestedBy: "owner", credential: undefined, expectedFingerprint: preview.fingerprint })).toMatchObject({ status: "committed" });
+    expect(changesOf(made)).toEqual(expect.arrayContaining([
+      { kind: "upsert", path: basePath, content: BASE.replace('>Home<', '>New home<') },
+      { kind: "upsert", path: koPath, content: KO.replace('>홈<', '>새 홈<') },
+    ]));
+    expect(changesOf(made)).toHaveLength(2);
+  }
+
+  it("create_project: 탐지 → 입력한 코드 → 저장·실제 첫 적재 → 두 파일 Publish", async () => {
+    github.files = { ...FILES };
+    const pick = await candidate();
+    const { createProject } = await import("@/lib/mcp/tools/onboarding");
+    const ctx = await context();
+    expect(await createProject.run(ctx, { owner: "o", repo: "r", slug: "android-rejected", name: "Android", baseBranch: "main", surfaces: [{ ...pick, baseLocale: "ko" }] })).toMatchObject({ status: "refused", code: "manual-no-match" });
+    expect(await prisma.project.count({ where: { slug: "android-rejected" } })).toBe(0);
+    const result = await createProject.run(ctx, { owner: "o", repo: "r", slug: "android-created", name: "Android", baseBranch: "main", surfaces: [pick] });
+    expect(result.status).toBe("ok");
+    const project = await prisma.project.findUniqueOrThrow({ where: { slug: "android-created" }, include: { surfaces: true } });
+    const surface = project.surfaces[0]!;
+    expect(surface).toMatchObject({ basePath: BASE_PATH, baseLocale: "en" });
+    expect((await prisma.translation.findMany({ where: { surfaceId: surface.id, stringKey: { key: "title" } }, orderBy: { localeCode: "asc" } })).map(t => [t.localeCode, t.value])).toEqual([["en", "Home"], ["ko", "홈"]]);
+    await assertPublish(project.id, project.slug, surface.id, surface.slug, BASE_PATH, KO_PATH);
+  });
+
+  it("add_sources: 첫 적재·두 파일 Publish 후 연결 해제·재추가가 같은 소스를 복구한다", async () => {
+    const basePath = BASE_PATH.replace("app/", "second/");
+    const koPath = KO_PATH.replace("app/", "second/");
+    github.files = { [basePath]: BASE, [koPath]: KO };
+    const pick = await candidate();
+    const { addSourcesTool } = await import("@/lib/mcp/tools/onboarding");
+    const ctx = await context();
+    expect(await addSourcesTool.run(ctx, { slug: "fixture", picks: [{ ...pick, baseLocale: "ko" }] })).toMatchObject({ status: "refused", code: "manual-no-match" });
+    expect((await addSourcesTool.run(ctx, { slug: "fixture", picks: [pick] })).status).toBe("ok");
+    const surface = await prisma.translationSurface.findFirstOrThrow({ where: { projectId: "p", basePath } });
+    expect(surface.baseLocale).toBe("en");
+    await assertPublish("p", "fixture", surface.id, surface.slug, basePath, koPath);
+    const { removeSurface } = await import("@/lib/surfaces/remove");
+    expect(await removeSurface(prisma, OWNER, { slug: "fixture", surfaceSlug: surface.slug, approval: null })).toMatchObject({ ok: true });
+    expect((await addSourcesTool.run(ctx, { slug: "fixture", picks: [{ ...pick, baseLocale: "fr" }] })).status).toBe("ok");
+    const revived = await prisma.translationSurface.findUniqueOrThrow({ where: { id: surface.id } });
+    expect(revived).toMatchObject({ archivedAt: null, baseLocale: "fr", basePath });
+    // 되살림은 strict 적재다 — 마지막 Publish 값이 아니라 리포 값을 읽는다.
+    expect((await prisma.translation.findFirstOrThrow({ where: { surfaceId: surface.id, localeCode: "fr", stringKey: { key: "title" } } })).value).toBe("Home");
   });
 });

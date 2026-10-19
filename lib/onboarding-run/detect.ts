@@ -113,7 +113,10 @@ async function detectIn(userId: string, target: RepoTarget, ref: string): Promis
 
   const candidates = summaries.flatMap((summary) => {
     const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths, summary.basePath ?? null));
-    const confirmed = planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)));
+    // basePath 후보는 아직 코드가 없다. 2패스가 검증한 포맷을 서명하고 입력 코드는 생성·추가 때 검증한다.
+    const confirmed = summary.basePath === undefined
+      ? planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)))
+      : { status: "ok" as const, format: { adapter: summary.adapter, pathTemplate: summary.pathTemplate, basePath: summary.basePath, locales: summary.locales } };
     if (confirmed.status !== "ok") return [];
     return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths, summary.baseLocale), confirmation: signSampleConfirmation({
       userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),

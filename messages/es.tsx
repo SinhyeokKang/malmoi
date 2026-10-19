@@ -1320,6 +1320,8 @@ export const es = {
     },
 
     baseLocale: {
+      androidHint: "Introduce el código de idioma del archivo base, como en.",
+      androidInvalid: "Usa un código de idioma válido que no esté ya en la lista.",
       row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "Idioma base",
       hint: "El archivo de este idioma decide qué claves existen. Si eliges el equivocado, las claves que solo existen en otro idioma quedan fuera.",
@@ -2640,6 +2642,7 @@ export const es = {
       "invalid-branch": "Ese no es un nombre de rama válido. No se permiten espacios ni los caracteres ~^:?*[.",
       "sync-branch": "Malmoi publica las traducciones desde esa rama, así que no puede ser la rama base. Elige otra rama.",
       "unknown-locale": "Este repositorio no tiene ningún archivo de traducción para ese idioma.",
+      "android-base-fixed": "No se puede cambiar el idioma base de Android. Desvincula esta fuente y vuelve a añadirla para corregir el código.",
       "orphaned-locale": "El archivo de ese idioma ya no está en el repositorio. Primero vuelve a añadirlo.",
     },
   },

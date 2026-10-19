@@ -76,6 +76,7 @@ import { FirstIngestRefused, ingestFirstSnapshot } from "@/lib/onboarding/ingest
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/readiness";
+import { manualBasePath } from "@/lib/onboarding/base-input";
 import { isLocaleShaped, isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 
@@ -529,7 +530,7 @@ export async function loadCandidateSample(raw: NewRepoInput & {
       verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
     return { ok: false, error: "manual-no-match" };
   }
-  const format = { ...verified, adapter: verified.adapter };
+  const format = { ...verified, adapter: verified.adapter, ...(verified.basePath === undefined || !verified.baseLocale ? {} : { templateLocale: verified.baseLocale }) };
   const adapter = adapterFor(format);
   const paths = snapshot.files.map((file) => file.path);
   // 서명한 기준 언어의 표본은 basePath에서 읽는다(mobile-strings design §2) — 그 밖의 언어는 치환이다.
@@ -581,12 +582,12 @@ export async function confirmManualFormat(raw: NewRepoInput & {
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
-  // 수동 지정은 basePath를 받지 않는다 — 템플릿 밖 기준 언어 파일은 탐지 후보로만 고른다.
-  const targets = templatePaths(input.adapter, input.pathTemplate, paths, null);
+  const basePath = manualBasePath(input.adapter, input.pathTemplate);
+  const targets = templatePaths(input.adapter, input.pathTemplate, paths, basePath ?? null);
   try {
     const files = await readFiles(reader, snapshot, targets);
     if (files.length !== targets.length) return { ok: false, error: "unavailable" };
-    const confirmed = planConfirmedFormat(input, files);
+    const confirmed = planConfirmedFormat({ ...input, basePath }, files);
     if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
     const summary = summarizeCandidates([confirmed.format], new Map(files.map((file) => [file.path, file.content])))[0];
     if (summary === undefined) return { ok: false, error: "manual-no-match" };

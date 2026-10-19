@@ -3,6 +3,8 @@
 import { FileCode2, FileJson2 } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 
+import { Input } from "@/components/ui/input";
+import { validBaseInput } from "@/lib/onboarding/base-input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { FormGroup } from "@/components/ui/form-group";
@@ -18,7 +20,7 @@ import { LOCALE_RADIO_MAX, collapseLocalePicker } from "@/lib/onboarding/locale-
 import { cn } from "@/lib/utils";
 
 /** 소스 하나의 기준 언어 블록이 읽는 값 — 신규 프로젝트 ③과 Add sources ②가 같은 형을 넘긴다. */
-export type BaseLocaleState = { pathTemplate: string; baseLocale: string; locales: string[]; keyCounts: Record<string, number> };
+export type BaseLocaleState = { pathTemplate: string; basePath?: string; baseLocale: string; locales: string[]; keyCounts: Record<string, number> };
 
 /**
  * 소스마다 경로 줄 + 기준 언어 블록 (DESIGN §6.7). **신규 프로젝트 ③과 Add sources ②가 이 하나를 쓴다** (sources-add-remove A4) —
@@ -42,7 +44,7 @@ export function SurfaceBaseLocales({ surfaces, onBaseLocale, disabled }: {
               {surface.pathTemplate.endsWith(".json")
                 ? <FileJson2 aria-hidden="true" className="size-4 shrink-0" />
                 : <FileCode2 aria-hidden="true" className="size-4 shrink-0" />}
-              <span className="break-all">{surface.pathTemplate}</span>
+              <span className="break-all">{surface.basePath ?? surface.pathTemplate}</span>
             </span>
           </span>
         } id={`surface-base-${index}`}
@@ -72,6 +74,14 @@ export function BaseLocaleFields({ state, onChange, id = "base-locale", label: l
     undefined,
   );
   const gap = leader === undefined ? undefined : keyGap(countOf(leader), countOf(state.baseLocale));
+
+  if (state.basePath !== undefined) return <FormGroup label={label} htmlFor={id}
+    help={<>{state.basePath}<br />{m.newProject.baseLocale.androidHint}</>}
+    error={state.baseLocale !== "" && !validBaseInput(state, state.baseLocale) ? m.newProject.baseLocale.androidInvalid : undefined}>
+    {describe => <Input id={id} value={state.baseLocale} disabled={disabled} aria-describedby={describe()}
+      aria-invalid={state.baseLocale !== "" && !validBaseInput(state, state.baseLocale) || undefined}
+      onChange={event => onChange(event.target.value.trim())} />}
+  </FormGroup>;
 
   return <div className="flex flex-col gap-4">
       {/*

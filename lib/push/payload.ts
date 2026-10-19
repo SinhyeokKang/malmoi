@@ -137,7 +137,7 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
       ...(input.read.nestedByPath === undefined ? {} : { nestedByPath: input.read.nestedByPath }),
       baseLocale: input.baseLocale,
     },
-    locales: input.format.locales,
+    locales: input.format.basePath === undefined ? input.format.locales : [...new Set([...input.format.locales, input.baseLocale])].sort(compareKeys),
     keys: baseEntries.map((e) => ({
       key: e.key,
       sourceText: e.message,

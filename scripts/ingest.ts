@@ -44,7 +44,7 @@ if (!requested.ok) {
   console.error(requested.message);
   process.exit(requested.exitCode);
 }
-const { format } = requested;
+let { format } = requested;
 
 const adapter = adapterFor(format);
 
@@ -61,6 +61,7 @@ try {
   console.error(error.message);
   process.exit(1);
 }
+format = assembled.format;
 const { read: result, files, baseLocale: base } = assembled;
 // push:local과 같은 판정이다 — 미리보기가 읽지 못한 파일을 빈 파일로 보여 주면 올리는 쪽과 갈린다 (audit #7).
 const unreadable = unreadableLocaleFiles(files, probeFailures);

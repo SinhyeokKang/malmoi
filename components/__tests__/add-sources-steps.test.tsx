@@ -271,3 +271,18 @@ it("손 사본 0 — ②와 신규 프로젝트 ③이 같은 소스 블록 컴�
   // ①·②의 바닥 [Next]·[Back]·확정은 `WizardFooter`다 — 마크업 사본을 두지 않는다 (fix1 🟡2).
   expect(modal.match(/<WizardFooter\b/g) ?? []).toHaveLength(2);
 });
+
+it("values/만 있는 Android 소스를 기준 언어 코드 입력 후 추가한다", async () => {
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const basePath = "app/src/main/res/values/strings.xml";
+  await open([candidate(pathTemplate, { adapter: "android-strings", basePath, locales: [], baseLocale: "", samples: [], outputPaths: [basePath] })]);
+  await click(include(pathTemplate));
+  await click(next());
+  expect(confirm().getAttribute("aria-disabled")).toBe("true");
+  expect(dialog().textContent).toContain(basePath);
+  await input(find<HTMLInputElement>(document.body, "#surface-base-0"), "en");
+  expect(confirm().getAttribute("aria-disabled")).toBeNull();
+  mocks.addSurfaces.mockResolvedValue({ ok: true, results: [], yaml: "" });
+  await click(confirm());
+  expect(mocks.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" }] });
+});

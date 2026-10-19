@@ -1326,6 +1326,8 @@ export const ko = {
     },
 
     baseLocale: {
+      androidHint: "기준 파일의 언어 코드를 입력하세요. 예: en",
+      androidInvalid: "목록에 없는 올바른 언어 코드를 입력하세요.",
       row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "기준 언어",
       hint: "이 언어의 파일을 기준으로 키 목록을 만듭니다. 다른 언어에만 있는 키는 포함되지 않습니다.",
@@ -2637,6 +2639,7 @@ export const ko = {
       "invalid-branch": "올바른 브랜치 이름이 아닙니다. 공백과 ~^:?*[ 문자는 쓸 수 없습니다.",
       "sync-branch": "Malmoi가 그 브랜치에서 번역을 게시하므로 기준 브랜치로 쓸 수 없습니다. 다른 브랜치를 고르세요.",
       "unknown-locale": "이 리포지토리에는 그 언어의 번역 파일이 없습니다.",
+      "android-base-fixed": "Android 기준 언어는 변경할 수 없습니다. 코드를 바로잡으려면 소스를 연결 해제한 뒤 다시 추가하세요.",
       "orphaned-locale": "해당 언어의 파일이 리포지토리에서 삭제되었습니다. 먼저 파일을 복원하세요.",
     },
   },

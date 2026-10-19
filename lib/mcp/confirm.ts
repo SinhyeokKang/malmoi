@@ -1,3 +1,4 @@
+import { validBaseInput } from "@/lib/onboarding/base-input";
 import { verifySampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 
 /**
@@ -41,7 +42,7 @@ export function planSampleConfirmations(input: {
     const format = verifySampleConfirmation(candidate.confirmation, input.context, input.secret, input.now);
     if (format === null) return { status: "sample-expired", index };
     if (format.adapter !== candidate.adapter || format.pathTemplate !== candidate.pathTemplate || (format.basePath ?? null) !== (candidate.basePath ?? null)
-      || !format.locales.includes(candidate.baseLocale)) {
+      || !(format.adapter === "android-strings" ? validBaseInput(format, candidate.baseLocale) : format.locales.includes(candidate.baseLocale))) {
       return { status: "manual-no-match", index };
     }
   }

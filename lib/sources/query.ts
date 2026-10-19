@@ -15,7 +15,7 @@ import { supportsLocaleChanges } from "@/lib/locales/add-plan";
 import { localeRole } from "@/lib/translations/summary";
 
 const sourceSelect = {
-  id: true, slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true,
+  id: true, slug: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true, declaredBaseLocale: true,
   lastCommitSha: true, lastCommitAt: true, lastImportStartedAt: true, lastImportError: true, lastImportFailedAt: true,
   lastImportedAt: true, createdAt: true,
 } satisfies Prisma.TranslationSurfaceSelect;
@@ -27,7 +27,7 @@ function sourceView(m: Messages, source: SourceRecord, role: Role) {
     lastCommitSha: source.lastCommitSha, lastCommitAt: source.lastCommitAt,
     lastImportStartedAt: source.lastImportStartedAt, lastImportError: source.lastImportError, lastImportFailedAt: source.lastImportFailedAt,
     lastImportedAt: source.lastImportedAt, createdAt: source.createdAt,
-    ...(canPerform(role, "project:settings") ? { connection: { adapterName: source.adapterName, pathTemplate: source.pathTemplate, format: source.adapterName !== null && isAdapterName(source.adapterName) ? formatLabel(m, source.adapterName).label : null } } : {}),
+    ...(canPerform(role, "project:settings") ? { connection: { adapterName: source.adapterName, pathTemplate: source.pathTemplate, ...(source.basePath == null ? {} : { basePath: source.basePath }), format: source.adapterName !== null && isAdapterName(source.adapterName) ? formatLabel(m, source.adapterName).label : null } } : {}),
   };
 }
 const projectSelect = { repoOwner: true, repoName: true, baseBranch: true, repoHost: true, installationId: true, repositoryId: true } as const;

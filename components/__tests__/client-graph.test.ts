@@ -161,6 +161,7 @@ const CLIENT_LIB_FILES = [
   "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",
+  "lib/onboarding/base-input.ts",
   "lib/onboarding/base-pending.ts",
   "lib/onboarding/branch.ts",
   "lib/onboarding/create-plan.ts",

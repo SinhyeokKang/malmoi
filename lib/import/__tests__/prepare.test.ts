@@ -33,3 +33,16 @@ describe("prepareSurfaceImport", () => {
     expect(await prepareSurfaceImport(reader("{}"), { ...input, snapshot: { ...snapshot, files: snapshot.files.map(file => ({ ...file, size: undefined })) } })).toMatchObject({ kind: "failed", error: "resource-limit" });
   });
 });
+
+it.each(["first", "repository"] as const)("Android %s 적재는 저장된 기준 코드를 values/에 연결하고 관측된 번역 파일도 유지한다", async mode => {
+  const basePath = "app/src/main/res/values/strings.xml";
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const files = new Map([[basePath, '<resources><string name="title">English</string></resources>'], [pathTemplate.replace("{locale}", "de"), '<resources><string name="title">Deutsch</string></resources>']]);
+  const androidSnapshot = { ...snapshot, files: [...files].map(([path, content]) => ({ path, sha: path, size: content.length })) };
+  const repo: RepoReader = { sizes: async (s, paths) => sizesFromSnapshot(s, paths), snapshot: vi.fn(), blob: async sha => files.get(sha) };
+  const result = await prepareSurfaceImport(repo, { ...input, mode, snapshot: androidSnapshot, surface: { ...input.surface, adapter: "android-strings", pathTemplate, basePath, baseLocale: "en" } });
+  expect(result.kind).toBe("payload");
+  if (result.kind !== "payload") return;
+  expect(result.payload).toMatchObject({ locales: ["de", "en"], format: { basePath, baseLocale: "en" }, keys: [{ key: "title", sourceText: "English" }] });
+  expect(result.payload.translations).toEqual(expect.arrayContaining([expect.objectContaining({ locale: "de", value: "Deutsch" }), expect.objectContaining({ locale: "en", value: "English" })]));
+});

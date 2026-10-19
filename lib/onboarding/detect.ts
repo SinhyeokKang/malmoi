@@ -104,7 +104,7 @@ export function formatLabel(m: Messages, adapter: AdapterName): { label: string;
 
 /** 요약의 기본 기준 언어 — 탐지가 관측한 템플릿 로케일(`l10n.yaml`)이 공용 추정(en 우선)을 이긴다. 사용자가 라디오로 바꾼다(PRODUCT §7.3). */
 export function defaultBaseLocale(format: DetectedFormat): string | undefined {
-  return format.templateLocale ?? pickBaseLocale(format.locales);
+  return format.templateLocale ?? (format.basePath === undefined ? pickBaseLocale(format.locales) : undefined);
 }
 
 export type KeyCount = { status: "counted"; count: number } | { status: "key-count-failed" };
@@ -179,7 +179,7 @@ export function sampleRows(
   limit: number = SAMPLE_ROWS,
 ): { rows: SampleRow[]; total: number } {
   // 기준 언어는 탐지 요약과 같은 추정이다(`summarizeCandidates`) — basePath 포맷에서 그 언어만 basePath를 읽는다.
-  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale, defaultBaseLocale(format) ?? locale), locale), limit);
+  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale, defaultBaseLocale(format) ?? (format.basePath === undefined ? locale : "")), locale), limit);
 }
 
 /**
@@ -196,7 +196,7 @@ export function summarizeCandidates(
   const out: Omit<CandidateSummary, "outputPaths">[] = [];
   for (const c of candidates) {
     // 탐지는 로케일 1개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
-    const baseLocale = defaultBaseLocale(c);
+    const baseLocale = defaultBaseLocale(c) ?? (c.basePath === undefined ? undefined : "");
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);
     const locales = c.locales.slice().sort(compareKeys);
@@ -243,6 +243,9 @@ function sampleCandidate(
     }
   }
 
+  if (format.basePath !== undefined && baseEntries === undefined) {
+    baseEntries = entriesOf(readLocales(adapter, format, blobs, baseLocale, baseLocale), baseLocale);
+  }
   return {
     samples,
     keys: baseEntries === undefined ? { status: "key-count-failed" } : { status: "counted", count: baseEntries.length },
@@ -263,7 +266,7 @@ function readLocales(
   locale: string,
   baseLocale: string,
 ): ReadLocale[] | undefined {
-  const narrowed = adapter.layout === "per-locale" ? { ...format, locales: [locale] } : format;
+  const narrowed = adapter.layout === "per-locale" ? { ...format, locales: [locale], ...(format.basePath === undefined ? {} : { templateLocale: baseLocale }) } : format;
   const files = selectLocaleFiles(adapter.layout, narrowed, [...blobs.keys()], makeProbe(blobs), baseLocale);
   if (files.length === 0) return undefined;
   try {

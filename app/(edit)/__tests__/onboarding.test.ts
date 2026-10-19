@@ -2342,3 +2342,19 @@ describe("basePath 공급 고리 — 생성·추가 진입점", () => {
     expect(hoisted.addSurfacesFromSnapshot.mock.calls[0]?.[1].inputs[0].format.basePath).toBe("i18n/en.json");
   });
 });
+
+it("Android 수동 지정은 values 경로를 유도하고 기준 파일의 지연 표본도 읽는다", async () => {
+  const basePath = "app/src/main/res/values/strings.xml";
+  const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
+  const files = [{ path: basePath, sha: "android-en", size: 100 }, { path: pathTemplate.replace("{locale}", "de"), sha: "android-de", size: 100 }];
+  hoisted.openRepoReader.mockImplementation(async () => reader({
+    snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files },
+    blobs: new Map([["android-en", '<resources><string name="title">English</string></resources>'], ["android-de", '<resources><string name="title">Deutsch</string></resources>']]),
+  }));
+  const raw = { owner: "acme", repo: "web", ref: "develop", adapter: "android-strings", pathTemplate, baseLocale: "en" };
+  const result = await confirmManualFormat(raw);
+  expect(result).toMatchObject({ ok: true, candidate: { basePath, baseLocale: "en", locales: ["de", "en"] } });
+  if (!result.ok) throw new Error(JSON.stringify(result));
+  expect(await loadCandidateSample({ ...raw, locale: "en", confirmation: result.candidate.confirmation })).toMatchObject({ ok: true, rows: [{ key: "title", value: "English" }] });
+  expect(await confirmManualFormat({ ...raw, baseLocale: "de" })).toEqual({ ok: false, error: "manual-no-match" });
+});

@@ -160,14 +160,14 @@ if (!requested.ok) {
   if (requested.exitCode === 1) await reportFailure("prepare-failed");
   process.exit(requested.exitCode);
 }
-const { format } = requested;
+let { format } = requested;
 // ⚠️ **select → read → base 판정은 `lib/push/assemble.ts`가 든다** (2026-09-07). 서버의 첫 적재가 같은
 // 함수를 지나야 "CI로 올린 것과 온보딩이 올린 것이 같다"가 구조로 보장된다 (ARCHITECTURE §3.1).
 // base가 키 집합의 진실이라 명시가 탐지 목록에 없으면 그 함수가 던진다 (2026-09-04 audit #1).
 // `--base`가 탐지 목록에 없으면 `assemblePushInput`이 던진다. **플래그 이름을 먼저 찍는다** — 사용자가
 // 고쳐야 하는 것은 인자이고, composite action에서는 그 입력 이름이 `base-locale`이다.
 const baseOverride = flagValue(argv, "--base");
-if (baseOverride !== undefined && !format.locales.includes(baseOverride)) {
+if (format.basePath === undefined && baseOverride !== undefined && !format.locales.includes(baseOverride)) {
   console.error(`--base ${baseOverride}: 탐지된 로케일(${format.locales.slice().sort().join(", ")})에 없다.`);
   process.exit(1);
 }
@@ -181,6 +181,7 @@ try {
   await reportFailure("prepare-failed");
   process.exit(1);
 }
+format = assembled.format;
 const { read, baseLocale } = assembled;
 
 // ⚠️ **로케일 파일을 못 읽었으면 여기서 멈춘다** (audit #7) — 빈 내용으로 읽힌 파일의 키가 페이로드에서 빠지면 서버가 그 키를

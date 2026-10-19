@@ -2750,6 +2750,8 @@ export const en = {
     },
 
     baseLocale: {
+      androidHint: "Enter the language code of the base file, such as en.",
+      androidInvalid: "Use a valid language code that isn't already listed.",
       /**
        * ③ 기준 언어 행의 보조 줄 — 경로와 키 수. ⚠️ **키 수는 아는 언어에만** 붙는다(결정 ⑦):
        * 모르는 언어에 숫자를 지어내면 되돌릴 수 없는 결정의 근거가 거짓이 된다.
@@ -4571,7 +4573,7 @@ export const en = {
       get_project: "Show a project's overview: sources, languages (with languageChanges: languages being added or removed and whether each was sent), key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
       list_repositories: "List the repositories you can connect to a new project — GitHub by default, or GitLab with host: \"gitlab\" (uses the GitLab token connected on your Account page). Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new GitHub project, { host: \"gitlab\", repositoryId } for a new GitLab project, or { slug } for an existing one — only one of them.",
-      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
+      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources. Android candidates have an empty baseLocale: supply the language code of basePath when creating or adding the source; it must differ from the detected language codes.",
       list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page. Also returns the source's languages being added or removed (languageChanges).",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
       preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, fileChanges (new, updated, or removed files), and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
@@ -4582,8 +4584,8 @@ export const en = {
       get_workflow: "Get the CI file for the project's repository: the GitHub Actions workflow, or .gitlab-ci.yml for a GitLab project. It reads the push token from PUSH_TOKEN (a GitHub secret or a GitLab CI/CD variable).",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
       read_docs: "Read Malmoi's user guide (the Docs at /docs). Call it first when a refusal, a concept, or how to do something in Malmoi is unclear — permissions, Publish, the translation screen. With no arguments it returns the contents. Pass page with a value from the contents (the same as the path after /docs/ in a guide URL) for the whole page, or query to search sections. Pass page or query, not both.",
-      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Pass { owner, repo } for GitHub or { host: \"gitlab\", repositoryId } for GitLab. Returns a push token once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, add it as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
-      add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
+      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. For Android, set each source baseLocale to the language code of its basePath file, distinct from detected language codes. Pass { owner, repo } for GitHub or { host: \"gitlab\", repositoryId } for GitLab. Returns a push token once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, add it as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
+      add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync. For Android, set each pick baseLocale to the language code of its basePath file, distinct from detected language codes.",
       set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved; while a sync is running, the whole call is refused with the time to try again.",
       publish: "Send saved changes to the repository as a pull request (a merge request for a GitLab project). Call preview_publish first and pass its fingerprint.",
       sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
@@ -4949,6 +4951,7 @@ export const en = {
       // 왜 없는지를 말한다 — 목록은 리포의 로케일 파일에서 온다.
       "unknown-locale": "This repository has no translation file for that language.",
       // 되돌릴 수 있는 상태이므로 무엇을 해야 하는지 말한다.
+      "android-base-fixed": "The Android base language can't be changed. Detach this source and add it again to correct the code.",
       "orphaned-locale": "That language's file is gone from the repository. Bring it back first.",
     },
   },

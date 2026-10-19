@@ -10,15 +10,17 @@
  * `zh_CN`과 `zh-CN`은 다른 로케일이다 — 어디서 한 번이라도 정규화하면 write가 존재하지 않는
  * 경로를 만든다.
  */
-export type BaseLocaleChange = "noop" | "ok" | "unknown-locale" | "orphaned-locale";
+export type BaseLocaleChange = "noop" | "ok" | "unknown-locale" | "orphaned-locale" | "android-base-fixed";
 
 export function planBaseLocaleChange(input: {
   /** 지금의 **현실**(`Project.baseLocale`). 첫 push 전이면 null이다. */
   current: string | null;
+  adapter?: string | null;
   next: string;
   locales: readonly { code: string; orphaned: boolean }[];
 }): BaseLocaleChange {
   if (input.next === input.current) return "noop";
+  if (input.adapter === "android-strings") return "android-base-fixed";
   // `current`가 목록에 없어도(그 로케일 파일이 사라진 경우) `next` 판정은 독립이다.
   const found = input.locales.find((l) => l.code === input.next);
   if (found === undefined) return "unknown-locale";

@@ -1,5 +1,6 @@
 "use client";
 
+import { validBaseInput } from "@/lib/onboarding/base-input";
 import {
   createProject,
   confirmManualFormat,
@@ -172,8 +173,10 @@ export function NewProject({
   const selectedCandidates = candidates.flatMap((item, index) => checked.has(index) ? [{ item, index }] : []);
   const chosenCandidate = usingManual ? manualCandidate : selectedCandidates[0]?.item;
   const chosenBase = usingManual ? baseLocale : baseLocales[selectedCandidates[0]?.index ?? -1] ?? "";
-  const validBases = usingManual ? manualMatched && !!manualCandidate?.locales.includes(baseLocale)
-    : selectedCandidates.length > 0 && selectedCandidates.every(({ item, index }) => item.locales.includes(baseLocales[index] ?? ""));
+  const manualLocales = manualCandidate?.basePath === undefined ? manualCandidate?.locales ?? []
+    : manualCandidate.locales.filter(code => code !== manualCandidate.baseLocale);
+  const validBases = usingManual ? manualMatched && manualCandidate !== undefined && validBaseInput({ ...manualCandidate, locales: manualLocales }, baseLocale)
+    : selectedCandidates.length > 0 && selectedCandidates.every(({ item, index }) => validBaseInput(item, baseLocales[index] ?? ""));
 
   const state: NextState = {
     sessionExpired: accessLost !== null || (banner !== null && isAccessLost(banner)),
@@ -442,7 +445,7 @@ export function NewProject({
       try { result = await createProject({
         ...repoInputOf(repo),
         manual: usingManual,
-        surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale }] : selection.formats,
+        surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale, ...(manualCandidate?.basePath === undefined ? {} : { basePath: manualCandidate.basePath }) }] : selection.formats,
         slug,
         name,
         baseBranch: branchValue,
@@ -680,7 +683,7 @@ export function NewProject({
           <NamingStep
             disabled={pending}
             surfaces={!usingManual && selectedCandidates.length > 1 ? selectedCandidates.map(({ item, index }) => ({
-              pathTemplate: item.pathTemplate, locales: item.locales, baseLocale: baseLocales[index] ?? "",
+              pathTemplate: item.pathTemplate, ...(item.basePath === undefined ? {} : { basePath: item.basePath }), locales: item.locales, baseLocale: baseLocales[index] ?? "",
               keyCounts: Object.fromEntries(item.samples.map(sample => [sample.locale, sample.total])),
             })) : undefined}
             onBaseLocale={(index, value) => {
@@ -691,7 +694,8 @@ export function NewProject({
               name,
               slug,
               baseLocale: chosenBase,
-              locales: chosenCandidate?.locales ?? [],
+              ...(chosenCandidate?.basePath === undefined || (!usingManual && selectedCandidates.length > 1) ? {} : { basePath: chosenCandidate.basePath }),
+              locales: usingManual ? manualLocales : chosenCandidate?.locales ?? [],
               keyCounts: Object.fromEntries(
                 (chosenCandidate?.samples ?? []).map((s) => [s.locale, s.total] as const),
               ),
@@ -699,7 +703,7 @@ export function NewProject({
               slugTaken,
               // ③의 info가 "무엇을 읽는가"를 말한다 — 표면이 여럿이면 그 경로도 전부 들어야 한다.
               pathTemplate: usingManual ? pathTemplate
-                : selectedCandidates.map(({ item }) => item.pathTemplate).join(", ") || pathTemplate,
+                : selectedCandidates.map(({ item }) => selectedCandidates.length > 1 ? [item.basePath, item.pathTemplate].filter(Boolean).join(", ") : item.pathTemplate).join(", ") || pathTemplate,
               branch: branchValue,
               host,
               // 생성 거부가 이미 같은 사유를 알렸어도 접근 상실 상태는 Back 뒤 차단에 남겨 둔다 (#199).
