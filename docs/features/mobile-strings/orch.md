@@ -17,7 +17,8 @@
 7. **M1 후보는 다시 모은다** — 지휘자 판단. 10-19 보급률 표본(1,397개)의 원 리포 목록이 리포·`.scratch` 어디에도 남지 않았다. D가 spec에 적힌 같은 기준(스타 구간·2026-04 이후 push·fork·보관 제외)으로 `gh` 검색해 보유 기준 비슷한 규모로 모으고, 검색식과 실제 수를 `repos.md`에 남긴다.
 8. **M3는 계획대로 완전 왕복** (2026-10-19 사용자). M1에서 정답 카탈로그가 UTF-16인 리포가 0개였지만(판별+명시 실패로 축소를 추천했다), design §3대로 읽기·쓰기·바이트 `blobSha`·GitHub blobs·GitLab base64까지 간다.
 9. **되살림 판정은 basePath를 보지 않는다** (2026-10-19 사용자, RB Y3). 템플릿·어댑터가 같으면 옛 행(id·slug·번역·이력)을 되살리고 basePath는 재탐지값으로 덮는다 — design §2의 plan-revival 줄은 B-fix1이 고친다.
-10. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
+10. **잘못된 UTF-8은 모든 로케일 경로에서 명시 실패, 단 적재·Publish 대상으로 고른 파일에만** (2026-10-19 사용자, RC R1). 기존 "못 읽은 파일" 장치(CLI `failures`→audit #7 red+보고 · 서버 `readFiles` 대조 · writer-warnings)로 흘린다 — 무관한 예제 파일은 그 후보만 떨어진다. dev의 손실 디코드(U+FFFD 적재·원본 덮기)로 되돌리지 않는다.
+11. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
 
 ## 배치
 
@@ -61,3 +62,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - C2 알림: `lib/survey/select.ts`에 `.strings` 수집을 더했다(없으면 모바일 코퍼스에서 UTF-16 디코드를 잴 수 없다). 모바일 60리포 clone 실패 0, 바이너리 `.strings`(CodenameOne·Lifeslice)는 `parse-failed`로 명시 거부. ⚠️ select 변경은 기존 코퍼스 1순위 diff 0 확인과 RC 판정 대상.
 - **C2 완료** — 커밋 3개(`f6973b21` test · `1298c1c7` feat · `41c0dd48` docs) + rebase된 C1 둘(`15a4ccfa`·`12a83990`). gate ok(16321 + 격리 914). 기존 학습 109·홀드아웃 20 top-1 diff 0(i18n-ally 예제의 잘못된 UTF-8 두 파일이 파일별 실패로 새로 기록되지만 선택 결과는 같다). 모바일 60 clone 실패 0. M1의 UTF-16 후보 241파일: 바이트 왕복 219 성공, 22는 `bplist00` 바이너리 plist(M1 휴리스틱이 후보로 센 것) → 명시 실패. ⚠️ 동작 변화: `.strings` 밖 로케일 파일의 잘못된 UTF-8도 이제 손실 디코드가 아니라 `parse-failed`(design §3대로) → RC 판정. (b): 실제 GitHub/GitLab UTF-16 왕복 — `.strings` 어댑터가 없어 앱 경로로는 apple-strings 전까지 못 잰다. C 터미널 retain.
 - RC 시작 `ctx_3e6272c805f3`(claude-opus-5-5 high).
+- **RC 완료** — 🔴1(`LocaleFileParseError`가 기존 실패 장치를 우회해 처리되지 않은 예외로 나간다 — CLI push가 `reportFailure` 없이 죽고(무관한 표본이어도), 온보딩 탐지 전체 장애, 미리보기 Try again, 야간 매일 예외. i18n-ally 모양 트리로 재현. survey만 파일별로 잡아 top-1 diff 0이 이를 가렸다) · 🟡3(ARCHITECTURE가 아직 "`POST /git/blobs` 안 부름" · GitLab `path=""` 기본값 · survey `failure`가 핀 기록에서 리포를 뺌) · ⚪8. 사본 `handoffs/review-C.md`. RC 해제. 사용자 결정 → 결정 10.
+- C-fix1 보냄 `ctx_4698d430bf27` — R1·Y1–3·⚪1/2/4/5, ⚪3/6/7은 apple-strings로 넘김, `--verdicts` 붙인 고정 survey 재측정.
