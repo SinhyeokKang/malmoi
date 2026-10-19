@@ -50,3 +50,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **결정 11: `es_419`·`zh-Hant-TW`는 공용 `looksLikeLocale` 한계로 문서화하고 이 스펙에서 넓히지 않는다** — 지휘자 판단(기존 어댑터·locale-add·chrome-codes와 같은 판정, 공용 정책 확장은 범위 밖). 문서는 D2.
 - A-fix1 `ctx_d9f2f948b036`(A 터미널 재사용 — R1·Y1·Y2·Y4·Y5). Y3은 사용자 결정 대기.
 - **결정 12: 완료 조건 3을 "정답을 빼앗지 않는다 — `-`·오탐이 새 후보로 바뀐 것은 보고 대상"으로 완화한다** (2026-10-19 사용자). R Y3의 5리포(CodenameOne · google-api-objectivec · swift-package-manager · open-u60-pro · EasyWatermark)는 통과로 보고하고, Android 정답 둘(open-u60-pro·EasyWatermark)은 android-strings가 이겨야 할 항목으로 그 스펙에 넘긴다(런 마무리 때). spec 문구는 D2.
+- **A-fix1 완료** — 커밋 3개(`6bd30d91` R1 디코더를 plutil 의미로 — 소문자 `\u`는 그대로, bare `\U`는 NUL, 8진은 NeXTSTEP 바이트 표(plutil 채록 128개), 짝 없는 서로게이트는 파일 명시 실패, 키·값 고정값 41개 · `56b07b58` Y1·Y2 · `8ca90f12` Y4·Y5 — 강등을 끄면 red 확인). `gate: ok`(16582 + 격리 923). 고정 SHA 네 코퍼스 1순위 diff 0·metrics 동일 → 기준선 커밋 그대로. 디코더가 의미를 크게 바꿔 수정분만 재리뷰 R2 `ctx_4bfde992eb4e`(codex gpt-6-astra medium, `9959e9ad..HEAD`).
