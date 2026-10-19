@@ -170,7 +170,7 @@ JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Flutter ARB files also keep each key's `@key` metadata and the `@@` entries from your file;
 ICU messages (plurals, selects) are shown and saved as whole strings. Apple strings files stay in their UTF-8 or UTF-16 encoding;
 `.stringsdict` plurals, String Catalog variations, and Android `<plurals>`, `<string-array>`, and `translatable="false"` entries are kept as they are, not edited.
-Android values are shown with escapes resolved; inline tags such as `<xliff:g>` stay as text, and a translation must keep the base language's tags — change only the words between them.
+Android values are shown with escapes resolved; inline tags such as `<xliff:g>` stay as text, and a translation must keep the base language's tags — change only the words between them. A literal `<` is shown and typed as `&lt;`.
 Android's `values/strings.xml` has no language code, so you enter the base language when you connect it (and the workflow needs `base-locale`); it can't be changed later. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
 sends them in one pull request (one merge request on GitLab).
 New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed — for Apple strings files, add the new `.lproj` to your Xcode project (and remove it there when you remove a language); for Android apps that limit languages with `resConfigs` or `localeFilters`, add the new language there.
