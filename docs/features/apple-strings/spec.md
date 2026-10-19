@@ -21,7 +21,9 @@ UTF-16 `.strings`를 원본 인코딩 그대로 돌려쓰기 위한 **파일 인
   Apple 파일을 가진 리포 전체(보유)는 35개다. 코퍼스 후보(mobile-strings M1)는 보유 기준이다.
 - 선례(2026-10-19 조사): Weblate는 UTF-16 `.strings`를 판별해 같은 인코딩으로 돌려쓰고, Tolgee는 항상 UTF-8로 써서 파일 전체가 diff가 된다.
   `.xcstrings`는 Weblate가 미지원(Apple 스펙 미공개), Tolgee는 재생성이라 Xcode가 다시 저장하면 diff가 생긴다.
-- ⚠️ 이 수치는 정규식 추정이다. 지원 여부를 실제 탐지기로 재는 것은 모바일 코퍼스(mobile-strings M1)가 한다.
+- ⚠️ 이 수치는 정규식 추정이다. **mobile-strings M1 실측**(2026-10-19, `docs/adapter-survey/repos.md` "모바일 코퍼스"): 60리포 중 Apple 보유 **34**,
+  정답 포맷 `.strings` 8 · xcstrings 9. **정답 카탈로그가 UTF-16인 리포는 0개**다(UTF-16 `.strings`는 6리포 — 전부 Sparkle 사본·샘플·템플릿).
+  그래도 UTF-16 왕복은 유지한다(2026-10-19 사용자, mobile-strings orch 결정 8 — M3로 dev에 들어갔다).
 
 ## 완료 조건
 
@@ -31,7 +33,7 @@ UTF-16 `.strings`를 원본 인코딩 그대로 돌려쓰기 위한 **파일 인
    언어 파일을 만든 뒤 **두 번째 번역**(그 파일에 아직 없는 키)도 같은 조건으로 PR에 나간다.
 2. **모바일 코퍼스**(학습 + 홀드아웃)의 Apple 리포에서 `pnpm adapter-survey`가 지원 포맷 탐지 · 왕복 의미 동일 · 바이트 고정점 · 조용한 손실 0을
    기존 4포맷과 같은 기준으로 보고한다. 목표: 고정점 100%, 조용한 손실 0건. 탐지·오탐 수치는 목표가 아니라 **보고 대상**이다(§1.9 판정 ④).
-   survey가 UTF-16 파일을 건너뛰지 않는다(지금은 NUL 바이트 파일을 스킵한다 — `lib/survey/run.ts:63`).
+   survey가 UTF-16 파일을 건너뛰지 않는다(mobile-strings M3가 NUL 스킵을 `decodeFileBytes`로 바꾸고 survey 선택에 `.strings`를 더했다).
 3. **기존 코퍼스 회귀 0** — 학습 109·홀드아웃 20의 25차 표가 한 칸도 나빠지지 않고, mobile-strings M0 기준선(리포별 SHA 고정)과 리포별 1순위 경로 diff 0이다
    (POSTMORTEM 2026-09-14). 인코딩 경계 변경 뒤에도 기존 UTF-8 파일의 `blobSha`가 그대로다.
 4. 번역하지 않는 구조(`.stringsdict`·xcstrings variations, `shouldTranslate: false`)가 Publish 뒤에도 **바이트 그대로** 남는다 — 골든 테스트로 고정한다.
@@ -43,7 +45,7 @@ UTF-16 `.strings`를 원본 인코딩 그대로 돌려쓰기 위한 **파일 인
 
 - **복수형 편집 UI** — PRODUCT §4.2 비범위 그대로. `.stringsdict`·xcstrings `variations`는 읽지 않고 보존만 한다.
 - **`Base.lproj/Localizable.strings`가 기준인 리포**(Base Internationalization) — `Base`는 로케일 코드가 아니고 Android `basePath` 같은 장치를
-  Apple에 열지 않는다. 코퍼스 건수만 보고하고(mobile-strings M1), 많으면 후속 spec이다.
+  Apple에 열지 않는다. 코퍼스 건수만 보고하고(mobile-strings M1), 많으면 후속 spec이다. M1 실측 **1리포**(ResearchKit 샘플 앱) — 비목표를 유지한다.
 - UTF-8·UTF-16 밖의 인코딩, `.strings` 밖 파일의 UTF-16.
 - `InfoPlist.strings` 등 테이블 여러 개를 한 소스로 묶기 — 테이블마다 소스 하나(기존 다중 표면 모델).
 - 크로스플랫폼 리포에서 같은 언어가 포맷마다 다른 코드(`zh-Hans`·`zh-rCN`·`zh_CN`)로 갈리는 것 — raw 코드 정책을 따른다.

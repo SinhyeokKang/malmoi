@@ -47,6 +47,15 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add(creat
 사전 작업 스펙 **mobile-strings** design §3이 정본이다(`.strings` 경로에만 UTF-16 판별, 리더·쓰기·`blobSha`, 비가역 입력 명시 실패).
 이 스펙의 어댑터는 문자열만 보고, create는 기준 언어 파일의 인코딩을 물려받는다.
 
+M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
+- 리더는 경로를 받아 `decodeLocaleFile`을 지나고 `GitClient.getBlobText(sha, path)`가 `{ content, encoding? }`를 준다. 렌더 출력은 자기 인코딩,
+  새 파일은 `baseFilePath`의 기준 파일 인코딩을 상속한다. GitHub은 바뀐 UTF-16 파일만 `POST /git/blobs`(base64), GitLab은 그 action만 `base64`.
+- **잘못된 UTF-8은 모든 로케일 경로에서 명시 실패이되, 적재·Publish 대상으로 고른 파일에만 건다**(2026-10-19 사용자, mobile-strings orch 결정 10) —
+  CLI `fileProbe`의 `failures` → audit #7 red + `prepare-failed` 보고, 서버 `reader.blob` → `undefined`, Sync·Publish → 파일별 `RenderError parse-failed`
+  (미리보기 `blocked`, 실행 `skipped: writer-warnings`). 무관한 예제 파일은 그 후보만 떨어진다. 비가역 UTF-16도 같은 경로다.
+- 바이너리 plist(`bplist00`) `.strings`는 NUL 판별로 UTF-16 후보가 됐다가 디코드에서 실패한다(M1 코퍼스 Lifeslice 22파일). 작은 바이너리는 "유효한 UTF-16"으로
+  읽힐 수 있으니 어댑터가 매직으로 명시 거부한다(T2.1).
+
 ### 2.3 Apple `.xcstrings` (마지막 배치)
 
 모든 언어가 든 JSON 하나다(결정 2026-10-19 사용자 — 이 spec의 마지막 배치로 둔다). `ts-dict`와 같은 multi-locale이라 **언어 추가·제거는 비지원**이다

@@ -6,20 +6,27 @@
 
 ## 2a. 사전 작업
 
-`.strings` 인코딩 경계는 **mobile-strings** M3이 든다.
+`.strings` 인코딩 경계는 **mobile-strings** M3이 든다 — 2026-10-19 dev에 들어갔다(design §2.2 끝 "M3로 dev에 들어간 계약").
+M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없어 도달하지 않는다):
+- [ ] **T2.0a UTF-16 blob 제한 병렬** — `lib/github.ts`의 UTF-16 `POST /git/blobs`가 순차다. iTerm2(65파일) 규모에서 `maxDuration=60`(`app/api/pull/route.ts`) 안에
+      들도록 제한 병렬(예: 8)과 "UTF-8만 있는 Publish는 blob POST 0회" 단언 유지, ARCHITECTURE §3 Publish 단계 4의 예산 문구 갱신.
+- [ ] **T2.0b survey `.strings` 수집 상한** — `lib/survey/select.ts`가 모든 `.strings`를 `FILE_BUDGET` 앞에 넣는다. 큰 iOS 리포에서 사전순 절단이 후보를 자르지 않게
+      `.lproj` 그룹당 상한을 둔다(같은 파일 머리의 경고와 같은 함정).
+- [ ] **T2.0c 내용 예산 문구** — `checkContentBudget`(ARCHITECTURE "실제 UTF-8 수신 바이트")는 UTF-16 파일에서 디코드한 문자열의 UTF-8 길이를 센다. 원시 크기는
+      트리 크기 검사가 막으므로 문구만 맞춘다.
 
 ## 2b. Apple `.strings` (`apple-strings`)
 
 - [ ] **T2.1 테스트** — 토크나이저 범위 · 이스케이프 왕복 속성 · 비정규 리터럴 미변경 · 주석/빈 줄 보존 · 주석 속 `"a" = "b";`·`//` 안의 `=`는 엔트리 아님 ·
       중복 키(나중 값이 엔트리, `duplicate-key` 보고, 가려진 앞 리터럴 미변경) · `"__proto__" = "x";`가 own property · 빈 값 쓰기(`planClearability`) ·
-      CRLF · 0바이트 파일 · 퇴화 출력 왕복 · `Base.lproj` 제외 · `fastlane/` 곁가지 · 진입점 `detectCandidatesAcross` 1순위 ·
+      CRLF · 0바이트 파일 · 퇴화 출력 왕복 · `bplist00` 매직 명시 거부(design §2.2) · `Base.lproj` 제외 · `fastlane/` 곁가지 · 진입점 `detectCandidatesAcross` 1순위 ·
       `create`(인코딩·BOM만 상속, 주석·기준 값 미복사, 값 있는 활성 키만) · **비기준 파일 누락 키 삽입**(기준 순서상 앞 키 뒤·없으면 끝, 이웃 줄바꿈·들여쓰기,
       기준 파일에는 삽입 안 함) · **생성 → 다른 키 번역 → 두 번째 Publish** 왕복(렌더 + `undeliverable` 분류에서 blocking 없음) · `contract.ts` 매트릭스 편입. 검증: red.
 - [ ] **T2.2 구현 + 배선** — arb T1.3과 같은 손 목록(`SUPPORTED_ADAPTERS`에 추가, 사전 라벨 "Apple strings file" 형). 검증: `pnpm test` green →
       껍데기 테스트가 `.strings`를 내려받는다 → `pnpm gate` green. 커밋: `feat(adapters): add Apple strings adapter`
-- [ ] **T2.3 재측정** — 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · `.strings` 고정점 100% · 조용한 손실 0 · UTF-16 리포가 분모에 듦 ·
+- [ ] **T2.3 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · `.strings` 고정점 100% · 조용한 손실 0 · UTF-16 리포가 분모에 듦 ·
       `Base.lproj` 리포 수·`resource-limit` 거부 수 보고. 커밋 없음.
-- [ ] **T2.4 실물 (수동)** — `/roundtrip`(UTF-8 리포 하나 + UTF-16 리포 하나). 전제: macOS + Xcode, 폐기용 리포. 검증: 고친 셀 외 diff 0, 인코딩·BOM 유지, Xcode 빌드 통과.
+- [ ] **T2.4 실물 (수동)** — `/roundtrip`(UTF-8 리포 하나 + UTF-16 리포 하나). M3의 런타임 미검증 항목(실제 GitHub·GitLab이 base64 blob/action을 저장한 바이트)을 여기서 닫는다. 전제: macOS + Xcode, 폐기용 리포. 검증: 고친 셀 외 diff 0, 인코딩·BOM 유지, Xcode 빌드 통과.
 
 ## 4. Apple `.xcstrings` (`apple-xcstrings`)
 
@@ -39,7 +46,7 @@
 ## 5. 문서 (문서별 커밋)
 
 - [ ] **T5.1 `docs(PRODUCT)`** — §0 포맷 수, §2 포지셔닝 문구, §4.1 지원 포맷, §7.2 언어 추가·제거 지원 포맷 목록(`xcstrings` 비지원), 비목표(`Base.lproj`).
-- [ ] **T5.2 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, 파일 인코딩 경로와 §3.1 API 예산(UTF-16 blob), 값 표현 표(design §3), §0 불변식 3의
+- [ ] **T5.2 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, 파일 인코딩 경로와 API 예산(UTF-16 blob — M3가 §3 Publish 단계 4 옆에 적었다. design의 "§3.1"은 절 번호가 어긋난 것이었다), 값 표현 표(design §3), §0 불변식 3의
       수술적 표면 목록에 `apple-strings`·`apple-xcstrings`, xcstrings 셀 삽입 규칙(ts-dict와의 차이), 키 = 원문 규칙.
 - [ ] **T5.3 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록.
 - 폴더 정리는 이 스펙에서 하지 않는다 — 네 폴더를 android-strings T5.5에서 함께 지운다.
