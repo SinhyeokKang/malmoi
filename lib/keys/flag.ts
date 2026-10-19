@@ -92,9 +92,9 @@ export const LANGUAGE_FLAGS = new Map<string, string>([
   ["no", "no"], ["nb", "no"], ["nn", "no"],
 
   // 아시아·중동.
-  ["tr", "tr"], ["he", "il"], ["fa", "ir"], ["hi", "in"], ["ur", "pk"],
+  ["tr", "tr"], ["he", "il"], ["iw", "il"], ["fa", "ir"], ["hi", "in"], ["ur", "pk"],
   ["bn", "bd"], ["ne", "np"], ["th", "th"], ["vi", "vn"], ["km", "kh"],
-  ["lo", "la"], ["id", "id"], ["ka", "ge"], ["hy", "am"], ["az", "az"],
+  ["lo", "la"], ["id", "id"], ["in", "id"], ["ka", "ge"], ["hy", "am"], ["az", "az"],
   ["kk", "kz"], ["uz", "uz"], ["mn", "mn"],
 
   /**
