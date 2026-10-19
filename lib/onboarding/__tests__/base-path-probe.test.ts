@@ -47,6 +47,14 @@ describe("probeTargets → readFiles — basePath 후보", () => {
     await expect(readFiles(reader, snapshot, targets)).resolves.toHaveLength(3);
   });
 
+  it("basePath가 트리에 없으면 그것도 겨누지 않는다 — 존재하지 않는 경로를 크기 조회에 넘기지 않는다", async () => {
+    const paths = [KO];
+    const targets = probeTargets([group], [], paths);
+    expect(targets).toEqual([KO]);
+    const { snapshot, reader } = repo(paths);
+    await expect(readFiles(reader, snapshot, targets)).resolves.toHaveLength(1);
+  });
+
   it("basePath 없는 후보는 지금처럼 치환 표본이다 — 탐지 후보는 트리에서 왔으므로 실재한다", () => {
     expect(probeTargets([{ pathTemplate: "i18n/{locale}.json", locales: ["en", "ko"] }], [], ["i18n/en.json", "i18n/ko.json"]))
       .toEqual(["i18n/en.json", "i18n/ko.json"]);
