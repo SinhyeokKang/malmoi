@@ -88,6 +88,16 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - `state`: Malmoi가 새로 쓴 셀은 `translated`. 기존 셀의 값을 바꿀 때 `state`는 건드리지 않는다(`needs_review`를 Malmoi가 풀지 않는다).
 - ⚠️ **Xcode 서식 고정점은 실물로만 잰다** — Malmoi 출력을 Xcode로 열어 저장해도 바이트가 같은지를 T4.3 `/roundtrip`이 본다. 다르면 그 차이를
   골든 테스트로 고정하고 삽입 서식을 맞춘다.
+- **구현 결과**(배치 X · 리뷰 RX 수정, 2026-10-19):
+  - 판정 이름: `Adapter.insertsMissingCells?: true`(이 어댑터만) + `cellSlot(adapter, files, locale, key)`(`lib/pull/undeliverable.ts`)를 경로 선택(`slotlessCells`)과
+    미리보기가 같이 부른다. 빈 값 경고(`write-empty-unsupported`)는 일부러 strict `keySlot`에 남겼다 — 비울 수 없는 것은 실제로 있는 셀이다.
+  - **같은 이름은 Xcode 의미**(orch 결정 14 — 앞이 이긴다, `duplicate-property` 경고·CI green). `JSON.parse`(뒤)와 Xcode 26.6(앞)이 갈린다. 언어 셀은 앞 사본을 자료형과 무관하게
+    읽고(앞이 `null`이면 그 언어 값 없음 — 쓰기는 `write-slot-not-scalar`), 키 단위 가려진 사본이 `null`·문자열이면 Xcode가 못 읽는 파일이라 `parse-failed`다.
+  - **빈 키 `""`는 엔트리가 아니다** — 적재 계약 min(1)이 페이로드 전체를 거부했다. **적재 경계를 못 지나는 언어 코드**(`isPathSafeLocale`·`isLocaleShaped`)는 뺀다.
+  - **복수형**: 원문 셀이 `variations`면 키 전체가 빠지고(`value-not-string` unmanaged), 번역 셀만이면 그 셀만 빠진다. 그 셀에 쓰면 `write-slot-not-scalar`(blocking).
+  - `create`가 없고 언어 추가·제거는 그 앞에서 `unsupported-format`이라 `write-create-unsupported`에는 닿지 않는다. 템플릿은 와일드카드 없는 파일 경로 하나다.
+  - Xcode 26.6 채록 서식: 키·필드·언어 코드 코드 유닛 순 · 빈 객체 `{\n\n<들여쓰기>}` · 끝 개행 없음 · 이스케이프는 `JSON.stringify`와 같다. ⚠️ 옛 Xcode 파일은 키가 대소문자 무시 순이라
+    Xcode 26으로 다시 저장하면 Malmoi와 무관하게 순서가 바뀐다.
 
 ## 3. 값의 표현
 
@@ -95,6 +105,7 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 |---|---|---|---|
 | `.strings` | `"…"` 리터럴 | 이스케이프를 푼 문자열(`%@`·`%1$s` 그대로) | 없음 |
 | `.xcstrings` | JSON 문자열 | JSON 이스케이프를 푼 문자열(원문 셀 없는 키는 키 문자열) | 없음(§2.3 — 기준 값이 키와 다르면 원문 셀 삽입) |
+| `.xcstrings` 빈 키 `""` | — | 엔트리가 아니다(읽지도 쓰지도 않는다) | — |
 
 화면 라벨은 기존 형을 따르고 둘을 라벨로 가른다 — 예: "Apple strings file" / "Apple String Catalog"(예시 경로만으로는 구별되지 않는다, 내부 이름 미노출).
 
@@ -112,6 +123,10 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - 버킷: `rest` 버킷에서 기존 4포맷과 같은 `rankTemplates`를 지난다. 경로 모양(`.lproj/`·`.xcstrings`)이 겹치지 않아 기존 리포의 1순위를
   뺏을 경로가 원리적으로 좁다. 그래도 완료 조건 3이 기준선 대조로 확인한다.
 - 경로 신호가 강해 1패스 후보를 낸다. probe는 내용 검증(`.strings` 문법, xcstrings JSON 구조)에만 쓴다.
+  ⚠️ **구현 결과(배치 X)**: xcstrings는 1패스 후보가 없다 — 언어 목록이 파일 안이라 내려받을 경로를 못 정한다(`sampleOrder`가 0개). ts-dict처럼 **씨앗** `xcstringsProbePaths`(2개 —
+  `Localizable` → 예제·테스트 아님 → 얕은 경로)가 내려받고, 온보딩 blob 예산은 ≤ 40이다. 경로 거름은 apple-strings의 `NOT_SOURCE`를 공유하고 Flutter 셸 강등에 xcstrings도 든다.
+  **파일당 2MB 예산**(공용)에 정답 카탈로그 2/9(iTerm2 7.1MB · Shotnix 2.2MB)가 걸린다 — 예산은 그대로 두고 보고한다(orch 결정 15). 자동 씨앗은 트리가 준 크기로
+  2MB 초과 카탈로그를 건너뛴다(결정 16 — `probeTargets`의 `knownSizes`). GitLab 트리엔 크기가 없어 그쪽 탐지는 여전히 `resource-limit`이다(결정 17).
 - ⚠️ **probe 예산 밖으로 밀린 정답 후보는 조용히 사라진다**(arb 리뷰 R1). 온보딩은 1패스 순위 상위 `PROBE_LIMITS.jsonLike`(5)개 후보만 내려받고,
   `verifySamples`가 내용 없이 만난 후보를 미검증으로 떨어뜨린다. iOS 리포는 테이블(`Localizable`·`InfoPlist`·`Main`·스토리보드별)과 `fastlane/` 메타데이터로
   `.strings` 후보가 많다 — 정답 `Localizable.strings`가 6번째면 화면에 후보가 없다. survey·CLI는 모든 파일을 읽어 이 실패를 못 본다(코퍼스 통과가 보장이 아니다).

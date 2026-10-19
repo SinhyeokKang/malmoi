@@ -41,6 +41,7 @@ UTF-16 `.strings`를 원본 인코딩 그대로 돌려쓰기 위한 **파일 인
    (2026-10-19 사용자, orch 결정 12 — 27차 8리포. Android 정답 둘은 android-strings가 이겨야 할 항목으로 넘긴다). 인코딩 경계 변경 뒤에도 기존 UTF-8 파일의 `blobSha`가 그대로다.
 4. 번역하지 않는 구조(`.stringsdict`·xcstrings variations, `shouldTranslate: false`)가 Publish 뒤에도 **바이트 그대로** 남는다 — 골든 테스트로 고정한다.
 5. 언어 추가·제거(§7.2 locale-add)는 언어별 파일인 `.strings`에서 동작한다. `.xcstrings`는 ts-dict와 같이 **추가·제거 동작이 렌더되지 않는다**.
+   `.lproj`를 Xcode 프로젝트(`project.pbxproj`)에 등록·제거하는 것은 개발자 몫이다(2026-10-19 사용자, orch 결정 13 — 코드 사전의 앱 등록 규칙과 같다).
 6. 유효한 UTF-16(LE·BE, BOM 유무) `.strings` 파일이 원본 인코딩·BOM 그대로 PR에 나가고, 고치지 않은 파일의 `blobSha`가 원본과 같다(design §2.2).
    무손실로 디코드되지 않는 `.strings`(BOM + 짝 없는 서로게이트 등)는 명시 실패로 적재·쓰기가 막힌다 — 대체 문자로 조용히 바뀌지 않는다.
 
@@ -52,5 +53,6 @@ UTF-16 `.strings`를 원본 인코딩 그대로 돌려쓰기 위한 **파일 인
 - UTF-8·UTF-16 밖의 인코딩, `.strings` 밖 파일의 UTF-16.
 - `InfoPlist.strings` 등 테이블 여러 개를 한 소스로 묶기 — 테이블마다 소스 하나(기존 다중 표면 모델).
 - 크로스플랫폼 리포에서 같은 언어가 포맷마다 다른 코드(`zh-Hans`·`zh-rCN`·`zh_CN`)로 갈리는 것 — raw 코드 정책을 따른다.
-- Xcode가 만드는 생성물 갱신.
+- Xcode가 만드는 생성물 갱신 — `project.pbxproj`의 언어 등록 포함(orch 결정 13).
+- 파일당 2MB 첫 적재 예산의 확장 — 큰 단일 카탈로그(iTerm2 7.1MB · Shotnix 2.2MB)는 `resource-limit`으로 보고만 한다(orch 결정 15).
 - 화면 신규 표면 — 어댑터 라벨·예시가 기존 수동 지정 목록에 붙을 뿐이다(그래서 design-brief가 없다).
