@@ -35,3 +35,4 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 
 - Run `run_c66777ef86a4`. 1파 시작(2026-10-19): A `ctx_8c9849397b06`(워크트리 `arb-A`, claude-opus-5-5 high) · D `ctx_4bc57256ee52`(`arb-D`, claude-opus-5-5 medium) — 두 `launch.effective`가 요청과 같다. 브리프: main `.scratch/orch-arb/`.
 - D 질문(가이드 굵은 라벨이 A의 사전 키를 요구) → **결정 9: ARB 사전 라벨은 en·ko·es 모두 `Flutter ARB`, 예시 `lib/l10n/app_{locale}.arb`, 가이드 커밋은 D2로 미룬다** — 지휘자 판단(제품명이라 번역하지 않는다, 기존 라벨 형). A에게 전달했고 A가 라벨을 인용해 확인했다(랜딩 본문 포맷 목록 `messages/en.tsx:689`도 A 몫).
+- **D 완료** — 문서별 커밋 6개(`aa7e016a` PRODUCT · `cef50790` ARCHITECTURE(새 §1.37, 불변식 2·4 확장) · `5b27d9d9` CLAUDE+AGENTS · `6d073887` ACTIONS · `41b6a57a` DIRECTORY · `9d752aec` README), `gate: ok`(16328). 지휘자가 불변식 문구 diff를 직접 읽음 — "키마다 출처 하나·고르는 코드 없음" 근거 유지. 미룬 5개 → D2(가이드 en·ko·es + AUTHORING 행 · §1.9 표·§1 어댑터 표 "덮는 대상" 칸 · `contract.ts` 예외 행 대조 · §1.1 "다섯 어댑터" 문장 · DIRECTORY 테스트 파일 이름). D 터미널 retain.
