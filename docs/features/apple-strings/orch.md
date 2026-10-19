@@ -41,3 +41,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 ## 진행
 
 - Run `run_938a8005f330`. 1파 시작(2026-10-19): A `ctx_39bb35af4e90`(`apple-A`, claude-opus-5-5 high) · P `ctx_da25b17ad8a7`(`apple-P`, claude-sonnet-5-5 medium) · D `ctx_aa191565e708`(`apple-D`, claude-opus-5-5 medium) — 세 `launch.effective`가 요청과 같다. 브리프: main `.scratch/orch-apple/`.
+- **D 완료** — 문서별 커밋 10개(자체 리뷰 수정 3 + 사용자 요청 README 배지 정리 `679373ec`: formats 배지 제거, release · license · price · MCP · self-hosting 순), `gate: ok`(16406). 새 ARCHITECTURE §1.45. 지휘자가 CLAUDE.md 코어 원칙 diff를 직접 읽음 — 목록 추가뿐. 로컬 dev에 cherry-pick(push는 A와 함께 — xcstrings 서술이 코드보다 앞선다). 미룬 몫 → D2·D3: §3 단계 4 예산 문구(P) · §1.9 27차 · 가이드 · A/X 차이(특히 `duplicate-key` 갈래가 warning이면 오류 갈래 표·ACTIONS red/green 표, DIRECTORY 테스트 경로, 셀 삽입 판정 함수 이름). D 터미널 retain. 사본 `handoffs/handoff-D.md`.
