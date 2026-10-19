@@ -24,6 +24,8 @@ export type DeliveryContextInput = {
     nested: boolean | null;
     nestedByPath: unknown;
     baseLocale: string | null;
+    /** ⚠️ 값이 있을 때만 튜플에 붙는다 — 저장된 지문이라 null 소스의 바이트가 바뀌면 기존 확인이 전부 무효가 된다(mobile-strings design §2). */
+    basePath: string | null;
   };
 };
 
@@ -42,6 +44,7 @@ export function deliveryContextFingerprint(input: DeliveryContextInput): string 
   const fields = [
     input.repositoryId, input.baseBranch,
     s.id, s.importRevision, s.adapterName, s.pathTemplate, s.nested, canonical(s.nestedByPath ?? null), s.baseLocale,
+    ...(s.basePath === null ? [] : [s.basePath]),
   ];
   const tuple = JSON.stringify(input.repoHost === "github" ? fields : [input.repoHost, ...fields]);
   return createHash("sha256").update(tuple).digest("hex");

@@ -60,6 +60,7 @@ async function main(): Promise<void> {
             slug: true,
             adapterName: true,
             pathTemplate: true,
+            basePath: true,
             nested: true,
             nestedByPath: true,
             baseLocale: true,
@@ -193,6 +194,7 @@ async function main(): Promise<void> {
       format,
       layout,
       tree.map((t) => t.path),
+      surface.baseLocale,
     );
     console.log(`\n로케일 파일 ${paths.length}개 (${layout}):`);
     for (const p of paths) {

@@ -259,7 +259,7 @@ describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (
   it("per-locale은 `{locale}` 치환 ∩ 트리 경로다 — 트리에 없는 로케일 파일은 뺀다", () => {
     const format = json("src/locales/{locale}.json", ["ko", "en", "fr"]);
     const paths = ["src/locales/en.json", "src/locales/ko.json", "src/locales/index.ts", "README.md"];
-    expect(ingestTargets(format, "per-locale", paths)).toEqual(["src/locales/en.json", "src/locales/ko.json"]);
+    expect(ingestTargets(format, "per-locale", paths, "en")).toEqual(["src/locales/en.json", "src/locales/ko.json"]);
   });
 
   it("multi-locale은 `matchGlobPaths`로 글롭에 걸리는 파일 **전부**다", () => {
@@ -270,7 +270,7 @@ describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (
       "src/i18n/namespaces/sub/deep.ts",
       "src/i18n/types.ts",
     ];
-    const out = ingestTargets(format, "multi-locale", paths);
+    const out = ingestTargets(format, "multi-locale", paths, "en");
     expect(out).toEqual(["src/i18n/namespaces/common.ts", "src/i18n/namespaces/editor.ts"]);
     expect(out).toEqual(matchGlobPaths(format.pathTemplate, paths));
   });
@@ -278,14 +278,14 @@ describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (
   it("결과는 결정적으로 정렬돼 있다", () => {
     const format = json("i18n/{locale}.json", ["ko", "en", "de"]);
     const paths = ["i18n/ko.json", "i18n/de.json", "i18n/en.json"];
-    expect(ingestTargets(format, "per-locale", paths)).toEqual(["i18n/de.json", "i18n/en.json", "i18n/ko.json"]);
+    expect(ingestTargets(format, "per-locale", paths, "en")).toEqual(["i18n/de.json", "i18n/en.json", "i18n/ko.json"]);
   });
 
   it("적재 상한이 없다 — probeTargets의 21개와 별개 예산이다 (50로케일이면 50개)", () => {
     const locales = Array.from({ length: 50 }, (_, i) => `l${String(i).padStart(2, "0")}`);
     const format = json("i18n/{locale}.json", locales);
     const paths = locales.map((l) => `i18n/${l}.json`);
-    expect(ingestTargets(format, "per-locale", paths)).toHaveLength(50);
+    expect(ingestTargets(format, "per-locale", paths, locales[0]!)).toHaveLength(50);
   });
 });
 

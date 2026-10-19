@@ -188,6 +188,8 @@ export async function POST(request: Request): Promise<NextResponse> {
           expected: {
             adapter: surface.adapterName,
             pathTemplate: surface.pathTemplate,
+            // 기준 언어 경로만 다른 불일치가 같은 줄 둘로 보이지 않게 — 값이 있을 때만 싣는다(기존 응답 모양 유지).
+            ...(surface.basePath === null ? {} : { basePath: surface.basePath }),
             baseLocale: surface.baseLocale,
             // ⚠️ **선언도 보인다** (6b-3). 없으면 대기 중인 프로젝트의 CI 로그가 "expected en, got fr"만
             // 보여, 실제로는 `ko`도 받아들여진다는 사실이 진단에서 사라진다. 비밀이 아니라 라우팅 정보다.
@@ -196,6 +198,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           got: {
             adapter: parsed.data.format.adapter,
             pathTemplate: parsed.data.format.pathTemplate,
+            ...(parsed.data.format.basePath === undefined ? {} : { basePath: parsed.data.format.basePath }),
             baseLocale: parsed.data.format.baseLocale,
           },
         },

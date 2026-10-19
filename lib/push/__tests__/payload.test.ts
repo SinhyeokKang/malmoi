@@ -77,13 +77,13 @@ describe("selectLocaleFiles — 어댑터에게 무엇을 먹이는가", () => {
   const probe = (p: string) => `content of ${p}`;
 
   it("per-locale은 {locale}을 치환한다", () => {
-    const files = selectLocaleFiles("per-locale", format, ["_locales/en/messages.json", "_locales/ko/messages.json"], probe);
+    const files = selectLocaleFiles("per-locale", format, ["_locales/en/messages.json", "_locales/ko/messages.json"], probe, "en");
     expect(files.map((f) => f.path)).toEqual(["_locales/en/messages.json", "_locales/ko/messages.json"]);
     expect(files[0]?.content).toBe("content of _locales/en/messages.json");
   });
 
   it("per-locale에서 리포에 없는 경로는 뺀다 — 빈 내용을 먹이면 어댑터가 키를 잃는다", () => {
-    const files = selectLocaleFiles("per-locale", format, ["_locales/en/messages.json"], probe);
+    const files = selectLocaleFiles("per-locale", format, ["_locales/en/messages.json"], probe, "en");
     expect(files.map((f) => f.path)).toEqual(["_locales/en/messages.json"]);
   });
 
@@ -106,7 +106,7 @@ describe("selectLocaleFiles — 어댑터에게 무엇을 먹이는가", () => {
       "src/i18n/namespaces/__tests__/common.test.ts",
       "src/i18n/index.ts",
       "src/i18n/namespaces/readme.md",
-    ], probe);
+    ], probe, "en");
     expect(files.map((f) => f.path)).toEqual(["src/i18n/namespaces/common.ts"]);
   });
 });

@@ -46,8 +46,8 @@ describe("push·pull이 같은 파일 집합을 고른다 (survey도 같은 함�
   const format: DetectedFormat = { adapter: "ts-dict", pathTemplate: TMPL, locales: ["ko", "en"] };
 
   it("selectLocaleFiles와 resolveLocalePaths의 경로가 일치한다", () => {
-    const pushPaths = selectLocaleFiles("multi-locale", format, PATHS, (p) => `c:${p}`).map((f) => f.path);
-    const pullPaths = resolveLocalePaths(format, "multi-locale", PATHS).map((p) => p.path);
+    const pushPaths = selectLocaleFiles("multi-locale", format, PATHS, (p) => `c:${p}`, "en").map((f) => f.path);
+    const pullPaths = resolveLocalePaths(format, "multi-locale", PATHS, "en").map((p) => p.path);
     expect(pushPaths).toEqual(pullPaths);
     expect(pushPaths).toEqual(["src/i18n/namespaces/common.ts"]);
   });

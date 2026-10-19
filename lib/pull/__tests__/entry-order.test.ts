@@ -35,6 +35,7 @@ const PROJECT = {
   nested: false,
   nestedByPath: null as unknown,
   baseLocale: "en",
+  basePath: null,
   lastPulledAt: null as Date | null,
 };
 

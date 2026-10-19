@@ -110,7 +110,7 @@ it("리포의 `\"\"` · 키 부재 · 로케일 파일 부재 · orphaned 키는
   const state = await loadPullState(prisma, "p");
   const surface = state.surfaces[0]!;
   const format = formatFromProject(surface, surface.localeCodes);
-  const files = renderLocaleFiles(format, "per-locale", resolveLocalePaths(format, "per-locale", []), surface.keys, "en", new Map());
+  const files = renderLocaleFiles(format, "per-locale", resolveLocalePaths(format, "per-locale", [], "en"), surface.keys, "en", new Map());
   const ko = files.find(f => f.path === "i18n/ko.json")?.content;
   expect(ko === null || ko === undefined ? undefined : JSON.parse(ko)).toEqual({ k1: "db-k1-ko", k2: "db-k2-ko" });
 });

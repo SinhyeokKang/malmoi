@@ -103,25 +103,25 @@ async function detectIn(userId: string, target: RepoTarget, ref: string): Promis
   if (summaries.length === 0) return { ok: false, error: "no-candidates" };
 
   const candidates = summaries.flatMap((summary) => {
-    const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths));
+    const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths, summary.basePath ?? null));
     const confirmed = planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)));
     if (confirmed.status !== "ok") return [];
-    return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths), confirmation: signSampleConfirmation({
+    return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths, summary.baseLocale), confirmation: signSampleConfirmation({
       userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),
       ref, headSha: snapshot.headSha,
       // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
-      format: { ...confirmed.format, locales: summary.locales },
+      format: { ...confirmed.format, locales: summary.locales, baseLocale: summary.baseLocale },
     }, requireEnv("APP_SIGNING_SECRET"), new Date()) }];
   });
   return candidates.length === 0 ? { ok: false, error: "no-candidates" } : { ok: true, candidates };
 }
 
 /** 추가 읽기 없이 확정 포맷과 같은 snapshot의 전체 경로로 소유 범위를 계산한다. */
-export function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]): string[] {
+export function candidateOutputPaths(format: DetectedFormat, paths: readonly string[], baseLocale: string): string[] {
   const layout = adapterFor(format).layout;
   return [...new Set([
-    ...templatePaths(format.adapter, format.pathTemplate, paths),
-    ...ingestTargets(format, layout, paths),
-    ...resolveLocalePaths(format, layout, paths).map(item => item.path),
+    ...templatePaths(format.adapter, format.pathTemplate, paths, format.basePath ?? null),
+    ...ingestTargets(format, layout, paths, baseLocale),
+    ...resolveLocalePaths(format, layout, paths, baseLocale).map(item => item.path),
   ])].sort(compareKeys);
 }

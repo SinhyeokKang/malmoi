@@ -12,8 +12,8 @@ const BASE: DiscardFingerprintInput = {
   projectId: "p1",
   repository: { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" },
   surfaces: [
-    { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" },
-    { id: "s2", importRevision: 0, adapterName: "yaml-catalog", pathTemplate: "config/{locale}.yml", baseLocale: "en" },
+    { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: "en" },
+    { id: "s2", importRevision: 0, adapterName: "yaml-catalog", pathTemplate: "config/{locale}.yml", basePath: null, baseLocale: "en" },
   ],
   pending: [
     { id: "t1", token: "a" },

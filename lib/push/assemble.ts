@@ -51,7 +51,7 @@ export function assemblePushInput(input: {
   if (baseLocale === undefined) fail("no locales — nothing to connect");
 
   const adapter = adapterFor(format);
-  const files = selectLocaleFiles(adapter.layout, format, paths, probe);
+  const files = selectLocaleFiles(adapter.layout, format, paths, probe, baseLocale);
   const read = adapter.read(format, files);
 
   // read 에러를 여기서 판정하지 않는다 — CLI는 exit 1로 죽이고 온보딩은 화면에 수를 보인다.

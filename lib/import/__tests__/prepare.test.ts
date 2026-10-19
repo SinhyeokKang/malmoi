@@ -9,7 +9,7 @@ const snapshot: Extract<RepoSnapshot, { status: "ok" }> = {
 const input: SurfaceImportInput = {
   projectId: "p", projectSlug: "fixture", mode: "repository", snapshot,
   token: "run", startedAt: new Date("2026-09-15T00:00:00Z"),
-  surface: { id: "s", slug: "default", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false, nestedByPath: null },
+  surface: { id: "s", slug: "default", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", basePath: null, nested: false, nestedByPath: null },
 };
 const reader = (content: string | undefined): RepoReader => ({ sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths), snapshot: vi.fn(), blob: vi.fn().mockResolvedValue(content) });
 describe("prepareSurfaceImport", () => {

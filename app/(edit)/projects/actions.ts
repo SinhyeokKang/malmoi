@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adapterFor, isAdapterName } from "@/lib/adapters";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import type { AdapterError } from "@/lib/adapters/types";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
@@ -531,9 +532,10 @@ export async function loadCandidateSample(raw: NewRepoInput & {
   const format = { ...verified, adapter: verified.adapter };
   const adapter = adapterFor(format);
   const paths = snapshot.files.map((file) => file.path);
+  // 서명한 기준 언어의 표본은 basePath에서 읽는다(mobile-strings design §2) — 그 밖의 언어는 치환이다.
   const targets = adapter.layout === "per-locale"
-    ? [format.pathTemplate.replaceAll("{locale}", input.locale)].filter((path) => paths.includes(path))
-    : ingestTargets(format, adapter.layout, paths);
+    ? [input.locale === verified.baseLocale ? baseFilePath(format, input.locale) : format.pathTemplate.replaceAll("{locale}", input.locale)].filter((path) => paths.includes(path))
+    : ingestTargets(format, adapter.layout, paths, verified.baseLocale ?? input.locale);
   if (targets.length === 0) return { ok: false, error: "manual-no-match" };
   try {
     const files = await readFiles(reader, snapshot, targets);
@@ -579,7 +581,8 @@ export async function confirmManualFormat(raw: NewRepoInput & {
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
-  const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+  // 수동 지정은 basePath를 받지 않는다 — 템플릿 밖 기준 언어 파일은 탐지 후보로만 고른다.
+  const targets = templatePaths(input.adapter, input.pathTemplate, paths, null);
   try {
     const files = await readFiles(reader, snapshot, targets);
     if (files.length !== targets.length) return { ok: false, error: "unavailable" };
@@ -591,7 +594,7 @@ export async function confirmManualFormat(raw: NewRepoInput & {
     if (!summary.samples.some((sample) => sample.locale === input.baseLocale)) {
       const format = { ...confirmed.format, locales: [input.baseLocale] };
       const adapter = adapterFor(format);
-      const selectedPaths = new Set(ingestTargets(format, adapter.layout, paths));
+      const selectedPaths = new Set(ingestTargets(format, adapter.layout, paths, input.baseLocale));
       const read = adapter.read(format, files.filter((file) => selectedPaths.has(file.path)));
       const locale = read.locales.find((item) => item.locale === input.baseLocale);
       // 위와 같은 규칙 — 엔트리 층 오류는 후보를 떨어뜨리지 않는다 (ARCHITECTURE §4).
@@ -600,10 +603,10 @@ export async function confirmManualFormat(raw: NewRepoInput & {
         rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })),
       });
     }
-    return { ok: true, candidate: { ...summary, outputPaths: candidateOutputPaths(confirmed.format, paths), baseLocale: confirmed.baseLocale,
+    return { ok: true, candidate: { ...summary, outputPaths: candidateOutputPaths(confirmed.format, paths, confirmed.baseLocale), baseLocale: confirmed.baseLocale,
       confirmation: signSampleConfirmation({
         userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),
-        ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
+        ref: input.ref, headSha: snapshot.headSha, format: { ...confirmed.format, baseLocale: confirmed.baseLocale },
       }, requireEnv("APP_SIGNING_SECRET"), new Date()),
     } };
   } catch (error) {
@@ -782,7 +785,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
 
     let prepared: Awaited<ReturnType<typeof readSurfaceSnapshot>>;
     try {
-      prepared = await readSurfaceSnapshot(reader, snapshot, { adapter: adapterName, pathTemplate, baseLocale });
+      prepared = await readSurfaceSnapshot(reader, snapshot, { adapter: adapterName, pathTemplate, baseLocale, basePath: surface.basePath });
     } catch (error) {
       if (!(error instanceof IngestBudgetError)) throw error;
       await failRun();

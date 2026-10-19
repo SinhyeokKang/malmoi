@@ -15,6 +15,8 @@ export type ConfirmedCandidate = {
   adapter: string;
   pathTemplate: string;
   baseLocale: string;
+  /** 후보가 낸 기준 언어 경로(mobile-strings design §2). 없음 = 서명된 포맷에도 없어야 한다. */
+  basePath?: string | undefined;
 };
 
 export type SampleConfirmationPlan =
@@ -23,7 +25,7 @@ export type SampleConfirmationPlan =
   | { status: "invalid-input"; index: number }
   /** 변조·만료·미래 시각·컨텍스트 불일치 — 기존 온보딩과 같은 낱말로 접는다. */
   | { status: "sample-expired"; index: number }
-  /** 서명된 포맷과 고른 adapter·pathTemplate이 다르거나 baseLocale이 서명된 로케일 밖이다. */
+  /** 서명된 포맷과 고른 adapter·pathTemplate·basePath가 다르거나 baseLocale이 서명된 로케일 밖이다. */
   | { status: "manual-no-match"; index: number };
 
 export function planSampleConfirmations(input: {
@@ -38,7 +40,8 @@ export function planSampleConfirmations(input: {
     if (candidate.confirmation === undefined || candidate.confirmation === "") return { status: "invalid-input", index };
     const format = verifySampleConfirmation(candidate.confirmation, input.context, input.secret, input.now);
     if (format === null) return { status: "sample-expired", index };
-    if (format.adapter !== candidate.adapter || format.pathTemplate !== candidate.pathTemplate || !format.locales.includes(candidate.baseLocale)) {
+    if (format.adapter !== candidate.adapter || format.pathTemplate !== candidate.pathTemplate || (format.basePath ?? null) !== (candidate.basePath ?? null)
+      || !format.locales.includes(candidate.baseLocale)) {
       return { status: "manual-no-match", index };
     }
   }

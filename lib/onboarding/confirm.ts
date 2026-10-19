@@ -18,8 +18,11 @@ import { makeProbe } from "./detect";
  * per-locale은 `{locale}`을 트리의 파일명으로 치환한 교집합(로케일로 보이는 이름만 — 탐지와 같은 규칙이라
  * 정당한 파일을 잃지 않으면서 `{locale}` 하나짜리 템플릿이 루트 전부를 끌어오는 것을 막는다),
  * multi-locale은 `matchGlobPaths`다. 0개면 호출부가 `manual-no-match`로 접는다.
+ *
+ * @param basePath 기준 언어 파일이 템플릿 밖에 있으면 그 경로(mobile-strings design §2) — 트리에 있을 때만 더한다. 안 더하면 재탐지가 기준
+ *   언어 파일을 못 봐 `base-locale-missing`이 된다. ⚠️ optional이 아니다 — 안 넘긴 호출부가 조용히 기준 언어 파일을 빠뜨린다(POSTMORTEM 2026-09-02).
  */
-export function templatePaths(adapter: AdapterName, pathTemplate: string, paths: readonly string[]): string[] {
+export function templatePaths(adapter: AdapterName, pathTemplate: string, paths: readonly string[], basePath: string | null): string[] {
   const layout = ADAPTERS.find((a) => a.name === adapter)?.layout;
   // 모르는 어댑터는 어느 파일도 가리키지 못한다 — `planConfirmedFormat`의 `unknown-adapter` 검사에 의존하지 않는다.
   if (layout === undefined) return [];
@@ -30,7 +33,9 @@ export function templatePaths(adapter: AdapterName, pathTemplate: string, paths:
   if (layout === "multi-locale") return matchGlobPaths(pathTemplate, paths);
 
   if (pathTemplate.split("{locale}").length < 2) return [];
-  return paths.filter((p) => localeOfTemplatePath(pathTemplate, p) !== undefined).sort(compareKeys);
+  const matched = paths.filter((p) => localeOfTemplatePath(pathTemplate, p) !== undefined).sort(compareKeys);
+  // 트리에 실재할 때만 — 트리가 이 함수의 방어다(POSTMORTEM 2026-09-09). 확정은 재탐지가 같은 basePath를 냈는지 다시 본다.
+  return basePath !== null && paths.includes(basePath) && !matched.includes(basePath) ? [...matched, basePath] : matched;
 }
 
 /**
@@ -70,7 +75,7 @@ export type ConfirmedFormat =
  *   차지해 정당한 템플릿이 `template-mismatch`로 거부된다.
  */
 export function planConfirmedFormat(
-  input: { adapter: string; pathTemplate: string; baseLocale: string },
+  input: { adapter: string; pathTemplate: string; baseLocale: string; basePath?: string | null | undefined },
   files: readonly AdapterFile[],
 ): ConfirmedFormat {
   if (!isAdapterName(input.adapter)) return { status: "rejected", reason: "unknown-adapter" };
@@ -84,6 +89,8 @@ export function planConfirmedFormat(
   if (detected === undefined) return { status: "rejected", reason: "not-detected" };
 
   if (detected.pathTemplate !== input.pathTemplate) return { status: "rejected", reason: "template-mismatch" };
+  // 기준 언어 경로도 고른 값과 재탐지가 같아야 한다 — 저장하는 것은 재탐지 값이고, 고른 값만 있는 경로를 저장하지 않는다.
+  if ((input.basePath ?? null) !== (detected.basePath ?? null)) return { status: "rejected", reason: "template-mismatch" };
   // 기준 로케일은 **반환된** locales에 있어야 한다 — 입력이 아니라 재탐지가 본 것이다.
   if (!detected.locales.includes(input.baseLocale)) return { status: "rejected", reason: "base-locale-missing" };
 

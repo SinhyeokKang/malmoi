@@ -12,7 +12,7 @@ import { changedLocaleFileCount, pullNumberFrom, reviewNumberFrom } from "../rem
  * 파일을 건드렸나"이고 일치 0은 정상이다.
  */
 
-const JSON_CATALOG = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] };
+const JSON_CATALOG = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] };
 const file = (filename: string, previous?: string) => ({ filename, ...(previous === undefined ? {} : { previous_filename: previous }) });
 
 describe("changedLocaleFileCount — per-locale", () => {
@@ -67,14 +67,14 @@ describe("changedLocaleFileCount — per-locale", () => {
 
   /** `{locale}`이 여럿이면 전부 같은 값이어야 한다 — `replaceAll`이 그렇게 만든다. */
   it("중복 `{locale}` 자리가 어긋나면 0이다", () => {
-    const input = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}/{locale}.json", storedLocales: ["en"] };
+    const input = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}/{locale}.json", basePath: null, baseLocale: "en", storedLocales: ["en"] };
     expect(changedLocaleFileCount(input, [file("i18n/ko/en.json")])).toBe(0);
     expect(changedLocaleFileCount(input, [file("i18n/en/en.json")])).toBe(1);
   });
 });
 
 describe("changedLocaleFileCount — multi-locale", () => {
-  const TS_DICT = { adapter: "ts-dict" as const, pathTemplate: "src/i18n/*.ts", storedLocales: ["en", "ko"] };
+  const TS_DICT = { adapter: "ts-dict" as const, pathTemplate: "src/i18n/*.ts", basePath: null, baseLocale: "en", storedLocales: ["en", "ko"] };
 
   it("글롭에 맞는 파일을 센다", () => {
     expect(changedLocaleFileCount(TS_DICT, [file("src/i18n/messages.ts"), file("src/app.ts")])).toBe(1);
@@ -93,7 +93,7 @@ describe("changedLocaleFileCount — multi-locale", () => {
 });
 
 it("모르는 어댑터는 0이다 — 어느 파일도 가리키지 못한다", () => {
-  expect(changedLocaleFileCount({ adapter: "nope" as never, pathTemplate: "i18n/{locale}.json", storedLocales: [] }, [file("i18n/ko.json")])).toBe(0);
+  expect(changedLocaleFileCount({ adapter: "nope" as never, pathTemplate: "i18n/{locale}.json", basePath: null, baseLocale: null, storedLocales: [] }, [file("i18n/ko.json")])).toBe(0);
 });
 
 it("변경 목록이 비면 0이다", () => {

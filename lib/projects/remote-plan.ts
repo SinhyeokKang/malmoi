@@ -1,4 +1,5 @@
 import { ADAPTERS, matchGlobPaths } from "@/lib/adapters";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import type { AdapterName } from "@/lib/adapters/types";
 import { templatePaths } from "@/lib/onboarding/confirm";
 
@@ -17,7 +18,8 @@ import { templatePaths } from "@/lib/onboarding/confirm";
  * 여기는 어댑터 그래프를 문다. 읽는 것은 서버의 `remote.ts`와 테스트뿐이다.
  */
 export function changedLocaleFileCount(
-  format: { adapter: AdapterName; pathTemplate: string; storedLocales: readonly string[] },
+  /** `basePath`·`baseLocale` — 기준 언어 파일이 템플릿 밖이면 그 편집도 센다(mobile-strings design §2). 빠지면 가장 흔한 변경이 0으로 집계된다. */
+  format: { adapter: AdapterName; pathTemplate: string; basePath: string | null; baseLocale: string | null; storedLocales: readonly string[] },
   files: readonly { filename: string; previous_filename?: string }[],
 ): number {
   const layout = ADAPTERS.find((a) => a.name === format.adapter)?.layout;
@@ -26,7 +28,7 @@ export function changedLocaleFileCount(
 
   // rename의 **양쪽**을 후보에 넣는다 — 로케일 자리로 들어온 것도, 나간 것도 변경이다.
   const paths = files.flatMap((f) => (f.previous_filename === undefined ? [f.filename] : [f.filename, f.previous_filename]));
-  const matched = new Set(templatePaths(format.adapter, format.pathTemplate, paths));
+  const matched = new Set(templatePaths(format.adapter, format.pathTemplate, paths, format.basePath));
 
   /**
    * ⚠️ **저장 로케일의 정확한 경로를 합친다.** `templatePaths`의 per-locale 갈래는
@@ -36,7 +38,8 @@ export function changedLocaleFileCount(
    * multi-locale은 하지 않는다 — 파일 하나에 전 로케일이 들어 있어 코드별 경로라는 것이 없다.
    */
   if (layout === "per-locale") {
-    for (const code of format.storedLocales) matched.add(format.pathTemplate.replaceAll("{locale}", code));
+    const { baseLocale } = format;
+    for (const code of format.storedLocales) matched.add(code === baseLocale ? baseFilePath(format, baseLocale) : format.pathTemplate.replaceAll("{locale}", code));
   } else {
     // 글롭 갈래는 `matchGlobPaths`가 정본이다 — `templatePaths`가 이미 그것을 지나지만, 예산 초과로
     // 빈 배열이 된 경우와 "일치 0"을 가르지 않으므로 같은 규칙을 다시 적지 않고 결과만 쓴다.

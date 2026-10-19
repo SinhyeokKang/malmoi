@@ -7,7 +7,7 @@ const snapshot: Extract<RepoSnapshot, { status: "ok" }> = {
   status: "ok", headSha: "a".repeat(40), headCommittedAt: "2026-09-15T00:00:00Z",
   files: ["en", "fr", "ko"].map(locale => ({ path: `locales/${locale}.json`, sha: `${locale}-blob`, size: 20 })),
 };
-const format = { adapter: "json-catalog" as const, pathTemplate: "locales/{locale}.json", baseLocale: "en" };
+const format = { adapter: "json-catalog" as const, pathTemplate: "locales/{locale}.json", baseLocale: "en", basePath: null };
 
 describe("readSurfaceSnapshot", () => {
   afterEach(() => vi.restoreAllMocks());

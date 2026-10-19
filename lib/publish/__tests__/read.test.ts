@@ -20,7 +20,7 @@ vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: 
 vi.mock("@/lib/auth/query", () => ({ getProjectAccess: async () => ({ status: "ok", projectId: "p" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => db }));
 import { publishFingerprint } from "../fingerprint";
-const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", baseLocale: "en", nested: false, nestedByPath: {}, locales: [{ code: "en" }] };
+const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", basePath: null, baseLocale: "en", nested: false, nestedByPath: {}, locales: [{ code: "en" }] };
 const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
 const rows = [{ surfaceId: "s", keyId: "k", localeCode: "en", value: "new", updatedBy: "editor", updatedAt: new Date(), stringKey: { key: "hello" } }];
 const db = { project: { findUniqueOrThrow: vi.fn() }, translation: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() } };

@@ -15,7 +15,7 @@ import type { GitClient } from "../client";
  */
 const PROJECT = {
   id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", repoHost: "github", gitlabConnectionId: null, installationId: "123", repositoryId: "456",
-  adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
+  adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en", basePath: null,
   lastPulledAt: null as Date | null,
 };
 const KO = '{\n  "a.one": "하나"\n}\n';

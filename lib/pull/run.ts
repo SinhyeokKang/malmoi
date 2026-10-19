@@ -280,7 +280,7 @@ export async function renderProject(
   const resolved = formats.map(item => {
     const skip = new Set(planBySurface.get(item.surface.id)?.exclude ?? []);
     const format = skip.size === 0 ? item.format : { ...item.format, locales: item.format.locales.filter(code => !skip.has(code)) };
-    return { ...item, format, paths: resolveLocalePaths(format, item.layout, tree.map(t => t.path)) };
+    return { ...item, format, paths: resolveLocalePaths(format, item.layout, tree.map(t => t.path), item.baseLocale) };
   });
   const deletes = locales.surfaces.flatMap(plan => plan.deletes.map(d => d.path));
   const ownership = surfaceOwnership(resolved.map(item => ({

@@ -17,6 +17,11 @@ export type DetectedFormat = {
    */
   locales: string[];
   /**
+   * **기준 언어 파일이 템플릿 치환으로 표현되지 않을 때의 그 경로** (mobile-strings design §2 — Android `values/strings.xml`). 탐지가
+   * 관측한 값이고, 기존 네 어댑터는 내지 않는다(없음 = 기준 언어도 치환). 경로 계산은 `baseFilePath`(`./base-path`)를 지난다.
+   */
+  basePath?: string;
+  /**
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
    * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.

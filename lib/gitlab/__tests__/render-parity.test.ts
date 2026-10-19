@@ -23,7 +23,7 @@ function state(surface: Surface, keys: RenderKey[]): PullState {
   const project = {
     id: "p1", slug: "app", repoOwner: "g/sub", repoName: "app", baseBranch: "main", repoHost: "gitlab", installationId: null, repositoryId: REPO, gitlabConnectionId: "conn-1", lastPulledAt: null,
   };
-  return { project, surfaces: [{ ...surface, id: "s1", slug: "default", keys }], maxUpdatedAt: new Date("2026-10-12T10:00:00Z"), unpublished: 1, pendingEdits: [] };
+  return { project, surfaces: [{ ...surface, basePath: null, id: "s1", slug: "default", keys }], maxUpdatedAt: new Date("2026-10-12T10:00:00Z"), unpublished: 1, pendingEdits: [] };
 }
 
 const deps = (s: PullState, createClient: PullDeps["createClient"]): PullDeps => ({

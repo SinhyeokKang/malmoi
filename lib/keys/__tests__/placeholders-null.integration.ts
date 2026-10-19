@@ -83,7 +83,7 @@ it("placeholders가 null인 엔트리는 null로, 없는 엔트리는 없는 채
   expect(cells["object"]).toEqual({ value: "object", placeholders: { n: { content: "$1" } } });
 
   const format = formatFromProject(surface, surface.localeCodes);
-  const [file] = renderLocaleFiles(format, "per-locale", resolveLocalePaths(format, "per-locale", []), surface.keys, "en", new Map());
+  const [file] = renderLocaleFiles(format, "per-locale", resolveLocalePaths(format, "per-locale", [], "en"), surface.keys, "en", new Map());
   expect(JSON.parse(file!.content!)).toEqual({
     absent: { message: "absent" },
     nulled: { message: "nulled", placeholders: null },

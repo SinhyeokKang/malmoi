@@ -42,7 +42,8 @@ export const CreateProjectInput = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
   manual: z.boolean().optional(),
-  surfaces: z.array(z.object({ adapter: z.string().min(1), pathTemplate: z.string().min(1), baseLocale: z.string().min(1) })).min(1),
+  // `basePath`는 탐지 후보가 낸 값을 되돌려 받는다(mobile-strings design §2) — 트리 필터(`templatePaths`)와 재탐지 대조만 지나고 저장은 재탐지 값이다.
+  surfaces: z.array(z.object({ adapter: z.string().min(1), pathTemplate: z.string().min(1), baseLocale: z.string().min(1), basePath: z.string().min(1).max(500).optional() })).min(1),
   slug: z.string().min(1),
   // T8 이후에는 UI가 선택한 브랜치를 반드시 보낸다. 탐지와 다른 기본값으로 저장하지 않는다.
   baseBranch: z.string().min(1),
@@ -78,7 +79,7 @@ class TokenRollback extends Error {
   }
 }
 
-export type CreatedSurface = { surfaceSlug: string; pathTemplate: string; adapter: AdapterName; baseLocale: string };
+export type CreatedSurface = { surfaceSlug: string; pathTemplate: string; basePath: string | null; adapter: AdapterName; baseLocale: string };
 export type CreateProjectResult =
   /** `defaultSurfaceSlug`는 MCP `create_project`가 `defaultSourceSlug`로 싣는 기본 표면이다(④는 2026-09-29부터 프로젝트 Home으로 간다). */
   | { ok: true; slug: string; defaultSurfaceSlug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
@@ -174,7 +175,7 @@ export async function createProjectFromRepo(
     if (!isAdapterName(requested.adapter)) return { ok: false, error: "invalid input" };
     selected.push({ requested, id: randomUUID(),
       surfaceSlug: planSurfaceSlug(requested.pathTemplate, selected.map(item => item.surfaceSlug)),
-      attempted: templatePaths(requested.adapter, requested.pathTemplate, paths),
+      attempted: templatePaths(requested.adapter, requested.pathTemplate, paths, requested.basePath ?? null),
     });
   }
   // 실제 트리의 겹친 선택은 파일을 받기 전에 거부한다. 확정 뒤 출력 경로 검사도 유지한다.
@@ -206,7 +207,7 @@ export async function createProjectFromRepo(
             errors: missing.map(path => ({ path, code: "download-failed" })) } };
       }
       const format = confirmed.format;
-      const targets = [...new Set([...attempted, ...ingestTargets(format, adapterFor(format).layout, paths)])];
+      const targets = [...new Set([...attempted, ...ingestTargets(format, adapterFor(format).layout, paths, confirmed.baseLocale)])];
       const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt, token,
         projectSlug: input.slug, format, baseLocale: confirmed.baseLocale,
         headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt, paths, targets,
@@ -214,8 +215,8 @@ export async function createProjectFromRepo(
       });
       if (first.payload === null || first.result.failed > 0) return { ok: false, error: "ingest-failed",
         surface: { pathTemplate: format.pathTemplate, failed: first.result.failed, errors: first.result.errors } };
-      const resolved = resolveLocalePaths({ ...format, locales: first.payload.locales }, adapterFor(format).layout, paths);
-      prepared.push({ id, surface: { surfaceSlug, adapter: format.adapter, pathTemplate: format.pathTemplate, baseLocale: confirmed.baseLocale },
+      const resolved = resolveLocalePaths({ ...format, locales: first.payload.locales }, adapterFor(format).layout, paths, confirmed.baseLocale);
+      prepared.push({ id, surface: { surfaceSlug, adapter: format.adapter, pathTemplate: format.pathTemplate, basePath: format.basePath ?? null, baseLocale: confirmed.baseLocale },
         payload: first.payload, targets: [...targets, ...resolved.map(item => item.path)],
         // 설정 화면과 동일하게 확정한 포맷을 재현한다 — CI의 탐지 순위에 맡기지 않는다.
         workflow: { adapter: format.adapter, baseLocale: confirmed.baseLocale },
@@ -303,7 +304,7 @@ export async function createProjectFromRepo(
       for (const item of prepared) {
         writingPath = item.surface.pathTemplate;
         await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
-          slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate,
+          slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate, basePath: item.surface.basePath,
           baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token,
         } });
         await recordEvent(tx, {

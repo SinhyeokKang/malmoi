@@ -93,6 +93,7 @@ const project = (over: Record<string, unknown> = {}) => ({
   lastCommitAt: null,
   adapterName: null,
   pathTemplate: null,
+  basePath: null,
   baseLocale: null,
   // ⚠️ **`null`이지 부재가 아니다** (7단계). `checkArchived`는 fail-closed라 `undefined`를 보관으로
   // 읽는데, 실제 Prisma는 `select`한 컬럼을 항상 값으로 준다 — 여기서 빼면 가짜가 실제보다 **엄격**해져

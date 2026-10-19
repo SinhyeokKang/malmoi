@@ -81,6 +81,7 @@ describe("checkFormat — 확정한 번역 표면을 CI가 다른 것으로 갈�
   const stored = {
     adapterName: "code-dict",
     pathTemplate: "src/i18n/{locale}.ts",
+    basePath: null,
     baseLocale: "en",
     // 선언 없음 = 옛 동작. 아래 별도 describe가 선언이 있을 때를 본다 (6b-3).
     declaredBaseLocale: null,
@@ -96,6 +97,7 @@ describe("checkFormat — 확정한 번역 표면을 CI가 다른 것으로 갈�
       checkFormat(payload, {
         adapterName: null,
         pathTemplate: null,
+        basePath: null,
         baseLocale: null,
         declaredBaseLocale: null,
       }),
@@ -111,6 +113,7 @@ describe("checkFormat — 확정한 번역 표면을 CI가 다른 것으로 갈�
       checkFormat(payload, {
         adapterName: null,
         pathTemplate: null,
+        basePath: null,
         baseLocale: null,
         declaredBaseLocale: "ko",
       }),
@@ -177,6 +180,7 @@ describe("checkFormat — 선언한 base도 받아들인다 (6b-3)", () => {
   const stored = {
     adapterName: "code-dict",
     pathTemplate: "src/i18n/{locale}.ts",
+    basePath: null,
     baseLocale: "en",
     declaredBaseLocale: "ko",
   };

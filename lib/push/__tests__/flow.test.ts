@@ -78,7 +78,7 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
           : [...new Set([...existing.map((e) => e.key), ...allKeys])].map((key) => ({ id: `id-${key}`, key }))),
     },
     translationSurface: {
-      findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: format.adapter, pathTemplate: format.pathTemplate, baseLocale: previousBaseLocale, declaredBaseLocale: payloadFromFiles().format.baseLocale, lastCommitAt }),
+      findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: format.adapter, pathTemplate: format.pathTemplate, basePath: null, baseLocale: previousBaseLocale, declaredBaseLocale: payloadFromFiles().format.baseLocale, lastCommitAt }),
       updateMany: async (args: unknown) => {
         projectUpdates.push(args);
         return { count: 1 };
@@ -141,7 +141,7 @@ function payloadFromFiles(scanRefs: Parameters<typeof buildPushPayload>[0]["scan
   const format = detectFormat(paths, probe);
   expect(format, "chrome-locales를 탐지해야 한다").toBeDefined();
   const adapter = adapterFor(format!);
-  const files = selectLocaleFiles(adapter.layout, format!, paths, probe);
+  const files = selectLocaleFiles(adapter.layout, format!, paths, probe, "en");
   const read = adapter.read(format!, files);
   expect(read.errors).toEqual([]);
   const baseLocale = pickBaseLocale(format!.locales);
@@ -323,6 +323,8 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
       data: {
         adapterName: "chrome-locales",
         pathTemplate: "_locales/{locale}/messages.json",
+        // 페이로드에 없으면 null로 덮는다 — 경로 설정의 한 짝이라 쓰는 자리가 늘 기록한다(mobile-strings design §2).
+        basePath: null,
         nested: false,
         baseLocale: "en",
         // ⚠️ `declaredBaseLocale`이 **없다** — base가 안 바뀐 push는 허가를 쓰지 않았다 (위 두 케이스).
@@ -498,7 +500,7 @@ describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
     const format = detectFormat(paths, probe);
     expect(format?.adapter, "json-catalog를 탐지해야 한다").toBe("json-catalog");
     const adapter = adapterFor(format!);
-    const read = adapter.read(format!, selectLocaleFiles(adapter.layout, format!, paths, probe));
+    const read = adapter.read(format!, selectLocaleFiles(adapter.layout, format!, paths, probe, "en"));
     const payload = buildPushPayload({
       projectSlug: "acme",
       surfaceSlug: "default",

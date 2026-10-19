@@ -41,6 +41,8 @@ export function publishFingerprint(
     baseHead,
     [...state.surfaces].sort(byId).map(s => [
       s.id, s.slug, s.adapterName, s.pathTemplate, s.nested, canonicalJson(s.nestedByPath), s.baseLocale,
+      // 값이 있을 때만 붙는다 — basePath 없는 프로젝트의 지문 바이트가 그대로다(mobile-strings design §2).
+      ...(s.basePath === null ? [] : [s.basePath]),
       [...s.localeCodes].sort(compare),
       [...s.keys].sort((a, b) => compare(a.key, b.key)).map(k => [
         k.id ?? null, k.key, k.sourceText, k.description ?? null, k.sortIndex ?? null, k.orphaned,

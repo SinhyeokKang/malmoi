@@ -346,7 +346,7 @@ export async function loadProjectList(
         repositoryId: r.project.repositoryId,
         baseBranch: r.project.baseBranch,
         surfaces: r.project.surfaces.map(s => ({ lastCommitSha: s.lastCommitSha, adapterName: s.adapterName,
-          pathTemplate: s.pathTemplate, storedLocales: s.locales.map(l => l.code) })),
+          pathTemplate: s.pathTemplate, basePath: s.basePath, baseLocale: s.baseLocale, storedLocales: s.locales.map(l => l.code) })),
         lastPrUrl: r.project.lastPrUrl,
         archived: r.project.archivedAt !== null,
       })),

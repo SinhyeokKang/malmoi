@@ -7,6 +7,7 @@
  * 파일시스템을 아는 유일한 층이다 — 어댑터의 detect·read·write는 순수 함수다.
  */
 import { adapterFor, namespaceOf } from "../lib/adapters/index";
+import { baseFilePath } from "../lib/adapters/base-path";
 import { adapterErrorKind } from "../lib/adapters/types";
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { walkFiles } from "../lib/cli/walk";
@@ -119,7 +120,7 @@ if (baseLocale) {
   const dropEmpty = adapter.writeStrategy === "regenerate";
   const targets =
     adapter.layout === "per-locale"
-      ? [format.pathTemplate.replaceAll("{locale}", base)]
+      ? [baseFilePath(format, base)]
       : matchGlobPaths(format.pathTemplate, files.map((f) => f.path));
   for (const path of targets) {
     const original = files.find((f) => f.path === path);

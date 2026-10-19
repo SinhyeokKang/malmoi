@@ -48,7 +48,7 @@ describe("B3.1 A — 재생성 어댑터: 기존 비-base 파일의 마지막 �
   const key = (fr: string): RenderKey => ({ id: "k", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: fr } } });
 
   it("json-catalog — fr.json이 `{}`가 되고 그 편집만 전달된다", async () => {
-    const surface = { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", localeCodes: ["en", "fr"] };
+    const surface = { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] };
     const files = { "en.json": '{\n  "hello": "Hi"\n}\n', "fr.json": '{\n  "hello": "Salut"\n}\n' };
     const { result, saved, written } = await run(surface, [key("")], files, [edit("fr", "k", "fr")]);
     expect(result).toMatchObject({ status: "committed", delivered: 1, changed: ["fr.json"] });
@@ -57,7 +57,7 @@ describe("B3.1 A — 재생성 어댑터: 기존 비-base 파일의 마지막 �
   });
 
   it("chrome-locales — messages.json이 `{}`가 된다 · 원본 들여쓰기·BOM 관측을 그대로 쓴다", async () => {
-    const surface = { nestedByPath: {}, adapterName: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: null, baseLocale: "en", localeCodes: ["en", "fr"] };
+    const surface = { nestedByPath: {}, adapterName: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: null, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] };
     const files = {
       "_locales/en/messages.json": '{\n    "hello": {\n        "message": "Hi"\n    }\n}\n',
       "_locales/fr/messages.json": '﻿{\r\n    "hello": {\r\n        "message": "Salut"\r\n    }\r\n}\r\n',
@@ -68,7 +68,7 @@ describe("B3.1 A — 재생성 어댑터: 기존 비-base 파일의 마지막 �
   });
 
   it("원본 파일이 없는 로케일은 여전히 파일을 만들지 않는다 (짝 — 빈 새 파일은 '이 로케일 지원함'으로 읽힌다)", async () => {
-    const surface = { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", localeCodes: ["en", "fr"] };
+    const surface = { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] };
     const files = { "en.json": '{\n  "hello": "Hi"\n}\n' };
     const keys: RenderKey[] = [
       { id: "k", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hello" }, fr: { value: "" } } },
@@ -80,7 +80,7 @@ describe("B3.1 A — 재생성 어댑터: 기존 비-base 파일의 마지막 �
 });
 
 describe("B3.1 B — ts-dict: 편집 키의 자리가 표면의 어느 파일에도 없으면 보류한다", () => {
-  const surface = { nestedByPath: {}, adapterName: "ts-dict", pathTemplate: "*.ts", nested: null, baseLocale: "en", localeCodes: ["en", "fr"] };
+  const surface = { nestedByPath: {}, adapterName: "ts-dict", pathTemplate: "*.ts", nested: null, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] };
   const files = { "a.ts": 'const en = { hello: "Hi" };\nconst fr = { hello: "Salut" };\n' };
   const keys: RenderKey[] = [
     { id: "k1", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: "Bonjour" } } },
@@ -120,7 +120,7 @@ describe("B3.1 A 짝 — base + 원본 + 활성 DB 키 0개 → 파일 그대로
     ["json-catalog", "{locale}.json", "en.json", '{\n  "hello": "Hi",\n  "added": "New"\n}\n'],
     ["chrome-locales", "_locales/{locale}/messages.json", "_locales/en/messages.json", '{\n  "hello": { "message": "Hi" }\n}\n'],
   ])("%s", (adapterName, pathTemplate, basePath, original) => {
-    const cols = { adapterName, pathTemplate, nested: false, nestedByPath: {}, baseLocale: "en" };
+    const cols = { adapterName, pathTemplate, nested: false, nestedByPath: {}, baseLocale: "en", basePath: null };
     const format = formatFromProject(cols, ["en", "fr"]);
     const frPath = pathTemplate.replace("{locale}", "fr");
     const keys: RenderKey[] = [{ id: "k", key: "hello", sourceText: "Hi", orphaned: true, cells: { en: { value: "Hi" }, fr: { value: "Salut" } } }];
@@ -143,9 +143,9 @@ describe("B3.4 — base 파일의 키 집합은 원본이 정한다", () => {
     { id: "k2", key: "deleted", sourceText: "Gone", orphaned: false, cells: { en: { value: "Gone!" }, fr: { value: "Parti" } } },
   ];
   const families = [
-    ["json-catalog (재생성)", { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", localeCodes: ["en", "fr"] },
+    ["json-catalog (재생성)", { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] },
       "en.json", '{\n  "hello": "Hi",\n  "added": "New"\n}\n', "fr.json", '{\n  "hello": "Salut",\n  "deleted": "Parti"\n}\n', '"added": "New"', '"Hello"'],
-    ["yaml-catalog (수술적)", { nestedByPath: {}, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null, baseLocale: "en", localeCodes: ["en", "fr"] },
+    ["yaml-catalog (수술적)", { nestedByPath: {}, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] },
       "en.yml", "en:\n  hello: Hi\n  added: New\n", "fr.yml", "fr:\n  hello: Salut\n  deleted: Parti\n", "added: New", "hello: Hello"],
   ] as const;
 
@@ -181,7 +181,7 @@ describe("B3.4 — base 파일의 키 집합은 원본이 정한다", () => {
  * 의존성이 없거나 false면 필드가 없다 — 안내는 Revert 없는 쪽이다(모르는 것을 약속하지 않는다).
  */
 describe("#129 — 보류 셀의 Revert 가능 여부", () => {
-  const surface = { nestedByPath: {}, adapterName: "ts-dict", pathTemplate: "*.ts", nested: null, baseLocale: "en", localeCodes: ["en", "fr"] };
+  const surface = { nestedByPath: {}, adapterName: "ts-dict", pathTemplate: "*.ts", nested: null, baseLocale: "en", basePath: null, localeCodes: ["en", "fr"] };
   const files = { "a.ts": 'const en = { hello: "Hi" };\nconst fr = { hello: "Salut" };\n' };
   const keys: RenderKey[] = [
     { id: "k1", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: "Bonjour" } } },

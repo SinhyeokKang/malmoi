@@ -17,7 +17,8 @@ export type LocaleChangeFingerprintInput = {
   localeCode: string;
   /** 그 언어의 `LocaleChange` 행. `requestedAt`은 ISO — 취소 뒤 같은 요청을 다시 낸 행을 옛 승인과 가른다. */
   change: { operation: "ADD" | "REMOVE"; requestedAt: string } | null;
-  surface: { adapterName: string | null; pathTemplate: string | null; baseLocale: string | null; declaredBaseLocale: string | null };
+  /** `basePath`는 값이 있을 때만 튜플에 붙는다 — null 소스의 지문 바이트가 그대로다(mobile-strings design §2). */
+  surface: { adapterName: string | null; pathTemplate: string | null; baseLocale: string | null; declaredBaseLocale: string | null; basePath: string | null };
   /** 그 소스의 `DeliveryConfirmation` — 행이 없으면 `null`. */
   delivery: { revision: string; invalidated: boolean } | null;
   pending: readonly { id: string; token: string }[];
@@ -33,9 +34,14 @@ export function localeChangeFingerprint(input: LocaleChangeFingerprintInput): st
     input.surfaceId,
     input.localeCode,
     input.change === null ? null : [input.change.operation, input.change.requestedAt],
-    [input.surface.adapterName, input.surface.pathTemplate, input.surface.baseLocale, input.surface.declaredBaseLocale],
+    [input.surface.adapterName, input.surface.pathTemplate, input.surface.baseLocale, input.surface.declaredBaseLocale, ...withBasePath(input.surface.basePath)],
     input.delivery === null ? null : [input.delivery.revision, input.delivery.invalidated],
     [...input.pending].sort(byId).map(p => [p.id, p.token]),
   ]);
   return createHash("sha256").update(canonical).digest("hex");
+}
+
+/** basePath가 있을 때만 튜플 끝에 붙인다 — 기존(null) 소스의 지문 바이트를 바꾸지 않는다. */
+function withBasePath(basePath: string | null): string[] {
+  return basePath === null ? [] : [basePath];
 }

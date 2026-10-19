@@ -12,7 +12,7 @@ const fixtures: { adapter: AdapterName; pathTemplate: string; paths: string[]; e
 
 describe("verifyEmptyCatalog", () => {
   for (const fixture of fixtures) {
-    const input = () => ({ stored: { adapter: fixture.adapter, pathTemplate: fixture.pathTemplate, baseLocale: "en" }, paths: fixture.paths, blobs: new Map(fixture.paths.map(path => [path, fixture.empty])) });
+    const input = () => ({ stored: { adapter: fixture.adapter, pathTemplate: fixture.pathTemplate, baseLocale: "en", basePath: null }, paths: fixture.paths, blobs: new Map(fixture.paths.map(path => [path, fixture.empty])) });
     it(`${fixture.adapter} 정상 빈 컨테이너를 인식한다`, () => expect(verifyEmptyCatalog(input())).toBe(true));
     for (const invalid of fixture.invalid) it(`${fixture.adapter} 잘못된/비어있지 않은 컨테이너 ${invalid}는 거부한다`, () => {
       const value = input(); value.blobs.set(fixture.paths[0]!, invalid);
@@ -31,7 +31,7 @@ describe("verifyEmptyCatalog", () => {
 describe("verifyEmptyCatalog — BOM", () => {
   it("BOM이 붙은 빈 json-catalog를 빈 카탈로그로 인식하고 던지지 않는다", () => {
     const paths = ["i18n/en.json", "i18n/ko.json"];
-    const input = { stored: { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en" }, paths, blobs: new Map(paths.map(path => [path, "\uFEFF{}"])) };
+    const input = { stored: { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en", basePath: null }, paths, blobs: new Map(paths.map(path => [path, "\uFEFF{}"])) };
     expect(verifyEmptyCatalog(input)).toBe(true);
   });
 });

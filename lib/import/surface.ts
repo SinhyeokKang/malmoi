@@ -17,7 +17,7 @@ import type { PushPayloadType } from "@/lib/push/plan";
 export async function readSurfaceSnapshot(
   reader: RepoReader,
   snapshot: Extract<RepoSnapshot, { status: "ok" }>,
-  stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string },
+  stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string; basePath: string | null },
 ) {
   const result = await readSurfaceFiles(reader, snapshot, stored);
   return result.status === "ok" ? result : { status: result.status, reason: result.reason };
@@ -26,18 +26,18 @@ export async function readSurfaceSnapshot(
 async function readSurfaceFiles(
   reader: RepoReader,
   snapshot: Extract<RepoSnapshot, { status: "ok" }>,
-  stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string },
+  stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string; basePath: string | null },
 ) {
   const paths = snapshot.files.map(file => file.path);
   // 대상은 성공한 다운로드가 아니라 트리에서 온다 — 아니면 빠진 로케일이 실패 목록에서 사라진다.
-  const attempted = templatePaths(stored.adapter, stored.pathTemplate, paths);
+  const attempted = templatePaths(stored.adapter, stored.pathTemplate, paths, stored.basePath);
   const files = await readFiles(reader, snapshot, attempted);
   const confirmed = planConfirmedFormat(stored, files);
   if (confirmed.status !== "ok") return { ...confirmed, paths, targets: attempted, blobs: new Map(files.map(file => [file.path, file.content])) };
 
   const targets = [...new Set([
     ...attempted,
-    ...ingestTargets(confirmed.format, adapterFor(confirmed.format).layout, paths),
+    ...ingestTargets(confirmed.format, adapterFor(confirmed.format).layout, paths, confirmed.baseLocale),
   ])].sort(compareKeys);
   const blobs = new Map(files.map(file => [file.path, file.content]));
   // 빠진 blob만 한 번 재시도한다 — 실패한 시도는 준비 실패 수를 위해 대상에 남긴다.
@@ -51,7 +51,7 @@ async function readSurfaceFiles(
 }
 
 export type StoredSurfaceImport = {
-  id: string; slug: string; adapter: AdapterName; pathTemplate: string; baseLocale: string;
+  id: string; slug: string; adapter: AdapterName; pathTemplate: string; baseLocale: string; basePath: string | null;
   nested: boolean | null; nestedByPath: unknown;
 };
 export type SurfaceImportInput = {

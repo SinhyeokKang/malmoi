@@ -91,7 +91,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     if (!surfaceRows.length) continue;
     const format = formatFromProject(surface, surface.localeCodes);
     const adapter = adapterFor(format);
-    const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path));
+    const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path), surface.baseLocale);
     // ⚠️ **재생성 per-locale은 base 파일을 늘 읽는다** (B3 r3) — 실행이 base 원본으로 base 키 집합을 정하고(B3.4) 못 읽으면 비-base 편집만 있어도 거부한다.
     const regeneratePerLocale = adapter.layout === "per-locale" && adapter.writeStrategy === "regenerate";
     const isBasePath = (p: (typeof paths)[number]) => regeneratePerLocale && p.locale === surface.baseLocale;

@@ -169,6 +169,8 @@ const FORMAT = {
   repositoryId: null as string | null,
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
+  /** 실제 Prisma는 컬럼을 항상 값으로 준다 — 빠지면 `checkFormat`이 `undefined`를 저장값으로 읽어 정상 push가 409다. */
+  basePath: null as string | null,
   nested: false,
   nestedByPath: null,
   baseLocale: "en",
@@ -213,7 +215,7 @@ export type Seed = {
 /** 시드 프로젝트의 기본 `lastCommitSha` — "첫 적재가 끝났다"의 증거다 (`ProjectSeed` 주석). */
 const SEEDED_SHA = "a".repeat(40);
 export type SurfaceSeed = { id: string; projectId: string; slug: string } & Partial<Pick<typeof FORMAT,
-  "adapterName" | "pathTemplate" | "nested" | "nestedByPath" | "baseLocale" | "declaredBaseLocale" |
+  "adapterName" | "pathTemplate" | "basePath" | "nested" | "nestedByPath" | "baseLocale" | "declaredBaseLocale" |
   "lastCommitSha" | "lastCommitAt" | "lastImportStartedAt" | "lastImportError" | "archivedAt">>;
 
 export function createHarness(seed: Seed = {}) {

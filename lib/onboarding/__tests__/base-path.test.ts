@@ -5,6 +5,7 @@ import type { DetectedFormat } from "@/lib/adapters/types";
 import { planConfirmedFormat, templatePaths } from "../confirm";
 import { ingestTargets, probeTargets } from "../detect";
 import { signSampleConfirmation, verifySampleConfirmation } from "../sample-confirmation";
+import { planSurfaceSelection } from "../select-surfaces";
 
 /**
  * 온보딩·Sync 재탐지가 내려받을 파일 (mobile-strings design §2). 기준 언어 파일이 템플릿 밖(`values/strings.xml`)에 있으면 내려받지 않아
@@ -38,7 +39,7 @@ describe("templatePaths — basePath도 가리킨다", () => {
 describe("probeTargets — 후보의 basePath를 표본으로 내려받는다", () => {
   it("치환 표본에 basePath를 더한다", () => {
     const groups = [{ pathTemplate: ANDROID_TEMPLATE, basePath: ANDROID_BASE, locales: ["ko"] }];
-    expect(probeTargets(groups, [], [])).toEqual(["res/values-ko/strings.json", ANDROID_BASE]);
+    expect(probeTargets(groups, [], [])).toEqual([ANDROID_BASE, "res/values-ko/strings.json"]);
   });
 
   it("basePath 없는 후보는 지금과 같다", () => {
@@ -51,7 +52,8 @@ describe("ingestTargets — 첫 적재가 기준 언어 파일을 basePath에서
   const paths = [ANDROID_BASE, "res/values-ko/strings.json", "res/values-en/strings.json"];
 
   it("기준 언어는 basePath에서, values-en/은 받지 않는다", () => {
-    expect(ingestTargets(format, "per-locale", paths, "en")).toEqual([ANDROID_BASE, "res/values-ko/strings.json"]);
+    // 코드 유닛 순 정렬이다(`-` < `/`).
+    expect(ingestTargets(format, "per-locale", paths, "en")).toEqual(["res/values-ko/strings.json", ANDROID_BASE]);
   });
 });
 
@@ -79,5 +81,17 @@ describe("샘플 확인값 — basePath와 기준 언어를 서명한다", () =>
     const format = { adapter: "json-catalog", pathTemplate: ANDROID_TEMPLATE, locales: ["en", "ko"], basePath: ANDROID_BASE, baseLocale: "en" };
     const token = signSampleConfirmation({ ...context, format }, "secret", issued);
     expect(verifySampleConfirmation(token, context, "secret", issued)).toEqual(format);
+  });
+});
+
+describe("planSurfaceSelection — 후보의 basePath를 생성 입력으로 넘긴다", () => {
+  it("있으면 싣고, 없으면 필드를 만들지 않는다", () => {
+    const candidate = (pathTemplate: string, basePath?: string) => ({
+      adapter: "json-catalog" as const, pathTemplate, ...(basePath === undefined ? {} : { basePath }),
+      locales: ["en", "ko"], baseLocale: "en", keys: { status: "counted" as const, count: 1 }, samples: [], outputPaths: [pathTemplate],
+    });
+    const { formats } = planSurfaceSelection([candidate(ANDROID_TEMPLATE, ANDROID_BASE), candidate("i18n/{locale}.json")], new Set([0, 1]), { 0: "en", 1: "en" });
+    expect(formats[0]?.basePath).toBe(ANDROID_BASE);
+    expect(formats[1] !== undefined && "basePath" in formats[1]).toBe(false);
   });
 });

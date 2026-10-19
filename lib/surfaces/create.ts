@@ -66,10 +66,10 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
     const slugs = surfaces.map(surface => surface.slug);
     const owners = surfaces.filter(surface => surface.archivedAt === null).map(surface => {
       if (!surface.adapterName || !isAdapterName(surface.adapterName) || !surface.pathTemplate) throw new SurfaceCreationError("ingest-failed");
-      const format = { adapter: surface.adapterName, pathTemplate: surface.pathTemplate, locales: surface.locales.map(locale => locale.code) };
+      const format = { adapter: surface.adapterName, pathTemplate: surface.pathTemplate, ...(surface.basePath === null ? {} : { basePath: surface.basePath }), locales: surface.locales.map(locale => locale.code) };
       const layout = adapterFor(format).layout;
-      const saved = layout === "per-locale" ? resolveLocalePaths(format, layout, first.paths).map(path => path.path) : [];
-      return { surfaceId: surface.id, surfaceSlug: surface.slug, paths: [...saved, ...templatePaths(surface.adapterName, surface.pathTemplate, first.paths)] };
+      const saved = layout === "per-locale" ? resolveLocalePaths(format, layout, first.paths, surface.baseLocale).map(path => path.path) : [];
+      return { surfaceId: surface.id, surfaceSlug: surface.slug, paths: [...saved, ...templatePaths(surface.adapterName, surface.pathTemplate, first.paths, surface.basePath)] };
     });
     /**
      * ⚠️ **제거된 소스의 재추가는 그 행을 되살린다** (sources-add-remove — ARCHITECTURE §5.9). 되살릴 행의 id가 `prepared`의 난수 id를
@@ -82,7 +82,7 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
       const surfaceId = revive?.surfaceId ?? value.surfaceId;
       const slug = revive?.slug ?? planSurfaceSlug(value.item.format.pathTemplate, slugs);
       if (revive === null) slugs.push(slug);
-      const paths = [...value.item.targets, ...resolveLocalePaths(value.item.format, adapterFor(value.item.format).layout, value.item.paths).map(path => path.path)];
+      const paths = [...value.item.targets, ...resolveLocalePaths(value.item.format, adapterFor(value.item.format).layout, value.item.paths, value.item.baseLocale).map(path => path.path)];
       return { ...value, surfaceId, slug, revived: revive !== null, paths };
     });
     // 충돌 줄은 추가 템플릿 · 기존 소유자다 — 계획 slug는 소유자가 아니다 (malmoi#194).
@@ -100,7 +100,8 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
         await tx.translationSurface.update({
           where: { id: surfaceId, projectId: first.projectId },
           data: {
-            archivedAt: null, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, declaredBaseLocale: null,
+            // basePath도 재탐지 값으로 덮는다 — 되살림 판정(`planSurfaceRevival`)은 경로 템플릿·어댑터만 보고, 기준 언어 경로는 지금 리포가 정한다.
+            archivedAt: null, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, basePath: item.format.basePath ?? null, baseLocale: item.baseLocale, declaredBaseLocale: null,
             lastCommitSha: null, lastCommitAt: null, lastImportError: null, lastImportFailedAt: null, lastImportStartedAt: startedAt, lastImportToken: token,
           },
         });
@@ -111,7 +112,7 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
         const pending = await tx.translation.findMany({ where: { projectId: first.projectId, surfaceId, pendingEditToken: { not: null } }, select: { pendingEditToken: true } });
         approvedTokens = pending.flatMap(row => row.pendingEditToken === null ? [] : [row.pendingEditToken]);
       } else {
-        await tx.translationSurface.create({ data: { id: surfaceId, projectId: first.projectId, slug, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token } });
+        await tx.translationSurface.create({ data: { id: surfaceId, projectId: first.projectId, slug, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, basePath: item.format.basePath ?? null, baseLocale: item.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token } });
       }
       /**
        * ⚠️ **소스당 하나다** (결정 13) — 생성 때 붙은 소스와 나중에 추가한 소스가 **같은 모양**으로

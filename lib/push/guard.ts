@@ -85,11 +85,13 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
  * `adapter`·`pathTemplate`은 그대로 엄격하다 — 오배송을 막는 것은 그 둘이다.
  */
 export function checkFormat(
-  payload: { adapter: string; pathTemplate: string; baseLocale: string },
+  payload: { adapter: string; pathTemplate: string; baseLocale: string; basePath?: string | undefined },
   stored: {
     adapterName: string | null;
     pathTemplate: string | null;
     baseLocale: string | null;
+    /** 기준 언어 경로(mobile-strings design §2). 경로 템플릿과 같은 축이라 다르면 `wrong-format`이다 — 경로 이전과 같은 취급. */
+    basePath: string | null;
     /** OWNER의 **일회용 허가**. `applyPush`가 push 성공 시 비운다 — 안 비우면 영구 예외가 된다. */
     declaredBaseLocale: string | null;
   },
@@ -104,7 +106,9 @@ export function checkFormat(
   const baseAllowed =
     payload.baseLocale === stored.baseLocale ||
     (stored.declaredBaseLocale !== null && payload.baseLocale === stored.declaredBaseLocale);
-  return payload.adapter === stored.adapterName && payload.pathTemplate === stored.pathTemplate && baseAllowed
+  // ⚠️ 옛 CLI는 필드를 안 보낸다(undefined) — 저장값 null과 같게 읽는다. 아니면 기존 네 포맷의 CI가 전부 409다.
+  const samePath = payload.pathTemplate === stored.pathTemplate && (payload.basePath ?? null) === stored.basePath;
+  return payload.adapter === stored.adapterName && samePath && baseAllowed
     ? "ok"
     : "wrong-format";
 }

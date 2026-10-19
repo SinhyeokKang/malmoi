@@ -11,7 +11,7 @@ import { pickBaseLocale, selectLocaleFiles } from "@/lib/push/payload";
  */
 
 /** 후보 그룹의 공통 모양 — `DetectedFormat`(locales 배열)과 `CodeDictGroup`(locales Set)을 둘 다 받는다. */
-export type TemplateGroup = { pathTemplate: string; locales: Iterable<string> };
+export type TemplateGroup = { pathTemplate: string; basePath?: string; locales: Iterable<string> };
 
 /**
  * 내려받을 후보 수 상한. 비용이 아니라 **응답 시간**이다 — 페이지 `maxDuration`이 60초다 (ARCHITECTURE §3.1).
@@ -45,6 +45,8 @@ export function probeTargets(
   const out = new Set<string>();
   const take = (groups: readonly TemplateGroup[], limit: number): void => {
     for (const g of groups.slice(0, limit)) {
+      // 기준 언어 파일이 템플릿 밖이면(basePath) 그것도 표본이다 — 재탐지가 그 파일을 읽어 기준 언어를 정한다.
+      if (g.basePath !== undefined) out.add(g.basePath);
       for (const locale of sampleOrder(new Set(g.locales))) out.add(g.pathTemplate.replaceAll("{locale}", locale));
     }
   };
@@ -88,6 +90,8 @@ export type CandidateSummary = {
    * 호출되는가"를 흐린다. 예시는 수동 지정 셀렉트(`AdapterChoice`)에서만 쓰인다.
    */
   pathTemplate: string;
+  /** 기준 언어 파일이 템플릿 밖이면 그 경로 — 확정 때 `pathTemplate`과 함께 되돌려 보낸다(mobile-strings design §2). */
+  basePath?: string;
   /** 정렬돼 있다 — 탐지 결과는 정렬돼 있지 않다. */
   locales: string[];
   /** 기본 선택 — 사용자가 라디오로 바꾼다 (PRODUCT §7.3). */
@@ -139,7 +143,8 @@ export function sampleRows(
   blobs: ReadonlyMap<string, string>,
   limit: number = SAMPLE_ROWS,
 ): { rows: SampleRow[]; total: number } {
-  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale), locale), limit);
+  // 기준 언어는 탐지 요약과 같은 추정이다(`summarizeCandidates`) — basePath 포맷에서 그 언어만 basePath를 읽는다.
+  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale, pickBaseLocale(format.locales) ?? locale), locale), limit);
 }
 
 /**
@@ -161,7 +166,7 @@ export function summarizeCandidates(
     const adapter = adapterFor(c);
     const locales = c.locales.slice().sort(compareKeys);
     const { samples, keys } = sampleCandidate(adapter, c, locales, baseLocale, blobs);
-    out.push({ adapter: c.adapter, pathTemplate: c.pathTemplate, locales, baseLocale, keys, samples });
+    out.push({ adapter: c.adapter, pathTemplate: c.pathTemplate, ...(c.basePath === undefined ? {} : { basePath: c.basePath }), locales, baseLocale, keys, samples });
   }
   return out;
 }
@@ -188,14 +193,14 @@ function sampleCandidate(
   let baseEntries: LocaleEntry[] | undefined;
 
   if (adapter.layout === "multi-locale") {
-    const read = readLocales(adapter, format, blobs, baseLocale);
+    const read = readLocales(adapter, format, blobs, baseLocale, baseLocale);
     if (read !== undefined) {
       for (const locale of locales) samples.push(sampleOf(locale, entriesOf(read, locale)));
       baseEntries = entriesOf(read, baseLocale);
     }
   } else {
     for (const locale of sampleOrder(new Set(locales))) {
-      const read = readLocales(adapter, format, blobs, locale);
+      const read = readLocales(adapter, format, blobs, locale, baseLocale);
       if (read === undefined) continue;
       const entries = entriesOf(read, locale);
       samples.push(sampleOf(locale, entries));
@@ -221,9 +226,10 @@ function readLocales(
   format: DetectedFormat,
   blobs: ReadonlyMap<string, string>,
   locale: string,
+  baseLocale: string,
 ): ReadLocale[] | undefined {
   const narrowed = adapter.layout === "per-locale" ? { ...format, locales: [locale] } : format;
-  const files = selectLocaleFiles(adapter.layout, narrowed, [...blobs.keys()], makeProbe(blobs));
+  const files = selectLocaleFiles(adapter.layout, narrowed, [...blobs.keys()], makeProbe(blobs), baseLocale);
   if (files.length === 0) return undefined;
   try {
     return adapter.read(narrowed, files).locales;
@@ -257,8 +263,8 @@ function rowsOf(entries: readonly LocaleEntry[] | undefined, limit: number): { r
  * `selectLocaleFiles`를 그대로 지난다 — 규칙이 갈리면 여기서 적재한 파일을 pull이 안 쓴다 (2026-09-04).
  * 내용 없는 probe로 경로만 뽑는다.
  */
-export function ingestTargets(format: DetectedFormat, layout: Adapter["layout"], paths: readonly string[]): string[] {
-  return selectLocaleFiles(layout, format, paths, () => undefined)
+export function ingestTargets(format: DetectedFormat, layout: Adapter["layout"], paths: readonly string[], baseLocale: string): string[] {
+  return selectLocaleFiles(layout, format, paths, () => undefined, baseLocale)
     .map((f) => f.path)
     .sort(compareKeys);
 }

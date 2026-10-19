@@ -24,7 +24,7 @@ import { planSampleConfirmations } from "@/lib/mcp/confirm";
 import type { GitLabConnectError } from "@/lib/gitlab-connect/errors";
 import { checkRepoAccess } from "./access";
 
-export const AddSurfacesInput = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) })).min(1).max(200) });
+export const AddSurfacesInput = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1), basePath: z.string().min(1).max(500).optional() })).min(1).max(200) });
 
 export type AddSurfacesResult =
   | { ok: true; results: import("@/lib/surfaces/plan-add").SurfaceAdded[]; yaml: string }
@@ -83,7 +83,7 @@ export async function addSources(
     const paths = snapshot.files.map(file => file.path);
     const selected = input.picks.map(pick => {
       if (!isAdapterName(pick.adapter)) throw new SurfaceCreationError("ingest-failed");
-      return { pick: { ...pick, adapter: pick.adapter }, targets: templatePaths(pick.adapter, pick.pathTemplate, paths) };
+      return { pick: { ...pick, adapter: pick.adapter }, targets: templatePaths(pick.adapter, pick.pathTemplate, paths, pick.basePath ?? null) };
     });
     // 합집합을 한 번 내려받아 요청 전체 예산을 적용한다. 표면별 다운로드는 상한을 N배로 넓힌다.
     const files = await readFiles(reader, snapshot, [...new Set(selected.flatMap(item => item.targets))]);

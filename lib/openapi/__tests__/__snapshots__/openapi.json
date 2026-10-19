@@ -205,6 +205,9 @@
                 "type": "string",
                 "minLength": 1
               },
+              "basePath": {
+                "type": "string"
+              },
               "nested": {
                 "type": "boolean"
               },

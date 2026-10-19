@@ -5,6 +5,7 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import type { LockedAccess, ProjectAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import type { Subject } from "@/lib/auth/subject";
+import { baseFilePath } from "@/lib/adapters/base-path";
 import { recordEvent, recordEvents } from "@/lib/events/record";
 import { readRestoreConfirmation } from "@/lib/keys/revert";
 import type { LocaleChangeDetail, LocaleChangeSubtype } from "@/lib/events/payload";
@@ -88,13 +89,13 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
   const project = await db.project.findUnique({ where: { id: projectId }, select: { archivedAt: true, repositoryImportToken: true, repositoryImportStartedAt: true } });
   const surface = await db.translationSurface.findFirst({
     where: { id: surfaceId, projectId },
-    select: { slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true },
+    select: { slug: true, adapterName: true, pathTemplate: true, basePath: true, baseLocale: true, declaredBaseLocale: true },
   });
   const locales = await db.locale.findMany({ where: { projectId, surfaceId }, select: { code: true, orphaned: true } });
   const changes = await db.localeChange.findMany({ where: { projectId, surfaceId }, select: { localeCode: true, operation: true, requestedAt: true } });
   const others = await db.translationSurface.findMany({
     where: { projectId, archivedAt: null, id: { not: surfaceId } },
-    select: { id: true, slug: true, pathTemplate: true, locales: { where: { orphaned: false }, select: { code: true } } },
+    select: { id: true, slug: true, pathTemplate: true, basePath: true, baseLocale: true, locales: { where: { orphaned: false }, select: { code: true } } },
   });
   const pending = await db.translation.findMany({
     where: { projectId, surfaceId, localeCode: code, pendingEditToken: { not: null } },
@@ -114,7 +115,7 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
     surface,
     locales,
     changes,
-    otherSurfaces: others.map((other): SurfacePaths => ({ surfaceId: other.id, surfaceSlug: other.slug, paths: surfacePaths(other.pathTemplate, other.locales.map(locale => locale.code)) })),
+    otherSurfaces: others.map((other): SurfacePaths => ({ surfaceId: other.id, surfaceSlug: other.slug, paths: surfacePaths(other, other.locales.map(locale => locale.code)) })),
     pending: pending.flatMap(row => row.pendingEditToken === null ? [] : [{ id: row.id, token: row.pendingEditToken, keyId: row.keyId, key: row.stringKey.key, value: row.value, needsReview: row.needsReview }]),
     baselines,
     restoreConfirmation: restore.confirmation,
@@ -131,11 +132,15 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
 
 type ChangeState = Awaited<ReturnType<typeof readChangeState>>;
 
-/** 다른 소스가 쥔 파일 경로 — 템플릿에 활성 로케일을 넣는다. `{locale}`이 없으면(공유 파일) 템플릿이 곧 경로다. */
-function surfacePaths(pathTemplate: string | null, codes: readonly string[]): string[] {
+/**
+ * 다른 소스가 쥔 파일 경로 — 템플릿에 활성 로케일을 넣는다. `{locale}`이 없으면(공유 파일) 템플릿이 곧 경로다. 기준 언어 파일이 템플릿 밖이면
+ * 그 경로(basePath)를 쥔다 — 빠지면 다중 소스 겹침을 놓친다(mobile-strings design §2).
+ */
+export function surfacePaths(surface: { pathTemplate: string | null; basePath: string | null; baseLocale: string | null }, codes: readonly string[]): string[] {
+  const { pathTemplate, basePath, baseLocale } = surface;
   if (pathTemplate === null) return [];
   if (!pathTemplate.includes("{locale}")) return [pathTemplate];
-  return [...new Set(codes.map(code => pathTemplate.replaceAll("{locale}", code)))];
+  return [...new Set(codes.map(code => code === baseLocale ? baseFilePath({ pathTemplate, basePath }, code) : pathTemplate.replaceAll("{locale}", code)))];
 }
 
 function fingerprintOf(state: ChangeState, input: { userId: string; scope: Scope; code: string }): string | null {
@@ -147,7 +152,7 @@ function fingerprintOf(state: ChangeState, input: { userId: string; scope: Scope
     surfaceId: input.scope.surfaceId,
     localeCode: input.code,
     change: row === undefined ? null : { operation: row.operation, requestedAt: row.requestedAt.toISOString() },
-    surface: { adapterName: state.surface.adapterName, pathTemplate: state.surface.pathTemplate, baseLocale: state.surface.baseLocale, declaredBaseLocale: state.surface.declaredBaseLocale },
+    surface: { adapterName: state.surface.adapterName, pathTemplate: state.surface.pathTemplate, baseLocale: state.surface.baseLocale, declaredBaseLocale: state.surface.declaredBaseLocale, basePath: state.surface.basePath },
     delivery: state.delivery,
     pending: state.pending.map(cell => ({ id: cell.id, token: cell.token })),
   });

@@ -39,6 +39,7 @@ describe("formatFromProject — pull 경로엔 read가 없어 여기가 유일�
     nested: true,
     nestedByPath: null,
     baseLocale: "en",
+    basePath: null,
     ...over,
   });
 
@@ -85,19 +86,20 @@ describe("resolveLocalePaths — per-locale", () => {
       nested: false,
       nestedByPath: null,
       baseLocale: "en",
+      basePath: null,
     },
     ["ko", "en"],
   );
 
   it("{locale}을 치환해 로케일당 경로 하나를 만든다", () => {
-    expect(resolveLocalePaths(format, "per-locale", [])).toEqual([
+    expect(resolveLocalePaths(format, "per-locale", [], "en")).toEqual([
       { locale: "en", path: "src/lib/i18n/en.json" },
       { locale: "ko", path: "src/lib/i18n/ko.json" },
     ]);
   });
 
   it("트리 경로 목록을 보지 않는다 — 파일이 아직 없어도 새로 만든다", () => {
-    const paths = resolveLocalePaths(format, "per-locale", ["무관한/경로.txt"]);
+    const paths = resolveLocalePaths(format, "per-locale", ["무관한/경로.txt"], "en");
     expect(paths.map((p) => p.path)).toContain("src/lib/i18n/ko.json");
   });
 
@@ -109,10 +111,11 @@ describe("resolveLocalePaths — per-locale", () => {
         nested: false,
         nestedByPath: null,
         baseLocale: "en",
+        basePath: null,
       },
       ["ko", "en", "fr"],
     );
-    expect(() => resolveLocalePaths(broken, "per-locale", [])).toThrow(/\{locale\}/);
+    expect(() => resolveLocalePaths(broken, "per-locale", [], "en")).toThrow(/\{locale\}/);
   });
 
   it("{locale}이 없고 로케일이 하나면 통과한다 — 경로가 겹칠 수 없다", () => {
@@ -123,10 +126,11 @@ describe("resolveLocalePaths — per-locale", () => {
         nested: false,
         nestedByPath: null,
         baseLocale: "en",
+        basePath: null,
       },
       ["en"],
     );
-    expect(resolveLocalePaths(single, "per-locale", [])).toEqual([
+    expect(resolveLocalePaths(single, "per-locale", [], "en")).toEqual([
       { locale: "en", path: "src/i18n/messages.json" },
     ]);
   });
@@ -139,10 +143,11 @@ describe("resolveLocalePaths — per-locale", () => {
         nested: null,
         nestedByPath: null,
         baseLocale: "en",
+        basePath: null,
       },
       ["ko", "en", "fr"],
     );
-    expect(resolveLocalePaths(glob, "multi-locale", ["src/i18n/namespaces/a.ts"])).toEqual([
+    expect(resolveLocalePaths(glob, "multi-locale", ["src/i18n/namespaces/a.ts"], "en")).toEqual([
       { path: "src/i18n/namespaces/a.ts" },
     ]);
   });
@@ -155,10 +160,11 @@ describe("resolveLocalePaths — per-locale", () => {
         nested: null,
         nestedByPath: null,
         baseLocale: "en",
+        basePath: null,
       },
       ["ko", "fr", "en"],
     );
-    expect(resolveLocalePaths(f, "per-locale", []).map((p) => p.locale)).toEqual(["en", "fr", "ko"]);
+    expect(resolveLocalePaths(f, "per-locale", [], "en").map((p) => p.locale)).toEqual(["en", "fr", "ko"]);
   });
 });
 
@@ -170,6 +176,7 @@ describe("resolveLocalePaths — multi-locale (글롭)", () => {
       nested: null,
       nestedByPath: null,
       baseLocale: "en",
+      basePath: null,
     },
     ["ko", "en", "fr"],
   );
@@ -183,7 +190,7 @@ describe("resolveLocalePaths — multi-locale (글롭)", () => {
   ];
 
   it("글롭을 트리 경로와 매칭한다 — 한 파일에 로케일이 여러 개라 치환하지 않는다", () => {
-    expect(resolveLocalePaths(format, "multi-locale", tree).map((p) => p.path)).toEqual([
+    expect(resolveLocalePaths(format, "multi-locale", tree, "en").map((p) => p.path)).toEqual([
       "src/i18n/namespaces/ai.ts",
       "src/i18n/namespaces/common.ts",
       "src/i18n/namespaces/settings.ts",
@@ -191,27 +198,27 @@ describe("resolveLocalePaths — multi-locale (글롭)", () => {
   });
 
   it("매칭 결과에 locale이 없다 — 파일 하나가 여러 로케일을 담는다", () => {
-    for (const p of resolveLocalePaths(format, "multi-locale", tree)) {
+    for (const p of resolveLocalePaths(format, "multi-locale", tree, "en")) {
       expect(p.locale).toBeUndefined();
     }
   });
 
   it("`*`가 `/`를 먹지 않는다 — 하위 디렉터리 파일을 잡으면 엉뚱한 파일을 덮는다", () => {
     const withNested = [...tree, "src/i18n/namespaces/deep/nested.ts"];
-    expect(resolveLocalePaths(format, "multi-locale", withNested).map((p) => p.path)).not.toContain(
+    expect(resolveLocalePaths(format, "multi-locale", withNested, "en").map((p) => p.path)).not.toContain(
       "src/i18n/namespaces/deep/nested.ts",
     );
   });
 
   it("확장자가 다른 파일을 잡지 않는다", () => {
     const withJson = [...tree, "src/i18n/namespaces/common.json"];
-    expect(resolveLocalePaths(format, "multi-locale", withJson).map((p) => p.path)).not.toContain(
+    expect(resolveLocalePaths(format, "multi-locale", withJson, "en").map((p) => p.path)).not.toContain(
       "src/i18n/namespaces/common.json",
     );
   });
 
   it("글롭이 0파일을 매칭하면 던진다 — 경로가 이동했다는 신호다. 조용히 빈 PR을 내면 안 된다", () => {
-    expect(() => resolveLocalePaths(format, "multi-locale", ["README.md"])).toThrow(/matched no files/);
+    expect(() => resolveLocalePaths(format, "multi-locale", ["README.md"], "en")).toThrow(/matched no files/);
   });
 });
 
@@ -466,6 +473,7 @@ describe("formatFromProject — nestedByPath (ARCHITECTURE §1.35)", () => {
     nested: true,
     nestedByPath: null,
     baseLocale: "en",
+    basePath: null,
     ...over,
   });
 
@@ -497,12 +505,12 @@ describe("formatFromProject — nestedByPath (ARCHITECTURE §1.35)", () => {
 describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는다 (sec-audit 2)", () => {
   const fmt = (pathTemplate: string, locales: string[]) =>
     formatFromProject(
-      { adapterName: "json-catalog", pathTemplate, nested: false, nestedByPath: null, baseLocale: "en" },
+      { adapterName: "json-catalog", pathTemplate, nested: false, nestedByPath: null, baseLocale: "en", basePath: null },
       locales,
     );
 
   it("정상 신규 로케일은 그대로 만든다 — 이 갈래를 좁히지 않는다", () => {
-    expect(resolveLocalePaths(fmt("locales/{locale}.json", ["ja", "en"]), "per-locale", [])).toEqual([
+    expect(resolveLocalePaths(fmt("locales/{locale}.json", ["ja", "en"]), "per-locale", [], "en")).toEqual([
       { locale: "en", path: "locales/en.json" },
       { locale: "ja", path: "locales/ja.json" },
     ]);
@@ -510,13 +518,13 @@ describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는�
 
   it("발견 2의 저장된 행을 던진다 — `{locale}` 템플릿 + 경로를 담은 로케일", () => {
     expect(() =>
-      resolveLocalePaths(fmt("{locale}", [".github/workflows/pwn"]), "per-locale", []),
+      resolveLocalePaths(fmt("{locale}", [".github/workflows/pwn"]), "per-locale", [], "en"),
     ).toThrow(/path/i);
   });
 
   it("`..`가 든 로케일 코드는 디렉터리를 거슬러 오르므로 던진다", () => {
     expect(() =>
-      resolveLocalePaths(fmt("locales/{locale}.json", ["../../.github/workflows/pwn"]), "per-locale", []),
+      resolveLocalePaths(fmt("locales/{locale}.json", ["../../.github/workflows/pwn"]), "per-locale", [], "en"),
     ).toThrow(/path/i);
   });
 
@@ -526,19 +534,19 @@ describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는�
    */
   it("로케일 모양이 아닌 저장된 코드를 던진다 — 트리에 실재하는 `package.json`을 겨누는 행", () => {
     const tree = ["package.json", "en.json", "ko.json"];
-    expect(() => resolveLocalePaths(fmt("{locale}.json", ["en", "package"]), "per-locale", tree)).toThrow(/locale/i);
+    expect(() => resolveLocalePaths(fmt("{locale}.json", ["en", "package"]), "per-locale", tree, "en")).toThrow(/locale/i);
   });
 
   it("같은 트리에서 로케일 행만 있으면 그대로 만든다", () => {
     const tree = ["package.json", "en.json", "ko.json"];
-    expect(resolveLocalePaths(fmt("{locale}.json", ["en", "ko"]), "per-locale", tree)).toEqual([
+    expect(resolveLocalePaths(fmt("{locale}.json", ["en", "ko"]), "per-locale", tree, "en")).toEqual([
       { locale: "en", path: "en.json" },
       { locale: "ko", path: "ko.json" },
     ]);
   });
 
   it("저장된 `pathTemplate` 자체가 리포를 벗어나도 던진다", () => {
-    expect(() => resolveLocalePaths(fmt("../{locale}.json", ["en"]), "per-locale", [])).toThrow(/path/i);
+    expect(() => resolveLocalePaths(fmt("../{locale}.json", ["en"]), "per-locale", [], "en")).toThrow(/path/i);
   });
 });
 
@@ -549,7 +557,7 @@ describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는�
 describe("formatFromProject — nestedByPath는 프로토타입 없는 객체다 (audit #84)", () => {
   it("`__proto__` 경로의 관측도 own property로 남는다", () => {
     const cols: ProjectFormatColumns = {
-      adapterName: "json-catalog", pathTemplate: "{locale}", nested: true, baseLocale: "en",
+      adapterName: "json-catalog", pathTemplate: "{locale}", nested: true, baseLocale: "en", basePath: null,
       nestedByPath: JSON.parse('{"__proto__": false, "en": true}') as unknown,
     };
     const byPath = formatFromProject(cols, ["en"]).nestedByPath!;

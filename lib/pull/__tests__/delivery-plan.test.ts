@@ -3,7 +3,7 @@ import { planDelivery, projectFormats, type PullState } from "../run";
 
 const edit = { id: "t", token: "token", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "" } };
 function input(cells: Record<string, { value: string }>) {
-  const surfaces: PullState["surfaces"] = [{ id: "s", slug: "web", adapterName: "ts-dict", pathTemplate: "dict/*.ts", baseLocale: "en",
+  const surfaces: PullState["surfaces"] = [{ id: "s", slug: "web", adapterName: "ts-dict", pathTemplate: "dict/*.ts", baseLocale: "en", basePath: null,
     nested: null, nestedByPath: {}, localeCodes: ["en"], keys: [{ id: "k", key: "hello", sourceText: "", orphaned: false, cells }] }];
   return { resolved: projectFormats(surfaces).map(item => ({ ...item, paths: [{ path: "dict/actual.ts" }] })),
     current: new Map([["dict/actual.ts", 'const en = { hello: "Previous" };']]), rendered: [] };

@@ -58,10 +58,11 @@ describe("renderLocaleFiles — per-locale", () => {
       nested: false,
       nestedByPath: null,
       baseLocale: "en",
+      basePath: null,
     },
     ["ko", "en"],
   );
-  const paths = resolveLocalePaths(format, "per-locale", []);
+  const paths = resolveLocalePaths(format, "per-locale", [], "en");
   const keys: RenderKey[] = [
     key({ key: "b.two", cells: { ko: { value: "둘" }, en: { value: "two" } } }),
     key({ key: "a.one", cells: { ko: { value: "하나" }, en: { value: "one" } } }),
@@ -117,10 +118,10 @@ describe("renderLocaleFiles — per-locale", () => {
 
 describe("renderLocaleFiles — per-locale 수술적 어댑터가 원본 없이 파일을 안 낼 때", () => {
   const format = formatFromProject(
-    { adapterName: "code-dict", pathTemplate: "i18n/{locale}.ts", nested: null, nestedByPath: null, baseLocale: "en" },
+    { adapterName: "code-dict", pathTemplate: "i18n/{locale}.ts", nested: null, nestedByPath: null, baseLocale: "en", basePath: null },
     ["en", "ko"],
   );
-  const paths = resolveLocalePaths(format, "per-locale", ["i18n/en.ts"]);
+  const paths = resolveLocalePaths(format, "per-locale", ["i18n/en.ts"], "en");
   const keys: RenderKey[] = [key({ key: "a", cells: { en: { value: "one" }, ko: { value: "하나" } } })];
 
   it("content는 null이고 errors에 그 경로가 실린다 — 재생성과 다른 계약의 갈림이 보고된다", () => {
@@ -141,6 +142,7 @@ describe("renderLocaleFiles — multi-locale (파일 × 로케일 이중 루프)
       nested: null,
       nestedByPath: null,
       baseLocale: "en",
+      basePath: null,
     },
     ["ko", "en", "fr"],
   );
@@ -171,7 +173,7 @@ export const ns = { ko, en, fr };
 `;
 
   const tree = ["src/i18n/ns/ns.ts"];
-  const paths = resolveLocalePaths(format, "multi-locale", tree);
+  const paths = resolveLocalePaths(format, "multi-locale", tree, "en");
   const current = new Map([["src/i18n/ns/ns.ts", source]]);
 
   it("한 파일 안에서 로케일 3개를 모두 치환한다 — 로케일 축을 안 돌면 나머지가 원본으로 남는다", () => {
@@ -256,10 +258,10 @@ export const ns = { ko, en, fr };
 
 describe("renderLocaleFiles — base description 폴백이 실제 경로에서 켜진다", () => {
   const format = formatFromProject(
-    { adapterName: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: null, nestedByPath: null, baseLocale: "en" },
+    { adapterName: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: null, nestedByPath: null, baseLocale: "en", basePath: null },
     ["en", "ko"],
   );
-  const paths = resolveLocalePaths(format, "per-locale", []);
+  const paths = resolveLocalePaths(format, "per-locale", [], "en");
 
   it("base 셀에 description이 없으면 StringKey.description으로 폴백한다 — rowsForLocale에 isBase가 닿아야 한다", () => {
     // `Translation.description`이 전부 null인 마이그레이션 직후 상태. `rowsForLocale` 단위 테스트는
@@ -279,10 +281,10 @@ describe("renderLocaleFiles — base description 폴백이 실제 경로에서 �
 describe("renderLocaleFiles — writer가 버린 항목을 errors로 싣는다", () => {
   it("json-catalog 접두 충돌로 버린 키가 LocalFile.errors에 남는다 — 프로덕션에서 조용히 사라지면 안 된다 (ARCHITECTURE §1.35)", () => {
     const format = formatFromProject(
-      { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: true, nestedByPath: null, baseLocale: "en" },
+      { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: true, nestedByPath: null, baseLocale: "en", basePath: null },
       ["en"],
     );
-    const paths = resolveLocalePaths(format, "per-locale", []);
+    const paths = resolveLocalePaths(format, "per-locale", [], "en");
     const keys: RenderKey[] = [
       key({ key: "a.b", cells: { en: { value: "leaf" } } }),
       key({ key: "a.b.c", cells: { en: { value: "deeper" } } }),
@@ -301,10 +303,10 @@ describe("renderLocaleFiles — writer가 버린 항목을 errors로 싣는다",
 describe("renderLocaleFiles — 보류 좌표", () => {
   it("per-locale 출력에 locale이 붙고, 그 오류에도 locale이 붙는다", () => {
     const format = formatFromProject(
-      { adapterName: "code-dict", pathTemplate: "i18n/{locale}.ts", nested: null, nestedByPath: null, baseLocale: "en" },
+      { adapterName: "code-dict", pathTemplate: "i18n/{locale}.ts", nested: null, nestedByPath: null, baseLocale: "en", basePath: null },
       ["en", "ko"],
     );
-    const paths = resolveLocalePaths(format, "per-locale", ["i18n/en.ts"]);
+    const paths = resolveLocalePaths(format, "per-locale", ["i18n/en.ts"], "en");
     const out = renderLocaleFiles(format, "per-locale", paths, [key({ key: "a", cells: { en: { value: "one" }, ko: { value: "하나" } } })], "en",
       new Map([["i18n/en.ts", "export default { a: 'x' };\n"]]));
     expect(out.map((f) => f.locale)).toEqual(paths.map((p) => p.locale));
@@ -313,11 +315,11 @@ describe("renderLocaleFiles — 보류 좌표", () => {
 
   it("ts-dict write-slot-missing에 그 write 호출의 locale이 붙는다", () => {
     const format = formatFromProject(
-      { adapterName: "ts-dict", pathTemplate: "ns/*.ts", nested: null, nestedByPath: null, baseLocale: "ko" },
+      { adapterName: "ts-dict", pathTemplate: "ns/*.ts", nested: null, nestedByPath: null, baseLocale: "ko", basePath: null },
       ["ko", "fr"],
     );
     const source = `const ko = { "a": "하나", "z": "끝" } as const;\nconst fr = { "a": "un" } as const;\n`;
-    const paths = resolveLocalePaths(format, "multi-locale", ["ns/x.ts"]);
+    const paths = resolveLocalePaths(format, "multi-locale", ["ns/x.ts"], "ko");
     const out = renderLocaleFiles(format, "multi-locale", paths,
       [key({ key: "a", cells: { ko: { value: "하나" }, fr: { value: "un" } } }), key({ key: "z", cells: { ko: { value: "끝" }, fr: { value: "fin" } } })],
       "ko", new Map([["ns/x.ts", source]]));
