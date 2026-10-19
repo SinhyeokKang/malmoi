@@ -42,7 +42,7 @@ M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없�
 - [x] **T2.3 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · `.strings` 고정점 100% · 조용한 손실 0 · UTF-16 리포가 분모에 듦 ·
       `Base.lproj` 리포 수·`resource-limit` 거부 수 보고(arb 런에서는 smooth-app 38MB가 첫 적재 합계 10MB를 넘어 거부됐다 — 큰 iOS 리포도 같은 부류다).
       **ARB가 정답인 모바일 리포 14개의 1순위가 ARB로 남는다**(spec 완료 조건 3). 결과로 `docs/adapter-survey/baseline/`을 갱신해 커밋한다(같은 형식, README 출처 줄).
-- [ ] **T2.4 실물 (수동)** — `/roundtrip`(UTF-8 리포 하나 + UTF-16 리포 하나). M3의 런타임 미검증 항목(실제 GitHub·GitLab이 base64 blob/action을 저장한 바이트)을 여기서 닫는다. 전제: macOS + Xcode, 폐기용 리포. 검증: 고친 셀 외 diff 0, 인코딩·BOM 유지, Xcode 빌드 통과.
+- [x] **T2.4 실물 (수동)** — `/roundtrip`(UTF-8 리포 하나 + UTF-16 리포 하나). M3의 런타임 미검증 항목(실제 GitHub·GitLab이 base64 blob/action을 저장한 바이트)을 여기서 닫는다. 전제: macOS + Xcode, 폐기용 리포. 검증: 고친 셀 외 diff 0, 인코딩·BOM 유지, Xcode 빌드 통과.
       폐기용 리포는 새로 만든다(private, 기존 넷에 Apple이 없다 — arb의 `i18n-arb-check`처럼 계약 항목을 픽스처에 심는다: 주석·중복 키·비정규 이스케이프·누락 키 삽입·UTF-16 BOM 유무).
       만든 리포는 roundtrip 전제 조건 1의 목록에 올린다. GitLab 쪽 base64 바이트는 폐기용 GitLab 프로젝트(`ox501501/malmoi-gitlab-test`)에 UTF-16 파일을 더해 본다.
       Xcode는 머신마다 확인한다(2026-10-19 한 머신에 Xcode 26.6). 없으면 `xcodebuild` 대신 `plutil -lint`로 대체하지 말고 미완으로 보고한다.
