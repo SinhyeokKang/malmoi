@@ -141,6 +141,11 @@ M2로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - 멀티 모듈(`app/`·`feature/*/`)은 모듈마다 후보이고, 다중 표면으로 등록하면 `basePath` 간 `path-conflict`를 본다. flavor(`src/debug/res`)·라이브러리 모듈의
   순위를 진입점 테스트로 고정한다. 모듈 수가 많으면 첫 적재 예산(`resource-limit`)에 먼저 닿는다(POSTMORTEM 2026-10-07).
 - `.github/`·`build/`는 곁가지(`aside`)다.
+- ⚠️ **Flutter·크로스플랫폼 리포의 플랫폼 껍데기**(`android/app/src/main/res/values/strings.xml` — 대개 `app_name` 하나, 언어 파일 없음)는 단일 언어 후보가 된다(§2.4).
+  ARB·Apple 정답 리포에서 이 후보가 1순위를 빼앗지 않게 순위를 진입점 테스트로 고정하고, 재측정(T3.4)이 ARB·Apple 정답 리포의 1순위 불변을 본다(spec 완료 조건 3).
+- ⚠️ **probe 예산 밖으로 밀린 정답 후보는 조용히 사라진다**(arb 리뷰 R1 — apple-strings design §5에 같은 서술). 멀티 모듈·flavor로 `strings.xml` 후보가
+  `PROBE_LIMITS.jsonLike`(5)를 넘으면 정답 모듈이 미검증으로 떨어진다. 실제 `detectFormats` + 읽은 경로 기록 reader로 시나리오 테스트(본보기
+  `lib/onboarding-run/__tests__/detect-arb.test.ts`)를 두고, 예산을 늘리면 합계 바이트 예산은 한 번만 잰다(`readFiles(…, prior)`).
 
 ## 6. 순수 함수 (= `/tdd` 진입점)
 
@@ -186,3 +191,5 @@ M2로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - 2026-09-16 YAML range 치환 — §4.
 - 2026-10-03 단일 언어 탐지가 조상 승격으로 설정 파일을 앞세움 — §2.4 단일 언어 리포.
 - 2026-10-07 소스별 파일 예산 — §5 멀티 모듈.
+- arb 런(2026-10-19)·apple-strings 런의 리뷰가 찾은 부류 — probe 예산 밖 후보 탈락 · 디렉터리·파일 이름의 로케일 오해석 · 합계 예산 이중 시작 ·
+  격리 Postgres 진입점 시나리오 부재(본보기 `lib/pull/__tests__/arb-publish.integration.ts`) · 첫 Publish가 리포에 있던 것을 지움. 목록은 apple-strings design §9.

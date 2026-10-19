@@ -2,7 +2,9 @@
 
 모바일 세 스펙의 마지막이다(arb → apple-strings → android-strings). 순서: `basePath` → 파서 → 어댑터 → 기준 언어 입력·변경 거부·언어 추가 철자 →
 저장 검증 → 합동 출시. 배치마다 `pnpm gate` green + 학습·홀드아웃 **둘 다** 재측정(ARCHITECTURE §1.9 재측정 트리거)으로 닫는다.
-모바일 코퍼스·기준선은 mobile-strings M0·M1이 만든다. 표기 규칙("검증: red"·(수동)·테스트 커밋 합치기)은 arb tasks 머리와 같다.
+모바일 코퍼스는 mobile-strings M1이 만들었고, **회귀 기준선은 커밋된 `docs/adapter-survey/baseline/`이다**(앞 스펙이 갱신한다 — 머신을 옮겨도 같다).
+표기 규칙("검증: red"·(수동)·테스트 커밋 합치기)은 arb tasks 머리와 같다. arb 런에서 넘어온 지휘 메모(손 목록 정정 · 리뷰 리듬 · 가이드는 라벨이 dev에 들어간 뒤 ·
+MCP로 대체한 실물 단계 · App 설치 범위)는 apple-strings tasks 머리와 같다.
 design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(design §3.2).
 
 ## 3. Android (`android-strings`)
@@ -22,7 +24,7 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       왕복(렌더 + `undeliverable` 분류에서 blocking 없음) ·
       `contract.ts` 매트릭스 편입 · 실 어댑터 basePath 공급 고리(탐지 → `create_project`/`add_sources` → `TranslationSurface.basePath` → `formatFromProject`·원격 상태 →
       Publish의 base 경로). 검증: red.
-- [ ] **T3.2 구현 + 배선** — arb T1.3 손 목록(`SUPPORTED_ADAPTERS` 추가, 사전 라벨) + `languageName`·`flagFor`의 `-r` 정규화 + survey 판정 비교가 `basePath`를 읽음
+- [ ] **T3.2 구현 + 배선** — arb T1.3 손 목록 + "실측 정정"(`SUPPORTED_ADAPTERS` 추가, 사전 라벨 — MCP `add_locale` 설명·`unsupported-format`·랜딩 본문의 포맷 나열 포함) + `languageName`·`flagFor`의 `-r` 정규화 + survey 판정 비교가 `basePath`를 읽음
       (mobile-strings M1 판정 JSON). 검증: `pnpm test` green → 껍데기 테스트가 `values/`·`values-*/strings.xml`을 내려받는다 → `pnpm gate` green.
       커밋: `feat(adapters): add Android strings adapter`
 - [ ] **T3.2b 기준 언어 코드 입력** — `BaseLocaleState`와 두 소비자(온보딩 ③ · Add sources 모달 `components/sources/add-sources-modal.tsx:195-198`)에 Android
@@ -39,9 +41,11 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
 - [ ] **T3.3 저장 검증** — `lib/keys/save.ts` 코어에서 인라인 태그 불일치 거부(design §3.1): `KeySavePlan` 새 코드, 워크스페이스 footer Alert·셀 `aria-invalid`,
       사전 3벌, MCP 영어 응답. 검증: 순수 함수 테스트 + 코어 테스트(웹·MCP 두 껍데기) + `pnpm gate` green + `/runtime-test`로 거부 표시 확인 **(수동)**.
       커밋: `feat(translations): reject saves that break Android inline tags`
-- [ ] **T3.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 착수 전 `composeResources`(Meshtastic)를 범위에 넣을지 정한다. 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
+- [ ] **T3.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 착수 전 `composeResources`(Meshtastic)를 범위에 넣을지 정한다. 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
       `resource-limit` 거부 수 보고. 커밋 없음.
 - [ ] **T3.5 실물 (수동)** — `/roundtrip`. 전제: Android SDK·JDK, 폐기용 리포. 검증: 고친 셀 외 diff 0, Gradle `assembleDebug` 통과.
+      ⚠️ 2026-10-19 한 머신에는 JDK·Android SDK가 없었다 — 착수 때 머신을 확인하고 설치는 사용자 승인 뒤(arb는 Flutter를 brew cask로 설치했다). 폐기용 리포는 새로 만들어
+      roundtrip 전제 조건 1의 목록에 올린다(`basePath` · `values/`만 있는 언어 · `translatable="false"` · `<plurals>` · 인라인 태그를 픽스처에 심는다).
 
 ## 5. 외부 계약·문서 (세 스펙 합동 출시, 문서별 커밋)
 
@@ -53,6 +57,7 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
       (OPERATIONS 절차). 커밋 없음. 검증: 폐기용 GitHub 리포 CI가 세 새 어댑터로 각각 green **(수동)**. GitLab 실물은 T5.7 뒤에 본다.
 - [ ] **T5.2 `docs(PRODUCT)`** — §0 포맷 수, §2 포지셔닝 문구, §4.1 지원 포맷, §7.2 언어 추가·제거 지원 포맷 목록·Android 철자·기준 언어 변경 거부.
 - [ ] **T5.3 `docs(ARCHITECTURE)`** — §1.9 재측정 표·판정, Android base 예외(`basePath`), 값 표현 표(design §3), §0 불변식 3의 수술적 표면 목록에 `android-strings`.
+      CLAUDE.md 코어 원칙 두 줄(수술적 치환 목록 · 언어 되살림 목록)에 `android-strings`.
       CLAUDE.md 스택 표에 `@xml-tools/parser`(읽기·offset 전용) 함정(`docs(CLAUDE)`, 미러 `pnpm sync:agents`).
 - [ ] **T5.4 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록, Android `base-locale` 필수,
       인라인 태그 안내("기준 언어의 태그를 그대로 두고 그 사이 글만 번역한다").
