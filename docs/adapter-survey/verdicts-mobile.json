@@ -1,0 +1,368 @@
+[
+  {
+    "repo": "2dust/v2rayNG",
+    "correctCatalogPath": "V2rayNG/app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "V2rayNG/app/src/main/res/values/strings.xml",
+    "note": "10로케일. dev·fdroid·pre_release 소스셋은 base만 있는 변형이다",
+    "tier": "A"
+  },
+  {
+    "repo": "android/security-certification-resources",
+    "correctCatalogPath": null,
+    "unsupported": "no-catalog",
+    "note": "NIAP 인증용 테스트 앱 19개가 각자 base values/strings.xml만 가진다. 번역 카탈로그가 없어 미탐지가 정답",
+    "tier": "C"
+  },
+  {
+    "repo": "Baka-SU/BakaSU",
+    "correctCatalogPath": "manager/app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "manager/app/src/main/res/values/strings.xml",
+    "note": "45로케일. KernelSU 계열 구조",
+    "tier": "B"
+  },
+  {
+    "repo": "begugla0/sni-pinger",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "base+ru",
+    "tier": "C"
+  },
+  {
+    "repo": "cake-tech/cake_wallet",
+    "correctCatalogPath": "res/values/strings_{locale}.arb",
+    "note": "31로케일. gen-l10n이 아니라 tool/generate_localization.dart가 읽는 자체 배선이고, Android 리소스처럼 보이는 res/values/ 경로에 ARB가 산다",
+    "tier": "B"
+  },
+  {
+    "repo": "codenameone/CodenameOne",
+    "correctCatalogPath": null,
+    "unsupported": "vendored-only",
+    "note": "Ports/iOSPort/Zooz/zoozi18n.bundle은 서드파티 결제 SDK 번들(2항목)이고, android values는 base만인 호환 샘플이다. 프레임워크 자체 번역은 이 포맷이 아니다",
+    "tier": "B"
+  },
+  {
+    "repo": "danielsaidi/SwiftUIKit",
+    "correctCatalogPath": "Sources/SwiftUIKit/Resources/Localizable.xcstrings",
+    "note": "SwiftPM 라이브러리 리소스 xcstrings(6키, 원문 셀 전부 없음)",
+    "tier": "B"
+  },
+  {
+    "repo": "deckerst/aves",
+    "correctCatalogPath": "lib/l10n/app_{locale}.arb",
+    "alsoValid": [
+      "android/app/src/main/res/values-{locale}/strings.xml"
+    ],
+    "note": "57로케일 Flutter 앱 — 앱 UI는 ARB다. android/app/src/main/res/values{,-locale}/strings.xml(57로케일)은 위젯·바로가기 문자열 9개짜리 진짜 번역 카탈로그라 alsoValid. debug·libre 등 변형 소스셋은 base만 있다",
+    "tier": "A"
+  },
+  {
+    "repo": "didi/DoKit",
+    "correctCatalogPath": "Android/dokit/src/main/res/values-{locale}/strings.xml",
+    "basePath": "Android/dokit/src/main/res/values/strings.xml",
+    "alsoValid": [
+      "Android/app/src/main/res/values-{locale}/strings.xml",
+      "Android/dokit-gps-mock/src/main/res/values-{locale}/strings.xml",
+      "Android/dokit-mc/src/main/res/values-{locale}/strings.xml",
+      "Android/dokit-weex/src/main/res/values-{locale}/strings.xml",
+      "iOS/DoraemonKit/Resource/{locale}.lproj/Doraemon.strings"
+    ],
+    "note": "멀티모듈 SDK. dokit 코어 모듈이 301문자열로 가장 크다. 다른 모듈과 iOS DoraemonKit(en·zh-Hans)도 진짜 카탈로그라 alsoValid. 데모 앱 .strings는 제외",
+    "tier": "A"
+  },
+  {
+    "repo": "erosTeam/eros_fe",
+    "correctCatalogPath": "lib/l10n/intl_{locale}.arb",
+    "note": "6로케일(ko_KR·zh_CN 꼴). ios/Runner/{locale}.lproj/InfoPlist·Main·LaunchScreen.strings와 android values-b+zh는 부속 표면이다",
+    "tier": "C"
+  },
+  {
+    "repo": "ethereal-developers/OpenScan",
+    "correctCatalogPath": "lib/l10n/app_{locale}.arb",
+    "note": "Flutter 앱 — 9로케일 ARB가 앱 UI. android values(base+zh-rCN)는 부속 표면",
+    "tier": "B"
+  },
+  {
+    "repo": "firebase/FirebaseUI-iOS",
+    "correctCatalogPath": "FirebaseSwiftUI/FirebaseAuthSwiftUI/Sources/Strings/Localizable.xcstrings",
+    "note": "라이브러리 카탈로그는 xcstrings(217키). samples/{objc,swift}의 84로케일 Localizable.strings는 샘플 앱, Tests/TestResources는 픽스처 — 로케일 수가 가장 많은 쪽이 정답이 아닌 사례",
+    "tier": "B"
+  },
+  {
+    "repo": "g0v/moedict-webkit",
+    "correctCatalogPath": "ios/MoeDict/Resources/{locale}.lproj/Localizable.strings",
+    "alsoValid": [
+      "android/res/values-{locale}/strings.xml"
+    ],
+    "note": "웹 앱의 iOS·Android 래퍼. iOS en·zh-Hant 3항목. android/res/values/strings.xml은 base만",
+    "tier": "B"
+  },
+  {
+    "repo": "gnachman/iTerm2",
+    "correctCatalogPath": "xcstrings/Localizable.xcstrings",
+    "alsoValid": [
+      "sources/Settings/mul.lproj/PreferencePanel.xcstrings",
+      "sources/MainMenu/mul.lproj/MainMenu.xcstrings"
+    ],
+    "note": "xcstrings 74개(6로케일). 대표는 5,020키 Localizable. XIB마다 mul.lproj/<이름>.xcstrings가 따로 있다 — 이 경우 표면이 파일 수만큼이라 대표 하나로 정답을 다 표현하지 못한다. ThirdParty/Sparkle·CoreParse .strings는 벤더(UTF-16)",
+    "tier": "A"
+  },
+  {
+    "repo": "google/google-api-objectivec-client-for-rest",
+    "correctCatalogPath": null,
+    "unsupported": "no-catalog",
+    "note": "Examples/* 샘플의 en.lproj/InfoPlist.strings 템플릿뿐이다",
+    "tier": "B"
+  },
+  {
+    "repo": "GopeedLab/gopeed",
+    "correctCatalogPath": "ui/flutter/lib/l10n/app_{locale}.arb",
+    "note": "23로케일. Flutter UI가 ui/flutter 아래에 있다(Go 백엔드 리포)",
+    "tier": "A"
+  },
+  {
+    "repo": "gskinnerTeam/flutter-wonderous-app",
+    "correctCatalogPath": "lib/l10n/app_{locale}.arb",
+    "note": "en·zh 2로케일. 쇼케이스지만 스토어 배포된 실앱이다",
+    "tier": "A"
+  },
+  {
+    "repo": "gunnerkidBT/TwitchAdBlock",
+    "correctCatalogPath": "layout/Library/Application Support/TwitchAdBlock.bundle/{locale}.lproj/Localizable.strings",
+    "note": "탈옥 트윅 — 경로에 공백이 있다. en·es·zh-Hant",
+    "tier": "C"
+  },
+  {
+    "repo": "HabitRPG/habitica-android",
+    "correctCatalogPath": "Habitica/res/values-{locale}/strings.xml",
+    "basePath": "Habitica/res/values/strings.xml",
+    "alsoValid": [
+      "common/src/main/res/values-{locale}/strings.xml",
+      "wearos/src/main/res/values-{locale}/strings.xml"
+    ],
+    "note": "30로케일. 메인 앱이 src/main이 아닌 Habitica/res에 있다(1,615문자열). common·wearos 모듈도 같은 로케일의 진짜 카탈로그",
+    "tier": "B"
+  },
+  {
+    "repo": "Hammerspoon/hammerspoon",
+    "correctCatalogPath": null,
+    "unsupported": "vendored-only",
+    "note": "Pods/Sparkle 프레임워크의 .strings(35로케일, UTF-16)뿐이다. 앱 자체는 지역화하지 않는다 — 벤더 오탐 시험",
+    "tier": "A"
+  },
+  {
+    "repo": "hari161008/Ever-Call-Recorder",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "10로케일",
+    "tier": "C"
+  },
+  {
+    "repo": "HD838A/remote-mic-app",
+    "correctCatalogPath": "Resources/{locale}.lproj/Localizable.strings",
+    "alsoValid": [
+      "Resources/{locale}.lproj/InfoPlist.strings"
+    ],
+    "note": "en·zh-Hans. packaging/doubao-driver/ 아래는 설치 패키지 리소스",
+    "tier": "B"
+  },
+  {
+    "repo": "ianyh/Amethyst",
+    "correctCatalogPath": null,
+    "unsupported": "no-catalog",
+    "note": "en.lproj/InfoPlist.strings가 Xcode 템플릿 주석뿐(항목 0)이다",
+    "tier": "A"
+  },
+  {
+    "repo": "InteractionEngineer/PayForMe",
+    "correctCatalogPath": "PayForMe/Strings/{locale}.lproj/Localizable.strings",
+    "note": "6로케일. PayForMe/cs.lproj/LaunchScreen.strings는 부속",
+    "tier": "C"
+  },
+  {
+    "repo": "itouch2/PhotoTweaks",
+    "correctCatalogPath": "PhotoTweaks/{locale}.lproj/PhotoTweaks.strings",
+    "note": "라이브러리 테이블 PhotoTweaks.strings(en·zh-Hans)",
+    "tier": "B"
+  },
+  {
+    "repo": "jesther-ai/open-u60-pro",
+    "correctCatalogPath": "mobile/android/OpenU60/app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "mobile/android/OpenU60/app/src/main/res/values/strings.xml",
+    "alsoValid": [
+      "mobile/ios/OpenU60/Resources/{locale}.lproj/Localizable.strings"
+    ],
+    "note": "Android·iOS 네이티브 앱이 한 리포에 있다(base+zh-rCN / en+zh-Hans). 두 쪽 다 앱 UI라 iOS는 alsoValid",
+    "tier": "C"
+  },
+  {
+    "repo": "krille-chan/fluffychat",
+    "correctCatalogPath": "lib/l10n/intl_{locale}.arb",
+    "note": "59로케일 앱 카탈로그. ios/Runner/{locale}.lproj/Main·LaunchScreen.strings(26로케일)는 1바이트 빈 파일이고, ios/Localizable.xcstrings는 2키라 앱 UI가 아니다",
+    "tier": "A"
+  },
+  {
+    "repo": "Kunzisoft/KeePassDX",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "70로케일. icon-pack/* 모듈은 base만 있다",
+    "tier": "A"
+  },
+  {
+    "repo": "LegadoTeam/legado",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "8로케일(es-rES·zh-rHK 꼴). app/src/debug는 변형 소스셋",
+    "tier": "B"
+  },
+  {
+    "repo": "likelikeslike/ViPER4Windows",
+    "correctCatalogPath": "ViPER4Windows/lib/l10n/app_{locale}.arb",
+    "note": "3로케일(zh_TW 포함). 앱이 하위 디렉터리에 있다",
+    "tier": "C"
+  },
+  {
+    "repo": "meshtastic/Meshtastic-Android",
+    "correctCatalogPath": "core/resources/src/commonMain/composeResources/values-{locale}/strings.xml",
+    "basePath": "core/resources/src/commonMain/composeResources/values/strings.xml",
+    "note": "Compose Multiplatform 리소스 — 41로케일 카탈로그가 res/가 아니라 composeResources/values-{locale}/에 있다. 보급률 표본의 경로 정규식(res/values)에는 base-only 4개만 잡혀 단일 로케일로 보였다",
+    "tier": "B"
+  },
+  {
+    "repo": "milanvarady/Applite",
+    "correctCatalogPath": "Localizable.xcstrings",
+    "note": "리포 루트의 xcstrings 하나(269키)",
+    "tier": "A"
+  },
+  {
+    "repo": "mit-cml/appinventor-sources",
+    "correctCatalogPath": "appinventor/blocklyeditor/src/msg/ai_blockly/messages_{locale}.json",
+    "note": "모바일 포맷은 iOS 컴패니언의 Settings.bundle/en.lproj/Root.strings 1항목뿐이라 모바일 정답이 아니다. 실제 번역 카탈로그는 블록 편집기의 messages_{locale}.json(21로케일, 평면 Blockly.Msg.* 키 — json-catalog)이다. 웹 IDE 문구는 .properties(미지원). node_modules/**/locales는 벤더",
+    "tier": "B"
+  },
+  {
+    "repo": "mrkai77/Loop",
+    "correctCatalogPath": "Loop/Localizable.xcstrings",
+    "alsoValid": [
+      "Loop/{locale}.lproj/InfoPlist.strings"
+    ],
+    "note": "xcstrings 429키. InfoPlist.strings 14로케일은 권한 문구 카탈로그",
+    "tier": "A"
+  },
+  {
+    "repo": "objective-see/LuLu",
+    "correctCatalogPath": "LuLu/Shared/Localizable.xcstrings",
+    "alsoValid": [
+      "LuLu/App/mul.lproj/Preferences.xcstrings",
+      "LuLu/App/mul.lproj/AlertWindow.xcstrings",
+      "LuLu/App/InfoPlist.xcstrings"
+    ],
+    "note": "xcstrings 13개(8로케일). 대표는 Shared/Localizable(153키), 나머지는 XIB별 mul.lproj",
+    "tier": "A"
+  },
+  {
+    "repo": "OMARVII/Shotnix",
+    "correctCatalogPath": "Localization/Localizable.xcstrings",
+    "note": "xcstrings 1,780키가 앱 카탈로그. scripts/localize.py가 Localization/translations/<영역>[.<locale>].json(키→{언어:값} 다국어 객체 — 자체 형식)으로 번역을 덮어쓴 뒤 Sources/ShotnixCore/Resources/{locale}.lproj/Localizable.strings로 컴파일한다 — 그 .strings는 XML plist 형식의 빌드 산출물이라 카탈로그가 아니다. Vendor/KeyboardShortcuts는 벤더",
+    "tier": "C"
+  },
+  {
+    "repo": "openfoodfacts/smooth-app",
+    "correctCatalogPath": "packages/smooth_app/lib/l10n/app_{locale}.arb",
+    "alsoValid": [
+      "packages/smooth_app/ios/Runner/{locale}.lproj/InfoPlist.strings"
+    ],
+    "note": "Flutter 앱 128로케일 ARB(aa·ak 같은 드문 코드 포함). ios InfoPlist.strings 130로케일(Base.lproj 포함)은 권한 문구 카탈로그",
+    "tier": "B"
+  },
+  {
+    "repo": "pass-with-high-score/universal-installer",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "alsoValid": [
+      "core/src/main/res/values-{locale}/strings.xml",
+      "wearos/src/main/res/values-{locale}/strings.xml",
+      "tv/src/main/res/values-{locale}/strings.xml"
+    ],
+    "note": "20로케일 × 모듈 넷. 문자열 수는 tv(176)·core(111)가 app(35)보다 많다 — 대표를 고르기 애매해 넷 다 유효로 둔다",
+    "tier": "B"
+  },
+  {
+    "repo": "ResearchKit/ResearchKit",
+    "correctCatalogPath": "ResearchKit/Localized/{locale}.lproj/ResearchKit.strings",
+    "note": "프레임워크 카탈로그 39로케일(+.stringsdict). samples/ORKCatalog의 41로케일 Localizable.strings(Base.lproj 포함, UTF-16)는 샘플 앱. ResearchKitUI는 en만",
+    "tier": "A"
+  },
+  {
+    "repo": "rickytan/RTRootNavigationController",
+    "correctCatalogPath": null,
+    "unsupported": "no-catalog",
+    "note": "Example·Tests의 en.lproj/InfoPlist.strings 템플릿뿐이다",
+    "tier": "A"
+  },
+  {
+    "repo": "StanfordBDHG/HealthGPT",
+    "correctCatalogPath": "HealthGPT/Supporting Files/Localizable.xcstrings",
+    "note": "xcstrings 55키(en만)",
+    "tier": "B"
+  },
+  {
+    "repo": "stripe/stripe-android",
+    "correctCatalogPath": "paymentsheet/res/values-{locale}/strings.xml",
+    "basePath": "paymentsheet/res/values/strings.xml",
+    "alsoValid": [
+      "payments-core/res/values-{locale}/strings.xml",
+      "payments-ui-core/res/values-{locale}/strings.xml",
+      "stripe-ui-core/res/values-{locale}/strings.xml",
+      "stripe-core/res/values-{locale}/strings.xml",
+      "identity/res/values-{locale}/strings.xml",
+      "financial-connections/res/values-{locale}/strings.xml",
+      "connect/res/values-{locale}/strings.xml",
+      "3ds2sdk/res/values-{locale}/strings.xml",
+      "stripecardscan/res/values-{locale}/strings.xml",
+      "hcaptcha/res/values-{locale}/strings.xml"
+    ],
+    "note": "멀티모듈 SDK. 모듈이 src/main 없이 <모듈>/res에 리소스를 둔다. 대표는 문자열이 가장 많은 paymentsheet(220), 42로케일 모듈들은 전부 유효. example·*-example·playground는 샘플",
+    "tier": "B"
+  },
+  {
+    "repo": "swiftlang/swift-package-manager",
+    "correctCatalogPath": null,
+    "unsupported": "fixture-only",
+    "note": "Fixtures/Resources/Localized/ 테스트 픽스처(de·es·fr)뿐이다",
+    "tier": "A"
+  },
+  {
+    "repo": "team-spotube/spotube",
+    "correctCatalogPath": "lib/l10n/app_{locale}.arb",
+    "note": "30로케일. l10n.yaml이 가리키는 유일한 카탈로그",
+    "tier": "A"
+  },
+  {
+    "repo": "TeamNewPipe/NewPipe",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "112로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "tiann/KernelSU",
+    "correctCatalogPath": "manager/app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "manager/app/src/main/res/values/strings.xml",
+    "note": "47로케일. 앱이 manager/ 아래에 있다",
+    "tier": "A"
+  },
+  {
+    "repo": "vanniktech/Emoji",
+    "correctCatalogPath": "emoji/src/androidMain/res/values-{locale}/strings.xml",
+    "basePath": "emoji/src/androidMain/res/values/strings.xml",
+    "note": "라이브러리. KMP androidMain 소스셋에 base+de. app/(샘플)는 base만 있다",
+    "tier": "B"
+  },
+  {
+    "repo": "wanderingstan/Lifeslice",
+    "correctCatalogPath": null,
+    "unsupported": "vendored-only",
+    "note": "Sparkle.framework 사본들(바이너리 plist 36개 포함)과 English.lproj/InfoPlist.strings(UTF-16 템플릿)뿐이다",
+    "tier": "C"
+  }
+]

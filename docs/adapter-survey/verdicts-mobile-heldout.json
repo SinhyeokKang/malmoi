@@ -1,0 +1,104 @@
+[
+  {
+    "repo": "Alinto/sope",
+    "correctCatalogPath": null,
+    "unsupported": "no-catalog",
+    "note": "GDLAccess/English.lproj/InfoPlist.strings(UTF-16 템플릿) 하나뿐이다",
+    "tier": "C"
+  },
+  {
+    "repo": "b123400/xliffie",
+    "correctCatalogPath": "Xliffie/Localizable.xcstrings",
+    "alsoValid": [
+      "Xliffie/{locale}.lproj/Main.strings",
+      "Xliffie/{locale}.lproj/TranslationWindowController.strings"
+    ],
+    "note": "xcstrings(54키)와 XIB별 .strings(ja·zh-TW뿐 — 개발 언어 en은 .strings가 없다)가 섞여 있다",
+    "tier": "C"
+  },
+  {
+    "repo": "d4rken-org/butler",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "alsoValid": [
+      "app-common/src/main/res/values-{locale}/strings.xml",
+      "app-common-io/src/main/res/values-{locale}/strings.xml",
+      "app-workspace/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-apps/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-explorer/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-history/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-searcher/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-editor/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-viewer/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-developer/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-bugreport/src/main/res/values-{locale}/strings.xml",
+      "app-workspace-saver/src/main/res/values-{locale}/strings.xml",
+      "app-provider-documents/src/main/res/values-{locale}/strings.xml"
+    ],
+    "note": "40로케일 × 기능 모듈 십수 개. 대표는 app(433문자열), 같은 로케일 집합의 기능 모듈은 전부 유효. app-common/src/gplay는 변형, saf-test-provider는 테스트",
+    "tier": "C"
+  },
+  {
+    "repo": "exelban/stats",
+    "correctCatalogPath": "Stats/Supporting Files/{locale}.lproj/Localizable.strings",
+    "note": "41로케일. Stats/Supporting Files/Stats/en.xcloc/ 아래 .strings는 Xcode 내보내기 산출물이라 카탈로그가 아니다",
+    "tier": "A"
+  },
+  {
+    "repo": "JHubi1/ollama-app",
+    "correctCatalogPath": "lib/l10n/app_{locale}.arb",
+    "note": "6로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "jonjomckay/fritter",
+    "correctCatalogPath": "lib/l10n/intl_{locale}.arb",
+    "note": "35로케일. fritter/android/app/src/main/res/values-{locale}/strings.xml 34개는 기본 values/가 없고 빈 app_name 하나뿐인 번역 도구 잔여물이라 카탈로그가 아니다",
+    "tier": "B"
+  },
+  {
+    "repo": "libre-tube/LibreTube",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "73로케일 단일 모듈 앱",
+    "tier": "A"
+  },
+  {
+    "repo": "mueller-ma/NFCReader",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "note": "33로케일. app/src/debug는 app_name 하나짜리 변형 소스셋(33로케일)",
+    "tier": "C"
+  },
+  {
+    "repo": "Notsfsssf/pixez-flutter",
+    "correctCatalogPath": "lib/l10n/intl_{locale}.arb",
+    "note": "Flutter 앱 16로케일 ARB(l10n.yaml template intl_en_US). res/values/strings_{en,zh_CN}.arb는 빈 객체 잔여물. ios/Runner/{locale}.lproj/Main·LaunchScreen.strings와 android values-*는 부속 표면",
+    "tier": "A"
+  },
+  {
+    "repo": "nowubh/Mono-Dash",
+    "correctCatalogPath": "lib/core/localization/l10n/app_{locale}.arb",
+    "note": "Flutter 앱 en·zh. ios ServerStatusWidgetExtension/{locale}.lproj/Localizable.strings는 위젯 확장의 부속 카탈로그",
+    "tier": "C"
+  },
+  {
+    "repo": "rosuH/EasyWatermark",
+    "correctCatalogPath": "app/src/main/res/values-{locale}/strings.xml",
+    "basePath": "app/src/main/res/values/strings.xml",
+    "alsoValid": [
+      "iosApp/iosApp/{locale}.lproj/InfoPlist.strings"
+    ],
+    "note": "Android 앱 16로케일. app/src/debug는 변형, iosApp InfoPlist(zh-Hans·zh-Hant)는 부속",
+    "tier": "B"
+  },
+  {
+    "repo": "TelegramMessenger/Telegram-iOS",
+    "correctCatalogPath": "Telegram/Telegram-iOS/{locale}.lproj/Localizable.strings",
+    "alsoValid": [
+      "Telegram/Telegram-iOS/{locale}.lproj/InfoPlist.strings"
+    ],
+    "note": "Android 보유는 third-party/openh264 데모의 base strings.xml뿐이라 Android 정답은 없다. 앱 UI는 en.lproj/Localizable.strings 하나(13,386항목 — 번역은 서버에서 받는다). InfoPlist.strings는 19로케일 번역 카탈로그라 alsoValid. third-party/ 아래 lcms·openh264 .lproj는 벤더 코드",
+    "tier": "A"
+  }
+]

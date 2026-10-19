@@ -218,3 +218,179 @@ pnpm adapter-survey docs/adapter-survey/repos.txt --verdicts docs/adapter-survey
 **정답은 어댑터를 고치기 전에, 리포 트리를 직접 읽어 적었다.** 20개 전부 blobless clone으로
 `git ls-tree`를 떠서 로케일 디렉터리와 파일명을 눈으로 확인했다 — 탐지 결과를 정답으로 되쓰면
 오탐률이 정의상 0이 된다.
+
+
+---
+
+## 모바일 코퍼스 — 60개 (2026-10-19, mobile-strings M1)
+
+**목록: [repos-mobile.txt](./repos-mobile.txt) 48개 / [repos-mobile-heldout.txt](./repos-mobile-heldout.txt) 12개 ·
+정답: [verdicts-mobile.json](./verdicts-mobile.json) / [verdicts-mobile-heldout.json](./verdicts-mobile-heldout.json) ·
+커밋: [pins-mobile.json](./pins-mobile.json) / [pins-mobile-heldout.json](./pins-mobile-heldout.json)**
+
+arb·apple-strings·android-strings 세 어댑터 스펙이 같이 쓰는 코퍼스다. 위 두 코퍼스(109·20개)와 겹치지 않는다.
+
+### 수집 방법
+
+2026-10-19 보급률 표본(1,397개)의 원 리포 목록이 남지 않아 같은 기준으로 다시 모았다. 표본과 같은 리포는 아니다.
+
+1. **후보** — 언어 5종 × 스타 3구간 × 2쪽(쪽당 50개, 스타순) 리포 검색. 1,470개가 나왔고 중복을 빼면 1,347개다.
+
+   ```sh
+   gh api -X GET search/repositories -f sort=stars -f per_page=50 -f page=<1|2> \
+     -f q="language:<L> stars:<S> pushed:>=2026-04-01 fork:false archived:false"
+   # L ∈ Dart · Swift · Kotlin · Java · Objective-C
+   # S ∈ >2000 · 100..2000 · 10..99
+   ```
+
+   이름·설명·토픽에 template·starter·boilerplate·tutorial·example·sample·demo·course·learn·awesome·interview·exercise·homework·cheat·leetcode가
+   있거나 GitHub 템플릿 리포인 것은 뺐다. 코드 검색(`path:`·`filename:`)은 스타·push 날짜로 거를 수 없고 결과가 1,000개에서 잘려 쓰지 않았다.
+2. **보유 판정** — 리포마다 `git/trees/<기본 브랜치>?recursive=1`로 경로를 받아(잘린 트리 9개는 그대로 판정) 경로 정규식으로 분류했다.
+   보유한 리포는 584개다.
+
+   | 생태계 | 경로 정규식 |
+   |---|---|
+   | ARB | `(^\|/)[^/]+\.arb$` |
+   | Apple | `\.lproj/[^/]+\.strings$` 또는 `\.xcstrings$` |
+   | Android | `(^\|/)res/values(-[^/]+)?/strings\.xml$` |
+3. **추출** — 생태계 × 구간마다 시드 `20261019`로 섞은 뒤 순서대로 뽑았다(ARB → Android → Apple, 앞에서 뽑힌 리포 제외).
+   대부분은 **로케일 2개 이상인 묶음**(ARB 디렉터리 파일 2개 이상 · Base를 뺀 `.lproj` 로케일 2개 이상 또는 xcstrings · `values{,-*}` 2개 이상)이
+   있는 리포에서 뽑았고, 생태계마다 몇 개는 그런 묶음이 없는 리포에서 뽑았다(Android 3 · Apple 5). 그 리포들은 미탐지가 정답인지 시험한다.
+   보유만으로 뽑으면 Xcode 템플릿 `en.lproj/InfoPlist.strings` 하나뿐인 리포가 Apple의 다수가 돼서다.
+   연습 프로젝트(설명에 "练习"·practice)와 데모 리포 하나(`load_more_flutter_BLoC_pattern_RxDart_and_RxRedux`)는 같은 구간의 다음 후보로 바꿨다.
+4. **학습/홀드아웃** — 뽑힌 생태계별로 시드 `20261019`로 ~20%(ARB 2 · Android 4 · Apple 6)를 홀드아웃으로 먼저 떼었다. 탐지기 출력을 보기 전이다.
+
+수집 스크립트와 중간 산출물(후보·트리 분류·추출)은 커밋하지 않았다(`.scratch/orch-mobile-strings/m1-collect/`).
+
+### 분포
+
+리포 하나가 여러 생태계를 보유하면 각 생태계에 한 번씩 센다(Flutter 앱의 `ios/Runner/*.lproj`·`android/.../values`가 대표 사례다).
+
+| | 학습 | 홀드아웃 | 계 | 구간 A(>2k) / B(100~2k) / C(<100) |
+|---|---|---|---|---|
+| 리포 | 48 | 12 | **60** | 23 / 22 / 15 |
+| ARB 보유 | 10 | 4 | **14** | 6 / 5 / 3 |
+| Apple 보유 | 27 | 7 | **34** | 14 / 11 / 9 |
+| Android 보유 | 22 | 8 | **30** | 9 / 13 / 8 |
+| 두 생태계 이상 보유 | 9 | 5 | **14** | |
+| 정답 `null` | 8 | 1 | **9** | |
+
+ARB는 계획(9)보다 많다. Flutter 앱이 Android·Apple 쪽으로도 뽑혀서다. C 구간의 최저 스타는 67이다(검색 범위가 `10..99`라 C<10은 없다).
+
+정답 포맷: Android XML 19 · ARB 14 · xcstrings 9 · `.strings` 8 · json-catalog 1(mit-cml/appinventor-sources — 모바일 파일은 부속뿐이다) · `null` 9
+(`no-catalog` 5 · `vendored-only` 3 · `fixture-only` 1).
+
+### 판정 규칙 (verdicts-mobile*.json)
+
+기존 판정 파일과 필드가 같고 **Android만 `basePath`를 더한다** — `correctCatalogPath`가 `…/values-{locale}/strings.xml`, `basePath`가 `…/values/strings.xml`이다
+(survey의 `basePath` 비교 배선은 android-strings T3.2). 정답은 리포 트리와 파일 원문을 보고 적었고 탐지기 출력을 정답으로 되쓰지 않았다.
+
+- ARB는 파일명 접두사까지 템플릿에 넣는다(`lib/l10n/app_{locale}.arb`·`intl_{locale}.arb`). xcstrings는 로케일이 파일 안에 있어 파일 경로 자체가 정답이다.
+- 표면이 여럿이면 앱 UI 카탈로그를 대표로 두고, 같은 로케일 집합의 진짜 카탈로그는 `alsoValid`에 둔다(멀티모듈 SDK·기능 모듈·InfoPlist 권한 문구).
+  번역 도구 잔여물·빈 템플릿·변형 소스셋(`src/debug` 등)·샘플·픽스처·벤더 사본·빌드 산출물은 `alsoValid`에 넣지 않고 note에만 적는다.
+- `null`은 기존 관례대로 **우리가 다룰 카탈로그가 없다**는 뜻이고 `unsupported`가 이유다: `no-catalog`(빈 템플릿·base만 있는 테스트 앱) ·
+  `vendored-only`(Sparkle 같은 벤더 프레임워크 사본뿐) · `fixture-only`(테스트 픽스처뿐).
+
+### 세 건수 (spec 완료 조건 2)
+
+코퍼스 60개의 `.lproj/*.strings` 전수를 바이트로 읽고 xcstrings 전수를 JSON으로 읽었다(sparse checkout으로 받은 HEAD 기준 — `pins-mobile*.json`과 같은 커밋).
+
+1. **UTF-16 `.strings` 리포 6개** — BOM `FF FE`·`FE FF`이거나 NUL이 바이트의 1/4을 넘는 파일. UTF-8 BOM 파일은 0개다.
+   **정답 카탈로그가 UTF-16인 리포는 0개이고 6개 모두 부속 파일이다**:
+   Hammerspoon(`Pods/Sparkle` 35) · gnachman/iTerm2(`ThirdParty/Sparkle.framework` 64 + CoreParse 1) · wanderingstan/Lifeslice(Sparkle 사본·템플릿 98) ·
+   ResearchKit(`samples/ORKCatalog` 41) · TelegramMessenger/Telegram-iOS(`third-party/libjxl` 1) · Alinto/sope(템플릿 1).
+   지금 survey는 M3 전이라 NUL이 든 파일을 건너뛴다. 이 수는 survey가 아니라 위 바이트 검사로 셌다.
+2. **`Base.lproj/Localizable.strings` 리포 1개** — ResearchKit(`samples/ORKCatalog/…/Base.lproj/Localizable.strings`, 샘플 앱).
+   `Base.lproj`에 다른 테이블이 있는 리포까지 세면 4개다(Hammerspoon·Lifeslice — Sparkle 사본 · openfoodfacts/smooth-app — `InfoPlist.strings`).
+3. **xcstrings 원문 셀 없는 키 21.7%** — xcstrings 97개 파일(10개 리포, `sourceLanguage`는 전부 `en`)의 키 10,237개 중 2,218개가
+   `localizations`에 원문 언어 셀이 없다. `shouldTranslate: false`인 24개를 빼면 2,210 / 10,213(21.6%)이다.
+   리포별로 갈린다: 원문 셀이 전부 있는 곳은 iTerm2(7,072키)·Loop(429키) 둘이고, 대부분 비는 곳은 Shotnix 1,710/1,780 · Applite 259/269 · SwiftUIKit 6/6이다.
+   키 자체가 원문이어서 셀을 비우는 Xcode 기본 동작이다.
+
+### 이미 드러난 것
+
+- **로케일 수가 가장 많은 묶음이 정답이 아닌 리포가 많다** — firebase/FirebaseUI-iOS(84로케일 `samples/`, 정답은 라이브러리 xcstrings) ·
+  Hammerspoon·iTerm2·Lifeslice(Sparkle 30여 로케일) · ResearchKit(샘플 41 대 프레임워크 39) · aves·pixez(ARB가 정답인데 Android·Apple 묶음이 같이 있다).
+  모바일 어댑터의 "가장 큰 묶음" 판정이 이 리포들에서 오탐을 낸다.
+- **Compose Multiplatform 리소스가 `res/` 밖에 산다** — meshtastic/Meshtastic-Android의 41로케일 카탈로그가
+  `core/resources/src/commonMain/composeResources/values-{locale}/strings.xml`이다. 보급률 표본의 경로 정규식(`res/values`)은 이 리포를 base만 있는 리포로 셌다.
+- **Android 모듈이 `src/main` 없이 `<모듈>/res`를 쓴다** — stripe-android(전 모듈) · habitica-android(`Habitica/res`) · moedict-webkit(`android/res`).
+- **`.strings`가 old-style 텍스트만은 아니다** — OMARVII/Shotnix의 `.strings` 6개는 XML plist이고 Lifeslice에는 바이너리 plist(`bplist`) 36개가 있다.
+  둘 다 정답 카탈로그는 아니다(빌드 산출물·벤더 사본).
+- **기존 어댑터 후보는 전부 오탐이었다** — 학습 5개·홀드아웃 3개 리포에서 json-catalog·yaml-catalog가 후보를 냈다. 정답이 json-catalog인
+  appinventor는 3순위이고(앞의 두 후보는 `node_modules/**/yargs/locales`), 나머지 7개의 1순위는 카탈로그가 아닌 JSON·YAML이다 —
+  설정(eros_fe `jsons/`) · 애니메이션(Telegram `Animations/`) · 테스트 응답(stripe `androidTest/resources`) · 공지(butler `motd/`) ·
+  문서 사이트 데이터(CodenameOne `scripts/video-builder`·`docs/website`) · 벤더 워크플로(pixez `plugins/rhttp/.forgejo/workflows`) ·
+  자체 덮어쓰기 형식(Shotnix `Localization/translations/` — 키→{언어:값} 다국어 객체).
+
+### 실행
+
+```sh
+pnpm adapter-survey docs/adapter-survey/repos-mobile.txt --verdicts docs/adapter-survey/verdicts-mobile.json --pins docs/adapter-survey/pins-mobile.json
+pnpm adapter-survey docs/adapter-survey/repos-mobile-heldout.txt --verdicts docs/adapter-survey/verdicts-mobile-heldout.json --pins docs/adapter-survey/pins-mobile-heldout.json
+```
+
+2026-10-19 `--write-pins`로 기록한 뒤 `--pins`로 다시 돌렸다. 두 번 모두 clone 실패 0(48/48 · 12/12)이었다. 모바일 어댑터가 아직 없어 정답 포맷 탐지는 0이다.
+
+| 리포 | 분할 | 구간 | ★ | 보유 | 정답 포맷 |
+|---|---|---|---|---|---|
+| [2dust/v2rayNG](https://github.com/2dust/v2rayNG) | 학습 | A | 64,236 | Android | Android XML |
+| [android/security-certification-resources](https://github.com/android/security-certification-resources) | 학습 | C | 99 | Android | — (no-catalog) |
+| [Baka-SU/BakaSU](https://github.com/Baka-SU/BakaSU) | 학습 | B | 1,922 | Android | Android XML |
+| [begugla0/sni-pinger](https://github.com/begugla0/sni-pinger) | 학습 | C | 95 | Android | Android XML |
+| [cake-tech/cake_wallet](https://github.com/cake-tech/cake_wallet) | 학습 | B | 1,982 | ARB | ARB |
+| [codenameone/CodenameOne](https://github.com/codenameone/CodenameOne) | 학습 | B | 1,884 | Apple·Android | — (vendored-only) |
+| [danielsaidi/SwiftUIKit](https://github.com/danielsaidi/SwiftUIKit) | 학습 | B | 1,753 | Apple | xcstrings |
+| [deckerst/aves](https://github.com/deckerst/aves) | 학습 | A | 5,397 | ARB·Android | ARB |
+| [didi/DoKit](https://github.com/didi/DoKit) | 학습 | A | 20,416 | Apple·Android | Android XML |
+| [erosTeam/eros_fe](https://github.com/erosTeam/eros_fe) | 학습 | C | 88 | ARB·Apple·Android | ARB |
+| [ethereal-developers/OpenScan](https://github.com/ethereal-developers/OpenScan) | 학습 | B | 1,842 | ARB·Android | ARB |
+| [firebase/FirebaseUI-iOS](https://github.com/firebase/FirebaseUI-iOS) | 학습 | B | 1,591 | Apple | xcstrings |
+| [g0v/moedict-webkit](https://github.com/g0v/moedict-webkit) | 학습 | B | 653 | Apple·Android | .strings |
+| [gnachman/iTerm2](https://github.com/gnachman/iTerm2) | 학습 | A | 18,191 | Apple | xcstrings |
+| [google/google-api-objectivec-client-for-rest](https://github.com/google/google-api-objectivec-client-for-rest) | 학습 | B | 860 | Apple | — (no-catalog) |
+| [GopeedLab/gopeed](https://github.com/GopeedLab/gopeed) | 학습 | A | 27,001 | ARB | ARB |
+| [gskinnerTeam/flutter-wonderous-app](https://github.com/gskinnerTeam/flutter-wonderous-app) | 학습 | A | 4,518 | ARB | ARB |
+| [gunnerkidBT/TwitchAdBlock](https://github.com/gunnerkidBT/TwitchAdBlock) | 학습 | C | 99 | Apple | .strings |
+| [HabitRPG/habitica-android](https://github.com/HabitRPG/habitica-android) | 학습 | B | 1,831 | Android | Android XML |
+| [Hammerspoon/hammerspoon](https://github.com/Hammerspoon/hammerspoon) | 학습 | A | 16,297 | Apple | — (vendored-only) |
+| [hari161008/Ever-Call-Recorder](https://github.com/hari161008/Ever-Call-Recorder) | 학습 | C | 98 | Android | Android XML |
+| [HD838A/remote-mic-app](https://github.com/HD838A/remote-mic-app) | 학습 | B | 1,945 | Apple | .strings |
+| [ianyh/Amethyst](https://github.com/ianyh/Amethyst) | 학습 | A | 16,294 | Apple | — (no-catalog) |
+| [InteractionEngineer/PayForMe](https://github.com/InteractionEngineer/PayForMe) | 학습 | C | 95 | Apple | .strings |
+| [itouch2/PhotoTweaks](https://github.com/itouch2/PhotoTweaks) | 학습 | B | 1,247 | Apple | .strings |
+| [jesther-ai/open-u60-pro](https://github.com/jesther-ai/open-u60-pro) | 학습 | C | 96 | Apple·Android | Android XML |
+| [krille-chan/fluffychat](https://github.com/krille-chan/fluffychat) | 학습 | A | 3,213 | ARB·Apple | ARB |
+| [Kunzisoft/KeePassDX](https://github.com/Kunzisoft/KeePassDX) | 학습 | A | 7,498 | Android | Android XML |
+| [LegadoTeam/legado](https://github.com/LegadoTeam/legado) | 학습 | B | 1,566 | Android | Android XML |
+| [likelikeslike/ViPER4Windows](https://github.com/likelikeslike/ViPER4Windows) | 학습 | C | 88 | ARB | ARB |
+| [meshtastic/Meshtastic-Android](https://github.com/meshtastic/Meshtastic-Android) | 학습 | B | 1,876 | Android | Android XML |
+| [milanvarady/Applite](https://github.com/milanvarady/Applite) | 학습 | A | 7,090 | Apple | xcstrings |
+| [mit-cml/appinventor-sources](https://github.com/mit-cml/appinventor-sources) | 학습 | B | 1,749 | Apple | json-catalog |
+| [mrkai77/Loop](https://github.com/mrkai77/Loop) | 학습 | A | 11,807 | Apple | xcstrings |
+| [objective-see/LuLu](https://github.com/objective-see/LuLu) | 학습 | A | 13,356 | Apple | xcstrings |
+| [OMARVII/Shotnix](https://github.com/OMARVII/Shotnix) | 학습 | C | 94 | Apple | xcstrings |
+| [openfoodfacts/smooth-app](https://github.com/openfoodfacts/smooth-app) | 학습 | B | 1,436 | ARB·Apple·Android | ARB |
+| [pass-with-high-score/universal-installer](https://github.com/pass-with-high-score/universal-installer) | 학습 | B | 1,581 | Android | Android XML |
+| [ResearchKit/ResearchKit](https://github.com/ResearchKit/ResearchKit) | 학습 | A | 5,751 | Apple | .strings |
+| [rickytan/RTRootNavigationController](https://github.com/rickytan/RTRootNavigationController) | 학습 | A | 2,148 | Apple | — (no-catalog) |
+| [StanfordBDHG/HealthGPT](https://github.com/StanfordBDHG/HealthGPT) | 학습 | B | 1,963 | Apple | xcstrings |
+| [stripe/stripe-android](https://github.com/stripe/stripe-android) | 학습 | B | 1,549 | Android | Android XML |
+| [swiftlang/swift-package-manager](https://github.com/swiftlang/swift-package-manager) | 학습 | A | 10,235 | Apple | — (fixture-only) |
+| [team-spotube/spotube](https://github.com/team-spotube/spotube) | 학습 | A | 50,090 | ARB | ARB |
+| [TeamNewPipe/NewPipe](https://github.com/TeamNewPipe/NewPipe) | 학습 | A | 40,188 | Android | Android XML |
+| [tiann/KernelSU](https://github.com/tiann/KernelSU) | 학습 | A | 19,399 | Android | Android XML |
+| [vanniktech/Emoji](https://github.com/vanniktech/Emoji) | 학습 | B | 1,643 | Android | Android XML |
+| [wanderingstan/Lifeslice](https://github.com/wanderingstan/Lifeslice) | 학습 | C | 90 | Apple | — (vendored-only) |
+| [Alinto/sope](https://github.com/Alinto/sope) | 홀드아웃 | C | 73 | Apple | — (no-catalog) |
+| [b123400/xliffie](https://github.com/b123400/xliffie) | 홀드아웃 | C | 67 | Apple | xcstrings |
+| [d4rken-org/butler](https://github.com/d4rken-org/butler) | 홀드아웃 | C | 97 | Android | Android XML |
+| [exelban/stats](https://github.com/exelban/stats) | 홀드아웃 | A | 42,636 | Apple | .strings |
+| [JHubi1/ollama-app](https://github.com/JHubi1/ollama-app) | 홀드아웃 | B | 1,816 | ARB | ARB |
+| [jonjomckay/fritter](https://github.com/jonjomckay/fritter) | 홀드아웃 | B | 1,449 | ARB·Android | ARB |
+| [libre-tube/LibreTube](https://github.com/libre-tube/LibreTube) | 홀드아웃 | A | 12,844 | Android | Android XML |
+| [mueller-ma/NFCReader](https://github.com/mueller-ma/NFCReader) | 홀드아웃 | C | 97 | Android | Android XML |
+| [Notsfsssf/pixez-flutter](https://github.com/Notsfsssf/pixez-flutter) | 홀드아웃 | A | 13,130 | ARB·Apple·Android | ARB |
+| [nowubh/Mono-Dash](https://github.com/nowubh/Mono-Dash) | 홀드아웃 | C | 90 | ARB·Apple·Android | ARB |
+| [rosuH/EasyWatermark](https://github.com/rosuH/EasyWatermark) | 홀드아웃 | B | 1,902 | Apple·Android | Android XML |
+| [TelegramMessenger/Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) | 홀드아웃 | A | 9,260 | Apple·Android | .strings |
