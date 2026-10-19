@@ -170,10 +170,10 @@ describe("Android 인라인 태그 저장 판정", () => {
       { localeCode: "ko", value: "<b>정상</b>" }, { localeCode: "fr", value: "Cassé" },
     ], surface)).toEqual({ ok: false, error: "inline-tags-mismatch", localeCodes: ["fr"] });
   });
-  it("기준 셀은 검사하지 않고 같은 저장의 기준 변경을 비교 기준으로 삼는다", () => {
+  it("기준 셀은 태그 집합을 바꿀 수 있고 같은 저장의 기준 변경을 비교 기준으로 삼는다", () => {
     const changes = [{ localeCode: "ko", value: "<i>새 번역</i>" }, { localeCode: "en", value: "<i>New</i>" }];
     expect(planKeySave(current({ en: "<b>Old</b>", ko: null }), changes, surface)).toEqual({ ok: true, writes: changes });
-    expect(planKeySave(current({ en: null }), [{ localeCode: "en", value: "<broken>" }], surface).ok).toBe(true);
+    expect(planKeySave(current({ en: null }), [{ localeCode: "en", value: "<broken>" }], surface)).toEqual({ ok: false, error: "inline-markup-invalid", localeCodes: ["en"] });
   });
   it("현재 기준 셀을 읽고 빈 기준 셀은 sourceText로 폴백한다", () => {
     expect(planKeySave(current({ en: "<i>Current</i>", ko: null }), [{ localeCode: "ko", value: "<b>옛 태그</b>" }], surface))

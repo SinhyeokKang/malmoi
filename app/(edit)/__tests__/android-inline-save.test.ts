@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createHarness, sessionFor } from "./harness";
+import { renderLocaleFiles } from "@/lib/pull/render";
+import { encodeAndroidValue } from "@/lib/adapters/android-strings";
 import { setTranslations } from "@/lib/mcp/tools/translations";
 
 const state = vi.hoisted(() => ({ prisma: undefined as unknown as PrismaClient, revalidate: vi.fn() }));
@@ -68,16 +70,10 @@ it("다른 셀에 기존 태그 불일치가 있어도 이번 셀은 저장된�
   expect(db.translations.find(t => t.localeCode === "fr")?.value).toBe("태그 없는 기존 번역");
 });
 
-it.each([
-  ["Line1<br>Line2", "줄1<br>줄2"], ["<unknown>", "<unknown>"], ["a </ b", "a </ b"],
-])("앱에서 깨진 기준 셀을 저장한 뒤에도 웹·MCP 번역을 저장할 수 있다: %s", async (base, value) => {
-  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "en", value: base }] })).toMatchObject({ ok: true });
-  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "ko", value }] })).toMatchObject({ ok: true });
-  const result = await setTranslations.run({ prisma: db.prisma, subject: { ...subject, grants: [...subject.grants] }, now: new Date(), origin: null }, {
-    slug: input.slug, surfaceSlug: input.surfaceSlug, entries: [{ keyId: input.keyId, changes: [{ localeCode: "ko", value: value + "!" }] }],
-  });
-  expect(result).toMatchObject({ status: "ok", data: { results: [{ status: "saved" }] } });
-  expect(db.translations.find(t => t.localeCode === "ko")?.value).toBe(value + "!");
+it.each(["Line1<br>Line2", "<unknown>", "a </ b", "<한글>번역</한글>"])("기준 셀도 writer가 거부하는 값은 저장하지 않는다: %s", async value => {
+  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "en", value }] }))
+    .toEqual({ ok: false, error: "inline-markup-invalid", localeCodes: ["en"] });
+  expect(db.translations).toEqual([]);
 });
 
 it("문법 오류는 웹·MCP에서 같은 코드로 거부하고 MCP는 문자 꺾쇠 표기를 안내한다", async () => {
@@ -89,4 +85,44 @@ it("문법 오류는 웹·MCP에서 같은 코드로 거부하고 MCP는 문자 
   });
   expect(result).toMatchObject({ status: "ok", data: { results: [{ status: "rejected", error: "inline-markup-invalid", localeCodes: ["ko"], message: expect.stringContaining("&lt;") }] } });
   expect(db.translations).toEqual([]);
+});
+
+
+it.each(["app/src/main/res", "shared/src/commonMain/composeResources"])("%s: 정상 기준에서 저장을 허용한 태그 값은 render writer 오류가 없다", async root => {
+  const corpus = [
+    ["<b>Base</b>", "<b>번역</b>"],
+    ["<b><i>Base</i></b>", "<b><i>번역</i></b>"],
+    ["Base<br/>", "번역<br />"],
+    ['<xliff:g id="x" example="a &amp; b">Base</xliff:g>', "<xliff:g example='a &amp; b' id='x'>번역</xliff:g>"],
+    ["&lt;b>Base&lt;/b>", "&lt;b>번역&lt;/b>"],
+  ];
+  const basePath = `${root}/values/strings.xml`;
+  const path = `${root}/values-ko/strings.xml`;
+  for (const [base, value] of corpus) {
+    db.keys[0]!.sourceText = base!;
+    const result = await saveTranslationKey({ ...input, changes: [{ localeCode: "en", value: base }, { localeCode: "ko", value }] });
+    expect(result, value).toMatchObject({ ok: true });
+    const saved = db.translations.find(t => t.localeCode === "ko")!.value;
+    const original = '<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2"><string name="a.greet">Old</string></resources>';
+    const files = renderLocaleFiles({ adapter: "android-strings", pathTemplate: `${root}/values-{locale}/strings.xml`, basePath, templateLocale: "en", locales: ["en", "ko"] },
+      "per-locale", [{ path, locale: "ko" }, { path: basePath, locale: "en" }], [{ key: "a.greet", sourceText: base!, orphaned: false, cells: { ko: { value: saved }, en: { value: db.translations.find(t => t.localeCode === "en")!.value } } }], "en",
+      new Map([[path, original], [basePath, original.replace("Old", encodeAndroidValue(base!)!)]]));
+    expect(files).toHaveLength(2);
+    for (const file of files) expect(file.errors ?? [], value).toEqual([]);
+    expect(files[0]?.content).not.toBe(original);
+  }
+});
+
+
+it.each([
+  ["Line1<br>Line2", "줄1&lt;br>줄2"], ["<unknown>", "&lt;unknown>"], ["a </ b", "a &lt;/ b"],
+])("깨진 옛 기준 값도 웹·MCP에서 안전한 문자 표기로 번역할 수 있다: %s", async (base, value) => {
+  await saveTranslationKey({ ...input, changes: [{ localeCode: "en", value: "Old" }] });
+  db.translations.find(t => t.localeCode === "en")!.value = base;
+  expect(await saveTranslationKey({ ...input, changes: [{ localeCode: "ko", value }] })).toMatchObject({ ok: true });
+  const result = await setTranslations.run({ prisma: db.prisma, subject: { ...subject, grants: [...subject.grants] }, now: new Date(), origin: null }, {
+    slug: input.slug, surfaceSlug: input.surfaceSlug, entries: [{ keyId: input.keyId, changes: [{ localeCode: "ko", value: value + "!" }] }],
+  });
+  expect(result).toMatchObject({ status: "ok", data: { results: [{ status: "saved" }] } });
+  expect(db.translations.find(t => t.localeCode === "ko")?.value).toBe(value + "!");
 });

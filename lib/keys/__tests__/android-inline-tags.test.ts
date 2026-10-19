@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { androidInlineTagsMatch } from "../android-inline-tags";
+import { androidInlineTagsMatch, androidInlineTagsIssue } from "../android-inline-tags";
 
 describe("androidInlineTagsMatch — 화면 값의 태그 보존", () => {
   it.each([
@@ -9,7 +9,6 @@ describe("androidInlineTagsMatch — 화면 값의 태그 보존", () => {
     ['<xliff:g id="x" example="a > b">%s</xliff:g>', "<xliff:g example='a > b' id='x'>%s</xliff:g>"],
     ['<br/>A', '가<br />'],
     ['&lt;b&gt;text&lt;/b&gt;', '문자'],
-    ['<![CDATA[<b>text</b>]]>', '<![CDATA[<i>글</i>]]>'],
   ])("태그 집합과 닫힘이 같으면 허용: %s", (base, value) => {
     expect(androidInlineTagsMatch(base, value)).toBe(true);
   });
@@ -33,12 +32,30 @@ describe("결정 14 — 문자 꺾쇠와 깨진 기준 값", () => {
     expect(androidInlineTagsMatch("Plain", value)).toBe(false);
   });
   it.each([
+    ["<![CDATA[<b>text</b>]]>", "<![CDATA[<i>글</i>]]>"],
     ["Line1<br>Line2", "줄1<br>줄2"], ["<unknown>", "<unknown>"], ["a </ b", "a </ b"],
     ["<b>A", "<b>가"],
-  ])("깨진 기준은 태그 모양 토큰만 비교해 저장 경로를 남긴다: %s", (base, value) => {
-    expect(androidInlineTagsMatch(base, value)).toBe(true);
+  ])("깨진 기준이어도 writer가 쓸 수 없는 번역은 거부한다: %s", (base, value) => {
+    expect(androidInlineTagsIssue(base, value)).toBe("inline-markup-invalid");
   });
-  it.each([["<unknown>", "알 수 없음"], ["<unknown>", "<unknown><unknown>"], ["<b>A", "<i>가"]])("폴백도 토큰 누락·추가·변경은 거부한다", (base, value) => {
+  it.each([["<unknown>", "<unknown><unknown>"], ["<b>A", "<i>가"]])("깨진 기준에서도 쓸 수 없는 번역은 거부한다", (base, value) => {
     expect(androidInlineTagsMatch(base, value)).toBe(false);
   });
+});
+
+
+describe("저장과 Android writer의 태그 문법", () => {
+  it.each([
+    "<한글>번역</한글>", '<b title="&broken;">번역</b>',
+    '<b title="&#12abc;">번역</b>', "<!-- 주석 -->", "<![CDATA[번역]]>",
+  ])("정상 기준에서 writer가 거부할 문법은 저장부터 거부한다: %s", value => {
+    expect(androidInlineTagsIssue("Plain", value)).toBe("inline-markup-invalid");
+  });
+});
+
+
+it.each([
+  ["Line1<br>Line2", "줄1&lt;br>줄2"], ["<unknown>", "&lt;unknown>"], ["a </ b", "a &lt;/ b"], ["<unknown>", "알 수 없음"],
+])("옛 기준이 깨졌으면 집합 비교 없이 쓸 수 있는 번역을 허용한다: %s", (base, value) => {
+  expect(androidInlineTagsIssue(base, value)).toBeNull();
 });
