@@ -40,7 +40,7 @@ Malmoi shows one source for each selected set of files. A source can use a diffe
 
 ## Fill in project details {#confirm-project}
 
-1. Check each source's **Base language**. Its file decides which keys exist; keys found only in another language are left out.
+1. Check each source's **Base language**. Its file decides which keys exist; keys found only in another language are left out. For an Android source, the base file `values/strings.xml` has no language code, so type the code of the language it's written in, such as `en`. It can't be one of the source's translation languages, and it can't be changed later.
 2. Enter the project **Name** and **Address**. The address is the name in the project URL; it must be globally unique and cannot be changed later.
 3. Review the file and size limits in [Limits](../reference/limits.md#files), then choose **Create project**.
 

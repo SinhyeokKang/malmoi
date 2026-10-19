@@ -16,7 +16,7 @@ There are two: **Owner** and **Editor**. Editors edit and publish translations; 
 
 ## Which file formats are supported? {#formats}
 
-JSON and YAML catalogs, Chrome extension messages, Flutter ARB files, Apple strings files and String Catalogs, and TypeScript or JavaScript code dictionaries, either one file per language or all languages in one file. See [Supported file formats](reference/formats.md#formats).
+JSON and YAML catalogs, Chrome extension messages, Flutter ARB files, Apple strings files and String Catalogs, Android strings files, and TypeScript or JavaScript code dictionaries, either one file per language or all languages in one file. See [Supported file formats](reference/formats.md#formats).
 
 ## Will Malmoi rewrite my files? {#file-structure}
 
@@ -36,7 +36,7 @@ They are kept. If the key comes back in a later commit, its translations come ba
 
 ## Can I add or remove a language in Malmoi? {#languages}
 
-Project owners can, for JSON and YAML catalogs, Chrome extension messages, Flutter ARB files, Apple strings files, and code dictionaries with one file per language: Publish creates or deletes the language file in a pull request (a merge request on GitLab), and a removed language's translations stay in Malmoi. A dictionary or an Apple String Catalog containing all languages in one file requires repository changes. For Apple strings files, add or remove the `.lproj` folder in your Xcode project. New YAML and per-language code files omit comments, `import` statements, and type declarations; register the language in your app where needed, and check later dotted-key insertions where parent mappings are missing. See [Add and remove languages](setup/languages.md#languages).
+Project owners can, for JSON and YAML catalogs, Chrome extension messages, Flutter ARB files, Apple strings files, Android strings files, and code dictionaries with one file per language: Publish creates or deletes the language file in a pull request (a merge request on GitLab), and a removed language's translations stay in Malmoi. A dictionary or an Apple String Catalog containing all languages in one file requires repository changes. For Apple strings files, add or remove the `.lproj` folder in your Xcode project. For Android apps that limit languages with `resConfigs` or `localeFilters`, add the language there. New YAML and per-language code files omit comments, `import` statements, and type declarations; register the language in your app where needed, and check later dotted-key insertions where parent mappings are missing. See [Add and remove languages](setup/languages.md#languages).
 
 ## Do I have to add the workflow? {#workflow}
 
