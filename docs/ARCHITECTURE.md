@@ -148,7 +148,7 @@
 | `ts-dict` | `<dir>/*.ts` · `<dir>/*.tsx` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③). ⚠️ **확장자가 템플릿의 일부다** (2026-09-27, audit #13) — 탐지·씨앗이 `디렉터리+확장자`로 묶어 `.tsx` 디렉터리는 `*.tsx`를 내고, 혼합 폴더는 후보 둘이다(glob을 `{ts,tsx}`로 넓히지 않는다) |
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
-| `arb-catalog` | `<dir>/<prefix>_{locale}.arb` (예 `lib/l10n/app_{locale}.arb`) | 최상위 `string`(ICU 통짜) | per-locale | regenerate | Flutter 리포 (2026-10-19 — 재측정은 §1.9). ⚠️ **regenerate인데 키별 내용(`@key`)을 원본에서 나른다** — §1.37 |
+| `arb-catalog` | `<dir>/<prefix>_{locale}.arb` (예 `lib/l10n/app_{locale}.arb`) | 최상위 `string`(ICU 통짜) | per-locale | regenerate | 모바일 코퍼스 Flutter 리포 14개(학습 10 · 홀드아웃 4 — 1순위 14/14, 26차 §1.9). ⚠️ **regenerate인데 키별 내용(`@key`)을 원본에서 나른다** — §1.37 |
 
 ### read 오류의 갈래 — 실패 · "관리하지 않는 항목" · 경고 (2026-09-24, B2 r3 · QA5 · B7a r1)
 
@@ -204,7 +204,7 @@
 | 끝 개행 | 정확히 1개 | `JSON.stringify`는 개행을 안 붙인다. 2개면 SHA가 달라진다 |
 | `orphaned` | 제외 | DB엔 남는다 — export에서만 빠진다. **`orderedEntries`가 유일한 관문이라 모든 재생성 writer가 이걸 지나야 불변식에 주인이 생긴다** |
 | 미번역 | 제외 (빈 문자열 포함) — ⚠️ **단 `LocaleEntry.writeEmpty`가 붙은 빈 값은 `""`로 쓴다** | 남기면 크롬이 빈 값을 그대로 렌더한다. 빼면 폴백한다. **예외는 base 파일에 `""`로 있던 키 하나다** (2026-09-18, launch-readiness L4.10): 원문(sourceText)까지 빈 base 키를 빼면 머지 뒤 push가 그 키를 **전 로케일에서 orphan**하고 다음 pull이 비-base 번역을 지운다(20차 실측 7개 리포). 판정은 `buildWriteEntries`가 하고(`WriteInput`엔 `isBase`가 없다) `orderedEntries`는 표시만 본다. 비-base의 빈 값은 여전히 미번역이다 |
-| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다. ⚠️ **`arb-catalog`의 원본 있음은 `{}`가 아니라 원본의 `@@*`만 남은 객체다**(§1.37 — 계약 매트릭스의 예외 행). ⚠️ **base 파일은 이 행으로 비지 않는다** — base 키 집합은 원본이 정하므로(§3 "base 키 집합", B3.4) 원본 키가 원본 값으로 남는다. 원본이 `{}`일 때만 `{}`다 |
+| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다. ⚠️ **`arb-catalog`의 원본 있음은 `{}`가 아니라 원본의 `@@*`·주석 `@x`·문자열이 아닌 엔트리 값만 남은 객체다**(§1.37 — 계약 매트릭스의 예외 행). ⚠️ **base 파일은 이 행으로 비지 않는다** — base 키 집합은 원본이 정하므로(§3 "base 키 집합", B3.4) 원본 키가 원본 값으로 남는다. 원본이 `{}`일 때만 `{}`다 |
 | 키 대입 | **프로토타입 없는 객체**(`Object.create(null)`)에만 대입한다 | 2026-09-09 추가 (sec-audit 발견 1·17). 로케일 파일의 키는 남이 쓰므로 `__proto__`가 온다. 평범한 `{}`에서 `out["__proto__"] = v`는 setter를 불러 own property를 안 만들고 **그 키가 조용히 사라지고**, 중첩 복원의 `node[head]` 조회는 `Object.prototype`을 돌려줘 다음 세그먼트가 **거기에 앉는다** — 프로세스 전역이라 같은 인스턴스가 서비스하는 **다른 테넌트**의 pull까지 바꾼다. ⚠️ **재조립 자리도 같다** — `normalizeArrays`가 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 한 줄 뒤에 사라진다. 검사는 `prototypeKeyViolations`(`ADAPTERS` 전수) |
 
 **⚠️ 정렬 지점보다 먼저 볼 것은 값이 흐르는 경로 넷이다** (2026-09-03). `StringKey.sortIndex`가
@@ -256,7 +256,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 **`description`은 로케일마다 그 파일이 실제로 갖고 있던 값을 되돌린다** (2026-09-03 개정 — PoC 시절 개정. 지원하는 어댑터는 `chrome-locales`뿐이고 `json-catalog`은 담을 곳이 없어 DB엔 남지만 파일로 나가지 않는다). 전엔 base에만 냈고 그건 chrome 리포 33개 중 **20개**에서 손실이었다(비-base `description` 실측).
 
 두 값은 **다른 것이다**: `StringKey.description`(소스 키 메타데이터, base 파일에서 온다)과 `Translation.description`(그 로케일 파일이 갖고 있던 값). 합치면 base 값을 비-base에 복제하게 되고 그건 병합이다. **base만** `Translation.description`이 없을 때 `StringKey.description`으로 폴백한다 — `value ?? sourceText`와 같은 축이고, 그 판정은 `lib/pull/render.ts`의 `rowsForLocale(keys, locale, { isBase })`에 있다. ⚠️ **두 폴백의 범위가 2026-09-09에 갈렸다**: 값 폴백은 **빈 문자열까지** 잡고(base 셀을 비우면 그 키가 base 파일에서 빠져 다음 push가 **전 로케일에서 orphan**한다 — 그 파일이 키 집합의 진실이므로 "미번역"이 아니라 **키 삭제**다), description 폴백은 빈 문자열을 잡지 않는다(description은 키 집합이 아니라 메타데이터라 빠져도 키가 사라지지 않는다). **판정 기준은 "그 값이 없으면 키가 사라지는가"다.** ⚠️ 그 `isBase`가 `renderLocaleFiles`에서 빠져 있어 폴백이 **테스트에서만 켜지고 프로덕션에서는 죽어 있었다** (2026-09-04 audit #2 — `rowsForLocale` 단위 테스트가 `{ isBase: true }`를 직접 넘겨 이 홉을 못 봤다. 지금은 `render.test.ts`가 `renderLocaleFiles`를 통째로 지난다).
-⚠️ **그 판정은 `render.ts`에만 있어야 한다.** `chrome-locales.write`가 계약(`WriteInput`)에 없는 `isBase`를 필수 파라미터로 들고 있었는데(옛 가드의 잔재), 메서드 파라미터가 **양변성**이라 타입 검사가 침묵했고 호출부가 갈렸다 — `render.ts`는 안 넘기고 `lib/survey/one.ts`는 넘겼다. 본문이 그 값을 안 읽어 우연히 무해했을 뿐, **읽기 시작하면 지표와 프로덕션이 다른 바이트를 낸다.** 2026-09-07에 계약대로 돌렸고 `lib/adapters/__tests__/write-contract.test.ts`가 다섯 어댑터가 `WriteInput`을 **이름으로** 받는지 소스로 센다 (POSTMORTEM 2026-09-07).
+⚠️ **그 판정은 `render.ts`에만 있어야 한다.** `chrome-locales.write`가 계약(`WriteInput`)에 없는 `isBase`를 필수 파라미터로 들고 있었는데(옛 가드의 잔재), 메서드 파라미터가 **양변성**이라 타입 검사가 침묵했고 호출부가 갈렸다 — `render.ts`는 안 넘기고 `lib/survey/one.ts`는 넘겼다. 본문이 그 값을 안 읽어 우연히 무해했을 뿐, **읽기 시작하면 지표와 프로덕션이 다른 바이트를 낸다.** 2026-09-07에 계약대로 돌렸고 `lib/adapters/__tests__/write-contract.test.ts`가 `ADAPTERS` 전부(여섯)가 `WriteInput`을 **이름으로** 받는지 소스로 센다 (POSTMORTEM 2026-09-07).
 
 **`placeholders`는 chrome에서 그대로 왕복한다** (2026-09-03). `LocaleEntry.placeholders`가 원본 JSON을 **해석하지 않고** 나르고 write가 그대로 되돌린다. 모양이 이상해도 버리지 않는다 — 거르면 원본에 있던 것이 우리 PR에서 조용히 사라지고, 에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다. ⚠️ **왕복 의미 게이트가 이 필드를 원리적으로 못 본다** — 바이트 비교만이 그물이다. ⚠️ **`"placeholders": null`도 null로 돌아온다** (2026-09-24 audit #52) — push는 JSON null로 적재하지만 Prisma가 Json 컬럼의 SQL NULL과 JSON null을 **둘 다 `null`로** 읽어서, `lib/pull/load.ts`가 같은 스냅샷에서 `jsonb_typeof = 'null'` 좌표를 raw로 따로 센다. 안 세면 값 편집 0건인 Publish가 그 줄을 지운다(`placeholders-null.integration.ts`).
 
@@ -418,18 +418,47 @@ ICU(`{count, plural, …}`·`select`)는 **통짜 문자열**이다 — 풀지�
 
 - 엔트리 순서는 `LocaleEntry.order`(§1.1)다. **`@key`는 같은 로케일 원본 파일의 그 텍스트 구간을 바이트 그대로 그 키 바로 뒤에 둔다** —
   다시 직렬화하지 않는다. 원본에서 `@key`가 키보다 앞에 있었어도 출력은 키 바로 뒤라, 첫 Publish에서 한 번 옮겨지고 그 뒤 고정점이다.
-- **출력하지 않는 키의 `@key`는 버린다** — orphaned 키·DB에만 있는 키의 `@foo`가 짝 없이 남지 않는다. 원본에만 있는 키(B3.4)는 원본 엔트리와 `@key`를 함께 낸다.
-- 원본의 `@@*`는 원본 위치(대개 맨 앞)와 순서를 지킨다. **`@@locale`은 원본에 그 줄이 있을 때만** 값을 경로의 로케일 코드로 생성한다 —
+- **짝 키가 표면에 살아 있는데 이 로케일만 값이 없으면 `@key`를 값 없이 그 키가 설 자리(base 순서)에 바이트 그대로 남긴다** (2026-10-19 사용자 결정).
+  Weblate류 리포는 `@key`를 비-base 파일마다 복제해 두는데, 짝 키가 없다고 버리면 첫 Publish가 fluffychat에서 5,251개 · smooth-app에서 2,574개를 지웠다.
+  writer가 "살아 있는 미번역 키"를 알도록 렌더(`renderLocaleFiles`)가 이미 든 키 목록에서 `WriteInput.untranslated`(비-base만, `{ key, order }`)·`orphaned`(키 목록)를
+  계산해 넘긴다 — DB 조회가 늘지 않고 writer는 여전히 (DB 상태, 원본 파일)의 순수 함수다. 두 필드는 `arb-catalog`만 읽는다.
+- **표면에 같은 이름의 키가 없는 `@x`**(smooth-app의 `"@Introduction screen": {}` 같은 구획 주석, base에서 이미 사라진 키의 낡은 `@key`)는 개발자 주석으로 보고
+  `@@*`처럼 원본 위치에 바이트 그대로 나른다(2026-10-19 지휘자 결정). **버리는 것은 orphaned 키의 `@key`뿐이다** — 코드가 지운 키의 메타데이터다.
+  원본에만 있는 키(B3.4, base)는 원본 엔트리와 `@key`를 함께 낸다.
+- **문자열이 아닌 엔트리 값**(`"n": 3`·`null`·객체 — gen-l10n도 거부한다)은 원본 구간 그대로 남고 read가 `value-not-string`(unmanaged)으로 알린다(새 오류 코드를 만들지 않았다).
+  같은 이름의 엔트리를 DB가 내면 엔트리가 이긴다.
+- **나르는 항목**(`@@*`·주석 `@x`·문자열이 아닌 엔트리 값)은 원본 순서의 큐 하나다. 각 항목은 원본에서 바로 앞에 있던 **출력되는** 엔트리(없으면 맨 앞)에 묶여
+  그 뒤에 나가지만, 앞 항목이 아직 못 나갔으면 기다린다 — **두 규칙이 부딪치면 원본 상대 순서가 이긴다**(리뷰 R4). 비-base는 base 키 순서로 다시 쓰여
+  엔트리 자리만 따르면 `@@x-one`·`@@x-two`가 뒤집힌다.
+- 원본의 `@@*`는 위 큐로 원본 위치(대개 맨 앞)와 순서를 지킨다. **`@@locale`은 원본에 그 줄이 있을 때만** 값을 경로의 로케일 코드로 생성한다 —
   원본 값과 견주지 않는다(`app_ko.arb`의 `ko-KR`은 첫 Publish에서 `ko`로 한 번 고쳐진다). 원본에 없으면 넣지 않는다.
 - **새로 만드는 파일(언어 추가, §5.10.4)에는 `@@locale`을 항상 넣고 `@key`는 없다** — 기준 언어 파일에서 빌리는 것은 표현뿐이고, `@@locale`을 빼면 복제된 표현이
   기준 언어 코드를 들고 나갈 수 있다. `gen-l10n`은 템플릿 파일의 메타데이터만 읽으므로 비-base 파일에 `@key`가 없어도 동작이 같다.
-- 쓸 값이 0이고 원본이 있으면 출력은 `{}`가 아니라 **원본 `@@*`만 남은 객체**다. `lib/adapters/__tests__/contract.ts`의 regenerate 분기("원본이 있고 쓸 값이 0이면 `{}`")에
-  ARB 예외 행이 이 때문에 있다. 퇴화 출력(`@@locale`만 남은 파일)도 다음 read·write의 입력으로 왕복해야 한다(POSTMORTEM 2026-09-29).
+- 쓸 값이 0이고 원본이 있으면 출력은 `{}`가 아니라 **원본의 `@@*`·주석 `@x`·문자열이 아닌 엔트리 값만 남은 객체**다(번역이 아니다).
+  `lib/adapters/__tests__/contract.ts` 머리 표의 regenerate 열에 ARB 예외가 두 행이다 — "원본에서 가져오는 것"(표현 + 소스 키 메타데이터 구간)과
+  "원본이 있는데 쓸 값 0개". 퇴화 출력(`@@locale`만 남은 파일)도 다음 read·write의 입력으로 왕복해야 한다(POSTMORTEM 2026-09-29).
+
+**탐지** — 경로 신호(`.arb`)가 강해 1패스 후보를 내고, probe는 내용 검증(엔트리 값이 절반 이상 문자열인가)에만 쓴다.
+
+- **파일명 해석**: `app_en`은 그 자체로 `looksLikeLocale`(3글자 + `_` + 2글자)을 통과하고 `en_gb`는 접두사 `en_` + `gb`로도 읽힌다. 둘 다로 읽히는 이름은
+  그 이름의 **언어 조각**(첫 구분자 앞)으로 가른다 — 같은 디렉터리에 그 언어의 맨 로케일 파일이 있거나(`en.arb` 옆 `en_gb.arb`) 조각이 2글자 언어 코드면
+  맨 로케일, 아니면(`app_`·`intl_`) 형제가 가장 많이 공유하는 접두사다. 디렉터리 최다 해석 하나로 고르면 `app_en`·`app_ko`·`en`·`ko`가 함께 있을 때
+  접두사 파일군이 `{locale}.arb`에 흡수됐다 — **접두사 파일군과 맨 로케일 파일군은 다른 후보다**(재리뷰 Y3). 대가: 2글자 몸통 접두사(`my_en`)는 맨 로케일로 읽힌다.
+- **`l10n.yaml`**: 리포 루트의 설정을 **먼저** 읽고(`detectIn`), 1패스 후보 중 설정 대상(`arb-dir` 일치 + `template-arb-file`이 그 후보의 파일)을 맨 앞으로 옮긴 뒤
+  `probeTargets`에 넘긴다 — **거르지 않고 순서만** 바꾼다(거르면 설정 밖 ARB를 둘째 소스로 붙인 CI가 자기 템플릿을 못 찾아 영구 red다).
+  설정 파일도 같은 다운로드 예산 안에서 센다(`readFiles`의 `prior` — 파일 수·선언 크기·실제 내용 합계, 재리뷰 Y1). 설정이 `arb-dir`을 생략하면 `lib/l10n`이다.
+- **기준 언어 기본값**: 설정 대상 후보에 `template-arb-file`의 로케일을 `DetectedFormat.templateLocale`로 싣고(그 파일이 후보의 파일 중에 있을 때만),
+  온보딩 요약·표본은 `defaultBaseLocale`(템플릿 로케일 → 공용 en 우선)을 쓴다. 사용자가 라디오로 바꾼다. 확정의 재탐지는 이 필드를 싣지 않는다.
 
 **왜 이것이 병합이 아닌가.** 다른 재생성 어댑터는 원본에서 **표현만** 가져오고, chrome의 `description`·`placeholders`도 DB에서 온다(§1.1).
 `arb-catalog`는 **키별 내용을 write 시점에 원본에서 가져오는 첫 재생성 어댑터**다. 그래도 `@key`는 번역 값이 아니라 개발자가 템플릿에 쓰는 소스 키
 메타데이터이고(불변식 1 — 소스 키의 소유자는 코드다), DB에 그 짝이 없어 키마다 출처가 하나다. 원본 값과 DB 값을 견줘 고르는 코드가 생기면 이 근거가 깨진다.
 `placeholders`를 DB에 넣은 chrome과 달리 `@key`를 넣지 않은 것은 번역자가 로케일별로 고치는 내용이 아니기 때문이다(2026-10-19 사용자 결정 — 스키마 변경 0).
+미번역·주석 `@x`를 남기는 규칙도 같은 근거 위에 선다 — 무엇을 남길지는 그 키가 표면에 살아 있는가(DB 상태)로 정하고, 원본의 `@key` 내용과 DB 값을 견주지 않는다.
+
+**첫 Publish의 정규화** — `@key`를 키 바로 뒤로 옮기는 것과 `@@locale` 값 외에, 기존 재생성 어댑터(`json-catalog`)와 같은 표현 정규화(그룹 사이 빈 줄 제거 ·
+혼합 들여쓰기를 첫 줄 기준으로 통일 · 비-base를 base 키 순서로 · 끝 개행 · 빈 값 제거)가 첫 Publish에서 한 번 일어나고 그 뒤 고정점이다(2026-10-19 지휘자 결정 —
+셀 밖 의미 변화가 없다).
 
 ### 1.4 수술적 치환 (`ts-dict`·`yaml-catalog`·`code-dict`) — 규칙이 반대다
 
@@ -660,6 +689,35 @@ siyuan의 기존 의미 불일치와 쓰기 오류 22건이 모두 사라졌다.
 24차와 비교 가능한 왕복·탐지 지표는 같다. 홀드아웃 오탐은 여전히 Discourse·Mattermost·Stirling-PDF의 같은 경로다.
 `diff.clean`은 위 현재 집계 계약으로 잰 값이며 과거 분모와 직접 비교하지 않는다. 왕복 미실행은 학습 4개·홀드아웃 2개로,
 왕복 100%는 실행된 리포만의 값이다. 이 코퍼스에 없는 TS shadowing 결함은 별도 회귀 테스트가 검증한다.
+
+**26차 (2026-10-19, arb — `arb-catalog` 추가 · 고정 SHA)** — 학습 109·홀드아웃 20은 기준선(`learning-1.json`·`heldout-1.json`)의 핀 SHA로, 모바일 코퍼스
+(학습 48·홀드아웃 12)는 mobile-strings M0 기준선의 핀으로 쟀다. 최종 수치는 리뷰 수정(fix3) 뒤 회차이고 fix2 회차와 원자료가 바이트 동일하다.
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 리포별 1순위 vs 기준선 | diff 0 | diff 0 |
+| `metrics` 전체(`ms` 제외) | 기준선과 바이트 동일 | 기준선과 바이트 동일 |
+
+학습 원자료가 기준선과 다른 리포 둘(`lokalise/i18n-ally` 선택 파일 222→220·`decodeErrors` 2 · `bitwarden/clients` 선택 파일 278→279)은 ARB와 무관하다 —
+ARB 없는 dev 코드로 같은 SHA를 다시 재도 같은 값이었다(기준선 뒤 dev 변경). 두 리포 다 1순위가 그대로다.
+
+| 지표 (모바일, ARB) | 학습 48 | 홀드아웃 12 |
+|---|---|---|
+| ARB 정답 리포 · 1순위 정답 | 10 · **10/10** | 4 · **4/4** |
+| 지원 포맷 탐지(전 포맷) | 4/40 → 13/40 | 3/11 → 6/11 |
+| 왕복 의미 동일 · 바이트 고정점 | 14/14 · 14/14 | 6/6 · 6/6 |
+| ARB 파일 단위 고정점(write∘write) | 100% | 100% |
+| 조용한 손실 · 첫 Publish `@key` 삭제 | 0 · 0 | 0 · 0 |
+| `resource-limit` 거부 | 1 (`openfoodfacts/smooth-app`) | 0 |
+| ARB base diff 중앙값 | 0.00089 | 0.00017 |
+| 키 충돌(`duplicate-property`) | 1 | 6 |
+
+- 모바일 1순위가 바뀐 리포는 ARB 정답 리포뿐이다 — 기준선 후보 없음 12개, `erosTeam/eros_fe`(`json-catalog`), `Notsfsssf/pixez-flutter`(`yaml-catalog` 오탐)가 ARB 정답으로 갔다.
+- `resource-limit` 1건은 smooth-app의 ARB 128파일 합계 38.1MB가 첫 적재 합계 예산(`MAX_TOTAL_BYTES` 10MB)을 넘는 것이다(파일당 최대 424KB — 파일당·파일 수 상한은 안 넘는다).
+  예산은 포맷 공용 규칙이라 그대로 둔다.
+- `@key` 삭제 0은 미번역 키·주석 `@x` 보존(§1.37) 뒤의 값이다 — 그 전 회차에서는 첫 Publish가 fluffychat `@key` 5,251개·smooth-app 2,705개를 지웠다.
+
+**판정**: 기존 코퍼스 회귀 0, ARB 1순위 14/14·고정점 100%·손실 0이라 `arb-catalog`를 지원 포맷으로 낸다. 남는 첫 Publish 정규화는 §1.37 "첫 Publish의 정규화"다.
 
 **판정 넷**
 
@@ -1293,8 +1351,8 @@ Action 밖으로 나와야 했다. `lib/onboarding`에 넣으면 그 루트의 "
   `sampleOrder(locales)`(en 우선 → 코드 유닛 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
   다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
 - **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 +
-  **`ts-dict` 씨앗 2 × 8**(2026-09-14) = **blob ≤ 37**. 온보딩 한 번의 호출은
-  `ref 1 + commit 1 + tree 1 + blob ≤37`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
+  **`ts-dict` 씨앗 2 × 8**(2026-09-14) + **ARB 설정 `l10n.yaml` 1**(2026-10-19) = **blob ≤ 38**. 온보딩 한 번의 호출은
+  `ref 1 + commit 1 + tree 1 + blob ≤38`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
   그대로 응답 시간이고, `maxDuration`이 60초다.
 - ⚠️ **`ts-dict` 씨앗만 입력의 성격이 다르다.** 앞의 둘은 1패스가 만든 **후보 그룹**인데 그 어댑터는
   내용을 봐야 판단할 수 있어 1패스 후보가 0이다 — `probeTargets`가 **리포 경로 전체**를 받아
