@@ -1,11 +1,13 @@
-# adapter-survey 회귀 기준선 (arb 뒤, 2026-10-19)
+# adapter-survey 회귀 기준선 (apple-strings 뒤, 2026-10-19)
 
 머신을 옮겨도 다음 어댑터 스펙이 같은 기준으로 회귀를 잴 수 있도록 **리포별 1순위와 `metrics`만** 커밋한다. 원자료 JSON은 크고 머신에 묶여 있어서
 (`.scratch/`) 커밋하지 않는다. 필요하면 아래 명령으로 다시 만든다 — 핀이 있어 같은 SHA에서 돈다.
 
-- 코드: dev `a3a82be2`(arb-catalog 포함). 출처는 arb 배치 A fix3의 고정 SHA 재측정이다.
-- `learning`·`heldout`: 학습 109 · 홀드아웃 20. 리포별 1순위가 mobile-strings M0 기준선(arb 이전)과 **같다**(diff 0, `metrics` 동일) — ARB는 기존 코퍼스를 한 칸도 바꾸지 않았다.
-- `mobile`·`mobile-heldout`: 모바일 학습 48 · 홀드아웃 12. **M0 기준선과 다르다** — ARB 정답 리포 14개의 1순위가 `-`·오탐에서 ARB 정답으로 바뀌었다(ARCHITECTURE §1.9 26차).
+- 코드: apple-strings 배치 A(`apple-strings` 포함 — arb-catalog 뒤). 출처는 그 배치의 고정 SHA 재측정이다(T2.3).
+- `learning`·`heldout`: 학습 109 · 홀드아웃 20. 리포별 1순위와 `metrics`가 arb 뒤 기준선과 **바이트 단위로 같다** — ARB·Apple strings는 기존 코퍼스를 한 칸도 바꾸지 않았다.
+- `mobile`·`mobile-heldout`: 모바일 학습 48 · 홀드아웃 12. **arb 뒤 기준선과 다르다** — 바뀐 1순위 16개(학습 12 · 홀드아웃 4)가 전부 `apple-strings`다. 그중 정답 경로가 `.strings`인 리포 8개 중 7개는 정답이 됐고(Telegram-iOS는 정답이 2순위다),
+  나머지 8개는 `-`(또는 이미 오탐)에서 Apple 후보로 바뀐 리포다(정답이 xcstrings·Android이거나 카탈로그 없음 — ARCHITECTURE §1.9 27차). **ARB 정답 14개는 1순위가 ARB 그대로다.**
+  arb 뒤 기준선(M0 → ARB 14개 변경)은 git 이력에 있다.
 
 ## 파일
 

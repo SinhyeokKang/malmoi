@@ -7,19 +7,28 @@
   "configFileRepos": 2,
   "detect": {
     "all": {
-      "n": 6,
+      "n": 9,
       "of": 12,
-      "pct": 50
+      "pct": 75
     },
     "supported": {
-      "n": 6,
+      "n": 9,
       "of": 11,
-      "pct": 54.54545454545454
+      "pct": 81.81818181818183
     }
   },
   "diff": {
     "approximateRepos": [],
     "byAdapter": {
+      "apple-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 4,
+          "pct": 0
+        },
+        "repos": 4
+      },
       "arb-catalog": {
         "median": 0.00016948630242519247,
         "overTarget": {
@@ -30,13 +39,13 @@
         "repos": 4
       },
       "json-catalog": {
-        "median": 0.6666666666666667,
+        "median": 0.33333333333333337,
         "overTarget": {
-          "n": 2,
-          "of": 2,
+          "n": 1,
+          "of": 1,
           "pct": 100
         },
-        "repos": 2
+        "repos": 1
       }
     },
     "clean": {
@@ -48,21 +57,21 @@
       },
       "repos": 3
     },
-    "median": 0.0004873502566528076,
-    "nonBaseMedian": 0.21625011197706712,
+    "median": 0,
+    "nonBaseMedian": 0.005099919114186113,
     "overHalf": {
-      "n": 1,
-      "of": 6,
-      "pct": 16.666666666666664
+      "n": 0,
+      "of": 9,
+      "pct": 0
     },
     "overTarget": {
-      "n": 2,
-      "of": 6,
-      "pct": 33.33333333333333
+      "n": 1,
+      "of": 9,
+      "pct": 11.11111111111111
     }
   },
   "diffCauses": {
-    "emptyValues": 2,
+    "emptyValues": 1,
     "integerKeys": 0,
     "sparseArray": 0
   },
@@ -70,43 +79,46 @@
   "icuPluralRepos": 2,
   "indent": {
     "distribution": {
-      "none-0": 1,
       "space-2": 4,
       "space-4": 1
     },
     "twoSpace": {
       "n": 4,
-      "of": 6,
-      "pct": 66.66666666666666
+      "of": 5,
+      "pct": 80
     }
   },
   "keyCollisions": 6,
   "localeOrder": {
-    "agreementMedian": 0.6,
-    "comparedRepos": 6
+    "agreementMedian": 0.2,
+    "comparedRepos": 5
   },
   "measuredCount": 12,
   "misdetect": {
     "correctRank": {
-      "1": 4,
-      "\uc5c6\uc74c": 7
+      "1": 6,
+      "2": 1,
+      "3": 1,
+      "\uc5c6\uc74c": 3
     },
     "supported": {
-      "n": 2,
-      "of": 6,
+      "n": 3,
+      "of": 9,
       "pct": 33.33333333333333
     },
     "withCandidate": {
-      "n": 2,
-      "of": 6,
+      "n": 3,
+      "of": 9,
       "pct": 33.33333333333333
     }
   },
-  "nonDotSeparatorRepos": [],
+  "nonDotSeparatorRepos": [
+    "exelban/stats"
+  ],
   "partialReadRepos": [],
   "placeholderRepos": 4,
   "presentation": {
-    "compactContainer": 2,
+    "compactContainer": 1,
     "dottedWithNested": 0,
     "escapedNonAscii": 0,
     "escapedSlash": 0
@@ -116,7 +128,7 @@
     "chrome-key": 0,
     "json-parse": 0,
     "key-collision": 6,
-    "leaf-type": 2363,
+    "leaf-type": 2,
     "non-literal-value": 0,
     "non-object-root": 0,
     "other": 0
@@ -124,14 +136,14 @@
   "repoCount": 12,
   "roundtrip": {
     "byteFixpointSame": {
-      "n": 6,
-      "of": 6,
+      "n": 9,
+      "of": 9,
       "pct": 100
     },
-    "notRun": 6,
+    "notRun": 3,
     "semanticSame": {
-      "n": 6,
-      "of": 6,
+      "n": 9,
+      "of": 9,
       "pct": 100
     }
   },
@@ -139,9 +151,9 @@
   "surgicalEdit": {
     "multiHunkRepos": [],
     "oneHunk": {
-      "n": 0,
-      "of": 0,
-      "pct": 0
+      "n": 4,
+      "of": 4,
+      "pct": 100
     }
   },
   "unjudged": [],

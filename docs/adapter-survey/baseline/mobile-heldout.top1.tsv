@@ -2,12 +2,12 @@ repo	commit	adapter	pathTemplate
 Alinto/sope	d6dd1e7141e9c7b216e1f88e3c3fc277499b97bd	-	-
 JHubi1/ollama-app	3759d32049771096b172b99400edae6d4f1a2557	arb-catalog	lib/l10n/app_{locale}.arb
 Notsfsssf/pixez-flutter	df5f35ee285eaa000d765a3785e796ad5237b1e8	arb-catalog	lib/l10n/intl_{locale}.arb
-TelegramMessenger/Telegram-iOS	f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838	json-catalog	submodules/TelegramUI/Resources/Animations/anim_sound_{locale}.json
-b123400/xliffie	517a656eb1fe3680c552526437999d601d9cde71	-	-
+TelegramMessenger/Telegram-iOS	f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838	apple-strings	Telegram/Share/{locale}.lproj/Localizable.strings
+b123400/xliffie	517a656eb1fe3680c552526437999d601d9cde71	apple-strings	Xliffie/Progress/{locale}.lproj/ProgressWindowController.strings
 d4rken-org/butler	4530196c8a77fa025fdca30731e5613c69195881	json-catalog	motd/foss/dev/motd-{locale}.json
-exelban/stats	573145558badb690728e39f3b2dcdb490e2ea731	-	-
+exelban/stats	573145558badb690728e39f3b2dcdb490e2ea731	apple-strings	Stats/Supporting Files/{locale}.lproj/Localizable.strings
 jonjomckay/fritter	0662539a5c2643c2fdc07c8620ba79e969ff0157	arb-catalog	lib/l10n/intl_{locale}.arb
 libre-tube/LibreTube	b6429b8aa0d69d06c8a8682aad643e12ec0a5a6c	-	-
 mueller-ma/NFCReader	8fab7215f5acbfc36d20f659a5ade114493c65dc	-	-
 nowubh/Mono-Dash	7ef33a1f92354a727880557aa2944a440b7e5224	arb-catalog	lib/core/localization/l10n/app_{locale}.arb
-rosuH/EasyWatermark	dae43630f1023e038c0ba85701b11402cec4a578	-	-
+rosuH/EasyWatermark	dae43630f1023e038c0ba85701b11402cec4a578	apple-strings	iosApp/iosApp/{locale}.lproj/InfoPlist.strings

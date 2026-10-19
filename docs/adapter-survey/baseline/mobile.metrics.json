@@ -7,19 +7,28 @@
   "configFileRepos": 3,
   "detect": {
     "all": {
-      "n": 14,
+      "n": 25,
       "of": 48,
-      "pct": 29.166666666666668
+      "pct": 52.083333333333336
     },
     "supported": {
-      "n": 13,
+      "n": 22,
       "of": 40,
-      "pct": 32.5
+      "pct": 55.00000000000001
     }
   },
   "diff": {
     "approximateRepos": [],
     "byAdapter": {
+      "apple-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 12,
+          "pct": 0
+        },
+        "repos": 12
+      },
       "arb-catalog": {
         "median": 0.0008900034566309833,
         "overTarget": {
@@ -30,35 +39,35 @@
         "repos": 10
       },
       "json-catalog": {
-        "median": 0.12726244343891407,
+        "median": 0.23529411764705888,
         "overTarget": {
           "n": 2,
-          "of": 4,
-          "pct": 50
+          "of": 3,
+          "pct": 66.66666666666666
         },
-        "repos": 4
+        "repos": 3
       }
     },
     "clean": {
-      "median": 0.0038910505836575737,
+      "median": 0.010478942473761133,
       "overTarget": {
         "n": 3,
-        "of": 11,
-        "pct": 27.27272727272727
+        "of": 10,
+        "pct": 30
       },
-      "repos": 11
+      "repos": 10
     },
-    "median": 0.0028090831502052827,
-    "nonBaseMedian": 0.0016395376551963103,
+    "median": 0,
+    "nonBaseMedian": 0,
     "overHalf": {
       "n": 2,
-      "of": 14,
-      "pct": 14.285714285714285
+      "of": 25,
+      "pct": 8
     },
     "overTarget": {
       "n": 4,
-      "of": 14,
-      "pct": 28.57142857142857
+      "of": 25,
+      "pct": 16
     }
   },
   "diffCauses": {
@@ -70,16 +79,16 @@
   "icuPluralRepos": 6,
   "indent": {
     "distribution": {
-      "space-2": 12,
+      "space-2": 11,
       "space-4": 2
     },
     "twoSpace": {
-      "n": 12,
-      "of": 14,
-      "pct": 85.71428571428571
+      "n": 11,
+      "of": 13,
+      "pct": 84.61538461538461
     }
   },
-  "keyCollisions": 1,
+  "keyCollisions": 21,
   "localeOrder": {
     "agreementMedian": 0.9147727272727273,
     "comparedRepos": 12
@@ -87,30 +96,32 @@
   "measuredCount": 48,
   "misdetect": {
     "correctRank": {
-      "1": 10,
+      "1": 18,
       "3": 1,
-      "\uc5c6\uc74c": 29
+      "\uc5c6\uc74c": 21
     },
     "supported": {
-      "n": 3,
-      "of": 13,
-      "pct": 23.076923076923077
+      "n": 4,
+      "of": 22,
+      "pct": 18.181818181818183
     },
     "withCandidate": {
-      "n": 4,
-      "of": 14,
-      "pct": 28.57142857142857
+      "n": 7,
+      "of": 25,
+      "pct": 28.000000000000004
     }
   },
   "nonDotSeparatorRepos": [
+    "InteractionEngineer/PayForMe",
     "OMARVII/Shotnix",
+    "codenameone/CodenameOne",
     "mit-cml/appinventor-sources"
   ],
   "partialReadRepos": [],
   "placeholderRepos": 10,
   "presentation": {
     "compactContainer": 2,
-    "dottedWithNested": 2,
+    "dottedWithNested": 1,
     "escapedNonAscii": 0,
     "escapedSlash": 0
   },
@@ -118,8 +129,8 @@
     "adapter-threw": 0,
     "chrome-key": 0,
     "json-parse": 0,
-    "key-collision": 1,
-    "leaf-type": 2,
+    "key-collision": 21,
+    "leaf-type": 1,
     "non-literal-value": 0,
     "non-object-root": 0,
     "other": 0
@@ -127,14 +138,14 @@
   "repoCount": 48,
   "roundtrip": {
     "byteFixpointSame": {
-      "n": 14,
-      "of": 14,
+      "n": 25,
+      "of": 25,
       "pct": 100
     },
-    "notRun": 34,
+    "notRun": 23,
     "semanticSame": {
-      "n": 14,
-      "of": 14,
+      "n": 25,
+      "of": 25,
       "pct": 100
     }
   },
@@ -142,9 +153,9 @@
   "surgicalEdit": {
     "multiHunkRepos": [],
     "oneHunk": {
-      "n": 0,
-      "of": 0,
-      "pct": 0
+      "n": 11,
+      "of": 11,
+      "pct": 100
     }
   },
   "unjudged": [],
