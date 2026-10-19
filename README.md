@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/SinhyeokKang/malmoi/releases/latest"><img src="https://img.shields.io/github/v/release/SinhyeokKang/malmoi?filter=v*&amp;style=flat" alt="Latest release" /></a>
-  <img src="https://img.shields.io/badge/formats-JSON%20%7C%20YAML%20%7C%20TS%2FJS%20%7C%20Chrome%20__locales-4493F8?style=flat" alt="Supported formats: JSON, YAML, TS/JS dictionaries, Chrome _locales" />
+  <img src="https://img.shields.io/badge/formats-JSON%20%7C%20YAML%20%7C%20TS%2FJS%20%7C%20Chrome%20__locales%20%7C%20Flutter%20ARB-4493F8?style=flat" alt="Supported formats: JSON, YAML, TS/JS dictionaries, Chrome _locales, Flutter ARB" />
   <img src="https://img.shields.io/badge/price-free-08C?style=flat" alt="Free, no paid plans" />
   <a href="https://mal-moi.com/docs/ai-agents"><img src="https://img.shields.io/badge/MCP-supported-8A63D2?style=flat" alt="MCP server for coding agents" /></a>
   <a href="https://mal-moi.com/docs/self-hosting"><img src="https://img.shields.io/badge/self--hosting-Docker-2496ED?style=flat" alt="Self-hosting with Docker Compose" /></a>
@@ -122,7 +122,7 @@ collects code references, so each key shows where your code uses it.
   workflow log says `deferred`). Merge or close the pull request and the next
   update goes through. Only a project owner can discard unsent edits (Sync or
   Revert).
-- **Add or remove languages** — project owners can request language files for JSON and YAML catalogs, Chrome messages, and code dictionaries with one file per language. Publish creates or deletes the file in the same pull request; removed translations stay in Malmoi and return when you add the language again. Dictionaries with all languages in one file require repository changes
+- **Add or remove languages** — project owners can request language files for JSON and YAML catalogs, Chrome messages, Flutter ARB files, and code dictionaries with one file per language. Publish creates or deletes the file in the same pull request; removed translations stay in Malmoi and return when you add the language again. Dictionaries with all languages in one file require repository changes
   ([details](https://mal-moi.com/docs/setup/languages)).
 - **Removed keys are kept** — bring the code back and its translations return.
 - **Nightly sync** — once a night (18:00 UTC), for active, connected projects
@@ -160,10 +160,12 @@ collects code references, so each key shows where your code uses it.
 | Chrome extension messages | `_locales/{locale}/messages.json` |
 | Code dictionary, one file per language | `src/locales/{locale}.ts` |
 | Code dictionary, all languages in one file | `src/i18n/namespaces/*.ts` |
+| Flutter ARB | `lib/l10n/app_{locale}.arb` |
 
 Existing YAML catalogs and code dictionaries keep comments, blank lines, and key order;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
-escapes, and field order. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
+escapes, and field order. Flutter ARB files also keep each key's `@key` metadata and the `@@` entries from your file;
+ICU messages (plurals, selects) are shown and saved as whole strings. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
 sends them in one pull request (one merge request on GitLab).
 New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed.
 [Limits →](https://mal-moi.com/docs/reference/limits)
