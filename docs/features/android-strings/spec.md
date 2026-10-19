@@ -34,7 +34,7 @@ Android `res/values*/strings.xml`을 지원 포맷에 더한다. 모바일 세 �
    기존 4포맷과 같은 기준으로 보고한다. 목표: 고정점 100%, 조용한 손실 0건. 탐지·오탐 수치는 목표가 아니라 **보고 대상**이다(§1.9 판정 ④).
 3. **기존 코퍼스 회귀 0** — 학습 109·홀드아웃 20의 표(arb 26차 · apple-strings 27차 뒤)가 한 칸도 나빠지지 않고, 커밋된 기준선 `docs/adapter-survey/baseline/`
    (리포별 SHA 고정 — 앞 스펙이 갱신한다)과 리포별 1순위 경로 diff 0이다(POSTMORTEM 2026-09-14). **모바일 코퍼스는 Android가 정답인 리포의 1순위만 바뀐다** —
-   ⚠️ Flutter 리포는 거의 모두 `android/app/src/main/res/values/strings.xml`(대개 `app_name` 하나)을 가진다. 그 후보가 ARB 정답 리포(학습 10 · 홀드아웃 4)나
+   ⚠️ Flutter 리포는 `android/app/src/main/res/values/strings.xml`(대개 `app_name` 정도)을 가질 수 있다 — 몇 리포인지는 T3.4가 센다. 그 후보가 ARB 정답 리포(학습 10 · 홀드아웃 4)나
    Apple 정답 리포의 1순위를 빼앗으면 회귀다. `basePath`가 null인 기존 표면의 동작이 바뀌지 않는다.
 4. 번역하지 않는 구조(`<plurals>`, `<string-array>`, `translatable="false"`)가 Publish 뒤에도 **바이트 그대로** 남는다 — 골든 테스트로 고정한다.
 5. 언어 추가·제거(§7.2 locale-add)가 동작하고, 지역이 붙은 언어는 Android 철자(`pt-rBR`)로만 추가된다 — `pt-BR` 꼴은 거부된다(design §2.5).
