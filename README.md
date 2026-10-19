@@ -164,7 +164,8 @@ collects code references, so each key shows where your code uses it.
 | Apple strings file | `ios/App/{locale}.lproj/Localizable.strings` |
 | Apple String Catalog | `ios/App/Localizable.xcstrings` |
 
-Existing YAML catalogs, code dictionaries, and Apple strings files and String Catalogs keep comments, blank lines, and key order;
+Existing YAML catalogs, code dictionaries, and Apple strings files keep comments, blank lines, and key order;
+Apple String Catalogs change only the edited cells, in Xcode's layout;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Flutter ARB files also keep each key's `@key` metadata and the `@@` entries from your file;
 ICU messages (plurals, selects) are shown and saved as whole strings. Apple strings files stay in their UTF-8 or UTF-16 encoding;
