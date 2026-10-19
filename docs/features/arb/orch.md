@@ -42,3 +42,4 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 - A-fix1 `ctx_6ece85c04583`(A 터미널 재사용, 결정 10) ∥ R `ctx_af0c96c3bcc9`(codex gpt-6-astra medium, A의 첫 세 커밋만, 결정 10·11은 결함으로 치지 않게 알림).
 - **R 완료** — 🔴0 · 🟡5(R1 `l10n.yaml` 대상이 probe 상한 밖이면 탈락 · R2 `en_gb.arb`가 `gb`로 갈림 · R3 `template-arb-file` 기준 언어 미구현 · R4 비-base 정렬이 `@@*` 상대 순서를 뒤집음 · R5 확정→적재→언어 추가·제거→Publish 시나리오 부재) · ⚪(`contract.ts` 표에 비문자열 원본 보존 예외). 병합 없음 위반 없음, 기존 129리포 SHA·1순위·metrics 일치 재확인. 사본 `handoffs/review-A.md`. R 해제.
 - **결정 12: R이 "사용자 결정"으로 올린 셋(R2·R3·R4)은 계획대로 구현한다** — 지휘자 판단(리뷰 권고도 같고, design §2·raw 코드 정책이 이미 답한다 — 범위 축소가 아니다). A-fix2 브리프 `brief-A-fix2.md`, fix1 완료 뒤 보낸다.
+- A-fix1 질문 → **결정 13: 표면에 같은 이름의 키가 없는 `@x`(smooth-app의 `"@Introduction screen": {}` 같은 섹션 주석)는 `@@*`처럼 원본 위치에 바이트 그대로 나른다. 버리는 것은 orphaned 키의 `@key`뿐이다** — 지휘자 판단(결정 10의 취지 — 리포가 요청하지 않은 첫 Publish 삭제를 만들지 않는다 — 를 같은 부류에 적용한 것이고, 출처가 원본 하나라 병합이 아니다). 결과로 fluffychat의 낡은 `@key` 280개(키가 base에 없음)도 첫 적재에서는 남는다.
