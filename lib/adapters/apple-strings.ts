@@ -25,6 +25,9 @@ export const STRINGS_FILE = /^((?:[^/]*\/)*)([^/]+)\.lproj\/([^/]+)\.strings$/;
  */
 const NOT_SOURCE = /(^|\/)((fastlane|Pods|build)|[^/]+\.(framework|app))\//;
 
+/** UTF-8 BOM이 디코드된 본문 첫 글자. 소스에 보이지 않는 글자를 두지 않으려고 코드로 만든다. */
+const BOM = String.fromCharCode(0xfeff);
+
 /** Xcode가 `NSLocalizedString`의 기본 테이블로 쓰는 이름 — 같은 리포의 다른 테이블(스토리보드·`InfoPlist`)보다 앞선다. */
 const MAIN_TABLE = "Localizable.strings";
 
@@ -309,7 +312,8 @@ function afterLine(text: string, slot: StringsSlot): number {
   while (text[j] === " " || text[j] === "\t") j += 1;
   if (text.startsWith("//", j)) {
     const nl = text.indexOf("\n", j);
-    j = nl === -1 ? text.length : nl;
+    // CRLF면 CR 앞이다 — LF 자리에 넣으면 주석 줄 끝에 CR이 남고 새 줄은 LF로 끝난다(리뷰 Y1).
+    j = nl === -1 ? text.length : nl > j && text[nl - 1] === "\r" ? nl - 1 : nl;
   }
   if (j < text.length && text[j] !== "\n" && text[j] !== "\r") return slot.end;
   return j;
@@ -391,10 +395,14 @@ function insertions(text: string, all: readonly StringsSlot[], slots: ReadonlyMa
     if (order !== undefined) placed.push({ order, at: before?.at ?? "end", style });
   }
 
+  // 파일 끝은 한 편집이다 — 끝 개행이 없으면 "마지막 엔트리 뒤" 삽입도 파일 끝에 선다. 앞 키 뒤에 이어지는 줄이 먼저, 앞 키가 없는 줄이
+  // 나중이다(리뷰 Y2 — 같은 offset의 편집 둘은 배열 순서에 기대 결과가 갈렸다).
+  const atEnd = [...(groups.get(text.length) ?? []), ...tail];
+  groups.delete(text.length);
   const edits: Edit[] = [...groups].map(([at, lines]) => ({ at, end: at, text: lines.map((l) => `${eol}${l}`).join("") }));
-  if (tail.length > 0) {
-    const endsWithLine = text.length === 0 || text === "﻿" || text.endsWith("\n");
-    edits.push({ at: text.length, end: text.length, text: endsWithLine ? tail.map((l) => `${l}${eol}`).join("") : tail.map((l) => `${eol}${l}`).join("") });
+  if (atEnd.length > 0) {
+    const endsWithLine = text.length === 0 || text === BOM || text.endsWith("\n");
+    edits.push({ at: text.length, end: text.length, text: endsWithLine ? atEnd.map((l) => `${l}${eol}`).join("") : atEnd.map((l) => `${eol}${l}`).join("") });
   }
   return edits;
 }
@@ -411,7 +419,7 @@ function create(format: DetectedFormat, input: WriteInput & { baseLocale: string
   if (!parsed.ok) return { content: null, errors: [{ path, code: "write-parse-failed", detail: parsed.detail }] };
   const entries = orderedEntries(input.entries).filter((e) => e.message !== "");
   if (entries.length === 0) return { content: null, errors: [] };
-  const bom = source.charCodeAt(0) === 0xfeff ? "﻿" : "";
+  const bom = source.charCodeAt(0) === 0xfeff ? BOM : "";
   const eol = source.includes("\r\n") ? "\r\n" : "\n";
   return { content: bom + entries.map((e) => `${encodeStringsLiteral(e.key)} = ${encodeStringsLiteral(e.message)};${eol}`).join(""), errors: [] };
 }

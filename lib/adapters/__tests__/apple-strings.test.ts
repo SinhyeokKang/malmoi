@@ -12,6 +12,8 @@ import { planClearability } from "@/lib/keys/save";
  */
 
 const TEMPLATE = "App/{locale}.lproj/Localizable.strings";
+/** UTF-8 BOM이 디코드된 첫 글자 — 소스에 보이지 않는 글자를 두지 않는다. */
+const BOM = String.fromCharCode(0xfeff);
 const pathOf = (locale: string) => TEMPLATE.replace("{locale}", locale);
 const formatWith = (locale: string, content: string, locales = [locale]): DetectedFormat => ({
   adapter: "apple-strings", pathTemplate: TEMPLATE, locales, currentFiles: [{ path: pathOf(locale), content }],
@@ -60,7 +62,7 @@ describe("리터럴 이스케이프", () => {
   });
 
   it("decode(encode(v)) === v — 제어문자·따옴표·역슬래시·이모지·BOM 문자", () => {
-    const samples = ["", "plain", 'q"uote', "back\\slash", "line\nbreak", "tab\there", "cr\rx", "\u0001\u001f", "😀 é 한글", "﻿x", "%@ %1$s %%", "'single'"];
+    const samples = ["", "plain", 'q"uote', "back\\slash", "line\nbreak", "tab\there", "cr\rx", "\u0001\u001f", "😀 é 한글", BOM + "x", "%@ %1$s %%", "'single'"];
     for (const v of samples) {
       expect(decodeStringsLiteral(encodeStringsLiteral(v)), JSON.stringify(v)).toBe(v);
       expect(decodeStringsLiteral(encodeStringsLiteral(v, "'")), JSON.stringify(v)).toBe(v);
@@ -181,7 +183,7 @@ describe("read", () => {
   });
 
   it("UTF-8 BOM 문자를 건너뛴다", () => {
-    expect(entriesOf("en", '﻿"a" = "A";\n')).toEqual({ a: "A" });
+    expect(entriesOf("en", BOM + '"a" = "A";\n')).toEqual({ a: "A" });
   });
 
   it("문법 오류는 parse-failed이고 그 로케일을 내지 않는다", () => {
@@ -282,6 +284,28 @@ describe("write — 비기준 파일의 누락 키 삽입", () => {
     expect(writeOne("ko", '"a" = "A";', [{ key: "a", message: "A", order: 0 }, { key: "b", message: "B", order: 1 }]).content).toBe('"a" = "A";\n"b" = "B";');
   });
 
+  /** 리뷰 Y1 — 줄 주석 뒤 삽입이 LF 자리를 잡아 `\r`이 주석 줄에 남고 새 줄 끝은 LF뿐이었다. */
+  it("CRLF × 줄 주석 × 누락 키 — 새 줄은 CR 앞에 들어가고 원본 바이트는 그대로다", () => {
+    const ko = '"a" = "A"; // note\r\n"c" = "C";\r\n';
+    const out = writeOne("ko", ko, [{ key: "a", message: "A", order: 0 }, { key: "b", message: "B", order: 1 }, { key: "c", message: "C", order: 2 }]);
+    expect(out.content).toBe('"a" = "A"; // note\r\n"b" = "B";\r\n"c" = "C";\r\n');
+  });
+
+  /**
+   * 리뷰 Y2 — 끝 개행이 없는 파일에서 "마지막 엔트리 뒤" 삽입과 "앞 키 없음 → 파일 끝" 삽입이 같은 offset의 편집 둘이었다. 한 편집으로 합치고
+   * 순서를 정한다: 앞 키 뒤에 이어지는 줄이 먼저, 파일 끝 대체 줄이 나중이다.
+   */
+  it.each([
+    ["끝 개행 없음", '"b" = "B";', '"b" = "B";\n"c" = "C";\n"a" = "A";'],
+    ["EOF 줄 주석", '"b" = "B"; // last', '"b" = "B"; // last\n"c" = "C";\n"a" = "A";'],
+    ["CRLF·끝 개행 없음", '"x" = "X";\r\n"b" = "B";', '"x" = "X";\r\n"b" = "B";\r\n"c" = "C";\r\n"a" = "A";'],
+  ])("파일 끝 — %s: 앞·뒤 누락 키를 한 편집으로", (_name, ko, expected) => {
+    const entries = [{ key: "a", message: "A", order: 0 }, { key: "b", message: "B", order: 1 }, { key: "c", message: "C", order: 2 }];
+    expect(writeOne("ko", ko, entries).content).toBe(expected);
+    // 그 출력이 다음 write의 입력으로 고정점이다.
+    expect(writeOne("ko", expected, entries).content).toBe(expected);
+  });
+
   it("0바이트 파일에도 넣고, 그 출력이 다음 read·write의 입력으로 고정점이다", () => {
     const entries = [{ key: "a", message: "A", order: 0 }, { key: "b", message: 'B "q"', order: 1 }];
     const out = writeOne("ko", "", entries).content!;
@@ -291,7 +315,7 @@ describe("write — 비기준 파일의 누락 키 삽입", () => {
   });
 
   it("UTF-8 BOM 파일에서도 같은 자리에 넣는다", () => {
-    expect(writeOne("ko", '﻿"a" = "A";\n', [{ key: "a", message: "A", order: 0 }, { key: "b", message: "B", order: 1 }]).content).toBe('﻿"a" = "A";\n"b" = "B";\n');
+    expect(writeOne("ko", BOM + '"a" = "A";\n', [{ key: "a", message: "A", order: 0 }, { key: "b", message: "B", order: 1 }]).content).toBe(BOM + '"a" = "A";\n"b" = "B";\n');
   });
 
   it("삽입 값이 같은 위치의 치환과 겹쳐 같은 자리를 두 번 쓰지 않는다", () => {
@@ -315,7 +339,7 @@ describe("create — 새 언어 파일", () => {
   });
 
   it("기준 파일의 BOM과 줄바꿈만 빌린다", () => {
-    expect(create('﻿"a" = "A";\r\n', [{ key: "a", message: "Un" }]).content).toBe('﻿"a" = "Un";\r\n');
+    expect(create(BOM + '"a" = "A";\r\n', [{ key: "a", message: "Un" }]).content).toBe(BOM + '"a" = "Un";\r\n');
   });
 
   it("낼 값이 없으면 null이다", () => {
