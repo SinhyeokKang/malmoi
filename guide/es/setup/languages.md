@@ -2,7 +2,7 @@
 
 Añade un idioma a una fuente o quita uno desde los detalles de la fuente y publica el cambio en tu repositorio como un archivo.
 
-Los propietarios del proyecto cambian los idiomas de una fuente; los traductores (rol Editor) pueden ver el estado de cada idioma, pero no cambiarlo. Añadir y quitar idiomas funciona en fuentes de **Catálogo JSON**, **Catálogo YAML**, **Mensajes de extensión de Chrome**, **Diccionario en código (un archivo por idioma)** y **Flutter ARB**. Para un diccionario que contiene todos los idiomas en un archivo, cambia los objetos de idioma en el repositorio; Malmoi lee el cambio en la siguiente actualización.
+Los propietarios del proyecto cambian los idiomas de una fuente; los traductores (rol Editor) pueden ver el estado de cada idioma, pero no cambiarlo. Añadir y quitar idiomas funciona en fuentes de **Catálogo JSON**, **Catálogo YAML**, **Mensajes de extensión de Chrome**, **Diccionario en código (un archivo por idioma)**, **Flutter ARB** y **Archivo strings de Apple**. Para un diccionario que contiene todos los idiomas en un archivo, cambia los objetos de idioma en el repositorio; Malmoi lee el cambio en la siguiente actualización.
 
 ## Abre la tarjeta Idiomas {#languages}
 
@@ -25,7 +25,7 @@ En un diccionario con todos los idiomas en un archivo, la tarjeta no tiene descr
 ## Añade un idioma {#add}
 
 1. En la tarjeta **Idiomas**, elige **Añadir idioma**.
-2. En un catálogo JSON o YAML, un archivo ARB de Flutter o un diccionario con un archivo por idioma, elige un idioma de **Idiomas habituales** o escribe un código en **Código de idioma**: un idioma en minúsculas con una región opcional, como `fr`, `pt-BR` o `zh_TW`. Los idiomas que ya estuvieron en esta fuente aparecen primero, en **Antes en esta fuente**. En los mensajes de extensión de Chrome, elige en **Idioma**; Chrome admite una lista fija de códigos.
+2. En un catálogo JSON o YAML, un archivo ARB de Flutter, un archivo strings de Apple o un diccionario con un archivo por idioma, elige un idioma de **Idiomas habituales** o escribe un código en **Código de idioma**: un idioma en minúsculas con una región opcional, como `fr`, `pt-BR` o `zh_TW`. Los idiomas que ya estuvieron en esta fuente aparecen primero, en **Antes en esta fuente**. En los mensajes de extensión de Chrome, elige en **Idioma**; Chrome admite una lista fija de códigos.
 3. Comprueba **Archivo que se creará**, la ruta que tendrá el archivo. Elige **Añadir idioma** otra vez para confirmar.
 
 ![El diálogo para añadir un idioma sobre los detalles de la fuente, con es elegido como código de idioma e i18n/emails/es.json en Archivo que se creará](/guide/language-add.webp "Elige un idioma y comprueba el archivo que creará Malmoi.")
@@ -34,7 +34,7 @@ Malmoi rechaza un idioma que ya está en la fuente, uno cuya ruta de archivo coi
 
 El idioma nuevo aparece como **Añadiendo** y los traductores pueden abrirlo y traducir enseguida. El archivo todavía no existe en tu repositorio: Publicar lo crea, cuando el idioma tiene al menos una traducción. Hasta entonces, la vista previa de Publicar muestra el idioma como **No incluido**.
 
-Los archivos nuevos de YAML y de código por idioma siguen las convenciones del archivo base sobre raíz, estructura de claves, exportación y formato cuando corresponda. Solo contienen claves traducidas, sin los comentarios, sentencias `import` ni declaraciones de tipos del archivo base. Si esas convenciones no se pueden usar con seguridad, Publicar se detiene; cancela la adición o crea el archivo en el repositorio. Consulta [Archivos de idioma nuevos](../reference/formats.md#languages) para ver los límites, incluidas las inserciones posteriores de claves con puntos. Los archivos ARB de Flutter nuevos solo contienen `@@locale` y las claves traducidas, sin metadatos `@key`. Registra el idioma en el código de tu aplicación cuando sea necesario.
+Los archivos nuevos de YAML y de código por idioma siguen las convenciones del archivo base sobre raíz, estructura de claves, exportación y formato cuando corresponda. Solo contienen claves traducidas, sin los comentarios, sentencias `import` ni declaraciones de tipos del archivo base. Si esas convenciones no se pueden usar con seguridad, Publicar se detiene; cancela la adición o crea el archivo en el repositorio. Consulta [Archivos de idioma nuevos](../reference/formats.md#languages) para ver los límites, incluidas las inserciones posteriores de claves con puntos. Los archivos ARB de Flutter nuevos solo contienen `@@locale` y las claves traducidas, sin metadatos `@key`. Los archivos strings de Apple nuevos usan la codificación del archivo base y solo contienen las claves traducidas. Registra el idioma en el código de tu aplicación cuando sea necesario.
 
 Si añades un idioma que ya estuvo en esta fuente, Malmoi recupera sus traducciones guardadas como ediciones sin enviar, así que la siguiente publicación las envía.
 
