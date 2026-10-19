@@ -670,6 +670,11 @@ lib/
                         · apple-strings(Apple `.strings`, 2026-10-19 — surgical. 토크나이저가 값 리터럴 범위를 내고, 비-base 파일에만 누락 키를 삽입한다.
                         UTF-16 판별·왕복은 어댑터가 아니라 lib/file-encoding.ts가 든다) · apple-xcstrings(Apple String Catalog — multi-locale surgical.
                         자리 없는 로케일 셀을 Xcode 서식으로 삽입하고 sourceLanguage를 templateLocale로 싣는다. 언어 추가·제거 비지원) — 근거는 ARCHITECTURE §1.45
+                        __tests__/apple-strings.test.ts가 토크나이저·이스케이프(plutil 채록 — 8진 512개)·삽입·create·탐지를,
+                        lib/onboarding-run/__tests__/detect-apple-strings.test.ts가 probe 예산·Flutter 셸 강등을, lib/pull/__tests__/apple-strings-render.test.ts가
+                        렌더 경로(표현 불가 리터럴의 write-parse-failed 포함)를, lib/pull/__tests__/apple-strings-publish.integration.ts(`pnpm test:projects:postgres`)가
+                        확정 → 첫 적재 → 미리보기·첫/둘째 Publish 바이트(UTF-16LE+BOM·CRLF) → 언어 추가·제거를 잰다.
+                        Flutter 셸 판정 isFlutterShell은 apple-strings.ts에 있고 강등·keepOwnOrder는 index.ts의 detectCandidatesAcross가 한다(어댑터 간 순위)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
@@ -891,6 +896,7 @@ lib/
                         __tests__/observe-locale-files.test.ts는 yaml-catalog·code-dict의 파일 관측을 직접 검사하고, __tests__/locale-create.test.ts는 수술적 ADD create·revive 렌더·blocking 실패를 검사한다
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
+                        UTF-16 blob POST는 BLOB_CONCURRENCY(8) 워커 풀이다 — lib/__tests__/github-blob-concurrency.test.ts가 한도·순서·실패를 잰다
   repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
                         판정, sameRepoTarget·sameRepository·sameAccessedRepository · 잎, server-only 없음) · reader(RepoReader 계약) ·
                         index(호스트 구현을 고르는 **유일한 자리** — createGitClient·openRepoReader·listBranches·loadConnectionHealth).
