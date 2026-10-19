@@ -45,11 +45,10 @@ const AUTO_ROWS = 5;
  * - **R6** 격자를 `scrollTop % GAP`만큼 올려 그린다 — 점이 콘텐츠에 박힌 것처럼 올라간다. 캔버스를 콘텐츠 높이로 키우지 않는다(버퍼가 화면 몇 장 × DPR²다).
  *   ⚠️ 이 공식은 **스크롤 0부터 캔버스 윗변 = 스크롤포트 윗변**을 전제한다(스크롤러 안에서 래퍼 앞에 높이를 가진 형제가 없고 스크롤러 padding이 0 — 지금 첫 자식은 높이 0인 JSON-LD `<script>`다). 래퍼 위에
  *   높이를 가진 요소나 padding이 생기면 sticky가 걸리기 전 구간에서 캔버스 이동과 오프셋이 겹쳐 점이 미끄러진다.
- * - **R7** 포인터를 받지 않는다 — 마우스·터치·펜 모두 점에 영향이 없고 항상 자동 순회다(landing-kv-autosweep). 가상 커서는 좌우로
- *   반경(`CURSOR_RADIUS`)만큼 패널 밖까지 가서 줄을 바꾼다 — 패널 모서리에서 꺾으면 밝은 원이 반쯤 걸린 채 줄을 바꾸는 것이 보인다.
- *   스크롤러를 못 찾아도 같다(`follow`로 가른다).
+ * - **R7** 포인터를 받지 않는다 — 마우스·터치·펜 모두 점에 영향이 없고 항상 자동 순회다(landing-kv-autosweep).
+ *   스크롤러를 못 찾아도 같다(`follow`로 가른다). 가상 커서의 패널 밖 줄바꿈(반경 `CURSOR_RADIUS`만큼 넘침)은 로그인 KV도 같이 탄다.
  * - **R8** 반경 밖 점(같은 반지름·알파)은 path 하나로 fill 한 번이다 — 2560×1440이면 점이 1만 3천 개다.
- * ⚠️ **로그인 경로를 바꾸지 않는다** — R6·R8은 스크롤러를 찾았을 때, R7은 `follow="scroller"`일 때만 탄다.
+ * ⚠️ R6·R8은 스크롤러를 찾았을 때, R7(포인터 무시)은 `follow="scroller"`일 때만 탄다 — 로그인은 커서를 계속 따른다.
  */
 export function DotField({ className, follow = "canvas" }: { className?: string; follow?: "canvas" | "scroller" }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -69,9 +68,13 @@ export function DotField({ className, follow = "canvas" }: { className?: string;
     const scroller = follow === "scroller" ? canvas.closest<HTMLElement>("[data-public-scroller]") : null;
     /** 격자 오프셋 — 고무줄 스크롤의 범위 밖 값은 자른다(`clampScrollTop` 주석). 로그인은 0이다. */
     const scrollOffset = () => (scroller === null ? 0 : clampScrollTop(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight));
-    /** R7 — 랜딩은 포인터를 받지 않고, 가상 커서가 반경만큼 패널 밖에서 줄을 바꾼다. */
+    /** R7 — 랜딩은 포인터를 받지 않는다. */
     const landing = follow === "scroller";
-    const overshoot = landing ? CURSOR_RADIUS : 0;
+    /**
+     * 가상 커서는 두 소비자 모두 반경만큼 패널 밖에서 줄을 바꾼다(2026-10-19 사용자 — 로그인 KV도 랜딩과 같게). 패널 모서리에서 꺾으면
+     * 밝은 원이 반쯤 걸린 채 줄을 바꾸는 것이 보인다.
+     */
+    const overshoot = CURSOR_RADIUS;
 
     /**
      * ⚠️ **색을 tsx에 hex로 박지 않는다** — 리포에 tsx 내 hex 리터럴이 0건이다(DESIGN §6.2).

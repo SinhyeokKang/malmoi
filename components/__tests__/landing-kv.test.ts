@@ -40,7 +40,7 @@ describe("랜딩 배경 — 구조", () => {
     expect([...page.matchAll(/<DotField\b/g)]).toHaveLength(1);
   });
 
-  /** 로그인 KV는 지금 동작 그대로다 — `follow`를 넘기면 스크롤러 경로를 찾으러 간다. */
+  /** 로그인 KV는 `follow`를 넘기지 않는다 — 넘기면 스크롤러 경로를 찾으러 가고 포인터를 받지 않는다. */
   it("`/signin`의 점 격자는 `follow` 없이 선다", () => {
     const auth = read("components/signin/auth-layout.tsx");
     const uses = [...auth.matchAll(/<DotField\b[^>]*\/>/g)].map((match) => match[0]);
