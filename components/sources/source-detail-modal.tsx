@@ -162,11 +162,11 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, fo
       </Card>
       <Card title={m.locales.field.label} description={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
         <div className="px-4 py-row-y">
-        {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned && row.change === null).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
+        {canEdit && detail.connection?.adapterName !== "android-strings" ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned && row.change === null).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
               {/* 시안 `1e` ④ — EDITOR는 점선 칩과 자물쇠이고 컨트롤이 없다. */}
               <span className="border-border text-muted-foreground flex h-9 w-40 shrink-0 items-center gap-2 rounded-md border border-dashed px-2.5 text-sm"><Lock className="size-3.5" aria-hidden />{detail.baseLocale ?? m.sources.notConfigured}</span>
-              <span className="text-muted-foreground min-w-0 flex-1 text-xs">{m.sources.editorBase}</span>
+              <span className="text-muted-foreground min-w-0 flex-1 text-xs">{detail.connection?.adapterName === "android-strings" ? m.errors.repositorySettings["android-base-fixed"] : m.sources.editorBase}</span>
             </div>}
         {basePending(detail) && <div className="mt-3 space-y-2 text-xs">
           <p className="text-muted-foreground">{m.sources.applied}: <span className="text-foreground">{detail.baseLocale}</span> · {m.sources.requested}: <span className="text-foreground">{detail.declaredBaseLocale}</span></p>

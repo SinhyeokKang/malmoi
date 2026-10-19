@@ -1,3 +1,4 @@
+import { isAndroidLocale } from "@/lib/adapters/android-strings";
 import { validBaseInput } from "./base-input";
 import { ADAPTERS, detectFormatWith, isAdapterName, matchGlobPaths } from "@/lib/adapters";
 import { compareKeys, exceedsGlobBudget, looksLikeLocale } from "@/lib/adapters/shared";
@@ -34,7 +35,7 @@ export function templatePaths(adapter: AdapterName, pathTemplate: string, paths:
   if (layout === "multi-locale") return matchGlobPaths(pathTemplate, paths);
 
   if (pathTemplate.split("{locale}").length < 2) return [];
-  const matched = paths.filter((p) => localeOfTemplatePath(pathTemplate, p) !== undefined).sort(compareKeys);
+  const matched = paths.filter((p) => localeOfTemplatePath(pathTemplate, p, adapter) !== undefined).sort(compareKeys);
   // 트리에 실재할 때만 — 트리가 이 함수의 방어다(POSTMORTEM 2026-09-09). 확정은 재탐지가 같은 basePath를 냈는지 다시 본다.
   return basePath !== null && paths.includes(basePath) && !matched.includes(basePath) ? [...matched, basePath] : matched;
 }
@@ -43,7 +44,7 @@ export function templatePaths(adapter: AdapterName, pathTemplate: string, paths:
  * per-locale 템플릿 경로 → 로케일. 맞지 않으면 `undefined`. `templatePaths`와 **같은 패턴**이다 — 두 벌로 갈리면 내려받은 파일과
  * 로케일 목록이 서로 다른 경로를 가리킨다(delivery-invariants D6의 입력이다).
  */
-export function localeOfTemplatePath(pathTemplate: string, path: string): string | undefined {
+export function localeOfTemplatePath(pathTemplate: string, path: string, adapter: AdapterName): string | undefined {
   const parts = pathTemplate.split("{locale}");
   if (parts.length < 2) return undefined;
   const m = new RegExp(`^${parts.map(escapeRegExp).join("([A-Za-z_-]{2,8})")}$`).exec(path);
@@ -51,7 +52,7 @@ export function localeOfTemplatePath(pathTemplate: string, path: string): string
   const captures = m.slice(1);
   // `{locale}`이 여러 번이면 전부 같은 값이어야 한다 (`replaceAll`이 그렇게 만든다).
   const first = captures[0];
-  return first !== undefined && captures.every((c) => c === first) && looksLikeLocale(first) ? first : undefined;
+  return first !== undefined && captures.every((c) => c === first) && (adapter === "android-strings" ? isAndroidLocale(first) : looksLikeLocale(first)) ? first : undefined;
 }
 
 function escapeRegExp(s: string): string {

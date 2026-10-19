@@ -10,6 +10,8 @@ export function selectDefaultSurface<T>(candidates: readonly T[]): T | null {
 }
 
 export function surfaceLabel(pathTemplate: string): string {
+  const android = pathTemplate.match(/^(?:(.*)\/)?(?:res|composeResources)\/values-\{locale\}\/strings\.xml$/);
+  if (android) return (android[1] ?? "").replace(/(?:^|\/)src\/[^/]+$/, "").split("/").filter(Boolean).at(-1) ?? "default";
   return pathTemplate.split("/").slice(0, -1).filter(part => !/[{}*?]/.test(part)).at(-1) ?? "default";
 }
 

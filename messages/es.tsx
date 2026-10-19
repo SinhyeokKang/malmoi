@@ -1321,7 +1321,8 @@ export const es = {
 
     baseLocale: {
       androidHint: "Introduce el código de idioma del archivo base, como en.",
-      androidInvalid: "Usa un código de idioma válido que no esté ya en la lista.",
+      androidInvalid: "Introduce un código de idioma válido, como en.",
+      androidOverlap: (code: string) => `${code} ya es un idioma de traducción de esta fuente. Introduce el idioma de values/strings.xml.`,
       row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "Idioma base",
       hint: "El archivo de este idioma decide qué claves existen. Si eliges el equivocado, las claves que solo existen en otro idioma quedan fuera.",

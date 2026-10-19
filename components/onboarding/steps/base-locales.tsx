@@ -1,7 +1,7 @@
 "use client";
 
 import { FileCode2, FileJson2 } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { validBaseInput } from "@/lib/onboarding/base-input";
@@ -58,6 +58,7 @@ export function BaseLocaleFields({ state, onChange, id = "base-locale", label: l
 }) {
   const m = useMessages();
   const uiLocale = useUiLocale();
+  const [validated, setValidated] = useState<string | null>(null);
   const label = labelProp ?? m.newProject.baseLocale.title;
   const { locales, keyCounts } = state;
   const selectId = id === "base-locale" ? "project-base-locale" : `${id}-select`;
@@ -75,11 +76,13 @@ export function BaseLocaleFields({ state, onChange, id = "base-locale", label: l
   );
   const gap = leader === undefined ? undefined : keyGap(countOf(leader), countOf(state.baseLocale));
 
+  const invalid = validated === state.baseLocale && !validBaseInput(state, state.baseLocale);
+  const error = invalid ? state.locales.includes(state.baseLocale) ? m.newProject.baseLocale.androidOverlap(state.baseLocale) : m.newProject.baseLocale.androidInvalid : undefined;
   if (state.basePath !== undefined) return <FormGroup label={label} htmlFor={id}
-    help={<>{state.basePath}<br />{m.newProject.baseLocale.androidHint}</>}
-    error={state.baseLocale !== "" && !validBaseInput(state, state.baseLocale) ? m.newProject.baseLocale.androidInvalid : undefined}>
+    help={<>{labelProp === undefined && <>{state.basePath}<br /></>}{m.newProject.baseLocale.androidHint}</>}
+    error={error}>
     {describe => <Input id={id} value={state.baseLocale} disabled={disabled} aria-describedby={describe()}
-      aria-invalid={state.baseLocale !== "" && !validBaseInput(state, state.baseLocale) || undefined}
+      aria-invalid={invalid || undefined} onBlur={() => setValidated(state.baseLocale)}
       onChange={event => onChange(event.target.value.trim())} />}
   </FormGroup>;
 

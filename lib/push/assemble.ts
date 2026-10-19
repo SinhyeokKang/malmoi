@@ -50,14 +50,14 @@ export function assemblePushInput(input: {
   // 기준 언어 파일이 템플릿 밖(`basePath`, Android `values/`)이면 코드가 리포에 없다 — en 우선 추정이 그 파일의 실제 언어와 무관한 코드를 고른다
   // (android-strings design §2.4). 호출부(`--base`·온보딩 입력)가 정하고 여기서 언어 목록에도 더한다.
   if (format.basePath !== undefined && input.baseLocale === undefined) {
-    fail(`a base locale is required (--base): ${format.basePath} has no locale code in its path`);
+    fail(`a base locale is required (--base / base-locale): ${format.basePath} has no locale code in its path`);
   }
   if (format.basePath !== undefined && input.baseLocale !== undefined) {
     const observed = paths.flatMap(path => {
-      const code = localeOfTemplatePath(format.pathTemplate, path);
+      const code = localeOfTemplatePath(format.pathTemplate, path, format.adapter);
       return code === undefined ? [] : [code];
     });
-    if (format.adapter === "android-strings" && !validBaseInput({ ...format, locales: observed }, input.baseLocale)) fail("--base must be a valid locale code distinct from the observed translation locales");
+    if (format.adapter === "android-strings" && !validBaseInput({ ...format, locales: observed }, input.baseLocale)) fail(`--base / base-locale must be a valid locale code distinct from the observed translation locales: ${input.baseLocale}`);
     format = { ...format, templateLocale: input.baseLocale, locales: [...new Set([...format.locales, input.baseLocale])].sort() };
   }
   if (input.baseLocale !== undefined && !format.locales.includes(input.baseLocale)) {

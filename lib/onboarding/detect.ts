@@ -195,7 +195,7 @@ export function summarizeCandidates(
 ): Omit<CandidateSummary, "outputPaths">[] {
   const out: Omit<CandidateSummary, "outputPaths">[] = [];
   for (const c of candidates) {
-    // 탐지는 로케일 1개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
+    // 기준 파일만 있는 후보는 관측 코드가 없다 — 빈 입력으로 남겨 사용자가 기준 코드를 정하게 한다.
     const baseLocale = defaultBaseLocale(c) ?? (c.basePath === undefined ? undefined : "");
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);

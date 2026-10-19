@@ -360,6 +360,7 @@ describe("Android 생성·추가 진입점", () => {
     expect(revived).toMatchObject({ archivedAt: null, baseLocale: "fr", basePath });
     // 되살림은 strict 적재다 — 마지막 Publish 값이 아니라 리포 값을 읽는다.
     expect((await prisma.translation.findFirstOrThrow({ where: { surfaceId: surface.id, localeCode: "fr", stringKey: { key: "title" } } })).value).toBe("Home");
+    await ageRuns();
     const key = await prisma.stringKey.findFirstOrThrow({ where: { surfaceId: surface.id, key: "title" } });
     expect(await applyKeySave(prisma, { projectId: "p", surfaceId: surface.id, surfaceSlug: surface.slug, keyId: key.id, userId: "owner", credential: undefined, changes: [{ localeCode: "fr", value: "Maison" }] })).toMatchObject({ ok: true });
     fake({ ...FILES, ...github.files });
@@ -367,7 +368,7 @@ describe("Android 생성·추가 진입점", () => {
     expect(preview.changedFiles).toContain(basePath);
     expect(preview.changedFiles.some(path => path.includes("/values-en/"))).toBe(false);
     const made = fake({ ...FILES, ...github.files });
-    expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined, expectedFingerprint: preview.fingerprint })).toMatchObject({ status: "committed" });
+    expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined, expectedFingerprint: preview.fingerprint })).toEqual(expect.objectContaining({ status: "committed" }));
     expect(changesOf(made)).toContainEqual({ kind: "upsert", path: basePath, content: BASE.replace(">Home<", ">Maison<") });
     expect(changesOf(made).some(change => change.path.includes("/values-en/"))).toBe(false);
 

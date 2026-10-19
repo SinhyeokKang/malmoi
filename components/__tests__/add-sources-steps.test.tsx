@@ -279,6 +279,7 @@ it("values/만 있는 Android 소스를 기준 언어 코드 입력 후 추가�
   expect(dialog().textContent).toContain(en.newProject.files.summaryShort(1, en.newProject.files.keys(2)));
   await click(include(pathTemplate));
   await click(next());
+  expect((dialog().textContent ?? "").split(basePath)).toHaveLength(2);
   expect(confirm().getAttribute("aria-disabled")).toBe("true");
   expect(dialog().textContent).toContain(basePath);
   await input(find<HTMLInputElement>(document.body, "#surface-base-0"), "en");

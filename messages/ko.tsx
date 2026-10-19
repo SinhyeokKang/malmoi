@@ -1327,7 +1327,8 @@ export const ko = {
 
     baseLocale: {
       androidHint: "기준 파일의 언어 코드를 입력하세요. 예: en",
-      androidInvalid: "목록에 없는 올바른 언어 코드를 입력하세요.",
+      androidInvalid: "올바른 언어 코드를 입력하세요. 예: en",
+      androidOverlap: (code: string) => `${code}는 이 소스의 번역 언어입니다. values/strings.xml의 언어 코드를 입력하세요.`,
       row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "기준 언어",
       hint: "이 언어의 파일을 기준으로 키 목록을 만듭니다. 다른 언어에만 있는 키는 포함되지 않습니다.",

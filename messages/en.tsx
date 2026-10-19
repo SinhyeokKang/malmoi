@@ -2751,7 +2751,8 @@ export const en = {
 
     baseLocale: {
       androidHint: "Enter the language code of the base file, such as en.",
-      androidInvalid: "Use a valid language code that isn't already listed.",
+      androidInvalid: "Enter a valid language code, such as en.",
+      androidOverlap: (code: string) => `${code} is already a translation language of this source. Enter the language of values/strings.xml.`,
       /**
        * ③ 기준 언어 행의 보조 줄 — 경로와 키 수. ⚠️ **키 수는 아는 언어에만** 붙는다(결정 ⑦):
        * 모르는 언어에 숫자를 지어내면 되돌릴 수 없는 결정의 근거가 거짓이 된다.
