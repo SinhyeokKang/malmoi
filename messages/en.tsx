@@ -2944,6 +2944,10 @@ export const en = {
         tryAgain: "Try again",
         saveFailed: { title: "We couldn't save this key", body: "Your text is still here. Try again, or save it in a moment." },
         saveUnknown: { title: "We couldn't confirm the save", body: "Your text is still here. Check the current values before saving again." },
+        inlineTagsMismatch: {
+          title: (locales: string): string => `Tags don't match the base language in ${locales}`,
+          body: "Nothing was saved. Keep the base language's tags as they are and translate only the text between them.",
+        },
         /**
          * 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2). "revert"를 쓰지 않는다 — `Revert to last sent`는 OWNER 전용이고
          * 미저장 변경이 있으면 막힌다. "discard"는 이 화면이 이미 쓰는 어휘다. ⚠️ 명시적 빈값 export(PRODUCT §10)가 생기면 사라질 문구다.

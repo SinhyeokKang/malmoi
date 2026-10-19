@@ -9,7 +9,7 @@ import { KEY_SAVE_LIMITS, KeySaveInput, planClearability, planKeySave } from "..
  */
 const current = (entries: Record<string, string | null>) => new Map(Object.entries(entries));
 /** 재생성 표면 — 비우기 판정이 끼지 않는 기존 계약의 입력이다. */
-const REGEN = { writeStrategy: "regenerate", sourceText: "Source", baseLocale: "en" } as const;
+const REGEN = { adapterName: "json-catalog", writeStrategy: "regenerate", sourceText: "Source", baseLocale: "en" } as const;
 const planRegen = (c: ReadonlyMap<string, string | null>, changes: readonly { localeCode: string; value: string }[]) => planKeySave(c, changes, REGEN);
 
 describe("planKeySave — 정상", () => {
@@ -122,7 +122,7 @@ describe("planClearability — 정규화 뒤 값으로 판정한다", () => {
 });
 
 describe("planKeySave — 수술적 표면의 비-base 비우기는 키 전체 거부", () => {
-  const SURGICAL = { writeStrategy: "surgical", sourceText: "Source", baseLocale: "en" } as const;
+  const SURGICAL = { adapterName: "ts-dict", writeStrategy: "surgical", sourceText: "Source", baseLocale: "en" } as const;
 
   it("비-base fr 비우기 → cannot-clear + localeCodes", () => {
     expect(planKeySave(current({ en: "Hi", fr: "Salut" }), [{ localeCode: "fr", value: "" }], SURGICAL))
@@ -158,7 +158,7 @@ describe("planKeySave — 수술적 표면의 비-base 비우기는 키 전체 �
 });
 
 it("수술적 base도 폴백 원문이 비어 있으면 비우기를 거부한다", () => {
-  const surface = { writeStrategy: "surgical" as const, baseLocale: "en", sourceText: "" };
+  const surface = { adapterName: "ts-dict", writeStrategy: "surgical" as const, baseLocale: "en", sourceText: "" };
   expect(planKeySave(current({ en: "Published" }), [{ localeCode: "en", value: "" }], surface))
     .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["en"] });
 });

@@ -240,6 +240,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.workspace.detail.frozenReason": ["X"],
   "translations.workspace.footer.unsaved": [2],
   "translations.workspace.footer.savedSince": [2],
+  "translations.workspace.footer.inlineTagsMismatch.title": ["X"],
   "translations.workspace.footer.cannotClear.title": ["X"],
   "translations.workspace.footer.frozen": ["X", "Y"],
   "translations.workspace.footer.removalPending.title": ["X", 2],

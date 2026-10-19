@@ -1463,6 +1463,10 @@ export const ko = {
         tryAgain: "다시 시도",
         saveFailed: { title: "이 키를 저장하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 시도하거나 잠시 후 저장하세요." },
         saveUnknown: { title: "저장되었는지 확인하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 저장하기 전에 현재 값을 확인하세요." },
+        inlineTagsMismatch: {
+          title: (locales: string): string => `${locales} 번역의 태그가 기준 언어와 다릅니다`,
+          body: "아무것도 저장하지 않았습니다. 기준 언어의 태그는 그대로 두고 태그 사이의 텍스트만 번역하세요.",
+        },
         cannotClear: {
           title: (locales: string): string => `${locales} 번역은 비워 둘 수 없습니다`,
           body: "이 파일 형식에서는 번역을 비울 수 없어 아무것도 저장하지 않았습니다. 값을 입력하거나 변경을 취소하세요.",
