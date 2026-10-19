@@ -171,11 +171,13 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
   const groups = [...byTemplate].filter(([, s]) => hasStrongLocale(s)).map(([pathTemplate, locales]) => ({ pathTemplate, locales }));
   const verified = rankTemplateCandidates(groups).filter((g) => !probe || verifySamples(g.pathTemplate, g.locales, probe, arbVerdict));
 
-  // ⚠️ **좁히기는 검증 뒤다** — 설정이 가리키는 후보가 검증에서 떨어졌는데 좁히기를 먼저 하면 리포 전체가 후보 0이 된다.
-  // ⚠️ **어댑터 안에서 순서를 바꾸는 것으로는 안 된다** — `detectCandidatesAcross`가 전부 다시 정렬한다. 남기는 집합을 바꿔야 진입점의 1순위가 바뀐다.
+  // **좁히기는 거르기가 아니라 순서다** — 설정이 가리키는 후보를 ARB 후보 맨 앞에 둔다. 걸러 내면 설정 밖 ARB를 둘째 소스로 연결한
+  // 표면의 CI(`--path-template` 고정)가 탐지 목록에서 자기 템플릿을 못 찾아 영구 red다. 어댑터 간 정렬이 이 순서를 지우므로
+  // `detectCandidatesAcross`가 ARB 자리를 이 순서로 다시 채운다(`index.ts`).
   const config = probe !== undefined && paths.includes(L10N_CONFIG) ? readL10nConfig(probe(L10N_CONFIG)) : undefined;
-  const narrowed = config === undefined ? [] : verified.filter((g) => matchesConfig(g.pathTemplate, config));
-  return (narrowed.length > 0 ? narrowed : verified).map((g) => ({ adapter: "arb-catalog" as const, pathTemplate: g.pathTemplate, locales: [...g.locales] }));
+  const ordered = config === undefined ? verified
+    : [...verified.filter((g) => matchesConfig(g.pathTemplate, config)), ...verified.filter((g) => !matchesConfig(g.pathTemplate, config))];
+  return ordered.map((g) => ({ adapter: "arb-catalog" as const, pathTemplate: g.pathTemplate, locales: [...g.locales] }));
 }
 
 function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {

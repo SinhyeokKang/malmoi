@@ -61,7 +61,8 @@ export function detectFormatWith(
  * 아니다** — lokalise/i18n-ally가 정확히 그 형태로 오탐이 났다.
  */
 export function detectCandidatesAcross(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
-  const all = ADAPTERS.flatMap((a) => a.detectCandidates(paths, probe));
+  const own = ADAPTERS.map((a) => ({ name: a.name, found: a.detectCandidates(paths, probe) }));
+  const all = own.flatMap((a) => a.found);
   const chromeFirst: DetectedFormat[] = [];
   const rest: DetectedFormat[] = [];
   for (const c of all) {
@@ -69,7 +70,18 @@ export function detectCandidatesAcross(paths: readonly string[], probe?: FilePro
     if (c.adapter === "chrome-locales" && !aside) chromeFirst.push(c);
     else rest.push(c);
   }
-  return [...rankTemplates(chromeFirst), ...rankTemplates(rest)];
+  return keepOwnOrder([...rankTemplates(chromeFirst), ...rankTemplates(rest)], "arb-catalog", own.find((a) => a.name === "arb-catalog")?.found ?? []);
+}
+
+/**
+ * 한 어댑터의 후보가 선 자리만 그 어댑터가 낸 순서로 다시 채운다 — 다른 어댑터와의 순위는 그대로다.
+ *
+ * `arb-catalog`만 쓴다: 루트 `l10n.yaml`이 가리키는 후보가 경로 신호로는 지는 다른 ARB 후보를 이겨야 하는데(arb design §2), 설정은
+ * 경로 신호가 아니라 `compareTemplates`에 넣을 수 없고, 후보를 걸러 내면 설정 밖 ARB 소스가 탐지에서 사라진다.
+ */
+function keepOwnOrder(ranked: readonly DetectedFormat[], name: AdapterName, own: readonly DetectedFormat[]): DetectedFormat[] {
+  let next = 0;
+  return ranked.map((c) => (c.adapter === name ? own[next++] ?? c : c));
 }
 
 /**

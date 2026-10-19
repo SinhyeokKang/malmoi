@@ -259,7 +259,7 @@ export type Adapter = {
    * 로케일 파일 경로를 만드는 방식. 어댑터마다 구조가 다르다:
    *
    * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
-   *   (`chrome-locales`, `json-catalog`, `yaml-catalog`, `code-dict` — ⚠️ 뒤 둘은 per-locale인데
+   *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict` — ⚠️ 뒤 둘은 per-locale인데
    *   **수술적**이다. 경로 모양과 write 기계는 별개 축이다).
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
    *   (`ts-dict`). write도 파일별로 불러야 한다.
@@ -292,7 +292,7 @@ export type Adapter = {
    * `detect`는 이 결과의 `[0]`이다 — 두 함수가 같은 관문(순위·probe 검증)을 지나므로 어긋날 수
    * 없다. ⚠️ **2026-09-14부터 예외가 0이다** — `ts-dict`가 자동 탐지에 들어오면서 다섯이 같은 계약을
    * 진다(`detect-candidates.test.ts`). 그 전에는 `detectCandidates`가 항상 `[]`이라 일치를 요구할 수
-   * 없었고, 한때 `detect`까지 그 빈 배열을 거쳐 명시 지정이 죽었다 (POSTMORTEM 2026-09-03).
+   * 없었고, 한때 `detect`까지 그 빈 배열을 거쳐 명시 지정이 죽었다 (POSTMORTEM 2026-09-03). `arb-catalog`(2026-10-19)도 같은 계약이다.
    * ⚠️ **`ts-dict`는 probe가 없으면 여전히 `[]`다** — 경로만으로는 판단하지 않는다.
    * 후보 목록이 따로 필요한 이유는 **1순위가 틀렸을 때 정답이 몇 순위였는지**를 관측하기
    * 위해서다: 1순위만 보면 오탐이 났다는 사실은 알아도 탐지가 얼마나 가까웠는지는 알 수 없다

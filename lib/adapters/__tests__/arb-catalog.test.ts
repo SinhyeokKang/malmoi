@@ -290,7 +290,22 @@ describe("arb-catalog detect", () => {
     const probe: FileProbe = (p) => files[p] ?? (p.endsWith(".arb") ? arb : undefined);
     // 설정이 없으면 로케일이 많은 쪽이 이긴다 — 설정이 그것을 뒤집는다.
     expect(detectCandidatesAcross([...many, ...app], probe)[0]?.pathTemplate).toBe("packages/kit/lib/l10n/app_{locale}.arb");
-    expect(detectCandidatesAcross(paths, probe).map((c) => c.pathTemplate)).toEqual(["lib/l10n/app_{locale}.arb"]);
+    expect(detectCandidatesAcross(paths, probe).map((c) => c.pathTemplate)).toEqual(["lib/l10n/app_{locale}.arb", "packages/kit/lib/l10n/app_{locale}.arb"]);
+  });
+
+  /**
+   * ⚠️ **좁히기는 순서이지 거르기가 아니다** (code-review 🔴1). 걸러 내면 설정이 가리키지 않는 ARB를 둘째 소스로 연결한 표면의 CI
+   * (`--path-template` 고정)가 탐지 목록에서 자기 템플릿을 못 찾아 exit 1로 영구 red가 된다(`scripts/format.ts` `requestedFormat`).
+   */
+  it("`l10n.yaml`이 가리키지 않는 ARB 후보도 목록에 남는다 — 다른 어댑터와의 순위는 그대로다", () => {
+    const json = ["web/i18n/en.json", "web/i18n/ko.json", "web/i18n/ja.json", "web/i18n/fr.json"];
+    const paths = [...many, ...app, ...json, "l10n.yaml"];
+    const probe: FileProbe = (p) => (p === "l10n.yaml" ? "arb-dir: lib/l10n\n" : p.endsWith(".json") ? '{"a":"A"}' : arb);
+    expect(detectCandidatesAcross(paths, probe).map((c) => `${c.adapter} ${c.pathTemplate}`)).toEqual([
+      "json-catalog web/i18n/{locale}.json",
+      "arb-catalog lib/l10n/app_{locale}.arb",
+      "arb-catalog packages/kit/lib/l10n/app_{locale}.arb",
+    ]);
   });
 
   it("`l10n.yaml`이 가리키는 후보가 없으면 좁히지 않는다 — 설정 하나로 탐지가 0이 되지 않는다", () => {
