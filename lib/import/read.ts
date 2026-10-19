@@ -21,17 +21,24 @@ export async function readFiles(
   reader: RepoReader,
   snapshot: Extract<RepoSnapshot, { status: "ok" }>,
   paths: readonly string[],
+  /**
+   * **같은 예산 안에서 앞서 읽은 파일** — 탐지가 ARB 설정(`l10n.yaml`)을 먼저 읽고 나머지를 따로 읽는다(arb 리뷰 R1). 둘을 따로 재면 합계 상한이
+   * 호출마다 새로 시작해 설정만큼 상한 밖으로 빠진다(재리뷰 Y1). 그래서 파일 수·선언 크기·실제 내용 합계를 이 파일들과 **합쳐서** 잰다. 다시 받지 않는다.
+   */
+  prior: readonly AdapterFile[] = [],
 ): Promise<AdapterFile[]> {
+  const counted = [...prior.map((f) => f.path), ...paths];
   // ⚠️ 파일 수가 먼저다 — 크기를 원격으로 묻는 호스트(GitLab)가 상한을 넘는 목록에 원격을 부르지 않는다(R-A ⚪3).
-  checkFileCount(paths);
+  checkFileCount(counted);
   // 크기는 리더가 준다 — 트리에 크기가 실리는 호스트는 호출 0이다(`sizesFromSnapshot`). 모르는 크기를 0으로 세지 않는다.
-  const sized = await reader.sizes(snapshot, paths);
+  const sized = await reader.sizes(snapshot, counted);
   // LFS 포인터는 내려받을 수 있는 로케일 파일이 아니다 — 예산 거부(`resource-limit`)로 말한다(포인터를 파싱하지 않는다, D22).
   if (sized.status === "lfs") throw new IngestBudgetError();
   // ⚠️ 크기 조회 실패는 예산 초과가 아니다 — 원격 장애로 남긴다(design §2 "크기 조회 실패는 unavailable").
   if (sized.status !== "ok") throw new AppError("locale file sizes unavailable");
-  checkDownloadBudget(paths, [...sized.sizes].map(([path, size]) => ({ path, size })));
+  checkDownloadBudget(counted, [...sized.sizes].map(([path, size]) => ({ path, size })));
   let totalBytes = 0;
+  for (const file of prior) totalBytes = checkContentBudget(file.path, file.content, totalBytes);
   const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
   const out: AdapterFile[] = [];
   // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤37개(탐지) 또는
