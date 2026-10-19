@@ -260,7 +260,10 @@ function parseCatalog(text: string): { ok: true; catalog: Catalog } | { ok: fals
       const value = unit?.type === "object" ? memberOf(unit, "value")?.value : undefined;
       if (!cells.has(cell.name)) cells.set(cell.name, { node: cell.value, value: value?.type === "string" ? value : undefined });
     }
-    const key = { name: member.name, node, translate: !(flag?.type === "other" && flag.raw === "false"), localizations, cells, duplicated: hasDuplicateNames(node) };
+    // 빈 키(`Text("")`가 만든다 — 코퍼스 카탈로그 6개 중 3개)는 번역할 문자열이 아니고, 적재 계약(`IncomingKey.key` min 1)이 페이로드 **전체**를 거부한다.
+    // `shouldTranslate: false`처럼 읽지도 쓰지도 않고 파일에 남긴다(code-review 🔴1).
+    const translate = member.name !== "" && !(flag?.type === "other" && flag.raw === "false");
+    const key = { name: member.name, node, translate, localizations, cells, duplicated: hasDuplicateNames(node) };
     keys.push(key);
     seen.set(member.name, key);
   }

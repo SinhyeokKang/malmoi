@@ -6,6 +6,8 @@ import { appleXcstrings, xcstringsProbePaths } from "../apple-xcstrings";
 import { detectCandidatesAcross } from "../index";
 import { adapterErrorKind, type AdapterError, type DetectedFormat, type LocaleEntry } from "../types";
 import { planClearability } from "@/lib/keys/save";
+import { buildPushPayload } from "@/lib/push/payload";
+import { PushPayload } from "@/lib/push/plan";
 import { supportsLocaleChanges } from "@/lib/locales/add-plan";
 
 /**
@@ -272,8 +274,8 @@ describe("코퍼스 골든 — 바이트 그대로", () => {
     expect(values.en!.API_KEY_TITLE).toBe("OpenAI API Key");
   });
 
-  it("SwiftUIKit: localizations가 없는 키뿐 — 빈 키도 원문이 빈 문자열이다", () => {
-    expect(valuesOf(fixture("swiftuikit.xcstrings"))).toEqual({ en: { "": "", " ": " ", "%@": "%@", "%lld": "%lld", "1": "1", "Settings": "Settings" } });
+  it("SwiftUIKit: localizations가 없는 키뿐 — 키가 원문이고 빈 키는 엔트리가 아니다", () => {
+    expect(valuesOf(fixture("swiftuikit.xcstrings"))).toEqual({ en: { " ": " ", "%@": "%@", "%lld": "%lld", "1": "1", "Settings": "Settings" } });
   });
 
   it("Shotnix 발췌: 원문 셀 없는 키 · variations · 6개 언어 · 개행 이스케이프", () => {
@@ -289,6 +291,32 @@ describe("코퍼스 골든 — 바이트 그대로", () => {
     expect(values.en!["%@ (original)"]).toBe("%@ (original)");
     expect(values.ja!["%@ (%@)"]).toBe("%@（%@）");
     expect(values.en!["Shotnix could not write the file to:\n%@"]).toBe("Shotnix could not write the file to:\n%@");
+  });
+});
+
+/**
+ * **읽은 것이 적재 계약을 지난다** (code-review 🔴1). `Text("")`가 만드는 빈 키 `""`가 실제 카탈로그 6개 중 3개(SwiftUIKit·Shotnix·Applite)에 있는데,
+ * `IncomingKey.key`가 `min(1)`이라 하나만 실어도 첫 적재(`lib/onboarding/ingest.ts`)와 `/api/push`가 **페이로드 전체**를 거부한다. survey·어댑터 왕복은
+ * 계약 스키마를 지나지 않아 못 본다 — 그래서 실제 `buildPushPayload` → `PushPayload`로 잰다.
+ */
+describe("적재 계약 — 코퍼스 카탈로그가 PushPayload를 지난다", () => {
+  it.each(["healthgpt.xcstrings", "swiftuikit.xcstrings", "shotnix-excerpt.xcstrings", "xcode-before.xcstrings", "xcode-duplicate-input.xcstrings"])("%s", (name) => {
+    const content = fixture(name);
+    const format = appleXcstrings.detect([PATH], () => content);
+    if (format === undefined) throw new Error("not detected");
+    const { payload } = buildPushPayload({
+      projectSlug: "p", surfaceSlug: "app", executionId: null, commitSha: "1".repeat(40), commitAt: "2026-10-19T00:00:00.000Z",
+      format, read: appleXcstrings.read(format, [{ path: PATH, content }]), baseLocale: format.templateLocale!, scanRefs: [],
+    });
+    const parsed = PushPayload.safeParse(payload);
+    expect(parsed.success, JSON.stringify(parsed.error?.issues.slice(0, 3))).toBe(true);
+  });
+
+  it("빈 키는 엔트리가 아니고 파일에 그대로 남는다 — 쓰기도 건드리지 않는다", () => {
+    const raw = catalog({ "": { localizations: { de: unit("x") } }, k: {} });
+    expect(valuesOf(raw)).toEqual({ de: {}, en: { k: "k" } });
+    expect(readOf(raw).errors).toEqual([]);
+    expect(writeAll(raw, { de: { "": "y" }, fr: { "": "z" } }).content).toBe(raw);
   });
 });
 
