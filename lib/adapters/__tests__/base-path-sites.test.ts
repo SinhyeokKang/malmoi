@@ -14,10 +14,9 @@ import { describe, expect, it } from "vitest";
  *   추가는 `already-active`다) — 그래서 REMOVE가 `basePath`를 지우는 일이 구조상 없다(`lib/locales/__tests__/base-path.test.ts`가 고정한다).
  * - `adapter` — 어댑터 내부의 탐지 표본·쓰기 원본 조회. 기존 네 어댑터는 `basePath`를 내지 않는다. `basePath`를 내는 어댑터는 자기 판정을 든다.
  * - `helper` — `baseFilePath` 자신.
- * - `deferred` — survey(`lib/survey/`)는 배치 A가 먼저 소유한다(mobile-strings orch 결정 6) — 그 뒤 배치가 고친다.
  * - `screen` — 화면 자리는 표시 문구가 함께 바뀌므로 android-strings T3.2b가 든다(design §2).
  */
-type Kind = "branched" | "change-row" | "adapter" | "helper" | "deferred" | "screen";
+type Kind = "branched" | "change-row" | "adapter" | "helper" | "screen";
 
 const SITES: Record<string, { count: number; kind: Kind }> = {
   "lib/adapters/base-path.ts": { count: 1, kind: "helper" },
@@ -39,7 +38,8 @@ const SITES: Record<string, { count: number; kind: Kind }> = {
   "lib/adapters/code-dict.ts": { count: 4, kind: "adapter" },
   "lib/adapters/shared.ts": { count: 1, kind: "adapter" },
 
-  "lib/survey/one.ts": { count: 5, kind: "deferred" },
+  // 다섯 자리가 파일 안 helper(`surveyLocalePath`) 하나로 모였고, 기준 언어 전용 diff 자리는 `baseFilePath`다.
+  "lib/survey/one.ts": { count: 1, kind: "branched" },
 
   "components/onboarding/steps/base-locales.tsx": { count: 1, kind: "screen" },
   "components/sources/add-locale-dialog.tsx": { count: 1, kind: "screen" },
