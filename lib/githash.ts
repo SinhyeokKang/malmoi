@@ -10,11 +10,11 @@ import { createHash } from "node:crypto";
  * 따라서 이 함수는 git과 **바이트 단위로 같은 값**을 내야 한다. 한 비트라도 다르면 변경 감지가
  * 항상 "변경됨"을 뱉고, 무의미한 커밋이 매일 쌓여 PR diff가 노이즈로 덮인다.
  *
- * 길이는 **UTF-8 바이트 수**다. `content.length`(UTF-16 코드 유닛 수)를 쓰면 ASCII에서만
+ * 길이는 **실제로 쓸 바이트 수**다(문자열 입력은 UTF-8). `content.length`(UTF-16 코드 유닛 수)를 쓰면 ASCII에서만
  * 맞고 한글·프랑스어·이모지에서 즉시 틀린다 — 번역 파일이 정확히 그 내용이라 실패가 보장된다.
  */
-export function blobSha(content: string): string {
-  const body = Buffer.from(content, "utf8");
+export function blobSha(content: string | Uint8Array): string {
+  const body = typeof content === "string" ? Buffer.from(content, "utf8") : content;
   const header = Buffer.from(`blob ${body.byteLength}\0`, "utf8");
   return createHash("sha1").update(header).update(body).digest("hex");
 }
