@@ -276,6 +276,7 @@ it("values/만 있는 Android 소스를 기준 언어 코드 입력 후 추가�
   const pathTemplate = "app/src/main/res/values-{locale}/strings.xml";
   const basePath = "app/src/main/res/values/strings.xml";
   await open([candidate(pathTemplate, { adapter: "android-strings", basePath, locales: [], baseLocale: "", samples: [], outputPaths: [basePath] })]);
+  expect(dialog().textContent).toContain(en.newProject.files.summaryShort(1, en.newProject.files.keys(2)));
   await click(include(pathTemplate));
   await click(next());
   expect(confirm().getAttribute("aria-disabled")).toBe("true");
