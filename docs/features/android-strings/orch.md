@@ -64,3 +64,5 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **R 완료** — 🔴3(R1 스팬 경계 공백이 aapt2와 달라 새 값도 다르게 전달 · R2 잘못된 태그(속성의 맨 `&`·중복 속성·끝 태그 속성)를 XML에 그대로 쓰고 성공 · R3 A 단독 배포에서 기준 언어 오적재) · 🟡3(Y1 `formatted=false` 유실 · Y2 Compose 값 의미 미채록 · Y3 멀티 모듈 probe 예산 시나리오 부재) · ⚪2(인계 표 낡음 · 주석). 계획과 다른 점 8 거부(R1), 1·2·3 조건부, 나머지 수용. 병합 없음 위반 없음, 삽입 144조합 고정점 확인. 사본 `handoffs/review-A.md`. R 해제.
 - 결정 18(사용자)·19·20. A-fix1 `ctx_f7eeff1c0424`(A 터미널 재사용 — R1·R2·Y1·Y2·W1·W2 + 결정 16 판정 JSON). R3 공급 고리·Y3는 B 몫. A 컨텍스트 73%.
 
+- **A·E 로컬 dev 통합(push 보류 — 결정 19)** — A 3커밋 + E 4커밋 cherry-pick(`18bee163..6afc8253`), main `pnpm gate` → `gate: ok`. 로그인 KV 점 애니메이션 수정(`1129b2f3` fix · `7a01da6f` DESIGN — 사용자 별도 요청, 지휘자가 직접 TDD)도 같은 로컬 dev에 있다.
+- 2파 시작(A-fix1과 병렬 — B·C는 `lib/adapters/**`·`detect.ts:21` 주석을 건드리지 않는다): B `ctx_821a3d946c2e`(`android-B`, codex gpt-6-astra medium — R3 공급 고리·Y3 포함) · C `ctx_beed5b8fe6c1`(`android-C`, codex gpt-6-astra medium).
