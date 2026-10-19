@@ -65,7 +65,7 @@ async function open(candidates: CandidateSummary[], existing: { pathTemplate: st
     existing={existing} adapters={[]} server={{}} />);
 }
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.loadCandidateSample.mockResolvedValue({ ok: false, error: "unavailable" }); });
 
 it("① 하단에 공통 기준 언어 셀렉트가 없다 — 단계 표시와 [Next]만 선다", async () => {
   await open([web, emails]);

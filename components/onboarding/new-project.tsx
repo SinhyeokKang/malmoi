@@ -34,7 +34,7 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { ConnectGithubButton } from "./connect-github";
 import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { LargeModal } from "@/components/ui/large-modal";
-import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
+import { FilesStep, failedPreview, initialPreviewLocale, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { repoInputOf } from "./repo-input";
 import { RepoStep, type GitLabAccountLine } from "./steps/repo";
@@ -309,7 +309,7 @@ export function NewProject({
     if (chosen === undefined) return;
     sampleGeneration.current += 1;
     setDetail(index);
-    const previewLocale = chosen.basePath !== undefined && chosen.baseLocale === "" ? chosen.basePath : chosen.baseLocale;
+    const previewLocale = initialPreviewLocale(chosen);
     setLocale(previewLocale);
     setSlugTaken(false);
     setSamples(

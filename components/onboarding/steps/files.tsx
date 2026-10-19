@@ -59,6 +59,11 @@ export type PreviewState =
   /** 확인값이 낡았다(만료·키 회전·스냅샷 변경) — 못 읽은 것과 할 일이 달라 문장도 다르다: 다시 탐지. */
   | { status: "expired" };
 
+/** 기준 코드를 아직 모르는 Android 파일도 두 온보딩 입구에서 바로 미리 본다. */
+export function initialPreviewLocale(candidate: Pick<CandidateSummary, "basePath" | "baseLocale"> | undefined): string {
+  return candidate?.basePath !== undefined && candidate.baseLocale === "" ? candidate.basePath : candidate?.baseLocale ?? "";
+}
+
 type FailedPreview = Extract<PreviewState, { status: "unavailable" | "expired" }>;
 
 /** 샘플 조회 실패를 미리보기 상태로 — 새 프로젝트 모달과 추가 모달이 이 한 벌을 쓴다. */

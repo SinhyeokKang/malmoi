@@ -5,7 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 import { useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
-import { FilesStep, failedPreview, samplePreview, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
+import { FilesStep, failedPreview, initialPreviewLocale, samplePreview, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
 import { failureText } from "@/components/onboarding/failure";
 import { useCommitWait } from "@/components/commit-wait";
 import { SlowLine, useSlow } from "@/components/slow-notice";
@@ -86,7 +86,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
       if (!active) return;
       const next = result.ok ? result.candidates : [];
       setCandidates(next); setChecked(new Set()); setBases(Object.fromEntries(next.map((c, i) => [i, c.baseLocale])));
-      setPicked(next.length ? 0 : null); setLocale(next[0]?.baseLocale ?? "");
+      setPicked(next.length ? 0 : null); setLocale(initialPreviewLocale(next[0]));
       setDetectError(!result.ok && result.error !== "no-candidates" ? result.error : undefined);
     }).catch(() => { if (active) setDetectError("unavailable"); }).finally(() => { if (active) setDetecting(false); });
     return () => { active = false; };
@@ -178,7 +178,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
       <div className="flex min-h-0 flex-1">
         <FilesStep pending={pending} previewNone={m.settings.sources.previewNone} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
           selection={{ checked, locked, conflicts: [...selection.conflicts, ...rejected.map(conflict => ({ path: conflictLine(conflict) }))], onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
-          onPick={index => { setPicked(index); setLocale(candidates[index]?.baseLocale ?? ""); }} onLocale={setLocale}
+          onPick={index => { setPicked(index); setLocale(initialPreviewLocale(candidates[index])); }} onLocale={setLocale}
           onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
       </div>
       {/* ⚠️ 이 줄은 수동 경로일 때만 선다 — 비면 본문 `gap-4`가 미리보기 아래 죽은 공간이 된다(A6: 공통 기준 언어 셀렉트를 걷었다). */}
@@ -192,7 +192,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
             const index = found < 0 ? candidates.length : found;
             if (found < 0) setCandidates([...candidates, result.candidate]);
             else if (!locked.has(found)) setCandidates(candidates.map((candidate, i) => i === found ? result.candidate : candidate));
-            setPicked(index); setLocale(result.candidate.baseLocale); setBases(previous => ({ ...previous, [index]: result.candidate.baseLocale }));
+            setPicked(index); setLocale(initialPreviewLocale(result.candidate)); setBases(previous => ({ ...previous, [index]: result.candidate.baseLocale }));
             setChecked(previous => new Set([...previous, index]));
           } catch { setManualError("unavailable"); }
         }); }}>{m.surfaces.confirm}</Button>
