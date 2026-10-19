@@ -398,6 +398,27 @@ describe("arb-catalog detect", () => {
     expect(found.map((c) => [c.pathTemplate, [...c.locales].sort()])).toEqual([[template, [...locales]]]);
   });
 
+  /**
+   * 재리뷰 Y3 — 한 디렉터리에 접두사 파일군(`app_en`·`app_ko`)과 맨 로케일 파일군(`en`·`ko`)이 함께 있으면 둘은 **다른 카탈로그**다. 디렉터리
+   * 최다 해석(맨 로케일 4표)이 접두사 파일군을 흡수해 `{locale}.arb`에 `app_en`·`app_ko`가 섞였다. 설정의 템플릿이 가리키는 쪽이 1순위이고 기준 언어다.
+   */
+  it("접두사 파일군과 맨 로케일 파일군은 따로 선다 — 설정 템플릿이 고른 쪽이 1순위, 고정된 `app_{locale}.arb`도 그대로 찾는다", async () => {
+    const files: Record<string, string> = {
+      "l10n.yaml": "arb-dir: lib/l10n\ntemplate-arb-file: app_en.arb\n",
+      "lib/l10n/app_en.arb": arb, "lib/l10n/app_ko.arb": arb, "lib/l10n/en.arb": arb, "lib/l10n/ko.arb": arb,
+    };
+    const found = detectCandidatesAcross(Object.keys(files), (p) => files[p]);
+    expect(found.map((c) => [c.pathTemplate, [...c.locales].sort(), c.templateLocale])).toEqual([
+      ["lib/l10n/app_{locale}.arb", ["en", "ko"], "en"],
+      ["lib/l10n/{locale}.arb", ["en", "ko"], undefined],
+    ]);
+    const { summarizeCandidates } = await import("@/lib/onboarding/detect");
+    expect(summarizeCandidates(found, new Map(Object.entries(files)))[0]).toMatchObject({ pathTemplate: "lib/l10n/app_{locale}.arb", baseLocale: "en" });
+    // 설정이 없어도 경계가 같다 — 파일 하나가 더해졌다고 기존 소스의 경계가 바뀌지 않는다.
+    const plain = Object.keys(files).filter((p) => p !== "l10n.yaml");
+    expect(detectCandidatesAcross(plain, (p) => files[p]).map((c) => c.pathTemplate).sort()).toEqual(["lib/l10n/app_{locale}.arb", "lib/l10n/{locale}.arb"]);
+  });
+
   it("probe가 카탈로그가 아니라고 하면 후보에서 뺀다", () => {
     const paths = ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"];
     expect(arbCatalog.detectCandidates(paths, () => "[1]")).toEqual([]);

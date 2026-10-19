@@ -128,7 +128,7 @@ function arbVerdict(content: string): CatalogVerdict {
 export function arbConfiguredFirst(candidates: readonly DetectedFormat[], configContent: string | undefined): DetectedFormat[] {
   const config = readL10nConfig(configContent);
   if (config === undefined) return candidates.slice();
-  const hit = (c: DetectedFormat) => c.adapter === "arb-catalog" && matchesConfig(c.pathTemplate, config);
+  const hit = (c: DetectedFormat) => c.adapter === "arb-catalog" && matchesConfig(c.pathTemplate, c.locales, config);
   return [...candidates.filter(hit), ...candidates.filter((c) => !hit(c))];
 }
 
@@ -158,12 +158,17 @@ function readL10nConfig(content: string | undefined): L10nConfig | undefined {
   return templateFile === undefined ? { arbDir } : { arbDir, templateFile };
 }
 
-function matchesConfig(pathTemplate: string, config: L10nConfig): boolean {
+/**
+ * 설정이 가리키는 후보인가 — `arb-dir`이 같고, 템플릿 파일이 있으면 **그 파일이 이 후보의 파일**이어야 한다(재리뷰 Y3). 경로 모양만 보면
+ * `{locale}.arb`도 `app_en.arb`를 로케일 `app_en`으로 받아 같은 디렉터리의 두 파일군이 둘 다 설정 대상이 된다.
+ */
+function matchesConfig(pathTemplate: string, locales: Iterable<string>, config: L10nConfig): boolean {
   const at = pathTemplate.lastIndexOf("/");
   const dir = at === -1 ? "" : pathTemplate.slice(0, at);
   if (dir !== config.arbDir) return false;
   if (config.templateFile === undefined) return true;
-  return localeFromPath(pathTemplate, `${dir === "" ? "" : `${dir}/`}${config.templateFile}`) !== undefined;
+  const locale = localeFromPath(pathTemplate, `${dir === "" ? "" : `${dir}/`}${config.templateFile}`);
+  return locale !== undefined && new Set(locales).has(locale);
 }
 
 type Reading = { prefix: string; locale: string };
@@ -184,20 +189,26 @@ function readingsOf(base: string): Reading[] {
  * 디렉터리 하나의 파일 이름 → 고른 해석.
  *
  * ⚠️ **파일 하나로는 못 가른다** (리뷰 R2). `app_en`은 그 자체로 `looksLikeLocale`(3글자 + `_` + 2글자)을 통과하고, `en_gb`는 접두사 `en_` +
- * `gb`로도 읽힌다. 그래서 **형제가 가장 많이 공유하는 접두사**를 고른다 — `app_en`·`app_ko`는 `app_`, `en`·`en_gb`·`ko`는 맨 로케일이다.
- * 동률이면 모양으로 가른다: 접두사 몸통이 2글자 언어 코드(`en_`)면 맨 로케일 쪽이고, 아니면(`app_`·`intl_`) 접두사 쪽이며, 접두사끼리는
- * 짧은 쪽이다(`app_en_gb` → `app_` + `en_gb`). raw 코드 정책이라 고른 로케일은 파일명 조각 그대로다(`en_gb`·`en_GB`).
+ * `gb`로도 읽힌다. 맨 로케일로도·접두사로도 읽히는 이름은 **그 이름의 언어 조각**(첫 구분자 앞)으로 가른다:
+ * - 같은 디렉터리에 그 언어의 맨 로케일 파일이 있거나(`en.arb` 옆의 `en_gb.arb`) 조각이 2글자 언어 코드면(`en_gb` 하나뿐) 맨 로케일이다.
+ * - 아니면(`app_`·`intl_`) 접두사다 — 접두사끼리는 형제가 더 많이 공유하는 쪽, 같으면 짧은 쪽이다(`app_en_gb` → `app_` + `en_gb`).
+ *
+ * ⚠️ **디렉터리 최다 해석 하나로 고르지 않는다** (재리뷰 Y3). `app_en`·`app_ko`·`en`·`ko`가 함께 있으면 맨 로케일 해석이 4표로 이겨 접두사 파일군을
+ * `{locale}.arb`에 흡수했다 — 파일 하나가 더해진 것만으로 기존 `app_{locale}.arb` 소스의 경계가 바뀐다. raw 코드 정책이라 고른 로케일은
+ * 파일명 조각 그대로다(`en_gb`·`en_GB`). 대가: 2글자 몸통의 접두사(`my_en`·`my_ko`)는 맨 로케일로 읽힌다.
  */
 function readDirectory(bases: readonly string[]): Map<string, Reading> {
   const options = new Map(bases.map((b) => [b, readingsOf(b)]));
   const score = new Map<string, number>();
   for (const list of options.values()) for (const prefix of new Set(list.map((r) => r.prefix))) score.set(prefix, (score.get(prefix) ?? 0) + 1);
-  const shape = (base: string, r: Reading): number =>
-    r.prefix === "" ? Number(/^[a-z]{2}[-._]/.test(base)) : Number(!/^[a-z]{2}$/.test(r.prefix.slice(0, -1)));
+  // 접두사로는 읽히지 않는 맨 로케일 이름 — 모호한 이름의 언어 조각이 이 중 하나면 그 이름도 맨 로케일이다.
+  const bareOnly = new Set([...options].filter(([, list]) => list.every((r) => r.prefix === "")).map(([base]) => base));
   const out = new Map<string, Reading>();
   for (const [base, list] of options) {
-    const best = list.slice().sort((a, b) =>
-      (score.get(b.prefix) ?? 0) - (score.get(a.prefix) ?? 0) || shape(base, b) - shape(base, a) || a.prefix.length - b.prefix.length)[0];
+    const bare = list.find((r) => r.prefix === "");
+    const prefixed = list.filter((r) => r.prefix !== "").sort((a, b) => (score.get(b.prefix) ?? 0) - (score.get(a.prefix) ?? 0) || a.prefix.length - b.prefix.length);
+    const language = base.split(/[-._]/)[0] ?? base;
+    const best = bare !== undefined && (prefixed.length === 0 || bareOnly.has(language) || /^[a-z]{2}$/.test(language)) ? bare : prefixed[0];
     if (best !== undefined) out.set(base, best);
   }
   return out;
@@ -227,7 +238,7 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
   // `detectCandidatesAcross`가 ARB 자리를 이 순서로 다시 채운다(`index.ts`).
   const config = probe !== undefined && paths.includes(L10N_CONFIG) ? readL10nConfig(probe(L10N_CONFIG)) : undefined;
   const ordered = config === undefined ? verified
-    : [...verified.filter((g) => matchesConfig(g.pathTemplate, config)), ...verified.filter((g) => !matchesConfig(g.pathTemplate, config))];
+    : [...verified.filter((g) => matchesConfig(g.pathTemplate, g.locales, config)), ...verified.filter((g) => !matchesConfig(g.pathTemplate, g.locales, config))];
   return ordered.map((g) => {
     const templateLocale = config === undefined ? undefined : templateLocaleOf(g, config);
     return { adapter: "arb-catalog" as const, pathTemplate: g.pathTemplate, locales: [...g.locales], ...(templateLocale === undefined ? {} : { templateLocale }) };
@@ -236,7 +247,7 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
 
 /** 설정이 가리키는 후보의 `template-arb-file` 로케일 — 그 파일이 후보의 파일 중에 있을 때만(`locales`는 실재하는 경로에서 왔다). */
 function templateLocaleOf(group: { pathTemplate: string; locales: ReadonlySet<string> }, config: L10nConfig): string | undefined {
-  if (config.templateFile === undefined || !matchesConfig(group.pathTemplate, config)) return undefined;
+  if (config.templateFile === undefined || !matchesConfig(group.pathTemplate, group.locales, config)) return undefined;
   const locale = localeFromPath(group.pathTemplate, `${config.arbDir === "" ? "" : `${config.arbDir}/`}${config.templateFile}`);
   return locale !== undefined && group.locales.has(locale) ? locale : undefined;
 }
