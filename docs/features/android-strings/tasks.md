@@ -39,7 +39,7 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
 - [x] **T3.2 구현 + 배선** — arb T1.3 손 목록 + "실측 정정"(`SUPPORTED_ADAPTERS` 추가, 사전 라벨 — MCP `add_locale` 설명·`unsupported-format`·랜딩 본문의 포맷 나열 포함) + `languageName`·`flagFor`의 `-r` 정규화 + survey 판정 비교가 `basePath`를 읽음
       (mobile-strings M1 판정 JSON). 검증: `pnpm test` green → 껍데기 테스트가 `values/`·`values-*/strings.xml`을 내려받는다 → `pnpm gate` green.
       커밋: `feat(adapters): add Android strings adapter`
-- [ ] **T3.2b 기준 언어 코드 입력** — `BaseLocaleState`와 두 소비자(온보딩 ③ · Add sources 모달 `components/sources/add-sources-modal.tsx:195-198`)에 Android
+- [x] **T3.2b 기준 언어 코드 입력** — `BaseLocaleState`와 두 소비자(온보딩 ③ · Add sources 모달 `components/sources/add-sources-modal.tsx:195-198`)에 Android
       base 행 + 코드 입력(`manual.baseLocale` Input 재사용, `isLocaleShaped`·관측 코드 중복 거부),
       ③ 근거 경로·`naming.info`의 `basePath` 표시, 수동 지정의 `basePath` 유도, `next-enabled.ts`·`confirm.ts`, CLI의 Android `--base` 필수,
       생성 워크플로(GitHub·GitLab)의 `base-locale`, Sources "Path pattern"의 base 줄. 사전 3벌(`/translate` 모드 ①).

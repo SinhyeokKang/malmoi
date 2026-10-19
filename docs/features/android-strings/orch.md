@@ -105,3 +105,7 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - `c67d5e08` dev CI success(run 39286391253). Q2: #306 온보딩은 해소, **Add sources에서 재현**(`add-sources-modal.tsx`가 빈 `baseLocale`을 그대로 쓴다 — B-fix2가 온보딩만 고쳤다) → B-fix4 `ctx_6f1cd46fd645`.
 - **Q2 완료** — #307 해소·닫음 · #306 온보딩 해소, Add sources 재현(B-fix4 진행) · D2 Android 가이드 페이지 렌더·내부 링크 45개 200·앵커 23개 확인. dev DB `rt-android` 원복 후 보관. Q 터미널 retain(B-fix4 재확인용).
 - **B-fix4 완료·통합** — `3f4137be` test · `4478f0fe` fix(Refs #306 — Add sources의 첫 미리보기 언어 판정을 온보딩과 공통 함수로), main `gate: ok`. push 후 Q3가 Add sources 재확인.
+- **push** `c67d5e08..42c216dd`(B-fix4). CI run 39288415381.
+- **Q3 완료** — #306 Add sources·온보딩 모두 해소, 닫음. tasks T3.2b 체크 — **T3 체크 안 된 항목 0.** dev DB `rt-android` 원복·보관.
+- 정리: 워커 B·D·Q 해제, 워크트리 `android-B`·`android-D` 정리(cherry `+` 0). 남은 워커·워크트리 0. T5.0·T5.1·T5.5·T5.6·T5.7은 `/merge` 단계(결정 9).
+
