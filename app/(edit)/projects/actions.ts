@@ -431,7 +431,7 @@ export type { DetectResult };
 
 /**
  * 탐지 (화면 ③) — **2패스다** (ARCHITECTURE §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
- * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤37 — ts-dict 씨앗이 2026-09-14에 16을 더했다), 내용을 들고 다시 돈다.
+ * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤40 — ts-dict 씨앗 16(2026-09-14)·String Catalog 씨앗 2를 포함한 계산은 `PROBE_LIMITS` 주석이 정본이다), 내용을 들고 다시 돈다.
  *
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.

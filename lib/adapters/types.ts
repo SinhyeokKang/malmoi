@@ -92,10 +92,11 @@ export type LocaleEntry = {
    *
    * 없으면 "순서를 모른다"는 뜻이고 재생성 writer가 코드 유닛 순으로 뒤에 붙인다.
    *
-   * ⚠️ **수술적 치환 어댑터(`yaml-catalog`·`code-dict`·`ts-dict`)는 이 필드를 채우지 않는다.**
+   * ⚠️ **수술적 치환 어댑터(`yaml-catalog`·`code-dict`·`ts-dict`·`apple-xcstrings`)는 이 필드를 채우지 않는다.**
    * 원본 파일이 순서를 이미 갖고 있고 그 방식은 파일을 다시 만들지 않으므로 쓸 곳이 없다 —
    * null인 것이 결함이 아니다. **`apple-strings`만 예외로 채운다** — 비-base 파일의 누락 키를 기준 순서상 앞 키 뒤에
-   * 넣으려면 적재가 이 값을 `sortIndex`로 옮겨야 한다(apple-strings design §2.1).
+   * 넣으려면 적재가 이 값을 `sortIndex`로 옮겨야 한다(apple-strings design §2.1). `apple-xcstrings`는 키를 넣지 않고(키 블록 안에 언어 셀만
+   * 넣는다) 셀 자리를 코드 유닛 순으로 정하므로 필요 없다.
    */
   order?: number;
   /**
@@ -120,7 +121,7 @@ export type LocaleEntry = {
    *
    * **처리가 writer 방식마다 다르다** (ARCHITECTURE §1.1):
    * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
-   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
+   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
    * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.

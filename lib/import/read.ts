@@ -41,7 +41,7 @@ export async function readFiles(
   for (const file of prior) totalBytes = checkContentBudget(file.path, file.content, totalBytes);
   const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
   const out: AdapterFile[] = [];
-  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤37개(탐지) 또는
+  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤40개(탐지 — `PROBE_LIMITS` 주석) 또는
   // 로케일 파일 수(첫 적재)라 `maxDuration=60` 안에 든다 (ARCHITECTURE §3.1).
   for (const path of paths) {
     const sha = shaByPath.get(path);
