@@ -40,4 +40,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 
 ## 진행
 
-- (없음)
+- Run `run_938a8005f330`. 1파 시작(2026-10-19): A `ctx_39bb35af4e90`(`apple-A`, claude-opus-5-5 high) · P `ctx_da25b17ad8a7`(`apple-P`, claude-sonnet-5-5 medium) · D `ctx_aa191565e708`(`apple-D`, claude-opus-5-5 medium) — 세 `launch.effective`가 요청과 같다. 브리프: main `.scratch/orch-apple/`.
