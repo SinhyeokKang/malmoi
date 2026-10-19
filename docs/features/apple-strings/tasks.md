@@ -17,16 +17,16 @@
 
 `.strings` 인코딩 경계는 **mobile-strings** M3이 든다 — 2026-10-19 dev에 들어갔다(design §2.2 끝 "M3로 dev에 들어간 계약").
 M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없어 도달하지 않는다):
-- [ ] **T2.0a UTF-16 blob 제한 병렬** — `lib/github.ts`의 UTF-16 `POST /git/blobs`가 순차다. iTerm2(65파일) 규모에서 `maxDuration=60`(`app/api/pull/route.ts`) 안에
+- [x] **T2.0a UTF-16 blob 제한 병렬** — `lib/github.ts`의 UTF-16 `POST /git/blobs`가 순차다. iTerm2(65파일) 규모에서 `maxDuration=60`(`app/api/pull/route.ts`) 안에
       들도록 제한 병렬(예: 8)과 "UTF-8만 있는 Publish는 blob POST 0회" 단언 유지, ARCHITECTURE §3 Publish 단계 4의 예산 문구 갱신.
-- [ ] **T2.0b survey `.strings` 수집 상한** — `lib/survey/select.ts`가 모든 `.strings`를 `FILE_BUDGET` 앞에 넣는다. 큰 iOS 리포에서 사전순 절단이 후보를 자르지 않게
+- [x] **T2.0b survey `.strings` 수집 상한** — `lib/survey/select.ts`가 모든 `.strings`를 `FILE_BUDGET` 앞에 넣는다. 큰 iOS 리포에서 사전순 절단이 후보를 자르지 않게
       `.lproj` 그룹당 상한을 둔다(같은 파일 머리의 경고와 같은 함정).
-- [ ] **T2.0c 내용 예산 문구** — `checkContentBudget`(ARCHITECTURE "실제 UTF-8 수신 바이트")는 UTF-16 파일에서 디코드한 문자열의 UTF-8 길이를 센다. 원시 크기는
+- [x] **T2.0c 내용 예산 문구** — `checkContentBudget`(ARCHITECTURE "실제 UTF-8 수신 바이트")는 UTF-16 파일에서 디코드한 문자열의 UTF-8 길이를 센다. 원시 크기는
       트리 크기 검사가 막으므로 문구만 맞춘다.
 
 ## 2b. Apple `.strings` (`apple-strings`)
 
-- [ ] **T2.1 테스트** — 토크나이저 범위 · 이스케이프 왕복 속성 · 비정규 리터럴 미변경 · 주석/빈 줄 보존 · 주석 속 `"a" = "b";`·`//` 안의 `=`는 엔트리 아님 ·
+- [x] **T2.1 테스트** — 토크나이저 범위 · 이스케이프 왕복 속성 · 비정규 리터럴 미변경 · 주석/빈 줄 보존 · 주석 속 `"a" = "b";`·`//` 안의 `=`는 엔트리 아님 ·
       중복 키(나중 값이 엔트리, `duplicate-key` 보고, 가려진 앞 리터럴 미변경) · `"__proto__" = "x";`가 own property · 빈 값 쓰기(`planClearability`) ·
       CRLF · 0바이트 파일 · 퇴화 출력 왕복 · `bplist00` 매직 명시 거부(design §2.2) · `Base.lproj` 제외 · `fastlane/` 곁가지 · 진입점 `detectCandidatesAcross` 1순위 ·
       **probe 예산 시나리오**(테이블·`fastlane` 후보가 5개를 넘는 iOS 트리에서 실제 `detectFormats` + 읽은 경로 기록 reader로 `Localizable.strings`가 남는다 — design §5) ·
@@ -35,11 +35,11 @@ M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없�
       기준 파일에는 삽입 안 함) · **생성 → 다른 키 번역 → 두 번째 Publish** 왕복(렌더 + `undeliverable` 분류에서 blocking 없음) · `contract.ts` 매트릭스 편입 ·
       **격리 Postgres 진입점 시나리오**(확정 → 첫 적재 → 언어 추가·제거 → Publish 미리보기·첫/둘째 바이트 — 본보기 `lib/pull/__tests__/arb-publish.integration.ts`.
       DB 행에서 멈추지 않고 바이트를 단언한다). 검증: red.
-- [ ] **T2.2 구현 + 배선** — arb T1.3 손 목록 + 그 "실측 정정"(`SUPPORTED_ADAPTERS`에 추가, 사전 라벨 "Apple strings file" 형 — `/translate` 모드 ①로 ko·es를 정하고,
+- [x] **T2.2 구현 + 배선** — arb T1.3 손 목록 + 그 "실측 정정"(`SUPPORTED_ADAPTERS`에 추가, 사전 라벨 "Apple strings file" 형 — `/translate` 모드 ①로 ko·es를 정하고,
       번역하지 않으면 `SAME_AS_EN`에 둔다). 같은 커밋에서 MCP `add_locale` 설명과 `unsupported-format` 문구의 지원 포맷 나열에 **Flutter ARB(arb가 놓침)와 Apple strings**를 넣고,
       랜딩 본문 포맷 나열(en·ko·es)도 고친다. 검증: `pnpm test` green →
       껍데기 테스트가 `.strings`를 내려받는다 → `pnpm gate` green. 커밋: `feat(adapters): add Apple strings adapter`
-- [ ] **T2.3 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · `.strings` 고정점 100% · 조용한 손실 0 · UTF-16 리포가 분모에 듦 ·
+- [x] **T2.3 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · `.strings` 고정점 100% · 조용한 손실 0 · UTF-16 리포가 분모에 듦 ·
       `Base.lproj` 리포 수·`resource-limit` 거부 수 보고(arb 런에서는 smooth-app 38MB가 첫 적재 합계 10MB를 넘어 거부됐다 — 큰 iOS 리포도 같은 부류다).
       **ARB가 정답인 모바일 리포 14개의 1순위가 ARB로 남는다**(spec 완료 조건 3). 결과로 `docs/adapter-survey/baseline/`을 갱신해 커밋한다(같은 형식, README 출처 줄).
 - [ ] **T2.4 실물 (수동)** — `/roundtrip`(UTF-8 리포 하나 + UTF-16 리포 하나). M3의 런타임 미검증 항목(실제 GitHub·GitLab이 base64 blob/action을 저장한 바이트)을 여기서 닫는다. 전제: macOS + Xcode, 폐기용 리포. 검증: 고친 셀 외 diff 0, 인코딩·BOM 유지, Xcode 빌드 통과.
