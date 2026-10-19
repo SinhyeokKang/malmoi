@@ -43,11 +43,17 @@ export function probeTargets(
   limits: { jsonLike: number; codeDict: number } = PROBE_LIMITS,
 ): string[] {
   const out = new Set<string>();
+  const inRepo = new Set(repoPaths);
   const take = (groups: readonly TemplateGroup[], limit: number): void => {
     for (const g of groups.slice(0, limit)) {
       // 기준 언어 파일이 템플릿 밖이면(basePath) 그것도 표본이다 — 재탐지가 그 파일을 읽어 기준 언어를 정한다.
       if (g.basePath !== undefined) out.add(g.basePath);
-      for (const locale of sampleOrder(new Set(g.locales))) out.add(g.pathTemplate.replaceAll("{locale}", locale));
+      for (const locale of sampleOrder(new Set(g.locales))) {
+        const path = g.pathTemplate.replaceAll("{locale}", locale);
+        // ⚠️ basePath 후보의 기준 언어는 치환 경로(`values-en/`)가 없을 수 있다 — 크기를 모르는 경로는 다운로드 예산이 거부해
+        // 탐지 전체가 `resource-limit`가 된다(review-B R1). 그 후보만 실재하는 경로로 좁힌다 — 다른 후보는 트리에서 왔다.
+        if (g.basePath === undefined || inRepo.has(path)) out.add(path);
+      }
     }
   };
   take(jsonLike, limits.jsonLike);
