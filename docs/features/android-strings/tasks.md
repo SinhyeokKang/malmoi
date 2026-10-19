@@ -50,12 +50,12 @@ design-brief 없음 — 화면 변경은 기존 프리미티브 조립이다(des
 - [x] **T3.2c 기준 언어 변경 거부·언어 추가 철자** — `planBaseLocaleChange`의 `android-strings` 거부 코드 + 문구, Android 프리셋 `r` 철자 변환(레거시 표 `he→iw`·`id→in`·`yi→ji`),
       `judgeAdd`의 `r` 없는 지역 거부(웹·MCP 공통 코어). 검증: `change-plan`·`add-plan` 단위 테스트 + `pnpm gate` green.
       커밋: `feat(locales): use Android resource spelling for new languages`
-- [ ] **T3.3 저장 검증** — `lib/keys/save.ts` 코어에서 인라인 태그 불일치 거부(design §3.1): `KeySavePlan` 새 코드, 워크스페이스 footer Alert·셀 `aria-invalid`,
+- [x] **T3.3 저장 검증** — `lib/keys/save.ts` 코어에서 인라인 태그 불일치 거부(design §3.1): `KeySavePlan` 새 코드, 워크스페이스 footer Alert·셀 `aria-invalid`,
       사전 3벌, MCP 영어 응답. 검증: 순수 함수 테스트 + 코어 테스트(웹·MCP 두 껍데기) + `pnpm gate` green + `/runtime-test`로 거부 표시 확인 **(수동)**.
       커밋: `feat(translations): reject saves that break Android inline tags`
 - [x] **T3.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선은 커밋된 `docs/adapter-survey/baseline/` — 명령·비교는 그 README). 착수 전 `composeResources`(Meshtastic)를 범위에 넣을지 정한다. 검증: 기존 표 회귀 0 · 기준선과 리포별 1순위 diff 0(모바일은 그 포맷이 정답인 리포만 바뀐다) · Android 고정점 100% · 조용한 손실 0 · 정답 `basePath` 일치 ·
       `resource-limit` 거부 수 보고. 커밋 없음.
-- [ ] **T3.5 실물 (수동)** — `/roundtrip`. 전제: Android SDK·JDK, 폐기용 리포. 검증: 고친 셀 외 diff 0, Gradle `assembleDebug` 통과.
+- [x] **T3.5 실물 (수동)** — `/roundtrip`. 전제: Android SDK·JDK, 폐기용 리포. 검증: 고친 셀 외 diff 0, Gradle `assembleDebug` 통과.
       ⚠️ 2026-10-19 한 머신에는 JDK·Android SDK가 없었다 — 착수 때 머신을 확인하고 설치는 사용자 승인 뒤(arb는 Flutter를 brew cask로 설치했다). 폐기용 리포는 새로 만들어
       roundtrip 전제 조건 1의 목록에 올린다(`basePath` · `values/`만 있는 언어 · `translatable="false"` · `<plurals>` · 인라인 태그를 픽스처에 심는다).
 
