@@ -24,10 +24,13 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add(creat
 
 ### 2.1 Apple `.strings`
 
-- 문법: `/* … */`·`//` 주석, `"key" = "value";`. 따옴표 없는 키(ASCII 식별자)도 받는다. 이스케이프 `\" \\ \n \t \r \UXXXX`.
+- 문법: `/* … */`·`//` 주석, `"key" = "value";`. 따옴표 없는 키(ASCII 식별자)·작은따옴표 리터럴·값 생략 `"key";`(값 = 키)도 받는다.
+- 이스케이프는 **Apple 파서(`plutil`) 의미**다(구현 뒤 리뷰 R1·R2-1, 키·값 같은 디코더): `\U` 뒤 16진 0–4자리(0자리 NUL) · 소문자 `\u`는 이스케이프가 아니다 ·
+  8진은 세 자리까지 읽고 하위 8비트를 ASCII·NeXTSTEP 바이트로(0xFE·0xFF는 NUL) · `\n \t \r \a \b \f \v` · 그 밖의 글자는 그 자신.
+  이스케이프가 만든 짝 없는 서로게이트는 표현할 수 없는 리터럴이라 파일 실패다(read `parse-failed`, write `write-parse-failed`).
 - read: 토크나이저(순수 함수, 의존성 없음)가 엔트리마다 **값 리터럴의 범위**를 낸다. 값은 이스케이프를 풀어 저장한다. 주석 안의
   `"a" = "b";`는 엔트리가 아니다. 키 대입은 `Object.create(null)`.
-- **중복 키**: Apple은 나중 값이 이긴다. read는 나중 값을 엔트리로 삼고 `duplicate-key`를 보고하며, write는 **가려진 앞 리터럴을 고치지 않는다**
+- **중복 키**: Apple은 나중 값이 이긴다. read는 나중 값을 엔트리로 삼고 `duplicate-property`(warning — CI green, orch 결정 10)를 보고하며, write는 **가려진 앞 리터럴을 고치지 않는다**
   (POSTMORTEM 2026-10-07 — 쓰기 성공과 값 전달을 같게 셌다).
 - write(surgical): 값 범위만 다시 이스케이프한 리터럴로 치환한다. 빈 값은 불변식 3의 수술적 규칙을 따른다(`planClearability` — 비울 수 없음).
 - **비기준 파일의 누락 키는 삽입한다**(결정 2026-10-19 사용자, Codex 피어 검수). create는 값 있는 키만 쓰므로, 언어 파일을 만든 뒤 다른 키를 번역하면 그 파일에
@@ -37,6 +40,7 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add(creat
   충분하다 — 새 `WriteInput` 필드를 만들지 않는다. arb가 더한 `WriteInput.untranslated`(비-base에서 값 없는 살아 있는 키)·`orphaned`는 이미 있으니
   필요하면 그것을 읽는다(`lib/pull/render.ts` `untranslatedOf`). **기준 파일에는 삽입하지 않는다**(키 존재는 코드가 정한다 —
   기준 파일에 없는 키는 쓰지 않는다). 삽입도 값 범위 치환과 같은 뒤→앞 적용에 든다(§4).
+  ⚠️ 구현에서 **read가 `order`를 낸다**(수술적 어댑터의 예외 — `lib/adapters/types.ts`) — 적재가 `sortIndex`로 옮겨야 렌더가 base 순서를 싣는다. 없으면 누락 키가 전부 파일 끝으로 갔다(격리 Postgres 시나리오).
 - create: 기준 언어 파일의 인코딩·BOM만 빌리고 **값·주석은 빌리지 않는다**(§5.10.4). 값 있는 활성 키만 쓴다. 선례: Weblate도 새 파일에 기준 값을
   복사하지 않는다(빈 파일 또는 값을 비운 template).
 - 인코딩: **UTF-8과 UTF-16(LE·BE, BOM 유무)을 지원한다**(결정 2026-10-19 사용자). 원본 인코딩·BOM을 그대로 돌려쓴다 — 아래 §2.2.
@@ -101,6 +105,7 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - 인코더는 순수 함수이고 **decode(encode(v)) === v** 와 **encode(decode(원본 리터럴)) === 원본 리터럴(정규형일 때)** 을 속성 테스트로 고정한다.
   원본이 비정규형(`A` 같은 불필요 이스케이프)이면 그 셀이 **바뀌었을 때만** 다시 쓴다 — 안 바뀐 셀은 원본 바이트 그대로다.
 - CRLF 원본은 CRLF로, 0바이트 파일·퇴화 출력은 다음 read·write의 입력으로 왕복한다(POSTMORTEM 2026-09-29).
+- 파일 끝 삽입은 편집 하나다 — 앞 키 뒤에 들어갈 줄이 먼저, 앞 키가 없는 줄이 나중이다(같은 offset 삽입 둘, 리뷰 Y2). CRLF 파일의 줄 주석 뒤 삽입점은 CR 앞이다(리뷰 Y1).
 
 ## 5. 탐지
 
@@ -116,6 +121,10 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
   파일명 해석이 틀렸다(리뷰 R2·재리뷰 Y3) — 디렉터리 이름 해석도 진입점 테스트로 고정한다.
 - `fastlane/`(스토어 메타데이터 `.strings`)·`Pods/`·`build/`는 곁가지여야 한다. ⚠️ 지금 `ASIDE_HINT`(`lib/adapters/shared.ts:172-173`)에 셋이 없다 —
   더하면 기존 어댑터 순위에도 닿으므로 완료 조건 3의 재측정 대상이다. 가능하면 이 어댑터의 후보 판정 안에서만 거른다.
+- **구현 결과**(배치 A): 셋은 어댑터 안에서 거르고 `ASIDE_HINT`는 고치지 않았다. `*.framework/`·`*.app/` 안(Sparkle 사본)도 후보가 아니다 — `*.bundle/`은 정답이 있어 남긴다.
+  어댑터 안 순서는 (aside 아님 → `Localizable` → 공용 순위)다 — `Localizable`을 aside보다 앞에 두면 ResearchKit 샘플이 정답을 눌렀다. 어댑터 간에서는 `keepOwnOrder`가 이 순서를 지킨다.
+  **Flutter 셸 강등은 어댑터 간(`lib/adapters/index.ts`)이다** — `<root>ios/`·`<root>macos/` 아래이고 `<root>pubspec.yaml`이 있으면 맨 뒤(`isFlutterShell`). 어댑터 안에서는
+  어댑터 간 재정렬이 지워 smooth-app·Mono-Dash가 ARB 정답을 잃었다. `es_419`·`zh-Hant-TW`는 공용 `looksLikeLocale` 한계로 관측되지 않는다(orch 결정 11).
 
 ## 6. 순수 함수 (= `/tdd` 진입점)
 

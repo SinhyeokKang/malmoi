@@ -36,8 +36,9 @@ UTF-16 `.strings`를 원본 인코딩 그대로 돌려쓰기 위한 **파일 인
    survey가 UTF-16 파일을 건너뛰지 않는다(mobile-strings M3가 NUL 스킵을 `decodeFileBytes`로 바꾸고 survey 선택에 `.strings`를 더했다).
 3. **기존 코퍼스 회귀 0** — 학습 109·홀드아웃 20의 26차 표(arb 뒤, ARCHITECTURE §1.9)가 한 칸도 나빠지지 않고, 커밋된 기준선
    `docs/adapter-survey/baseline/`(리포별 SHA 고정 — arb 런이 남겼다, 머신을 옮겨도 같다)과 리포별 1순위 경로 diff 0이다(POSTMORTEM 2026-09-14).
-   **모바일 코퍼스는 Apple이 정답인 리포의 1순위만 바뀐다** — 특히 ARB가 정답인 Flutter 리포(학습 10 · 홀드아웃 4)의 1순위를 Apple 후보가 빼앗으면 회귀다
-   (Flutter 앱은 `ios/Runner/*.lproj`를 함께 가질 수 있다). 인코딩 경계 변경 뒤에도 기존 UTF-8 파일의 `blobSha`가 그대로다.
+   **모바일 코퍼스에서 Apple 후보가 기존 정답을 빼앗지 않는다** — 특히 ARB가 정답인 Flutter 리포(학습 10 · 홀드아웃 4)의 1순위를 Apple 후보가 빼앗으면 회귀다
+   (Flutter 앱은 `ios/Runner/*.lproj`를 함께 가질 수 있다). `-`(후보 없음)·이미 오탐이던 리포가 Apple 후보로 바뀐 것은 회귀가 아니라 **보고 대상**이다
+   (2026-10-19 사용자, orch 결정 12 — 27차 8리포. Android 정답 둘은 android-strings가 이겨야 할 항목으로 넘긴다). 인코딩 경계 변경 뒤에도 기존 UTF-8 파일의 `blobSha`가 그대로다.
 4. 번역하지 않는 구조(`.stringsdict`·xcstrings variations, `shouldTranslate: false`)가 Publish 뒤에도 **바이트 그대로** 남는다 — 골든 테스트로 고정한다.
 5. 언어 추가·제거(§7.2 locale-add)는 언어별 파일인 `.strings`에서 동작한다. `.xcstrings`는 ts-dict와 같이 **추가·제거 동작이 렌더되지 않는다**.
 6. 유효한 UTF-16(LE·BE, BOM 유무) `.strings` 파일이 원본 인코딩·BOM 그대로 PR에 나가고, 고치지 않은 파일의 `blobSha`가 원본과 같다(design §2.2).
