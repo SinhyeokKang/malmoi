@@ -59,3 +59,18 @@ describe("apple-strings — 생성 → 다른 키 번역 → 두 번째 Publish"
     expect(read).toEqual({ locales: [{ locale: "fr", entries: [{ key: "title", message: "Accueil", order: 0 }] }], errors: [], nested: false });
   });
 });
+
+/**
+ * 리뷰 R2-2 — 표현할 수 없는 리터럴(이스케이프가 만드는 짝 없는 서로게이트)이 **선택된** 언어 파일에 있으면 그 파일만 `write-parse-failed`이고, 그 진단은
+ * Publish를 막는 blocking이다(부분 Publish가 아니다 — design §2.2 M3와 같은 fail-closed). 다른 파일은 원본 그대로다.
+ */
+describe("apple-strings — 표현할 수 없는 리터럴이 있는 선택 파일", () => {
+  const BAD = '"title" = "~UD800";\n'.replace("~", "\\");
+
+  it("그 언어 파일만 write-parse-failed이고 blocking으로 분류된다 — en은 오류 없이 원본이다", () => {
+    const out = renderLocaleFiles(format, "per-locale", paths, keysWith({ title: "Accueil" }), "en", new Map([[EN_PATH, EN], [FR_PATH, BAD]]));
+    expect(out.find((f) => f.path === EN_PATH)).toEqual({ path: EN_PATH, locale: "en", content: EN });
+    expect(out.find((f) => f.path === FR_PATH)).toMatchObject({ content: BAD, errors: [{ path: FR_PATH, code: "write-parse-failed", locale: "fr" }] });
+    expect(blockingErrors(wrapped(out))).toEqual([{ surfaceSlug: "app", error: expect.objectContaining({ path: FR_PATH, code: "write-parse-failed" }) }]);
+  });
+});

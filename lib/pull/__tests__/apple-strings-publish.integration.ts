@@ -15,6 +15,7 @@ import { blobSha } from "@/lib/githash";
 import { applyKeySave } from "@/lib/keys/save-key";
 import { addLocale, previewLocaleRemoval, removeLocale } from "@/lib/locales/change";
 import { planConfirmedFormat } from "@/lib/onboarding/confirm";
+import { loadPreview } from "@/lib/publish/load-preview";
 import { readPublishPreview } from "@/lib/publish/read";
 import { applyPush } from "@/lib/push/apply";
 import { buildPushPayload } from "@/lib/push/payload";
@@ -229,5 +230,35 @@ describe("Apple strings 언어 추가·제거 → Publish 미리보기·실행",
     const made = fake(FILES);
     expect(await publish(preview.fingerprint)).toMatchObject({ status: "committed", files: [{ path: KO_PATH, kind: "removed" }] });
     expect(changesOf(made)).toEqual([{ kind: "delete", path: KO_PATH }]);
+  });
+});
+
+/**
+ * 리뷰 R2-2 — 표현할 수 없는 리터럴(이스케이프가 만드는 짝 없는 서로게이트)이 선택된 ko 파일에 있으면 미리보기는 `blocked`, 실행은 `writer-warnings`이고
+ * 외부 쓰기가 0회다(부분 Publish가 아니다). 같은 불량 파일이 소스 템플릿 밖에 있으면 아무것도 막지 않는다.
+ */
+describe("Apple strings — 표현할 수 없는 리터럴", () => {
+  const BAD_KO = ['/* 홈 */', '"title" = "~UD800";', '"count" = "%d개";', ""].join("\r\n").replace("~", "\\");
+
+  it("선택된 ko 파일이면 미리보기 blocked · 실행 writer-warnings · 쓰기 0회", async () => {
+    await save("title", "ko", "홈 화면");
+    const files = { ...FILES, [KO_PATH]: { content: BAD_KO, encoding: "utf-16le-bom" as const } };
+    fake(files);
+    expect(await loadPreview(prisma, OWNER, { slug: "fixture" })).toMatchObject({
+      status: "blocked", warnings: [expect.objectContaining({ path: KO_PATH, code: "write-parse-failed" })],
+    });
+    const made = fake(files);
+    expect(await publish()).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+  });
+
+  it("대조: 템플릿 밖의 같은 불량 파일은 막지 않는다", async () => {
+    await save("title", "ko", "홈 화면");
+    const files = { ...FILES, "Other/ko.lproj/Localizable.strings": { content: BAD_KO, encoding: "utf-16le-bom" as const } };
+    fake(files);
+    expect(await loadPreview(prisma, OWNER, { slug: "fixture" })).toMatchObject({ status: "ok", preview: { changedFiles: [KO_PATH] } });
+    const made = fake(files);
+    expect(await publish()).toMatchObject({ status: "committed" });
+    expect(changesOf(made).map(change => change.path)).toEqual([KO_PATH]);
   });
 });

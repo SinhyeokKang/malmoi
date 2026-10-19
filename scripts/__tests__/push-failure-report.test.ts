@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { afterEach, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 /**
  * **CI 파싱 실패 보고의 생산자 쪽** (docs/ACTIONS.md "적재 실패는 말모이에도 남는다"). `scripts/push-local.ts`는 `tsx`
@@ -198,3 +198,32 @@ it("무관한 인코딩 예제가 깨져도 정상 카탈로그를 탐지하고 
   expect(received.map(r => r.path)).toEqual(["/api/push"]);
   expect(JSON.parse(received[0]!.body)).toMatchObject({ format: { pathTemplate: "locales/{locale}.json" } });
 }, 60000);
+
+/**
+ * apple-strings 리뷰 R2-2 — 선택된 `.strings` 파일의 표현할 수 없는 리터럴(이스케이프가 만드는 짝 없는 서로게이트)은 적재 전체를 막는다: exit 1, `/api/push/failure`
+ * `parse-failed` 하나, `/api/push` 0회. 같은 불량 파일이 소스 템플릿 밖이면 막지 않는다.
+ */
+describe("apple-strings — 표현할 수 없는 리터럴", () => {
+  const TEMPLATE = "App/{locale}.lproj/Localizable.strings";
+  const pin = ["--adapter", "apple-strings", "--path-template", TEMPLATE];
+  const EN = '"title" = "Home";\n';
+  const BAD = '"title" = "~UD800";\n'.replace("~", "\\");
+
+  it("선택된 ko 파일이면 parse-failed 보고 후 exit 1이고 적재를 보내지 않는다", async () => {
+    const url = await fakeServer(204);
+    const dir = fixtureRepo({ "App/en.lproj/Localizable.strings": EN, "App/ko.lproj/Localizable.strings": BAD });
+    const result = await push(dir, url, pin);
+    expect(result.code, result.out).toBe(1);
+    expect(received.map((r) => r.path)).toEqual(["/api/push/failure"]);
+    expect(JSON.parse(received[0]!.body)).toMatchObject({ projectSlug: "acme", code: "parse-failed" });
+  }, 60000);
+
+  it("대조: 템플릿 밖의 같은 불량 파일은 막지 않는다", async () => {
+    const url = await fakeServer(200);
+    const dir = fixtureRepo({ "App/en.lproj/Localizable.strings": EN, "App/ko.lproj/Localizable.strings": '"title" = "홈";\n', "Other/ko.lproj/Localizable.strings": BAD });
+    const result = await push(dir, url, pin);
+    expect(result.code, result.out).toBe(0);
+    expect(received.map((r) => r.path)).toEqual(["/api/push"]);
+    expect(JSON.parse(received[0]!.body)).toMatchObject({ format: { adapter: "apple-strings", pathTemplate: TEMPLATE } });
+  }, 60000);
+});
