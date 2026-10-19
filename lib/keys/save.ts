@@ -111,8 +111,11 @@ export function planKeySave(
     // 같은 저장의 base 변경도 비교 기준이다. 빈 base는 export와 같이 원문으로 폴백한다.
     const base = writes.find(write => write.localeCode === surface.baseLocale)?.value
       ?? (surface.baseLocale === null ? null : current.get(surface.baseLocale));
-    const issues = writes.filter(write => write.localeCode !== surface.baseLocale)
-      .map(write => ({ localeCode: write.localeCode, issue: androidInlineTagsIssue(base || surface.sourceText, write.value) }));
+    // 기준 셀은 자기 값과 비교해 태그 변경을 허용하되 writer 문법 검증은 똑같이 지난다.
+    const issues = writes.map(write => ({
+      localeCode: write.localeCode,
+      issue: androidInlineTagsIssue(write.localeCode === surface.baseLocale ? write.value : base || surface.sourceText, write.value),
+    }));
     for (const error of ["inline-markup-invalid", "inline-tags-mismatch"] as const) {
       const localeCodes = issues.filter(item => item.issue === error).map(item => item.localeCode);
       if (localeCodes.length > 0) return { ok: false, error, localeCodes };
