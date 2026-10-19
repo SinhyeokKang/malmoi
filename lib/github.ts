@@ -55,6 +55,9 @@ function createApp(): App {
   return app;
 }
 
+/** UTF-16 blob 생성 동시 요청 한도. 65파일을 8개씩이면 9라운드 — 호출당 ~0.5s로도 `maxDuration=60` 안이고, 설치 토큰의 secondary rate limit(동시 요청)에도 여유가 있다. */
+const BLOB_CONCURRENCY = 8;
+
 /** `createGitClient`가 고정 토큰을 쥐기 전의 여유. 만료 시각을 모르면(형이 다르면) 새로 받지 않는다 — 판정은 아래 형 검사가 한다. */
 const TOKEN_MARGIN_MS = 5 * 60_000;
 function expiresSoon(auth: unknown): boolean {
@@ -417,13 +420,32 @@ export async function createGitClient(
      */
     async publishSnapshot({ branch, baseSha, changes, summary }) {
       const payload = buildTreePayload(changes, baseSha);
+      // 순차 POST는 UTF-16 65파일(iTerm2 규모)에서 `maxDuration=60`을 넘긴다. 결과는 입력 인덱스 자리에 꽂아
+      // 트리 항목 순서가 완료 순서에 흔들리지 않게 한다(export 결정성).
+      const pending: number[] = [];
       for (const [i, change] of changes.entries()) {
-        if (change.kind !== "upsert" || change.encoding === undefined || change.encoding === "utf-8") continue;
-        const blob = await octokit.request("POST /repos/{owner}/{repo}/git/blobs", {
-          ...base, content: encodeFileContent(change.content, change.encoding).toString("base64"), encoding: "base64",
-        });
-        payload.tree[i] = { path: change.path, mode: "100644", type: "blob", sha: blob.data.sha };
+        if (change.kind === "upsert" && change.encoding !== undefined && change.encoding !== "utf-8") pending.push(i);
       }
+      let next = 0;
+      let failed = false;
+      const worker = async () => {
+        while (!failed && next < pending.length) {
+          const i = pending[next++]!;
+          const change = changes[i]!;
+          if (change.kind !== "upsert" || change.encoding === undefined) continue;
+          try {
+            const blob = await octokit.request("POST /repos/{owner}/{repo}/git/blobs", {
+              ...base, content: encodeFileContent(change.content, change.encoding).toString("base64"), encoding: "base64",
+            });
+            payload.tree[i] = { path: change.path, mode: "100644", type: "blob", sha: blob.data.sha };
+          } catch (error) {
+            // 한 건이라도 실패하면 새 요청을 더 내지 않는다 — 어차피 커밋 전체가 실패한다.
+            failed = true;
+            throw error;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(BLOB_CONCURRENCY, pending.length) }, worker));
       const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...payload });
       const commit = await octokit.request("POST /repos/{owner}/{repo}/git/commits", { ...base, ...buildCommitPayload(tree.data.sha, baseSha, summary) });
       const commitSha = commit.data.sha;
