@@ -952,10 +952,14 @@ clone하지 않는다.
    `renderProject`는 원본 blob 읽기·렌더 전에 대상의 `100644`·`100755`와 실제 조상의 `040000`만 허용한다. 대상 symlink(`120000`)·gitlink(`160000`)·디렉터리·unknown 및 디렉터리가 아닌 조상은 새 파일로 덮기 전에 거부한다. 비대상 링크는 base tree에 남는다. preview도 표시용 blob보다 먼저 같은 가드를 지난다. 파일 종류 거부는 `GitFileKindError`로 경로·브랜치를 전달하며, 실행의 기존 `AppError` 이름·메시지·오류 분류는 유지한다. 미리보기만 `refused/unsupported-file-kind`로 옮긴다(§5.6.35).
    ⚠️ **실행 비트는 새로 보존하지 않는다** — 내용이 바뀐 `100755`도 기존 `buildTreePayload`는 `100644`로 쓴다. SHA가 같아 출력에서 빠진 파일은 base mode가 남는다. `RepoReader.snapshot.files`의 blob 모집단은 그대로이며, smoke 비교도 blob mode `100644`·`100755`·`120000`만 센다.
 2.5 **여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — 어느 방식이든 write에 원본이 필요하다. 수술적은 **치환 대상**이(§1.4), 재생성은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프)이 거기서 온다(§1.1). **2026-09-04까지 재생성은 이 단계를 건너뛰었고**, 그 대가가 재생성 리포 71개 중 30개의 "값 편집 0건인데 모든 줄이 바뀌는" diff였다(§1.1)
+   경로와 원본 바이트로 인코딩을 판별한다. 디코드할 수 없는 선택 파일은 `parse-failed` 렌더 경고로 남기고 Publish를 차단한다.
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
-4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
+4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **UTF-8 항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — UTF-8 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다. UTF-16 파일은 먼저 `POST /git/blobs`(base64)로 만들고 트리에서 반환 SHA를 참조한다
 5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-malmoi-i18n]` (PR 제목에도 — 아래)
 6. `PATCH /git/refs/heads/{malmoi-i18n/sync-<slug>}` — `force: true`
+
+- **UTF-16 `.strings`의 Publish 쓰기 비용**: 변경 파일마다 GitHub `POST /git/blobs`(base64) 1회가 추가되고 트리에는 반환 SHA를 싣는다.
+  UTF-8은 기존 인라인 content 본문을 유지한다. 변경 없는 UTF-16 파일은 인코딩 바이트 SHA가 같아 추가 쓰기 0회다. GitLab은 해당 파일 action만 `encoding: "base64"`로 보낸다.
 
 4~6은 `GitClient.publishSnapshot` 하나 안이다(GitHub 구현 `lib/github.ts` — 브랜치가 없으면 6 대신 `POST /git/refs`). 경계(`lib/pull/client.ts`)는 Git Data API 단계를
 드러내지 않는다 — GitLab은 커밋 API 한 번이 셋을 하므로 단계를 흉내 내지 않는다. 같은 이유로 no-changes 수렴(아래 함정 "force update")은
@@ -1259,8 +1263,6 @@ Action 밖으로 나와야 했다. `lib/onboarding`에 넣으면 그 루트의 "
   **`ts-dict` 씨앗 2 × 8**(2026-09-14) = **blob ≤ 37**. 온보딩 한 번의 호출은
   `ref 1 + commit 1 + tree 1 + blob ≤37`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
   그대로 응답 시간이고, `maxDuration`이 60초다.
-- **UTF-16 `.strings`의 Publish 쓰기 비용**: 변경 파일마다 GitHub `POST /git/blobs`(base64) 1회가 추가되고 트리에는 반환 SHA를 싣는다.
-  UTF-8은 기존 인라인 content 본문을 유지한다. 변경 없는 UTF-16 파일은 인코딩 바이트 SHA가 같아 추가 쓰기 0회다. GitLab은 해당 파일 action만 `encoding: "base64"`로 보낸다.
 - ⚠️ **`ts-dict` 씨앗만 입력의 성격이 다르다.** 앞의 둘은 1패스가 만든 **후보 그룹**인데 그 어댑터는
   내용을 봐야 판단할 수 있어 1패스 후보가 0이다 — `probeTargets`가 **리포 경로 전체**를 받아
   `tsDictProbePaths`로 씨앗을 만든다. 그 인자는 **기본값이 없다**: 있으면 안 넘긴 호출부가 조용히
@@ -2333,7 +2335,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 - **무효화는 두 장치다.** ① 적재(strict push·수동 Sync)는 **증가만 하는 `importRevision`**이 context 지문(`lib/translations/context.ts`)을 바꿔 무효화한다 —
   `applyPush`에 무효화 문장이 없는 것이 의도다. ② 되돌릴 수 있는 설정(base branch)은 변경 tx에서 `invalidateDeliveryConfirmations`로 `invalidatedAt`을 쓴다 —
   A → B → A로 되돌리면 지문만으로는 옛 확인이 부활하기 때문이다(`delivery-invalidation-sources.test.ts`가 소스를 센다). 리포 id는 한 번 고정되면 바뀌지 않아 지문으로 충분하다.
-  ③ Publish는 **첫 외부 쓰기**(`createTree`, 또는 no-changes의 force 되돌림) 직전에 ②와 같은 함수를 부른다 — 쓰기 없는 종료(no-edits·writer-warnings·동등 확인)는 부르지 않는다.
+  ③ Publish는 **첫 외부 쓰기**(`publishSnapshot` 진입: UTF-16이 있으면 blob 생성, 없으면 `createTree`; 또는 no-changes의 force 되돌림) 직전에 ②와 같은 함수를 부른다 — 쓰기 없는 종료(no-edits·writer-warnings·동등 확인)는 부르지 않는다.
 - **Publish 성공 tx**는 캡처한 미전달 셀만 다룬다: 토큰 CAS가 풀린 셀은 기준 행을 지우고, 캡처 뒤 재편집된 셀은 기준을 **캡처값**으로 바꾼다
   (현재 DB 값이 아니다). 토큰 CAS와 기준 갱신을 같은 조건으로 묶지 않는다. 잠금은 Project → 정렬된 Surface(번역 저장과 같은 순서)이고,
   시각·토큰·기준을 쓰기 **전에** 실행권(`SyncRun`이 아직 RUNNING)과 캡처한 모든 소스의 활성 상태·context 지문을 검증한다. 하나라도 무효이거나 로컬 전달 셀에 해당 context가 없으면 확정 tx 전체를 거부한다 — `lastPulledAt`·Last sent·토큰 CAS·기준·확인을 모두 유지한다. 토큰을 해제하는 호출에는 실행권과 context가 필수이고, 빈 토큰의 timestamp-only 호환 호출은 별도다.
