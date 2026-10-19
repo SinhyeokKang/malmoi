@@ -686,7 +686,7 @@ export const en = {
     closing: {
       title: "Start from the files you already have",
       /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
-      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and let AI agents work in the same projects over MCP.",
+      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS, Chrome extension or Flutter ARB translation files, invite your team, and let AI agents work in the same projects over MCP.",
       links: { label: "Learn more", formats: "Supported formats", aiAgents: "AI agents", faq: "FAQ" },
     },
     /**
@@ -4526,7 +4526,7 @@ export const en = {
        * 그때 화면 키가 생기면 여기를 그 키로 바꾼다(같은 거부에 문구 두 벌 금지). 다음 행동을 함께 말한다 — 모르는 코드로 접히면 에이전트가 같은 호출을 되풀이한다.
        */
       languages: {
-        "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, and code dictionary sources.",
+        "unsupported-format": "Languages can be added or removed only for JSON catalog, Chrome extension messages, YAML catalog, code dictionary, and Flutter ARB sources.",
         "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
         "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
         "already-active": "That language is already in this source.",

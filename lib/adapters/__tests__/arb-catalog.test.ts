@@ -253,6 +253,17 @@ describe("arb-catalog — base 파일의 원본에만 있는 키 (B3.4)", () => 
   });
 });
 
+describe("arb-catalog — 언어 추가 렌더 (locale-add)", () => {
+  it("새 언어 파일은 기준 언어 파일의 표현만 빌리고 `@@locale`을 그 언어 코드로 낸다", () => {
+    const base = '{\n    "@@locale": "en",\n    "keep": "S_keep",\n    "@keep": {\n        "description": "base meta"\n    }\n}\n';
+    const keys: RenderKey[] = [{ id: "k1", key: "keep", sourceText: "S_keep", orphaned: false, cells: { en: { value: "DB_keep" }, fr: { value: "Garder" } } }];
+    const fmt: DetectedFormat = { adapter: "arb-catalog", pathTemplate: TEMPLATE, locales: ["en", "fr"] };
+    const files = renderLocaleFiles(fmt, "per-locale", [{ path: pathOf("en"), locale: "en" }, { path: pathOf("fr"), locale: "fr" }], keys, "en",
+      new Map([[pathOf("en"), base]]), { locales: new Set(["fr"]), source: base });
+    expect(files.find((f) => f.locale === "fr")?.content).toBe('{\n    "@@locale": "fr",\n    "keep": "Garder"\n}\n');
+  });
+});
+
 describe("arb-catalog detect", () => {
   const arb = '{"@@locale":"en","ok":"OK"}';
 

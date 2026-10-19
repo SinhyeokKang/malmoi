@@ -96,6 +96,18 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
     expect(paths).toEqual(["config/en.json", "src/i18n/en.json", "src/i18n/ko.json"]);
   });
 
+  /** 껍데기가 `.arb`를 안 고르면 `arb-catalog`은 측정에서 존재하지 않는다(POSTMORTEM 2026-09-02). `l10n.yaml`은 탐지가 읽는 설정이다. */
+  it("ARB 파일과 루트 `l10n.yaml`을 고른다", () => {
+    const { paths } = selectSurveyFiles([
+      "lib/l10n/app_en.arb",
+      "lib/l10n/app_ko.arb",
+      "l10n.yaml",
+      "pubspec.yaml",
+      "packages/x/l10n.yaml",
+    ]);
+    expect(paths).toEqual(["l10n.yaml", "lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"]);
+  });
+
   it("chrome _locales는 전부 고른다", () => {
     const { paths } = selectSurveyFiles([
       "public/_locales/en/messages.json",

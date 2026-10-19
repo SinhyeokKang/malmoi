@@ -80,6 +80,13 @@ describe("probeTargets — 내려받을 blob 경로", () => {
     expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [])).toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 
+  it("루트 `l10n.yaml`을 함께 내려받는다 — 2패스 ARB 탐지가 `arb-dir`로 후보를 좁힌다", () => {
+    const arb: DetectedFormat = { adapter: "arb-catalog", pathTemplate: "lib/l10n/app_{locale}.arb", locales: ["en", "ko"] };
+    const paths = ["l10n.yaml", "lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"];
+    expect(probeTargets([arb], [], paths)).toEqual(["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb", "l10n.yaml"]);
+    expect(probeTargets([arb], [], paths.slice(1))).toEqual(["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"]);
+  });
+
   it("code-dict 그룹도 같은 규칙으로 고른다 — `{locale}` 치환에 확장자가 따라온다", () => {
     const group = { pathTemplate: "src/locale/{locale}.ts", locales: new Set(["ko", "en", "ja", "fr"]) };
     expect(probeTargets([], [group], [])).toEqual(["src/locale/en.ts", "src/locale/fr.ts", "src/locale/ja.ts"]);

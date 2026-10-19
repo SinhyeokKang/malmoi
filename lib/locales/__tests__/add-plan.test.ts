@@ -24,6 +24,7 @@ describe("supportsLocaleChanges", () => {
     ["chrome-locales", true],
     ["yaml-catalog", true],
     ["code-dict", true],
+    ["arb-catalog", true],
     ["ts-dict", false],
     [null, false],
     ["__proto__", false],

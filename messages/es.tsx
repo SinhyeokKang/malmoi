@@ -271,7 +271,7 @@ export const es = {
     },
     closing: {
       title: "Empieza con los archivos que ya tienes",
-      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
+      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS, de extensiones de Chrome o de Flutter ARB, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
       links: { label: "Más información", formats: "Formatos compatibles", aiAgents: "Agentes de IA", faq: "Preguntas frecuentes" },
     },
     mockup: {

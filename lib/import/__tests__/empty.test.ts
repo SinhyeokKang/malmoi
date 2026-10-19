@@ -7,6 +7,8 @@ const fixtures: { adapter: AdapterName; pathTemplate: string; paths: string[]; e
   { adapter: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", paths: ["_locales/en/messages.json", "_locales/ko/messages.json"], empty: "{}", invalid: ["{", "[]", "null", '{"hello":{"message":"Hello"}}'] },
   { adapter: "yaml-catalog", pathTemplate: "i18n/{locale}.yml", paths: ["i18n/en.yml", "i18n/ko.yml"], empty: "{}", invalid: ["{", "[]", "", "hello: Hello", "hello: *missing", "? [foo, bar]\n: Hello", "hello: null"] },
   { adapter: "code-dict", pathTemplate: "i18n/{locale}.ts", paths: ["i18n/en.ts", "i18n/ko.ts"], empty: "export default {} as const;", invalid: ["export default {", "export default [];", "export default makeMessages();", 'export default { hello: "Hello" };'] },
+  // `@@*`·`@key`만 있는 ARB는 엔트리가 0개인 카탈로그다. 문자열이 아닌 엔트리 값은 read가 오류로 알리므로 빈 카탈로그가 아니다.
+  { adapter: "arb-catalog", pathTemplate: "lib/l10n/app_{locale}.arb", paths: ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"], empty: '{\n  "@@locale": "en",\n  "@stray": {}\n}\n', invalid: ["{", "[]", "null", '{"hello":"Hello"}', '{"hello":null}', '{"hello":{"x":"y"}}'] },
   { adapter: "ts-dict", pathTemplate: "i18n/*.ts", paths: ["i18n/common.ts"], empty: "const en = {} as const; const ko = {}; export const common = { en, ko };", invalid: ["const en = {", "const en = []; const ko = [];", "export default {};", 'const en = { hello: "Hello" }; const ko = {};'] },
 ];
 

@@ -127,7 +127,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // Card owns the boundary; inset empty content has no top border.
           ? <EmptyState placement="inset" icon={FileJson2} title={m.sources.emptyTitle} description={canEdit ? m.sources.emptyOwner : m.sources.emptyEditor} />
           : <ul>{data.sources.map(source => {
-          const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" ? FileJson2 : FileCode2;
+          // ARB도 JSON 파일이다.
+          const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" || source.connection?.adapterName === "arb-catalog" ? FileJson2 : FileCode2;
           // 칸만 상태 톤을 든다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다. 톤은 배지와 같은 판정이다(🔴 A1).
           const { tone } = planSurfaceImportStatus(source);
           return <li key={source.id} className="border-border border-t first:border-t-0">

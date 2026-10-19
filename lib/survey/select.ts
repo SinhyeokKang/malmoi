@@ -1,3 +1,4 @@
+import { ARB_FILE, arbProbePaths } from "../adapters/arb-catalog";
 import { LOCALES_PATH } from "../adapters/chrome-locales";
 import { CODE_FILE } from "../adapters/code-dict";
 import { JSON_FILE, LOCALE_DIR_FILE } from "../adapters/json-catalog";
@@ -68,6 +69,9 @@ export type FileSelection = {
 
 export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   const wanted = new Set<string>(allPaths.filter(path => path.endsWith(".strings")));
+  // ARB는 확장자가 곧 신호이고 리포당 한 디렉터리라 전부 담는다. 루트 `l10n.yaml`은 탐지가 읽는 설정이다(`arbProbePaths`).
+  for (const path of allPaths) if (ARB_FILE.test(path)) wanted.add(path);
+  for (const path of arbProbePaths(allPaths)) wanted.add(path);
 
   // ── chrome `_locales` — 로케일 root의 파일 전부 ──────────
   const chromeByRoot = new Map<string, string[]>();

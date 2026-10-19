@@ -1,4 +1,5 @@
 import { adapterFor } from "@/lib/adapters";
+import { arbProbePaths } from "@/lib/adapters/arb-catalog";
 import { tsDictProbePaths } from "@/lib/adapters/ts-dict";
 import { compareKeys, sampleOrder } from "@/lib/adapters/shared";
 import type { Adapter, AdapterName, DetectedFormat, FileProbe, LocaleEntry, ReadLocale } from "@/lib/adapters/types";
@@ -59,6 +60,8 @@ export function probeTargets(
   take(jsonLike, limits.jsonLike);
   take(codeDict, limits.codeDict);
   for (const path of tsDictProbePaths(repoPaths)) out.add(path);
+  // ARB 탐지가 루트 `l10n.yaml`의 `arb-dir`로 후보를 좁힌다 — 2패스에 내용이 없으면 설정을 못 본다.
+  for (const path of arbProbePaths(repoPaths)) out.add(path);
   return [...out];
 }
 
