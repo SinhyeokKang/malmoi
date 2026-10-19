@@ -54,3 +54,4 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 - **D dev 통합** — Q가 main 체크아웃을 쓰기 전이라 문서 6커밋을 앞당겨 cherry-pick(`..32c54bbd`). 결정 8의 "D 통합은 Q 뒤"는 Q가 main을 쓰는 동안만의 제약이다. D2(미룬 5개 + 결정 10·11·13 문구)는 Q와 병렬로 워크트리에서 한다.
 - **push** `1edbb640..1afa0dca`(A + D).
 - Q `ctx_bf2e91e3e9ce`(main 체크아웃, claude-opus-5-5 medium — Flutter brew 설치 · `SinhyeokKang/i18n-arb-check` private 생성 · App 설치 대상 추가는 사용자에게 묻는다) ∥ D2 `ctx_e10266d7180f`(D 터미널 재사용). A 터미널은 Q 결함용으로 retain. Q가 main을 쓰는 동안 cherry-pick·build 금지.
+- **D2 완료** — 커밋 4개(`8be4dfaf` ARCHITECTURE 26차 재측정 표·§1.37 결정 10/11/13 반영 · `69a401a6` DIRECTORY · `20168855` spec/design 결정 기록 · `974cd8c4` 가이드 en·ko·es + AUTHORING), `gate: ok`(16406). 통합은 Q 뒤(main 사용 중). D 터미널 해제, 워크트리는 통합 뒤 정리.
