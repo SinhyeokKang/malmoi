@@ -243,8 +243,8 @@ describe("Android 언어 추가·제거 → Publish", () => {
 });
 
 /**
- * 리뷰 R2 — 쓸 수 없는 태그(속성 값의 맨 `&`)가 든 기준 값을 저장하면 그 파일은 `write-parse-failed`이고, 미리보기는 blocked · 실행은 writer-warnings ·
- * Git 쓰기 0 · 전달 확인 0이다. 기준 셀은 E의 태그 대조(기준 대비 번역) 대상이 아니라 writer가 막아야 한다.
+ * 리뷰 R2 — 쓸 수 없는 태그(속성 값의 맨 `&`)가 든 과거 기준 값은 writer도 막아야 한다.
+ * 결정 21 이후 새 저장은 거부되므로 옛 DB 값을 직접 만들어 미리보기 blocked · 실행 writer-warnings · Git 쓰기 0 · 전달 확인 0을 검증한다.
  */
 describe("Android — 쓸 수 없는 태그", () => {
   // 리뷰 R2-3 — XML S 밖 공백(NBSP)이 든 태그도 값 단계의 키가 붙은 실패다. 쓴 파일 재파싱까지 가면 키 없는 실패가 되어 미리보기가 "기준 파일을 못 읽음"으로 오분류한다.
@@ -253,7 +253,10 @@ describe("Android — 쓸 수 없는 태그", () => {
     ["<b\u00a0>Start</b>", "이름 뒤 NBSP"],
     ['<b a\u00a0=\u00a0"x">Start</b>', "등호 주위 NBSP"],
   ])("기준 값 %j(%s) — 미리보기 blocked(키 있는 writer 경고) · 실행 writer-warnings · 쓰기 0 · 전달 확인 0", async (bad) => {
-    await save("title", "en", bad);
+    expect(await save("title", "en", bad)).toMatchObject({ ok: false, error: "inline-markup-invalid", localeCodes: ["en"] });
+    expect(await save("title", "en", "Start")).toMatchObject({ ok: true });
+    const keyId = (await prisma.stringKey.findFirstOrThrow({ where: { projectId: "p", key: "title" } })).id;
+    await prisma.translation.update({ where: { keyId_localeCode: { keyId, localeCode: "en" } }, data: { value: bad } });
     fake(FILES);
     expect(await loadPreview(prisma, OWNER, { slug: "fixture" })).toMatchObject({
       status: "blocked", warnings: [expect.objectContaining({ path: BASE_PATH, code: "write-parse-failed", key: "title" })],
