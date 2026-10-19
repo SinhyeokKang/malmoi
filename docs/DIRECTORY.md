@@ -663,6 +663,8 @@ lib/
                         base-path(baseFilePath — 기준 언어 파일 경로 = basePath ?? 템플릿 치환. import 0인 잎이라 lib/locales도 쓴다.
                         치환 자리 전수와 분기별 동작 테스트는 __tests__/base-path-sites.test.ts가 센다 — mobile-strings M2) ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
+                        · arb-catalog(Flutter ARB, 2026-10-19 — regenerate인데 원본의 `@key`·`@@*` 구간을 바이트 그대로 나른다.
+                        값이 아니라 소스 키 메타데이터라 DB에 넣지 않는다 — 근거는 ARCHITECTURE §1.37)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
