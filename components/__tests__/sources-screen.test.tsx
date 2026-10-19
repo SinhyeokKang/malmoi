@@ -565,3 +565,12 @@ it.each([
   const icon = document.querySelector("[data-source-row] svg")!;
   expect(icon.getAttribute("class")).toContain(glyph);
 });
+
+it.each([true, false])("Sources 목록 basePath 유무에 맞춰 경로 줄을 표시한다: %s", async android => {
+  const pathTemplate = android ? "app/src/main/res/values-{locale}/strings.xml" : "i18n/{locale}.json";
+  const basePath = "app/src/main/res/values/strings.xml";
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, connection: { adapterName: android ? "android-strings" : "json-catalog", format: "Format", pathTemplate, ...(android ? { basePath } : {}) } }] }} adapters={[]} now={new Date()} />);
+  const path = document.querySelector('[data-source-content] .wrap-anywhere')!;
+  expect(path.textContent).toBe(android ? basePath + pathTemplate : pathTemplate);
+  expect(path.querySelectorAll("br")).toHaveLength(android ? 1 : 0);
+});

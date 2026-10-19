@@ -1315,7 +1315,11 @@ it("Android ③은 기준 파일 코드 입력을 요구하고 관측 언어와 
   const code = field("base-locale");
   expect(code.value).toBe("");
   expect(button("Create project").disabled).toBe(true);
+  await input(code, "d");
+  expect(code.getAttribute("aria-invalid")).toBeNull();
   await input(code, "de");
+  await act(async () => { code.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+  expect(document.body.textContent).toContain("de is already a translation language of this source");
   expect(code.getAttribute("aria-invalid")).toBe("true");
   expect(button("Create project").disabled).toBe(true);
   await input(code, "en");

@@ -325,6 +325,17 @@ describe("Android 생성·추가 진입점", () => {
     expect(result.status).toBe("ok");
     const project = await prisma.project.findUniqueOrThrow({ where: { slug: "android-created" }, include: { surfaces: true } });
     const surface = project.surfaces[0]!;
+    const { getProject } = await import("@/lib/mcp/tools/project");
+    const response = await getProject.run(ctx, { slug: project.slug });
+    expect(response.status).toBe("ok");
+    if (response.status !== "ok") throw new Error(JSON.stringify(response));
+    expect(response.data.sources).toEqual(expect.arrayContaining([expect.objectContaining({ basePath: BASE_PATH })]));
+    await prisma.translationSurface.update({ where: { id: surface.id }, data: { basePath: null } });
+    const withoutBase = await getProject.run(ctx, { slug: project.slug });
+    if (withoutBase.status !== "ok") throw new Error(JSON.stringify(withoutBase));
+    expect((withoutBase.data.sources as object[])[0]).not.toHaveProperty("basePath");
+    await prisma.translationSurface.update({ where: { id: surface.id }, data: { basePath: BASE_PATH } });
+
     expect(surface).toMatchObject({ basePath: BASE_PATH, baseLocale: "en" });
     expect((await prisma.translation.findMany({ where: { surfaceId: surface.id, stringKey: { key: "title" } }, orderBy: { localeCode: "asc" } })).map(t => [t.localeCode, t.value])).toEqual([["en", "Home"], ["ko", "홈"]]);
     await assertPublish(project.id, project.slug, surface.id, surface.slug, BASE_PATH, KO_PATH);
@@ -349,5 +360,16 @@ describe("Android 생성·추가 진입점", () => {
     expect(revived).toMatchObject({ archivedAt: null, baseLocale: "fr", basePath });
     // 되살림은 strict 적재다 — 마지막 Publish 값이 아니라 리포 값을 읽는다.
     expect((await prisma.translation.findFirstOrThrow({ where: { surfaceId: surface.id, localeCode: "fr", stringKey: { key: "title" } } })).value).toBe("Home");
+    const key = await prisma.stringKey.findFirstOrThrow({ where: { surfaceId: surface.id, key: "title" } });
+    expect(await applyKeySave(prisma, { projectId: "p", surfaceId: surface.id, surfaceSlug: surface.slug, keyId: key.id, userId: "owner", credential: undefined, changes: [{ localeCode: "fr", value: "Maison" }] })).toMatchObject({ ok: true });
+    fake({ ...FILES, ...github.files });
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview.changedFiles).toContain(basePath);
+    expect(preview.changedFiles.some(path => path.includes("/values-en/"))).toBe(false);
+    const made = fake({ ...FILES, ...github.files });
+    expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined, expectedFingerprint: preview.fingerprint })).toMatchObject({ status: "committed" });
+    expect(changesOf(made)).toContainEqual({ kind: "upsert", path: basePath, content: BASE.replace(">Home<", ">Maison<") });
+    expect(changesOf(made).some(change => change.path.includes("/values-en/"))).toBe(false);
+
   });
 });

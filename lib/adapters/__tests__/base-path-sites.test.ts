@@ -184,16 +184,8 @@ describe("TranslationSurface 쓰기 자리", () => {
  * 넓을 때). 표시 전용 자리만 예외다.
  */
 describe("TranslationSurface 명시 select", () => {
-  const DISPLAY_ONLY = new Set([
-    // MCP 소스 목록 응답 — 응답 계약에 basePath를 싣는 일은 android-strings가 든다.
-    "lib/mcp/tools/project.ts",
-    // Sources 화면 데이터 — 화면 자리는 android-strings T3.2b가 든다.
-    "lib/sources/query.ts",
-  ]);
-
   it("pathTemplate을 고르는 select가 basePath도 고른다", () => {
     const misses = scanned().flatMap(({ path, text }) => {
-      if (DISPLAY_ONLY.has(path)) return [];
       return [...text.matchAll(/pathTemplate: true/g)].flatMap((m) => {
         const open = text.lastIndexOf("{", m.index ?? 0);
         return balanced(text, open, "{", "}").includes("basePath: true") ? [] : [path];
@@ -202,7 +194,5 @@ describe("TranslationSurface 명시 select", () => {
     expect(misses).toEqual([]);
   });
 
-  it("표시 전용 예외가 실제로 pathTemplate을 고른다 — 지워진 예외가 남지 않는다", () => {
-    for (const path of DISPLAY_ONLY) expect(code(path), path).toContain("pathTemplate: true");
-  });
+
 });

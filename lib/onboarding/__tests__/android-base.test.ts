@@ -32,8 +32,8 @@ describe("Android 기준 언어 입력", () => {
     expect(planConfirmedFormat({ adapter: "android-strings", pathTemplate, basePath, baseLocale }, files)).toEqual({ status: "rejected", reason: "base-locale-missing" });
   });
   it("CLI의 탐지 포맷에도 명시 코드를 넣고 중복은 거부한다", () => {
-    expect(() => assemblePushInput({ paths, probe, format: detected() })).toThrow();
-    expect(() => assemblePushInput({ paths, probe, format: detected(), baseLocale: "de" })).toThrow();
+    expect(() => assemblePushInput({ paths, probe, format: detected() })).toThrow(/--base.*base-locale/);
+    expect(() => assemblePushInput({ paths, probe, format: detected(), baseLocale: "de" })).toThrow(/--base.*base-locale.*de/);
     const result = assemblePushInput({ paths, probe, format: detected(), baseLocale: "en" });
     expect(result.read.locales.map(l => l.locale).sort()).toEqual(["de", "en"]);
     expect(result.format).toMatchObject({ templateLocale: "en", locales: ["de", "en"] });

@@ -68,3 +68,17 @@ describe("Sources 상세 언어 행 — 막대 폭·진행률 칸", () => {
     expect(column.classList.contains("w-[300px]")).toBe(false);
   });
 });
+
+it.each([true, false])("Sources 상세 basePath 표시와 Android 읽기 전용: %s", async android => {
+  const pathTemplate = android ? "app/src/main/res/values-{locale}/strings.xml" : "i18n/{locale}.json";
+  const basePath = "app/src/main/res/values/strings.xml";
+  await draw("en", { ...detail, repository: { repoOwner: "o", repoName: "r", baseBranch: "main" }, connection: { adapterName: android ? "android-strings" : "json-catalog", format: "Format", pathTemplate, ...(android ? { basePath } : {}) } });
+  const cell = document.querySelector('[data-source-connection] dd')!;
+  expect(cell.textContent).toBe(android ? basePath + pathTemplate : pathTemplate);
+  expect(cell.querySelectorAll("br")).toHaveLength(android ? 1 : 0);
+  if (android) {
+    expect(document.body.textContent).toContain(en.errors.repositorySettings["android-base-fixed"]);
+    expect(document.querySelector('[role="combobox"]')).toBeNull();
+    expect([...document.querySelectorAll("button")].some(b => b.textContent === "Save")).toBe(false);
+  }
+});
