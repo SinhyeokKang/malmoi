@@ -102,3 +102,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **D2·B-fix2·B-fix3 통합** — 12커밋 cherry-pick + roundtrip 전제 조건 1에 `i18n-android-check`(+ 미러). main `pnpm gate` → `gate: ok`. tasks T3.3·T3.5 체크(T3.2b는 #306 재확인 뒤).
 
 - **push** `87a71d51..c67d5e08`(D2 · B-fix2 #306 · B-fix3 #307 · roundtrip 전제 조건). CI run 39286391253. Q2 `ctx_018a53daaae7`(Q 터미널 재사용 — #306·#307 재확인 후 닫기). 워크트리 `android-A`·`-C`·`-E` 정리(cherry `+` 0), 워커 해제. 남은 것: B·D·Q 터미널.
+- `c67d5e08` dev CI success(run 39286391253). Q2: #306 온보딩은 해소, **Add sources에서 재현**(`add-sources-modal.tsx`가 빈 `baseLocale`을 그대로 쓴다 — B-fix2가 온보딩만 고쳤다) → B-fix4 `ctx_6f1cd46fd645`.
