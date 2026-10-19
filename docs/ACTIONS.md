@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -73,7 +73,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **참조는 `@malmoi-i18n-push-v3`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2" · 생성기의 v3 전환은 2026-10-09 — 아래 "v3"). 이 스텝에는
+⚠️ **참조는 `@malmoi-i18n-push-v4`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2" · 생성기의 v3 전환은 2026-10-09 — 아래 "v3" · v4 전환은 2026-10-20 — 아래 "v4"). 이 스텝에는
 `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
 대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. `main`에는 이제 브랜치
 프로텍션(required check `verify`, 2026-09-18)이 있지만 그것이 보는 것은 **테스트 green**이지 action이
@@ -83,9 +83,9 @@ jobs:
 "action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은
 **가변성**이고, `main`에 닿는 커밋은 그 순간 전 소비자에게 나간다.
 
-**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v3`)를 그 커밋으로
-옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v3`를 새로 끊고 이 문서의 예시를
-바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1·v2가 그렇게 남았다).
+**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v4`)를 그 커밋으로
+옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v5`를 새로 끊고 이 문서의 예시를
+바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1·v2·v3가 그렇게 남았다).
 
 ### v1과 v2 (2026-09-27)
 
@@ -140,7 +140,7 @@ action 호환을 약속하지 않는다. 앱 버전이 올라도 action 태그�
 `permissions: contents: read`도 같은 파일이 센다).
 
 ⚠️ **그 테스트가 이 문서도 읽는다** — 이 문서가 action을 `main`으로 참조하도록 안내하지 않는지, 그리고
-`@malmoi-i18n-push-v3` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
+`@malmoi-i18n-push-v4` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
 가변 참조를 예시로 쓰지 않는다). 위 스니펫의 태그를 고칠 때 그 두 조건이 함께 움직인다.
 
 ⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout` 줄은 그 방어선 밖이다.**
@@ -157,6 +157,10 @@ action 안의 두 판은 `workflow-pins.test.ts`가 기대 SHA로 박는다 — 
 대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다). **v1은 run당 30~50초다**(2026-09-27 실측 — 표면 하나 31초 중 action 21초, 표면 둘 49초 = action 26초 + 14초). ⚠️ **v2는 셋업이 ~4초 느리다** — 셋업+install 3회 평균이 v1 15.7초 → v2 19.9초다(2026-09-27, `SinhyeokKang/bugshot-i18n-test` 표면 하나). `pnpm/action-setup` v6이 bootstrap pnpm을 깐 뒤 `self-update`하는 설치 경로라 그 스텝만 1.5초 → 4.4~5.7초가 됐다. **pnpm store 캐시는 재서 버렸다** — 적중해도 292 MB 복원이 pnpm 스텝을 10~13초로 늘려 셋업+install이 15.0초(v1 대비 −0.7초)였고, 한 job에서 action을 두 번 부르면(표면 둘) 둘째 호출이 store를 지운 뒤 빈 store(9.66 KiB)가 저장돼 그 뒤 run은 "적중"인데 콜드 설치였다. 다시 시도하려면 그 두 결함부터 푼다. ⚠️ `--ignore-scripts`로는 줄지 않는다 — 로컬 콜드 설치(새 store·빈 Prisma 캐시)에서 454패키지 27·29초 대 27·25초로 오차 안이었다(Prisma 엔진 24MB 다운로드가 몫이 아니다). `--prod`는 `tsx`가 devDependency라 `push:local`이 안 돈다. 줄이려면 설치 자체를 없애는 번들이다(launch-readiness L7.7).
 
 ⚠️ **알려진 한계 — 같은 job에서 이 action 앞에 pnpm을 설치하면 그 store가 지워진다**(v1부터 같다). `pnpm/action-setup`이 매번 `~/setup-pnpm`을 새로 깔고 기본 store가 그 아래(`PNPM_HOME`)에 있어서다 — 대상 리포가 같은 job에서 자기 `pnpm/action-setup`(`cache: true`)+install을 먼저 돌면 그 설치가 사라지고, 그 job의 post가 말모이 store를 대상 리포 캐시 키에 저장한다(2026-09-27 실측, v1 태그로도 재현). 이 action은 **별도 job**에 둔다(생성 워크플로가 그 모양이다).
+
+### v4 (모바일 세 포맷 — 2026-10-20, v1.4.7)
+
+**`malmoi-i18n-push-v4`는 v1.4.7 머지의 squash 커밋에 발행된다**(android-strings T5.1 — 머지 직후). **같은 머지부터 온보딩·설정의 워크플로 생성기와 이 문서의 복사 예시가 v4를 안내한다**(`lib/onboarding/workflow.ts`). 태그 발행까지 수 분 동안 새로 생성한 워크플로는 태그가 없어 실패할 수 있다(design 결정 — 감수). v1·v2·v3 리포는 아무것도 안 바뀐다(태그를 옮기지 않았다). v3와 다른 것: **어댑터 넷**(`arb-catalog`·`apple-strings`·`apple-xcstrings`·`android-strings` — v3는 이 이름을 `adapter` 형식 오류로 exit 2), **UTF-16 로케일 파일**(`.strings`)을 바이트 그대로 읽고 보낸다, **Android 표면은 `base-locale`이 필수**다(`values/strings.xml`에 언어 코드가 없다 — 없거나 관측된 `values-*` 코드와 겹치면 red), 그리고 v3 발행 뒤 `main`에 쌓인 CLI 판정(§3 표에서 "현재 코드"로 표시한 행 — `key-shadowed` 등)이 같이 나간다. GitLab CI 원본은 별도 축(`malmoi-i18n-push-gitlab-v3`, T5.7 후속 패치)이다.
 
 ### 표면별 입력과 추가 step
 
@@ -178,7 +182,7 @@ CLI 탐지가 채우고, action 입력은 늘지 않는다(`path-template`이 �
 
 <!-- additional-surface-step -->
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -207,7 +211,7 @@ CLI 탐지가 채우고, action 입력은 늘지 않는다(`path-template`이 �
 self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 값은 그 설치의 `MALMOI_ORIGIN`(HTTPS origin, 끝 슬래시 없음)이다. action의 기본값이 호스팅 서비스(`https://mal-moi.com`)라 이 줄이 빠지면 **push 토큰 원문이 우리 서비스로 간다**(그쪽은 401로 거절하지만 토큰은 이미 남의 서버에 도착했다). 그래서 설치 화면이 낸 파일을 그대로 쓰고, 손으로 옮겨 적을 때도 이 줄을 지우지 않는다. 설치의 판정이 무효(`invalid`)면 생성기가 줄을 생략하는 대신 워크플로 렌더를 거부한다(`workflowApiUrl`).
 
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v4
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -219,7 +223,7 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **공급망 의존이 하나 있다.** 위 `uses:`는 설치가 아니라 **상류 리포의 불변 태그**를 가리킨다 — self-hosted 설치의 대상 리포 CI도 우리 `malmoi-i18n-push-v3` 태그의 코드를 자기 러너에서 실행하고, 그 스텝에 그 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어간다. 설치를 고정 버전으로 두어도 이 태그는 설치 버전과 무관하게 움직일 수 있다(태그를 옮기는 것이 action 릴리스다 — 위). 이 의존을 받아들일 수 없는 운영자는 상류 리포를 포크해 `uses:`를 그 포크의 커밋 SHA에 고정할 수 있다 — 포크는 상류의 계약 변경을 자동으로 따라가지 않는다. 조직 허용 목록에 넣을 이름은 위 넷 그대로다.
+⚠️ **공급망 의존이 하나 있다.** 위 `uses:`는 설치가 아니라 **상류 리포의 불변 태그**를 가리킨다 — self-hosted 설치의 대상 리포 CI도 우리 `malmoi-i18n-push-v4` 태그의 코드를 자기 러너에서 실행하고, 그 스텝에 그 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어간다. 설치를 고정 버전으로 두어도 이 태그는 설치 버전과 무관하게 움직일 수 있다(태그를 옮기는 것이 action 릴리스다 — 위). 이 의존을 받아들일 수 없는 운영자는 상류 리포를 포크해 `uses:`를 그 포크의 커밋 SHA에 고정할 수 있다 — 포크는 상류의 계약 변경을 자동으로 따라가지 않는다. 조직 허용 목록에 넣을 이름은 위 넷 그대로다.
 
 훅 기반 리포의 예 (실측 형태 — ARCHITECTURE §4.0):
 
@@ -242,7 +246,7 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
 
 ## 3. 무엇이 red를 만드는가
 
-⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다** — 새 워크플로는 v3지만(§2 "v3"), v2와 달라지는 행은 해당 행에 v3 판정으로, 발행된 태그에 아직 없는 현재 코드의 CLI 판정도 해당 행에 따로 표시한다. 서버 판정은 배포된 서버를 따른다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
+⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다** — 새 워크플로는 v4지만(§2 "v3"·"v4" — "현재 코드" 행은 v4에서 나간다), v2와 달라지는 행은 해당 행에 v3 판정으로, 발행된 태그에 아직 없는 현재 코드의 CLI 판정도 해당 행에 따로 표시한다. 서버 판정은 배포된 서버를 따른다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
 
 **적재 실패만 red다.** 스캔 실패는 경고이고 exit 0이다 — 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이라, 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 
