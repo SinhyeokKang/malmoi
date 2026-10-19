@@ -53,7 +53,7 @@ async function fakeServer(reply: number | undefined): Promise<string> {
 }
 
 /** 폐기용 리포 하나를 임시로 만든다 — `push:local`이 `git rev-parse HEAD`를 부른다. */
-function fixtureRepo(files: Record<string, string>): string {
+function fixtureRepo(files: Record<string, string | Buffer>): string {
   const dir = mkdtempSync(join(tmpdir(), "malmoi-push-"));
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(join(dir, path, ".."), { recursive: true });
@@ -177,4 +177,24 @@ it("keeps exit 1 when the report times out", async () => {
 
   expect(code).toBe(1);
   expect(received).toHaveLength(1);
+}, 60000);
+
+it("선택된 파일의 잘못된 UTF-8은 prepare-failed 보고 후 종료하고 부분 적재하지 않는다", async () => {
+  const url = await fakeServer(204);
+  const dir = fixtureRepo({ "locales/en.json": GOOD, "locales/ko.json": Buffer.from([0xff]) });
+  const result = await push(dir, url);
+  expect(result.code, result.out).toBe(1);
+  expect(result.out).toContain("locales/ko.json");
+  expect(received.map(r => r.path)).toEqual(["/api/push/failure"]);
+  expect(JSON.parse(received[0]!.body)).toMatchObject({ code: "prepare-failed" });
+}, 60000);
+
+it("무관한 인코딩 예제가 깨져도 정상 카탈로그를 탐지하고 적재한다", async () => {
+  const url = await fakeServer(200);
+  const dir = fixtureRepo({ "locales/en.json": GOOD, "locales/ko.json": GOOD, "locales/ja.json": GOOD,
+    "examples/by-features/encoding/locales/ko.yml": Buffer.from([0xb0, 0xa1]) });
+  const result = await push(dir, url);
+  expect(result.code, result.out).toBe(0);
+  expect(received.map(r => r.path)).toEqual(["/api/push"]);
+  expect(JSON.parse(received[0]!.body)).toMatchObject({ format: { pathTemplate: "locales/{locale}.json" } });
 }, 60000);

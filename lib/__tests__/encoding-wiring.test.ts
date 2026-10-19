@@ -6,7 +6,7 @@ import { planPullChanges } from "../pull/plan";
 import { blobSha } from "../githash";
 import { encodeFileContent } from "../file-encoding";
 import { buildCommitActions, decodeBlob } from "../gitlab/plan";
-import { fileProbe } from "../../scripts/format";
+import { fileProbe, unreadableLocaleFiles } from "../../scripts/format";
 
 const content = '"hello" = "안녕 😀";\n';
 const encoding = "utf-16be-bom" as const;
@@ -31,21 +31,22 @@ it("GitLab 디코더는 경로로 UTF-16을 판별하고 손상은 parse-failed�
   expect(decodeBlob({ encoding: "base64", content: bytes.toString("base64") }, "ko.strings")).toEqual({ content, encoding });
   expect(() => decodeBlob({ encoding: "base64", content: "/v/YAA==" }, "ko.strings")).toThrow(expect.objectContaining({ code: "parse-failed", path: "ko.strings" }));
 });
-it("CI probe가 UTF-16을 읽으며 손상된 파일을 undefined로 숨기지 않는다", () => {
+it("CI probe가 UTF-16을 읽으며 손상된 선택 파일은 unreadable로 남긴다", () => {
   const root = mkdtempSync(join(tmpdir(), "encoding-wiring-"));
   try {
     writeFileSync(join(root, "ko.strings"), bytes);
     writeFileSync(join(root, "bad.strings"), Buffer.from("fffe00d8", "hex"));
-    const probe = fileProbe(root);
+    const failures = new Set<string>();
+    const probe = fileProbe(root, failures);
     expect(probe("ko.strings")).toBe(content);
-    expect(() => probe("bad.strings")).toThrow(expect.objectContaining({ code: "parse-failed", path: "bad.strings" }));
+    expect(probe("bad.strings")).toBeUndefined();
+    expect(unreadableLocaleFiles([{ path: "bad.strings", content: "" }], failures)).toEqual(["bad.strings"]);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 describe("로케일 리더의 바이트 경계", () => {
   it.each(["lib/github.ts", "lib/gitlab/plan.ts", "scripts/format.ts", "lib/survey/run.ts"])("%s에 직접 UTF-8 디코드가 없다", path => {
     const source = readFileSync(path, "utf8");
-    expect(source).not.toMatch(/\.toString\(["']utf8["']\)/);
-    expect(source).not.toMatch(/readFileSync\(join\(root, path\), ["']utf8["']\)/);
+    expect(source).not.toMatch(/\.toString\(\s*(["']utf-?8["'])?\s*\)|readFileSync\([^;]*?["']utf-?8["']|new TextDecoder\(/);
     expect(source).toMatch(/decodeLocaleFile/);
   });
 });

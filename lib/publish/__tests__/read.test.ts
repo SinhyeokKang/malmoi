@@ -622,3 +622,27 @@ it.each([
     saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme" });
   expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, files: preview.fileChanges });
 });
+
+it.each(["en.json", "ko.json"])("잘못된 UTF-8 %s는 preview blocked와 publish writer-warnings로 끝난다", async (brokenPath) => {
+  const { decodeLocaleFile } = await import("@/lib/file-encoding");
+  const { renderProject, projectFormats } = await import("@/lib/pull/run");
+  const state: PullState = { project: { ...project, slug: "acme" }, surfaces: [{ ...surface, localeCodes: ["en", "ko"],
+    keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "new" }, ko: { value: "새" } } }] }], maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t", token: "token", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "new" } }] };
+  mocks.load.mockResolvedValue(state);
+  const tree = ["en.json", "ko.json"].map(path => ({ path, sha: path, mode: "100644" }));
+  mocks.client.getTree.mockResolvedValue(tree);
+  const read = async (_sha: string, path: string) => decodeLocaleFile(path, path === brokenPath ? Buffer.from([0xff]) : Buffer.from('{"hello":"old"}'));
+  mocks.client.getBlobText.mockImplementation(read);
+  const warning = { surfaceSlug: "web", path: brokenPath, code: "parse-failed" };
+  expect(await loadPublishPreview({ slug: "acme" })).toMatchObject({ status: "blocked", warnings: [warning] });
+  const { client, calls } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree } });
+  client.getBlobText = read;
+  const rendered = await renderProject(state.project, projectFormats(state.surfaces), client, { baseHead: "head", tree });
+  expect(rendered.rendered[0]!.files.find(file => file.path === brokenPath)).toMatchObject({ content: null, errors: [{ path: brokenPath, code: "parse-failed" }] });
+  expect(rendered.changes.some(change => change.path === brokenPath)).toBe(false);
+  const save = vi.fn(); const invalidate = vi.fn();
+  expect(await runPull({ loadState: async () => state, createClient: async () => client, saveLastPulledAt: save, invalidateDelivery: invalidate, syncBranch: "sync" })).toMatchObject({ status: "skipped", reason: "writer-warnings", warnings: [warning] });
+  expect(save).not.toHaveBeenCalled(); expect(invalidate).not.toHaveBeenCalled();
+  expect(calls.every(call => ["getRefSha", "getTree"].includes(call.method))).toBe(true);
+});

@@ -115,6 +115,8 @@ it("무관한 손상 파일은 경로별 parse-failed로 남기고 정상 카탈
   const out = surveyOne(input);
   expect(out.chosen).toMatchObject({ pathTemplate: "locales/{locale}.json" });
   expect(out.decodeErrors).toEqual(input.decodeErrors);
-  expect(out.failure).toContain("parse-failed");
+  expect(out.failure).toBeUndefined();
+  const { pinsFromSurveys } = await import("../pins");
+  expect(pinsFromSurveys([{ ...out, commit: "a".repeat(40) }])).toEqual({ "a/1": "a".repeat(40) });
   expect(out.keyCount).toBe(1);
 });

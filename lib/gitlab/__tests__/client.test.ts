@@ -227,6 +227,13 @@ describe("MR 생명주기 — findOpenPr · createPr · updatePrTitle · updateP
   });
 });
 
+it("GitLab 적재 리더는 잘못된 UTF-8을 unreadable로 돌린다", async () => {
+  const fake = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META },
+    [`GET ${P}/repository/blobs/bad`]: { status: 200, body: { encoding: "base64", content: "/w==" } } });
+  const reader = await openGitLabReader(TARGET, CREDENTIAL, { fetch: fake.fetch });
+  await expect(reader.blob("bad", "ko.json")).resolves.toBeUndefined();
+});
+
 describe("openGitLabReader — 온보딩·Sync의 스냅샷 (값으로 준다)", () => {
   const head = { [`GET ${P}/repository/branches/main`]: { status: 200, body: { commit: { id: BASE, committed_date: "2026-10-12T08:47:45.000+00:00" } } } };
   const tree = { [`GET ${P}/repository/tree`]: { status: 200, body: [
