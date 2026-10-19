@@ -69,8 +69,10 @@ export async function fetchRepo(repo: string, git: GitRunner, pin?: string): Pro
         // 찾았지만, 그것은 지금 git 버전의 성질이지 우리 계약이 아니다.
         await git(work, ["sparse-checkout", "set", "--no-cone", "--", ...wanted]);
         await git(work, ["checkout", "--quiet", rev]);
-      } catch {
-        // 부분 실패해도 받은 것만으로 진행한다 — 아래 읽기가 없는 파일을 건너뛴다.
+      } catch (cause) {
+        // ⚠️ 물리화가 실패하면 파일 집합이 비거나 일부뿐인데 이를 성공으로 돌려주면 `commit`이 pins에 기록되고 파일이 있는
+        // 리포가 탐지 실패로 보인다. 고정 여부와 무관하게 측정하지 못한 커밋은 실패다(`commit`도 싣지 않는다).
+        return { repo, paths: [], files: new Map(), configFiles: [], failure: `체크아웃 실패: ${short(cause)}` };
       }
       for (const p of wanted) {
         try {
