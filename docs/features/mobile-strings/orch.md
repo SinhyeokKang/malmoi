@@ -70,3 +70,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **C dev 통합** — 8커밋 cherry-pick(`..82bd2e84`). main `pnpm gate` → `gate: ok`(16328 + 격리 914). tasks M3a·M3b 체크.
 - **push** `9c803572..8dccc13c`(M3).
 - **S 완료** — 스펙별 커밋: `dfcad51b` arb(M1 실측·핀 재측정) · `fae80efd` apple-strings(M3 계약·UTF-8 명시 실패 결정·RC 이관 T2.0a–c·`bplist00` 거부·T2.4가 실제 호스트 UTF-16 왕복을 닫음·API 예산 절 번호) · `e2d89a05` android-strings(M2 계약·되살림 결정·수동 지정 basePath 유도는 T3.2b 신규·실 어댑터 공급 고리 테스트·화면 자리와 표시 전용 select·composeResources 결정 시점·T5.6 검수) · `367c0f51` adapter-survey(M3 뒤 디코드 결과 · 검수 대기 판정 절 — handoff-D의 목록을 정본으로 옮김).
+- M3 push dev CI success. S 문서 커밋 뒤 main `pnpm gate` 1차는 5초 타임아웃 11건(부하 평균 63 — 문서 변경과 무관)으로 red, 2차 `gate: ok`(16328). C 워크트리·터미널 정리 — 남은 워커 0.
+- **끝** — tasks 체크 전부 완료. 남은 것: android-strings T5.6의 prod `db:deploy`(`/merge` 1단계) · 검수 대기 판정(사용자) · 실제 호스트 UTF-16 왕복(apple-strings T2.4).
