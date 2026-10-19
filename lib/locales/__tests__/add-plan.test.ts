@@ -25,6 +25,7 @@ describe("supportsLocaleChanges", () => {
     ["yaml-catalog", true],
     ["code-dict", true],
     ["arb-catalog", true],
+    ["apple-strings", true],
     ["ts-dict", false],
     [null, false],
     ["__proto__", false],

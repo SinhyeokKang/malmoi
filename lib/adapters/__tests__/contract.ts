@@ -73,6 +73,17 @@ function codeSource(keys: readonly string[]): string {
   ].join("\n");
 }
 
+/** `apple-strings`(`.lproj`의 `.strings`)의 원본. 블록 주석과 줄 주석을 둘 다 둔다. */
+function stringsSource(keys: readonly string[]): string {
+  return [
+    "/* 사람이 넣은 주석 — 보존돼야 한다 */",
+    ...keys.map((k) => `${JSON.stringify(k)} = ${JSON.stringify(srcVal(k))};`),
+    "// 줄 주석",
+    `${JSON.stringify(ORPHAN_KEY)} = ${JSON.stringify(ORPHAN_SOURCE_VALUE)};`,
+    "",
+  ].join("\n");
+}
+
 /** `multi-locale` 어댑터의 원본 파일을 만든다 — 치환 대상이 원본에 있어야 한다. */
 function tsSource(keys: readonly string[]): string {
   const body = () =>
@@ -131,6 +142,13 @@ export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_K
       return { adapter: adapter.name, pathTemplate: "i18n/{locale}.json", locales: ["en"] };
     case "arb-catalog":
       return { adapter: adapter.name, pathTemplate: "lib/l10n/app_{locale}.arb", locales: ["en"] };
+    case "apple-strings":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "App/{locale}.lproj/Localizable.strings",
+        locales: ["en"],
+        currentFiles: [{ path: "App/en.lproj/Localizable.strings", content: stringsSource(keys) }],
+      };
   }
 }
 
@@ -236,7 +254,9 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const creates = surgical && adapter.layout === "per-locale";
   if ((adapter.create !== undefined) !== creates) bad.push("create는 per-locale 수술적 어댑터만 갖는다");
   if (creates && adapter.create) {
-    const source = adapter.name === "yaml-catalog" ? "en:\n    donor: BASE_ONLY\n" : "export default {\n    donor: 'BASE_ONLY',\n};\n";
+    const source = adapter.name === "yaml-catalog" ? "en:\n    donor: BASE_ONLY\n"
+      : adapter.name === "apple-strings" ? "/* BASE_ONLY comment */\n\"donor\" = \"BASE_ONLY\";\n"
+      : "export default {\n    donor: 'BASE_ONLY',\n};\n";
     const fresh = { ...fmt, currentFiles: undefined, representationSource: source };
     const input = { locale: "fr", baseLocale: "en", entries: entriesFor(CONTRACT_KEYS) };
     const created = adapter.create(fresh, input);
@@ -592,6 +612,8 @@ function baseFixture(adapter: Adapter): { format: DetectedFormat; basePath: stri
       return perLocale("config/locales/{locale}.yml", (l, keep, added) => `${l}:\n  keep: ${keep}\n${added ? `  added: ${added}\n` : ""}`);
     case "code-dict":
       return perLocale("src/locale/{locale}.ts", (_l, keep, added) => `export default {\n  keep: '${keep}',\n${added ? `  added: '${added}',\n` : ""}}\n`);
+    case "apple-strings":
+      return perLocale("App/{locale}.lproj/Localizable.strings", (_l, keep, added) => `"keep" = "${keep}";\n${added ? `"added" = "${added}";\n` : ""}`);
     case "ts-dict": {
       const path = "src/i18n/ns/a.ts";
       return {

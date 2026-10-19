@@ -556,6 +556,7 @@ it.each([
   ["arb-catalog", "lucide-file-braces-corner"],
   ["json-catalog", "lucide-file-braces-corner"],
   ["yaml-catalog", "lucide-file-code"],
+  ["apple-strings", "lucide-file-code"],
 ] as const)("행 아이콘은 파일 종류를 따른다 — %s", async (adapterName, glyph) => {
   const connected = { ...data, sources: [{ ...source, connection: { adapterName, pathTemplate: "lib/l10n/app_{locale}.arb", format: null } }] };
   await render(<SourcesScreen slug="p" role="OWNER" data={connected} adapters={[]} now={new Date()} />);

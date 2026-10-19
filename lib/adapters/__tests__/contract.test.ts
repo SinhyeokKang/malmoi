@@ -21,7 +21,7 @@ describe("writer 계약 — ADAPTERS 전수 (ARCHITECTURE §1.1 / ARCHITECTURE �
     });
   }
 
-  it("등록된 어댑터가 6개다 — 늘면 위 목록도 자동으로 는다", () => {
+  it("등록된 어댑터가 7개다 — 늘면 위 목록도 자동으로 는다", () => {
     expect(ADAPTERS.map((a) => a.name)).toEqual([
       "chrome-locales",
       "json-catalog",
@@ -29,6 +29,7 @@ describe("writer 계약 — ADAPTERS 전수 (ARCHITECTURE §1.1 / ARCHITECTURE �
       "code-dict",
       "ts-dict",
       "arb-catalog",
+      "apple-strings",
     ]);
   });
 
@@ -45,6 +46,7 @@ describe("writer 계약 — ADAPTERS 전수 (ARCHITECTURE §1.1 / ARCHITECTURE �
       "code-dict": "per-locale / surgical",
       "ts-dict": "multi-locale / surgical",
       "arb-catalog": "per-locale / regenerate",
+      "apple-strings": "per-locale / surgical",
     });
   });
 });

@@ -1,7 +1,7 @@
 import type { FileEncoding } from "@/lib/file-encoding";
 
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog";
+export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict" | "arb-catalog" | "apple-strings";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {
@@ -30,7 +30,7 @@ export type DetectedFormat = {
   templateLocale?: string;
   /**
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
-   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
+   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.
    * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
    *   읽는다. 없으면 기본값으로 계속 만든다. ⚠️ `arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간도 나른다(값은 아니다).
@@ -93,7 +93,8 @@ export type LocaleEntry = {
    *
    * ⚠️ **수술적 치환 어댑터(`yaml-catalog`·`code-dict`·`ts-dict`)는 이 필드를 채우지 않는다.**
    * 원본 파일이 순서를 이미 갖고 있고 그 방식은 파일을 다시 만들지 않으므로 쓸 곳이 없다 —
-   * null인 것이 결함이 아니다.
+   * null인 것이 결함이 아니다. **`apple-strings`만 예외로 채운다** — 비-base 파일의 누락 키를 기준 순서상 앞 키 뒤에
+   * 넣으려면 적재가 이 값을 `sortIndex`로 옮겨야 한다(apple-strings design §2.1).
    */
   order?: number;
   /**
@@ -278,7 +279,7 @@ export type Adapter = {
    * 로케일 파일 경로를 만드는 방식. 어댑터마다 구조가 다르다:
    *
    * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
-   *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict` — ⚠️ 뒤 둘은 per-locale인데
+   *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict`, `apple-strings` — ⚠️ 뒤 셋은 per-locale인데
    *   **수술적**이다. 경로 모양과 write 기계는 별개 축이다).
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
    *   (`ts-dict`). write도 파일별로 불러야 한다.
@@ -290,7 +291,7 @@ export type Adapter = {
    * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `orderedEntries`의 결정성 규칙(§1.1)을
    *   지나야 한다 (`chrome-locales`·`json-catalog`·`arb-catalog`).
    * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
-   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`).
+   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`·`apple-strings`).
    *
    * ⚠️ **pull이 "원본 blob 내용을 받아야 하나"를 이 값으로 판단한다.** 전에는 `layout`으로
    * 갈랐는데 `per-locale` + `surgical` 조합(YAML·코드 딕셔너리)이 생겨 성립하지 않는다 —

@@ -1,3 +1,4 @@
+import { appleStrings } from "./apple-strings";
 import { arbCatalog } from "./arb-catalog";
 import { chromeLocales } from "./chrome-locales";
 import { codeDict } from "./code-dict";
@@ -13,6 +14,7 @@ export { yamlCatalog } from "./yaml-catalog";
 export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
 export { arbCatalog } from "./arb-catalog";
+export { appleStrings } from "./apple-strings";
 export { namespaceOf, compareKeys, catalogVerdict, matchGlobPaths, pathSignals } from "./shared";
 export * from "./types";
 
@@ -28,7 +30,7 @@ export * from "./types";
  * 단 **경로만으로는 후보를 못 낸다** — 내용을 봐야 알 수 있어서, 1패스에서 내려받을 파일을 고르는
  * `tsDictProbePaths`가 그 자리를 맡는다.
  */
-export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict, arbCatalog];
+export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict, arbCatalog, appleStrings];
 
 /**
  * ⚠️ **한 리포에 로케일 포맷이 둘 이상일 수 있다.** bugshot-2가 그렇다 — `_locales`(4키,
@@ -70,14 +72,18 @@ export function detectCandidatesAcross(paths: readonly string[], probe?: FilePro
     if (c.adapter === "chrome-locales" && !aside) chromeFirst.push(c);
     else rest.push(c);
   }
-  return keepOwnOrder([...rankTemplates(chromeFirst), ...rankTemplates(rest)], "arb-catalog", own.find((a) => a.name === "arb-catalog")?.found ?? []);
+  const ownOf = (name: AdapterName) => own.find((a) => a.name === name)?.found ?? [];
+  const ranked = keepOwnOrder([...rankTemplates(chromeFirst), ...rankTemplates(rest)], "arb-catalog", ownOf("arb-catalog"));
+  return keepOwnOrder(ranked, "apple-strings", ownOf("apple-strings"));
 }
 
 /**
  * 한 어댑터의 후보가 선 자리만 그 어댑터가 낸 순서로 다시 채운다 — 다른 어댑터와의 순위는 그대로다.
  *
- * `arb-catalog`만 쓴다: 루트 `l10n.yaml`이 가리키는 후보가 경로 신호로는 지는 다른 ARB 후보를 이겨야 하는데(arb design §2), 설정은
+ * `arb-catalog`: 루트 `l10n.yaml`이 가리키는 후보가 경로 신호로는 지는 다른 ARB 후보를 이겨야 하는데(arb design §2), 설정은
  * 경로 신호가 아니라 `compareTemplates`에 넣을 수 없고, 후보를 걸러 내면 설정 밖 ARB 소스가 탐지에서 사라진다.
+ * `apple-strings`: `Localizable.strings`가 같은 리포의 다른 테이블보다 앞이어야 probe 예산(1패스 상위 5) 안에 든다(apple-strings design §5) —
+ * 테이블 이름은 공용 순위 신호가 아니다.
  */
 function keepOwnOrder(ranked: readonly DetectedFormat[], name: AdapterName, own: readonly DetectedFormat[]): DetectedFormat[] {
   let next = 0;

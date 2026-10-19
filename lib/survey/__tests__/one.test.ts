@@ -205,6 +205,20 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
 });
 
 describe("surveyOne — 리포 하나의 판정 전체", () => {
+  /** apple-strings — 수술적 치환이라 왕복 의미·바이트 고정점이 둘 다 같아야 한다. 비-base의 누락 키 삽입도 측정 경로에서 돈다. */
+  it("Apple `.strings`: `.lproj` 템플릿이 1순위이고 왕복 2층이 통과한다", () => {
+    const s = surveyOne(input("acme/ios", {
+      "App/en.lproj/Localizable.strings": '/* Title */\n"title" = "Home";\n"logout" = "Log out";\n',
+      "App/ko.lproj/Localizable.strings": '/* 제목 */\r\n"title" = "홈";\r\n',
+      "App/Base.lproj/Main.storyboard": "<xml/>",
+    }));
+    expect(s.failure).toBeUndefined();
+    expect(s.chosen).toMatchObject({ adapter: "apple-strings", pathTemplate: "App/{locale}.lproj/Localizable.strings" });
+    expect(s.localeCount).toBe(2);
+    expect(s.roundtrip.semantic).toBe("same");
+    expect(s.roundtrip.byteFixpoint).toBe("same");
+  });
+
   it("정상 flat: 왕복 2층이 전부 통과한다", () => {
     const s = surveyOne(input("acme/flat", FLAT));
     expect(s.failure).toBeUndefined();
@@ -396,8 +410,8 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
    * ⚠️ **옛 이름은 "ts-dict만 자동 탐지에서 빠져 있다"였고 본문이 그것을 안 쟀다** (2026-09-14 2차
    * 리뷰): 빈 문자열 probe면 다섯이 전부 0을 내므로 `> 0`이 **어떤 구현에서도 참**이었다.
    */
-  it("ADAPTERS가 6개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
-    expect(ADAPTERS).toHaveLength(6);
+  it("ADAPTERS가 7개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
+    expect(ADAPTERS).toHaveLength(7);
     const tsDict = ADAPTERS.find((a) => a.name === "ts-dict")!;
     const source = 'const en = { "a": "A" };\nconst ko = { "a": "B" };\nexport const ns = { en, ko };';
     expect(tsDict.detectCandidates(["src/i18n/x.ts", "src/i18n/y.ts"], () => source)).toHaveLength(1);

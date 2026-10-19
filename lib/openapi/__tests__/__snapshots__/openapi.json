@@ -199,7 +199,8 @@
                   "yaml-catalog",
                   "code-dict",
                   "ts-dict",
-                  "arb-catalog"
+                  "arb-catalog",
+                  "apple-strings"
                 ]
               },
               "pathTemplate": {

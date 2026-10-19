@@ -1,3 +1,4 @@
+import { STRINGS_FILE } from "../adapters/apple-strings";
 import { ARB_FILE, arbProbePaths } from "../adapters/arb-catalog";
 import { LOCALES_PATH } from "../adapters/chrome-locales";
 import { CODE_FILE } from "../adapters/code-dict";
@@ -35,9 +36,6 @@ const CONFIG = [
   /(^|\/)transifex\.ya?ml$/,
   /(^|\/)\.tx\/config$/,
 ];
-
-/** `<dir>/<locale>.lproj/<table>.strings` — 그룹 키를 만드는 데만 쓴다. */
-const LPROJ_FILE = /^((?:[^/]*\/)*)([^/]+)\.lproj\/([^/]+\.strings)$/;
 
 /** 읽을 파일 수 상한. 넘으면 잘라내고 `truncated`로 알린다. */
 const FILE_BUDGET = 1200;
@@ -80,12 +78,12 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   const lprojGroups = new Map<string, Array<{ locale: string; path: string }>>();
   for (const p of allPaths) {
     if (!p.endsWith(".strings")) continue;
-    const m = LPROJ_FILE.exec(p);
+    const m = STRINGS_FILE.exec(p);
     if (!m) {
       wanted.add(p);
       continue;
     }
-    const key = `${m[1] ?? ""}{}.lproj/${m[3] ?? ""}`;
+    const key = `${m[1] ?? ""}{}.lproj/${m[3] ?? ""}.strings`;
     (lprojGroups.get(key) ?? lprojGroups.set(key, []).get(key)!).push({ locale: m[2] ?? "", path: p });
   }
   for (const [, files] of lprojGroups) {
