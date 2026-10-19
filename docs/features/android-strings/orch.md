@@ -25,6 +25,9 @@
 15. **기준 값이 태그 열로 파싱되지 않으면 태그 모양 토큰의 멀티셋만 비교하고 닫힘 검사는 건너뛴다** — 지휘자 판단(RE U2, 리뷰 추천). 어떤 키도 영구히 저장 불가가 되지 않게 하면서 태그 누락은 계속 잡는다.
 16. **NewPipe의 `shared/src/commonMain/composeResources/values-{locale}/strings.xml`(110로케일)은 정답(`alsoValid`)으로 판정한다** — 지휘자 판단(결정 2로 composeResources가 범위에 들어왔고, 그 리포의 실제 공유 문자열 집합이다. 순위 신호(로케일 수)를 그 한 리포 때문에 바꾸지 않는다). 판정 JSON 갱신은 A의 수정 라운드, `/merge` 전 사용자 검수 대상(`repos.md` "검수 대기 판정")에 올린다.
 17. **E의 저장 판정은 A의 태그 문법(`lib/adapters/android-strings.ts`의 `TAG`)과 같은 규칙이어야 한다** — 지휘자 판단. 지금 E는 태그 이름에 `\p{L}`을 받아 `<한글>`을 태그로 통과시키고 A의 인코더는 그 셀을 `write-parse-failed`로 낸다 — 저장은 되는데 Publish가 실패한다. A 통합 뒤 E가 rebase해 같은 판정을 쓴다(E-fix2).
+18. **새 언어 파일 생성·누락 키 삽입은 기준 파일 `<string>`의 `formatted` 속성을 바이트 그대로 나른다** (2026-10-19 사용자, R Y1). 값은 DB에서만 온다. 코드가 소유한 키 메타데이터이고 DB에 짝이 없어 키마다 출처가 하나다(arb `@key`와 같은 부류 — 병합 아님). 빼면 `%s %d` 같은 값의 새 파일이 aapt2 빌드 오류다. 기존 create 결정("뼈대만 + 값 있는 키만")을 이 한 속성만큼 넓힌다.
+19. **A는 B와 함께 push한다 — B가 dev에 들어가기 전에는 push하지 않는다** — 지휘자 판단(R R3, 리뷰 권고). A만 배포되면 온보딩이 `values-*` 코드를 Android 기준으로 확정해 `values/`를 다른 언어로 조용히 적재한다(R 재현: de → English). 임시 서버 가드보다 배포 묶음이 단순하다. A·E·D·로그인 KV 수정은 로컬 dev에 통합해 두고, B 통합 뒤 한 번에 push한다.
+20. **`android/security-certification-resources`의 새 단일 언어 후보는 보고 대상 오탐이다** — 지휘자 판단(apple 결정 12와 같은 기준: 정답을 빼앗지 않았고 `-`가 후보로 바뀐 것). spec 완료 조건 3 문구는 D2가 apple과 같이 맞춘다.
 
 ## 배치
 
@@ -58,4 +61,6 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **E-fix1 완료** — `cc7e160a` test · `90afe459` fix(새 코드 `inline-markup-invalid` — 태그를 시작하지 못하는 `<`, 결정 14 · 기준 파싱 실패 시 토큰 멀티셋 비교, 결정 15 · 두 키 배치 원자성·다른 셀 기존 불일치·R1 회귀 진입점 테스트). `gate: ok`(16789 + 격리 932). 지휘자가 판정·코어 diff를 직접 보고 재리뷰 없이 수용 — A의 최종 엔티티 문법이 나오면 E 판정과 맞는지 통합 전에 대조한다. E 터미널 retain.
 - **A 완료** — `d72e5ed9` feat · `3b6fb97c` fix(같은 offset 삽입 병합 — `/code-review`) · `f52d0252` 기준선. `gate: ok`(16974 + 격리 937). `@xml-tools/parser` 1.0.12 exact(16진 문자 참조 렉싱 결함 — 엔티티는 원문에서 푼다), aapt2 2.20 채록 67건. 결정 14 값 문법을 인계에 명시(`&lt;` 유지 · `&amp;`는 `lt;`·`amp;` 앞에서만). 고정 SHA: 학습·홀드아웃 1순위·metrics 바이트 동일 · 모바일 Android 정답 19 중 18이 1순위 정답(NewPipe는 composeResources 먼저 — 결정 16 · open-u60-pro는 iOS alsoValid 유지, Android 3순위) · 고정점 100% · 손실 0 · `resource-limit` 0 · 중복 `name` 0(결정 8 ask 불필요) · Flutter 셸 6리포 전부 ARB 유지(`isFlutterShell`을 `android/`에 걸었다 — 결정 7) · 오탐 1(`android/security-certification-resources` 단일 언어 후보 — 보고 대상). ⚠️ 미룬 것: create_project/add_sources basePath 진입점 갈래·기준 코드 주입은 B(T3.2b) — **A만 dev에 있는 동안 온보딩이 `values-*` 코드를 Android 기준으로 고른다**(R이 판정). 계획과 다른 점 10개 → R. A 터미널 retain. 사본 `handoffs/handoff-A.md`.
 - 결정 16·17. R `ctx_549ef47db323`(codex gpt-6-astra medium).
+- **R 완료** — 🔴3(R1 스팬 경계 공백이 aapt2와 달라 새 값도 다르게 전달 · R2 잘못된 태그(속성의 맨 `&`·중복 속성·끝 태그 속성)를 XML에 그대로 쓰고 성공 · R3 A 단독 배포에서 기준 언어 오적재) · 🟡3(Y1 `formatted=false` 유실 · Y2 Compose 값 의미 미채록 · Y3 멀티 모듈 probe 예산 시나리오 부재) · ⚪2(인계 표 낡음 · 주석). 계획과 다른 점 8 거부(R1), 1·2·3 조건부, 나머지 수용. 병합 없음 위반 없음, 삽입 144조합 고정점 확인. 사본 `handoffs/review-A.md`. R 해제.
+- 결정 18(사용자)·19·20. A-fix1 `ctx_f7eeff1c0424`(A 터미널 재사용 — R1·R2·Y1·Y2·W1·W2 + 결정 16 판정 JSON). R3 공급 고리·Y3는 B 몫. A 컨텍스트 73%.
 
