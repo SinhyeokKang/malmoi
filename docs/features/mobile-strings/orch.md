@@ -16,7 +16,8 @@
 6. **`lib/survey/`는 A(M0)가 먼저 소유한다** — B의 survey 다섯 줄·C의 `run.ts:63` NUL 스킵 교체는 A가 dev에 들어간 뒤로 미룬다(인계의 "미룬 항목").
 7. **M1 후보는 다시 모은다** — 지휘자 판단. 10-19 보급률 표본(1,397개)의 원 리포 목록이 리포·`.scratch` 어디에도 남지 않았다. D가 spec에 적힌 같은 기준(스타 구간·2026-04 이후 push·fork·보관 제외)으로 `gh` 검색해 보유 기준 비슷한 규모로 모으고, 검색식과 실제 수를 `repos.md`에 남긴다.
 8. **M3는 계획대로 완전 왕복** (2026-10-19 사용자). M1에서 정답 카탈로그가 UTF-16인 리포가 0개였지만(판별+명시 실패로 축소를 추천했다), design §3대로 읽기·쓰기·바이트 `blobSha`·GitHub blobs·GitLab base64까지 간다.
-9. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
+9. **되살림 판정은 basePath를 보지 않는다** (2026-10-19 사용자, RB Y3). 템플릿·어댑터가 같으면 옛 행(id·slug·번역·이력)을 되살리고 basePath는 재탐지값으로 덮는다 — design §2의 plan-revival 줄은 B-fix1이 고친다.
+10. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
 
 ## 배치
 
@@ -51,3 +52,4 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **B 완료** — 커밋 3개(`84133c37` test · `545c7cfc` 마이그레이션(오프라인 생성, dev DB 미적용) · `441d4049` 배선), `gate: ok`(16239 + 격리 909). 고정 SHA survey 학습·홀드아웃 1순위 diff 0, `ms` 외 JSON 동일. 계획과 다른 점 7개(경로 함수 서명 확장 · 지문은 basePath 있을 때만 튜플에 덧붙임 · 되살림 판정은 basePath 무시 · 온보딩 pick이 basePath를 실음 · 수동 지정은 basePath 없음 · 가짜 DB 행 · 409 본문) → RB가 판정. B 터미널 retain.
 - RB 시작 `ctx_5be45de722d2`(codex gpt-6-astra medium, 첫 세 커밋만). 같은 때 B에게 미룬 survey 다섯 자리를 새 Dispatch `ctx_632a76c10979`로 보냄(A가 dev에 있어 rebase 후 진행, 새 커밋만).
 - **D 완료·통합** — `a94f594f` cherry-pick, main `gate: ok`. 리포 60(학습 48 · 홀드아웃 12), 보유 ARB 14 · Apple 34 · Android 30(Flutter 앱의 생태계 중복). 세 건수: **UTF-16 `.strings` 6리포 — 전부 벤더·샘플·템플릿, 정답 카탈로그가 UTF-16인 리포 0** · `Base.lproj/Localizable.strings` 1 · xcstrings 원문 셀 없는 키 21.7%(2,218/10,237). clone 실패 0. 계획과 다른 점: 리포 검색+트리 정규식(코드 검색은 stars·pushed 필터 불가), 다국어 묶음 있는 리포 위주 추출(시드 20261019). **`/merge` 전 사용자 검수 판정 7묶음**은 `handoffs/handoff-D.md` "사용자 검수가 필요한 판정". D 워크트리 정리. tasks M1 체크. (지휘자가 판정을 직접 읽었고 독립 리뷰는 두지 않았다 — 문서·데이터뿐이고 정답 판정은 사용자 검수 대상이다.)
+- **RB 완료** — 🔴1(`probeTargets`가 없는 `values-en/` 치환 경로를 대상에 넣어 `IngestBudgetError` — 실 함수로 재현) · 🟡3(진입점 시나리오 테스트 부족 · ACTIONS/DIRECTORY/MCP 계약 문서 누락 · 되살림 규칙 변경은 사용자 결정) · ⚪(MCP 생성 응답의 `basePath: null`). 사본 `handoffs/review-B.md`. RB 해제. B-fix1 브리프 작성 — B-survey가 끝나면 보낸다.
