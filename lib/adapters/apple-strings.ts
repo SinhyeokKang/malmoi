@@ -129,8 +129,8 @@ export function tokenizeStrings(text: string): Tokenized {
 const SIMPLE_ESCAPES: Record<string, number> = { n: 0x0a, t: 0x09, r: 0x0d, a: 0x07, b: 0x08, f: 0x0c, v: 0x0b };
 
 /**
- * 8진 이스케이프 0o200–0o377 → 코드 포인트. Apple 파서는 8진 값을 **NeXTSTEP 인코딩 바이트**로 읽는다 — 이 표는 `/usr/bin/plutil`에서
- * 2026-10-19에 0o200–0o377 전부를 채록했다(0o376·0o377은 NUL). 0o400 이상은 NUL이다.
+ * 바이트 0x80–0xFF → 코드 포인트. Apple 파서는 8진 값을 **NeXTSTEP 인코딩 바이트**로 읽는다 — 이 표는 `/usr/bin/plutil`에서
+ * 2026-10-19에 채록했다(0xFE·0xFF는 NUL). 세 자리 8진은 0o777까지 가므로 하위 8비트로 줄인 뒤 이 표를 본다(리뷰 R2-1).
  */
 const NEXTSTEP_HIGH: readonly number[] = [
   0x00a0, 0x00c0, 0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c7, 0x00c8, 0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf,
@@ -146,7 +146,7 @@ const NEXTSTEP_HIGH: readonly number[] = [
 /**
  * 리터럴 토큰(따옴표 포함) → 값. 따옴표 없는 토큰은 그대로다. **Apple 파서(`plutil`)와 같은 의미다**(리뷰 R1 — 테스트의 채록 픽스처):
  * - `\U` 뒤 16진 최대 4자리가 UTF-16 코드 유닛이고, 16진이 없으면 NUL이다. 소문자 `\u`는 이스케이프가 아니다(`u` 글자).
- * - 8진 최대 3자리는 NeXTSTEP 바이트다(위 표). 0o400 이상은 NUL.
+ * - 8진 최대 3자리를 읽어 **하위 8비트**를 NeXTSTEP 바이트로 읽는다(위 표) — `501`(8진)은 0x41 = `A`, `400`·`776`·`777`은 NUL이다.
  * - `a b f v n t r`는 제어 문자, 그 밖의 글자(따옴표·역슬래시·줄바꿈 포함)는 그 글자 자신이다.
  *
  * 짝 없는 서로게이트가 나오면 `undefined`다 — DB(UTF-8)에 담을 수 없는 값을 다른 값으로 바꿔 적재하지 않고 호출부가 파일을 실패시킨다.
@@ -172,8 +172,8 @@ export function decodeStringsLiteral(literal: string): string | undefined {
       i += hex.length;
     } else if (/[0-7]/.test(next)) {
       const oct = /^[0-7]{1,3}/.exec(body.slice(i))![0];
-      const byte = parseInt(oct, 8);
-      unit(byte < 0o200 ? byte : byte < 0o400 ? NEXTSTEP_HIGH[byte - 0o200]! : 0);
+      const byte = parseInt(oct, 8) & 0xff;
+      unit(byte < 0x80 ? byte : NEXTSTEP_HIGH[byte - 0x80]!);
       i += oct.length - 1;
     } else unit(body.charCodeAt(i));
   }
