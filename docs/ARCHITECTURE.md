@@ -36,6 +36,9 @@
    ⚠️ **pull 시점 base 파일의 키 집합은 원본 base 파일이 정한다** (2026-09-27, launch-audit B3.4) — CI 적재가 보류된 동안 DB 키 집합이
    리포보다 뒤처지므로, DB 키로 base를 쓰면 코드가 더한 키를 지우고 지운 키를 되살렸다. 원본과 DB(활성)에 다 있는 키는 DB 값, 원본에만 있는
    키는 원본 값, DB에만 있는 키는 쓰지 않는다 — **키마다 출처가 하나라 이 불변식 안이다**(두 값을 견주지 않는다). §3 "base 키 집합".
+   ⚠️ **소스 키 메타데이터(ARB `@key`)도 원본이 준다** (2026-10-19, arb) — `arb-catalog`는 그 로케일 원본 파일의 `@key` 구간을 바이트 그대로
+   그 키 바로 뒤로 나른다. 값이 아니라 개발자가 템플릿에 쓰는 **소스 키 메타데이터**이고 소유자가 코드라 DB에 넣지 않는다. `@key`의 출처는
+   원본뿐이고 DB에 견줄 짝이 없으므로 **고르는 코드가 없다** — B3.4의 "원본에만 있는 키는 원본 엔트리 그대로"와 같은 형이다(§1.37).
    ⚠️ **야간 서버 적재도 "push 시점"이고, 자동 적재의 사전 보류 입력은 둘이 됐다** (2026-09-30, nightly-sync) — 미전달 편집 수 · "Malmoi PR이
    열려 있나". 야간은 그 앞에 base head SHA 동일성으로 **스킵**(`upToDate` — 적재할 새 커밋이 없다)을 가르는데, 그것은 보류가 아니다. 셋 다 값이
    아니라 **적재를 할지**만 정하고, 보류의 결과는 적재 **전체**라 셀을 고르지 않는다.
@@ -48,7 +51,7 @@
    ⚠️ **언어 제거도 삭제가 아니다** (2026-10-14, locale-add · §5.10) — 리포 파일 삭제와 앱 비활성(`orphaned`)일 뿐 로케일 행·번역·이력은 그대로이고, 같은 코드의 재추가가 같은 행을 되살린다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 미리보기와 실행의 공통 `planDelivery`가 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 키·파일 부재로 이미 보류된 셀은 이 전체 거부에서 제외한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
-4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
+4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4), **소스 키 메타데이터**(ARB `@key`·`@@*`, §1.37)를 준다.
    ⚠️ **언어 추가·제거 요청(`LocaleChange`)도 "DB 상태"다** (2026-10-14, locale-add) — 같은 요청 행 + 같은 원본이면 같은 파일 집합·같은 바이트다.
    ADD의 새 파일 표현은 그 소스의 **기준 언어 파일 하나**에서만 빌린다(형제 파일 중 아무거나가 아니다).
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
@@ -145,6 +148,7 @@
 | `ts-dict` | `<dir>/*.ts` · `<dir>/*.tsx` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③). ⚠️ **확장자가 템플릿의 일부다** (2026-09-27, audit #13) — 탐지·씨앗이 `디렉터리+확장자`로 묶어 `.tsx` 디렉터리는 `*.tsx`를 내고, 혼합 폴더는 후보 둘이다(glob을 `{ts,tsx}`로 넓히지 않는다) |
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
+| `arb-catalog` | `<dir>/<prefix>_{locale}.arb` (예 `lib/l10n/app_{locale}.arb`) | 최상위 `string`(ICU 통짜) | per-locale | regenerate | Flutter 리포 (2026-10-19 — 재측정은 §1.9). ⚠️ **regenerate인데 키별 내용(`@key`)을 원본에서 나른다** — §1.37 |
 
 ### read 오류의 갈래 — 실패 · "관리하지 않는 항목" · 경고 (2026-09-24, B2 r3 · QA5 · B7a r1)
 
@@ -182,7 +186,7 @@
 
 **같은 입력 → 언제나 바이트 단위로 같은 출력.** 깨지면 blob SHA 비교(§2)가 매번 "변경됨"을 뱉어 야간 cron이 무의미한 커밋을 쌓고 PR diff가 노이즈로 덮인다 — 조용히 망가지고 며칠 뒤에 발견되는 종류다.
 
-⚠️ **아래 표는 `writeStrategy === "regenerate"`(`chrome-locales`·`json-catalog`)에만 적용된다.** 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 원본의 순서·빈 줄·주석을 보존하는 것이 요지라 정렬·재조립을 하지 않고 `orderedEntries`를 지나지 않는다 — §1.4를 따른다. **`layout`이 아니라 `writeStrategy`로 갈린다** — `yaml-catalog`은 `per-locale`인데도 이 표를 지나지 않는다.
+⚠️ **아래 표는 `writeStrategy === "regenerate"`(`chrome-locales`·`json-catalog`·`arb-catalog`)에만 적용된다.** 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 원본의 순서·빈 줄·주석을 보존하는 것이 요지라 정렬·재조립을 하지 않고 `orderedEntries`를 지나지 않는다 — §1.4를 따른다. **`layout`이 아니라 `writeStrategy`로 갈린다** — `yaml-catalog`은 `per-locale`인데도 이 표를 지나지 않는다.
 
 계약 테스트가 `ADAPTERS`를 순회하며 이 매트릭스를 그대로 검사한다 — ⚠️ **판정과 순회가 파일 둘로 갈려 있다**: `lib/adapters/__tests__/contract.ts`는 `Adapter` **하나**를 받는 판정 헬퍼(`writerContractViolations`·`prototypeKeyViolations`·`baseKeySetViolations`)만 들고 `ADAPTERS`를 참조하지 않으며, 순회는 `contract.test.ts`가 한다. 어댑터를 추가하면 검사가 자동으로 늘고, 규칙을 어기는 가짜 어댑터를 잡는 네거티브 테스트가 검사기 자체를 지킨다. **`prototypeKeyViolations`가 프로토타입 키 계약을 `writeStrategy`와 무관하게** 전 어댑터에 건다 — 재생성은 flat·nested 두 갈래를 다 돈다(오염은 중첩 복원에서, 키 소실은 flat 대입에서 난다).
 
@@ -200,7 +204,7 @@
 | 끝 개행 | 정확히 1개 | `JSON.stringify`는 개행을 안 붙인다. 2개면 SHA가 달라진다 |
 | `orphaned` | 제외 | DB엔 남는다 — export에서만 빠진다. **`orderedEntries`가 유일한 관문이라 모든 재생성 writer가 이걸 지나야 불변식에 주인이 생긴다** |
 | 미번역 | 제외 (빈 문자열 포함) — ⚠️ **단 `LocaleEntry.writeEmpty`가 붙은 빈 값은 `""`로 쓴다** | 남기면 크롬이 빈 값을 그대로 렌더한다. 빼면 폴백한다. **예외는 base 파일에 `""`로 있던 키 하나다** (2026-09-18, launch-readiness L4.10): 원문(sourceText)까지 빈 base 키를 빼면 머지 뒤 push가 그 키를 **전 로케일에서 orphan**하고 다음 pull이 비-base 번역을 지운다(20차 실측 7개 리포). 판정은 `buildWriteEntries`가 하고(`WriteInput`엔 `isBase`가 없다) `orderedEntries`는 표시만 본다. 비-base의 빈 값은 여전히 미번역이다 |
-| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다. ⚠️ **base 파일은 이 행으로 비지 않는다** — base 키 집합은 원본이 정하므로(§3 "base 키 집합", B3.4) 원본 키가 원본 값으로 남는다. 원본이 `{}`일 때만 `{}`다 |
+| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다. ⚠️ **`arb-catalog`의 원본 있음은 `{}`가 아니라 원본의 `@@*`만 남은 객체다**(§1.37 — 계약 매트릭스의 예외 행). ⚠️ **base 파일은 이 행으로 비지 않는다** — base 키 집합은 원본이 정하므로(§3 "base 키 집합", B3.4) 원본 키가 원본 값으로 남는다. 원본이 `{}`일 때만 `{}`다 |
 | 키 대입 | **프로토타입 없는 객체**(`Object.create(null)`)에만 대입한다 | 2026-09-09 추가 (sec-audit 발견 1·17). 로케일 파일의 키는 남이 쓰므로 `__proto__`가 온다. 평범한 `{}`에서 `out["__proto__"] = v`는 setter를 불러 own property를 안 만들고 **그 키가 조용히 사라지고**, 중첩 복원의 `node[head]` 조회는 `Object.prototype`을 돌려줘 다음 세그먼트가 **거기에 앉는다** — 프로세스 전역이라 같은 인스턴스가 서비스하는 **다른 테넌트**의 pull까지 바꾼다. ⚠️ **재조립 자리도 같다** — `normalizeArrays`가 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 한 줄 뒤에 사라진다. 검사는 `prototypeKeyViolations`(`ADAPTERS` 전수) |
 
 **⚠️ 정렬 지점보다 먼저 볼 것은 값이 흐르는 경로 넷이다** (2026-09-03). `StringKey.sortIndex`가
@@ -397,6 +401,35 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
     ⚠️ **`AdapterError`는 문장을 안 든다 — 코드를 든다** (2026-09-08, 6b-1): `{ path, code: AdapterErrorCode, key?, detail? }`이고 문장은 `lib/i18n/adapter-errors.ts`의 `adapterErrorMessage(error, m.adapterErrors)`가 **넘겨받은** 사전의 `adapterErrors`에서 꺼내 조립한다(화면은 요청 사전, 외부 계약은 `en`) — `key`는 앞에, `detail`(파서 원문)은 뒤 괄호에. 어댑터가 자유 문자열을 만들던 시절엔 **화면에 닿는 문구가 사전 밖에 있어** en으로 고쳐도 ko가 따라오지 않았다 . ⚠️ **`lib/survey/one.ts`의 `classify`가 같은 코드로 §1.9 지표 ③을 가르므로 갈래를 합치면 회차 간 대조가 무의미해진다** — `parse-failed`와 `parse-crashed`가 옛 문구 기준으로 다른 통이라 갈라져 있고, `__tests__/classify.test.ts`가 옛 문구 22개와 옛 분류기 본문을 픽스처로 들고 그 표를 고정한다. 편집 UI에서는 **결과 자체가 갈린다**: writer 경고는 **보내지 않은** 결과라 `planPublishView`의 `partial` 갈래로 서고(보류 `withheld`와 같은 갈래), 성공 문구에 한 줄 덧붙이지 않는다 — 그러면 버린 값이 success 안에 숨는다(§0 불변식 9). **어느 파일인지는 화면이 직접 보인다** — Publish 모달이 `파일: 메시지`를 **펼친 목록**으로 세운다(DESIGN §6.646). ⚠️ **2026-09-16에 `<details>`가 사라졌다** — 접힌 목록은 불변식 9의 경계선이었다. 같은 날 `pullMessage`도 사라졌다: tone 넷을 내던 그 함수 대신 화면이 `PullOutcome`을 직접 갈래로 옮기고(`lib/publish/plan.ts`) `lib/pull/message.ts`에는 **`PullOutcome` 타입과 `pullRevalidates` 판정**(그리고 뒤에 더해진 `UNCONFIRMED_PULL` — §3.1)만 남았다. 문구의 정본은 사전 셋(`messages/{en,ko,es}.tsx`의 `adapterErrors`)이다(Action 반환에는 코드가 든 `PullOutcome`이 그대로 실리고, cron 응답 JSON만 위의 en 문장 모양이다). 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
+
+### 1.37 `arb-catalog` — 재생성이지만 `@`항목은 원본에서 나른다 (2026-10-19, arb)
+
+Flutter `gen-l10n`의 ARB는 JSON 객체 하나에 번역(`"key": "string"`)과 메타데이터(`"@key": {…}` · 전역 `"@@locale"`·`"@@last_modified"`·`"@@x-*"`)가 섞인다.
+read는 최상위 `"key": "string"`만 엔트리로 낸다 — `@`로 시작하는 항목은 엔트리가 아니다. 표현(들여쓰기·이스케이프·끝 개행·CRLF)은 `json-style.ts`를 그대로 쓴다.
+
+| 파일 표기 | DB·화면 값 | 저장 검증 |
+|---|---|---|
+| JSON 문자열 | JSON 이스케이프를 푼 문자열(ICU 그대로) | 없음 |
+
+ICU(`{count, plural, …}`·`select`)는 **통짜 문자열**이다 — 풀지도 검증하지도 않는다. i18next `{{name}}`을 raw로 보여 주는 것과 같은 관행이고,
+복수형을 편집하지 않고 보존만 하므로 PRODUCT §4.2의 "ICU 복수형" 비범위에 들지 않는다.
+
+**write의 규칙 — `@`항목의 출처는 원본뿐이다:**
+
+- 엔트리 순서는 `LocaleEntry.order`(§1.1)다. **`@key`는 같은 로케일 원본 파일의 그 텍스트 구간을 바이트 그대로 그 키 바로 뒤에 둔다** —
+  다시 직렬화하지 않는다. 원본에서 `@key`가 키보다 앞에 있었어도 출력은 키 바로 뒤라, 첫 Publish에서 한 번 옮겨지고 그 뒤 고정점이다.
+- **출력하지 않는 키의 `@key`는 버린다** — orphaned 키·DB에만 있는 키의 `@foo`가 짝 없이 남지 않는다. 원본에만 있는 키(B3.4)는 원본 엔트리와 `@key`를 함께 낸다.
+- 원본의 `@@*`는 원본 위치(대개 맨 앞)와 순서를 지킨다. **`@@locale`은 원본에 그 줄이 있을 때만** 값을 경로의 로케일 코드로 생성한다 —
+  원본 값과 견주지 않는다(`app_ko.arb`의 `ko-KR`은 첫 Publish에서 `ko`로 한 번 고쳐진다). 원본에 없으면 넣지 않는다.
+- **새로 만드는 파일(언어 추가, §5.10.4)에는 `@@locale`을 항상 넣고 `@key`는 없다** — 기준 언어 파일에서 빌리는 것은 표현뿐이고, `@@locale`을 빼면 복제된 표현이
+  기준 언어 코드를 들고 나갈 수 있다. `gen-l10n`은 템플릿 파일의 메타데이터만 읽으므로 비-base 파일에 `@key`가 없어도 동작이 같다.
+- 쓸 값이 0이고 원본이 있으면 출력은 `{}`가 아니라 **원본 `@@*`만 남은 객체**다. `lib/adapters/__tests__/contract.ts`의 regenerate 분기("원본이 있고 쓸 값이 0이면 `{}`")에
+  ARB 예외 행이 이 때문에 있다. 퇴화 출력(`@@locale`만 남은 파일)도 다음 read·write의 입력으로 왕복해야 한다(POSTMORTEM 2026-09-29).
+
+**왜 이것이 병합이 아닌가.** 다른 재생성 어댑터는 원본에서 **표현만** 가져오고, chrome의 `description`·`placeholders`도 DB에서 온다(§1.1).
+`arb-catalog`는 **키별 내용을 write 시점에 원본에서 가져오는 첫 재생성 어댑터**다. 그래도 `@key`는 번역 값이 아니라 개발자가 템플릿에 쓰는 소스 키
+메타데이터이고(불변식 1 — 소스 키의 소유자는 코드다), DB에 그 짝이 없어 키마다 출처가 하나다. 원본 값과 DB 값을 견줘 고르는 코드가 생기면 이 근거가 깨진다.
+`placeholders`를 DB에 넣은 chrome과 달리 `@key`를 넣지 않은 것은 번역자가 로케일별로 고치는 내용이 아니기 때문이다(2026-10-19 사용자 결정 — 스키마 변경 0).
 
 ### 1.4 수술적 치환 (`ts-dict`·`yaml-catalog`·`code-dict`) — 규칙이 반대다
 
@@ -2382,7 +2415,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 
 ## 5.10 언어 추가·제거 (locale-add — 2026-10-14)
 
-OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`**(언어마다 파일이 따로인 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
+OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`·`arb-catalog`**(언어마다 파일이 따로인 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
 웹 Server Action 다섯(`addSourceLocale`·`previewSourceLocaleAdd`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
 `app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다. 호출자는 Sources 상세의 Languages 카드와 Dialog 둘이다(DESIGN §6.66).
 ⚠️ 추가 미리보기 `previewSourceLocaleAdd`는 MCP에 짝이 없다(`add_locale`은 바로 실행하고 거부 코드로 답한다).
@@ -2520,7 +2553,7 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   YAML은 기준 코드와 다른 루트·생성 결과의 루트 오인을 거부하고 YAML 1.1 모호 토큰을 인용한다. CRLF·BOM·들여쓰기를 따른다.
   code-dict는 기준 코드가 든 named export 이름과 `__proto__` 프로퍼티를 거부한다. 값·키 인용과 끝 쉼표를 따르고 BOM은 쓰지 않으며 세미콜론은 고정한다.
   기준 파일 없음·지원하지 않는 생성 규약은 `write-create-unsupported`, 파싱 실패는 `write-parse-failed`다. **생성 실패는 `content: null`과 blocking 오류를 함께 내며 보류로 낮추지 않는다.** 값 0개만 `null`과 빈 오류를 낸다.
-  Chrome의 `placeholders`·`description`은 복사하지 않는다. 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 같은 DB 입력으로 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
+  Chrome의 `placeholders`·`description`은 복사하지 않는다. ARB는 기준 파일의 `@key`·`@@*`를 복사하지 않고 `@@locale`만 새 언어 코드로 쓴다(§1.37). 생성한 파일을 같은 어댑터로 읽으면 DB 키·값과 같고, 같은 DB 입력으로 다음 Publish가 그 파일을 원본으로 읽어도 diff 0이다(`contract.ts` 매트릭스 행).
   **새 파일은 듬성할 수 있다** — 이후 값이 생긴 키의 부모 맵이 그 파일에 없으면 기존 수술적 삽입은 남은 경로를 점 리터럴 키(`"a.b.c"`)로 넣는다. 중첩 조회 런타임에서 그 키를 읽는지와 새 언어의 import·지원 언어 목록 등록은 대상 리포가 책임진다. PR 본문 안내는 기존 제거 안내를 유지한다.
   미전달 ADD의 경로가 이미 base에 있으면 **그 언어만** `proposal-path-exists`로 보류하고 나머지 편집은 나간다. **값 0개 ADD는 파일을 내지 않고** Publish 작업으로 세지 않는다(미리보기가 `empty`로 알린다).
 - **조기 종료 · 전부 보류**: 셀 편집 0·`maxUpdatedAt = null`이어도 언어 변경 작업이 있으면 실행하고(`at: null`이면 `lastPulledAt`을 쓰지 않는다), **번역이 전부 보류여도 안전한 삭제는 전달한다.**
