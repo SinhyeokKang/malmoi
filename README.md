@@ -121,7 +121,7 @@ collects code references, so each key shows where your code uses it.
   workflow log says `deferred`). Merge or close the pull request and the next
   update goes through. Only a project owner can discard unsent edits (Sync or
   Revert).
-- **Add or remove languages** — project owners can request language files for JSON and YAML catalogs, Chrome messages, Flutter ARB files, Apple strings files, and code dictionaries with one file per language. Publish creates or deletes the file in the same pull request; removed translations stay in Malmoi and return when you add the language again. Dictionaries and Apple String Catalogs with all languages in one file require repository changes
+- **Add or remove languages** — project owners can request language files for JSON and YAML catalogs, Chrome messages, Flutter ARB files, Apple strings files, Android strings files, and code dictionaries with one file per language. Publish creates or deletes the file in the same pull request; removed translations stay in Malmoi and return when you add the language again. Dictionaries and Apple String Catalogs with all languages in one file require repository changes
   ([details](https://mal-moi.com/docs/setup/languages)).
 - **Removed keys are kept** — bring the code back and its translations return.
 - **Nightly sync** — once a night (18:00 UTC), for active, connected projects
@@ -162,15 +162,19 @@ collects code references, so each key shows where your code uses it.
 | Flutter ARB | `lib/l10n/app_{locale}.arb` |
 | Apple strings file | `ios/App/{locale}.lproj/Localizable.strings` |
 | Apple String Catalog | `ios/App/Localizable.xcstrings` |
+| Android strings file | `app/src/main/res/values-{locale}/strings.xml` |
 
-Existing YAML catalogs, code dictionaries, and Apple strings files keep comments, blank lines, and key order;
+Existing YAML catalogs, code dictionaries, Apple strings files, and Android strings files keep comments, blank lines, and key order;
 Apple String Catalogs change only the edited cells, in Xcode's layout, and read keys without a source-language entry as their own source text;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Flutter ARB files also keep each key's `@key` metadata and the `@@` entries from your file;
 ICU messages (plurals, selects) are shown and saved as whole strings. Apple strings files stay in their UTF-8 or UTF-16 encoding;
-`.stringsdict` plurals and String Catalog variations are kept as they are, not edited. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
+`.stringsdict` plurals, String Catalog variations, and Android `<plurals>`, `<string-array>`, and `translatable="false"` entries are kept as they are, not edited.
+Android values are shown with escapes resolved; inline tags such as `<xliff:g>` stay as text, and a translation must keep the base language's tags — change only the words between them.
+Android's `values/strings.xml` has no language code, so you enter the base language when you connect it (and the workflow needs `base-locale`); it can't be changed later. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
 sends them in one pull request (one merge request on GitLab).
-New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed — for Apple strings files, add the new `.lproj` to your Xcode project (and remove it there when you remove a language).
+New YAML and per-language code files borrow the base file's conventions and contain only translated keys, without its comments, imports, or type declarations. Register new languages in your app's code where needed — for Apple strings files, add the new `.lproj` to your Xcode project (and remove it there when you remove a language); for Android apps that limit languages with `resConfigs` or `localeFilters`, add the new language there.
+New Android languages use Android's resource spelling, such as `pt-rBR`.
 A single file larger than 2 MB, such as a large String Catalog, can't be loaded.
 [Limits →](https://mal-moi.com/docs/reference/limits)
 
