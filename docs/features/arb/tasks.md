@@ -15,19 +15,19 @@
 
 ## 1. ARB (`arb-catalog`)
 
-- [ ] **T1.1 테스트** — read(`@key`·`@@*` 제외, 중복 속성 warning, `"__proto__"` 키가 own property로 남음), write(`@key` 원본 구간 바이트 운반 ·
+- [x] **T1.1 테스트** — read(`@key`·`@@*` 제외, 중복 속성 warning, `"__proto__"` 키가 own property로 남음), write(`@key` 원본 구간 바이트 운반 ·
       `@key`가 키보다 앞인 원본 · orphan·DB 전용 키의 `@key` 버림 · 원본에만 있는 키는 `@key`와 함께 · `@@*`·`@@x-*` 순서 · `@@locale`은 원본에 있을 때만 ·
       고정점 · CRLF), 퇴화 입력(`{}`·`@@locale`만 있는 파일)의 왕복, detect(`l10n.yaml` 보조 · `aside` · 진입점 `detectCandidatesAcross` 1순위),
       `contract.ts` 매트릭스 편입(ARB regenerate 예외 행), 새 파일은 `representationSource` 경로 + `@@locale`. 검증: red.
-- [ ] **T1.2 구현** — `json-style.ts` 재사용. 검증: `pnpm test` green. 커밋: `feat(adapters): add ARB catalog adapter`
-- [ ] **T1.3 껍데기 배선** — typecheck가 못 잡는 손 목록까지 전수(POSTMORTEM 2026-09-02):
+- [x] **T1.2 구현** — `json-style.ts` 재사용. 검증: `pnpm test` green. 커밋: `feat(adapters): add ARB catalog adapter`
+- [x] **T1.3 껍데기 배선** — typecheck가 못 잡는 손 목록까지 전수(POSTMORTEM 2026-09-02):
       `ADAPTERS` · `SUPPORTED_ADAPTERS`(`lib/locales/add-plan.ts:13`, 문자열 Set) · `lib/import/empty.ts:25` · 온보딩 `probeTargets`(`lib/onboarding/detect.ts:29-52`) ·
       survey `select.ts` + `select-patterns.test.ts` `SHARED` · `renderProjectWorkflowYaml` · `renderProjectGitlabCiYaml`(`lib/onboarding/gitlab-ci.ts:38`) ·
       `lib/cli/gitlab-ci-input.ts` adapter 검증 · `contract.ts` `formatFor`·`baseFixture`·`fourSpaceDonor` · `contract.test.ts` 이름 목록·layout/writeStrategy 표 ·
       `detect-candidates.test.ts` `cases` · 아이콘 분기(`components/sources/sources-screen.tsx:130`) · `lib/openapi` 스냅숏(adapter enum이 실렸으면) ·
       사전 3벌 `newProject.formats` 라벨·예시(`/translate` 모드 ① — 기존 라벨 형, 내부 이름 미노출) · `unsupported-format` 문구(`messages/en.tsx:4528` 지원 포맷 나열).
       검증: 껍데기 테스트가 `.arb`를 내려받는다, `pnpm gate` green(`banned-terms`·`dictionary-consistency` 포함). 커밋: `feat(adapters): wire the ARB adapter`
-- [ ] **T1.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
+- [x] **T1.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
       `resource-limit` 거부 수 보고. 커밋 없음(결과는 T5.2에 기록).
 - [ ] **T1.5 실물 (수동)** — `/roundtrip`으로 폐기용 Flutter 리포 왕복. 전제: Flutter SDK 설치, 폐기용 리포는 roundtrip 전제 조건 1의 목록에 없으면 새로 만든다.
       검증: 첫 Publish는 고친 셀 + 허용 정규화(spec 완료 조건 1) 외 diff 0, 두 번째 Publish는 고친 셀 외 diff 0, `flutter gen-l10n` 통과.

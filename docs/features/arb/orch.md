@@ -49,3 +49,6 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 - 수정이 탐지 진입점에 걸쳐 수정분만 재검증 R2 `ctx_6f1ffc25938a`(codex gpt-6-astra medium, `ab009199..HEAD`).
 - **R2 완료** — 🔴0 · 🟡3(Y1 `l10n.yaml` 선행 읽기가 합계 10MB 예산을 두 번 새로 시작 · Y2 스모크가 설정을 예산 검사 밖에서 읽음 · Y3 형제 점수가 같은 디렉터리의 `app_*`·bare 파일군을 하나로 합침) · ⚪ `types.ts` 주석. R1–R5·⚪5 해소 확인, 병합 없음 위반 없음. 사본 `handoffs/review-A2.md`. R2 해제.
 - A-fix3 `ctx_06a53e364a67`(Y1–Y3 + ⚪).
+- **A-fix3 완료** — 커밋 4개(`dd9beb52` Y3 접두사·bare 파일군 분리, 템플릿을 증거로 · `68e4f055` Y1 `readFiles(prior)`로 설정과 표본을 한 예산으로 · `edddcecb` Y2 스모크도 같은 예산 · `22cd4e9f` 주석). 고정 SHA 1순위 diff 0 · metrics 동일 · 모바일 출력 fix2와 바이트 동일. `gate: ok`(16406 + 격리 918). 지휘자가 Y1 diff를 직접 보고 재리뷰 없이 통합(설정 크기를 한 번 더 묻는 것은 사소).
+- **A dev 통합** — 13커밋 cherry-pick(`..3683232b`). main `pnpm gate` → `gate: ok`. tasks T1.1–T1.4 체크.
+- **D dev 통합** — Q가 main 체크아웃을 쓰기 전이라 문서 6커밋을 앞당겨 cherry-pick(`..32c54bbd`). 결정 8의 "D 통합은 Q 뒤"는 Q가 main을 쓰는 동안만의 제약이다. D2(미룬 5개 + 결정 10·11·13 문구)는 Q와 병렬로 워크트리에서 한다.
