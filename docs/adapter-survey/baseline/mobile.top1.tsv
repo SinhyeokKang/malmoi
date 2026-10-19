@@ -10,20 +10,20 @@ Kunzisoft/KeePassDX	25493ea30139adab14d937602f28d5243d3f9ecc	-	-
 LegadoTeam/legado	a7d37f1707a70a459ad708f4fe79341d1e42d716	-	-
 OMARVII/Shotnix	54a8d6446228c7a7e99751759a2c62584b1da35f	json-catalog	Localization/translations/app.{locale}.json
 ResearchKit/ResearchKit	834c968df94be039fc55bc91efddb4f6e79cf49d	apple-strings	ResearchKit/Localized/{locale}.lproj/ResearchKit.strings
-StanfordBDHG/HealthGPT	0673a1c79e7af3a71b10fbb2ce217102c3b4522a	-	-
+StanfordBDHG/HealthGPT	0673a1c79e7af3a71b10fbb2ce217102c3b4522a	apple-xcstrings	HealthGPT/Supporting Files/Localizable.xcstrings
 TeamNewPipe/NewPipe	32eb85d0fb09ef9022421751fd96bee564b9223b	-	-
 android/security-certification-resources	65d101c324b5dbc0042c475df368c94649dcd529	-	-
 begugla0/sni-pinger	2e04841dfe5a1c25d7e7cd59cf49b292b96d2b8b	-	-
 cake-tech/cake_wallet	df6051b535dec10b1c89ffe3bfb7f8806e9be966	arb-catalog	res/values/strings_{locale}.arb
 codenameone/CodenameOne	022d43ca66bdb6d9e4f4e066cdb4ff19de298c33	apple-strings	Ports/iOSPort/Zooz/zoozi18n.bundle/{locale}.lproj/Localizable.strings
-danielsaidi/SwiftUIKit	6b81a3234a3ee0afc1cdccd347a806da6d69155e	-	-
+danielsaidi/SwiftUIKit	6b81a3234a3ee0afc1cdccd347a806da6d69155e	apple-xcstrings	Sources/SwiftUIKit/Resources/Localizable.xcstrings
 deckerst/aves	b1ec13e66896c0d938b991a2f4649eaa071f4761	arb-catalog	lib/l10n/app_{locale}.arb
 didi/DoKit	626827cddb2feb2f3aee87a52a064b4e5ca2bed4	-	-
 erosTeam/eros_fe	2fe86b7375a0268f53998249193f38f74148dade	arb-catalog	lib/l10n/intl_{locale}.arb
 ethereal-developers/OpenScan	530f8d3afe291b56346bf963574ae3d231d1c228	arb-catalog	lib/l10n/app_{locale}.arb
-firebase/FirebaseUI-iOS	fca4bae377d7f3125fe9958d121354a3eb24887d	apple-strings	FirebaseSwiftUI/FirebaseAuthSwiftUI/Tests/FirebaseAuthSwiftUITests/TestResources/MultiLanguage/{locale}.lproj/Localizable.strings
+firebase/FirebaseUI-iOS	fca4bae377d7f3125fe9958d121354a3eb24887d	apple-xcstrings	FirebaseSwiftUI/FirebaseAuthSwiftUI/Sources/Strings/Localizable.xcstrings
 g0v/moedict-webkit	9e00777f50f1e023ccd0507c38afb9b81905c73b	apple-strings	ios/MoeDict/Resources/{locale}.lproj/Localizable.strings
-gnachman/iTerm2	ec4517e6b0c01f2f69d79fce141fa8c55da17ff3	-	-
+gnachman/iTerm2	ec4517e6b0c01f2f69d79fce141fa8c55da17ff3	apple-xcstrings	xcstrings/Localizable.xcstrings
 google/google-api-objectivec-client-for-rest	fca2ddc892173d82edf10cefe079d3697ecf4fc9	apple-strings	Examples/CalendarSample/{locale}.lproj/InfoPlist.strings
 gskinnerTeam/flutter-wonderous-app	747b945a7e5239356bf2664261aa2f3b020b8898	arb-catalog	lib/l10n/app_{locale}.arb
 gunnerkidBT/TwitchAdBlock	139c4038083008e0c3cdbdaa70a8225b08dfe605	apple-strings	layout/Library/Application Support/TwitchAdBlock.bundle/{locale}.lproj/Localizable.strings
@@ -34,10 +34,10 @@ jesther-ai/open-u60-pro	11d95618670657d5baa45f6c5692841fba7cd5e5	apple-strings	m
 krille-chan/fluffychat	0bdd1a48ad2cd29fcfb8010f4ee7ea094c1e82e1	arb-catalog	lib/l10n/intl_{locale}.arb
 likelikeslike/ViPER4Windows	ccc3f61e26a8228e338411f01a63f7f37278914e	arb-catalog	ViPER4Windows/lib/l10n/app_{locale}.arb
 meshtastic/Meshtastic-Android	7f01ed04d58765dbda1c07143e5497f78d9c3728	-	-
-milanvarady/Applite	cf9712ae57a23628f4946389192959eb7079c6be	-	-
+milanvarady/Applite	cf9712ae57a23628f4946389192959eb7079c6be	apple-xcstrings	Localizable.xcstrings
 mit-cml/appinventor-sources	a760b517c436dd49c941c2ad946eb4d80f910fe4	json-catalog	appinventor/node_modules/karma/node_modules/yargs/locales/{locale}.json
-mrkai77/Loop	573ace3071641bbe002527ccfc0811842300ccba	apple-strings	Loop/{locale}.lproj/InfoPlist.strings
-objective-see/LuLu	f4f39b8e77f7ac1f90fe981a5460a46c835ab6e8	-	-
+mrkai77/Loop	573ace3071641bbe002527ccfc0811842300ccba	apple-xcstrings	Loop/Localizable.xcstrings
+objective-see/LuLu	f4f39b8e77f7ac1f90fe981a5460a46c835ab6e8	apple-xcstrings	LuLu/Shared/Localizable.xcstrings
 openfoodfacts/smooth-app	887e167b76757c47e689a95994d1ab064a66cd06	arb-catalog	packages/smooth_app/lib/l10n/app_{locale}.arb
 pass-with-high-score/universal-installer	b17f594d90974c37a25a5de219f697f3f0a3b083	-	-
 rickytan/RTRootNavigationController	9d2927caaeb828c945ad8cbac79328ddd4d922ba	-	-

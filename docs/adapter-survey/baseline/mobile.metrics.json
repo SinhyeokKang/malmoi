@@ -7,14 +7,14 @@
   "configFileRepos": 3,
   "detect": {
     "all": {
-      "n": 25,
+      "n": 30,
       "of": 48,
-      "pct": 52.083333333333336
+      "pct": 62.5
     },
     "supported": {
-      "n": 22,
+      "n": 27,
       "of": 40,
-      "pct": 55.00000000000001
+      "pct": 67.5
     }
   },
   "diff": {
@@ -24,10 +24,19 @@
         "median": 0,
         "overTarget": {
           "n": 0,
-          "of": 12,
+          "of": 10,
           "pct": 0
         },
-        "repos": 12
+        "repos": 10
+      },
+      "apple-xcstrings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 7,
+          "pct": 0
+        },
+        "repos": 7
       },
       "arb-catalog": {
         "median": 0.0008900034566309833,
@@ -61,13 +70,13 @@
     "nonBaseMedian": 0,
     "overHalf": {
       "n": 2,
-      "of": 25,
-      "pct": 8
+      "of": 30,
+      "pct": 6.666666666666667
     },
     "overTarget": {
       "n": 4,
-      "of": 25,
-      "pct": 16
+      "of": 30,
+      "pct": 13.333333333333334
     }
   },
   "diffCauses": {
@@ -88,7 +97,7 @@
       "pct": 84.61538461538461
     }
   },
-  "keyCollisions": 21,
+  "keyCollisions": 22,
   "localeOrder": {
     "agreementMedian": 0.9147727272727273,
     "comparedRepos": 12
@@ -96,29 +105,35 @@
   "measuredCount": 48,
   "misdetect": {
     "correctRank": {
-      "1": 18,
+      "1": 24,
       "3": 1,
-      "\uc5c6\uc74c": 21
+      "8": 1,
+      "\uc5c6\uc74c": 14
     },
     "supported": {
-      "n": 4,
-      "of": 22,
-      "pct": 18.181818181818183
+      "n": 3,
+      "of": 27,
+      "pct": 11.11111111111111
     },
     "withCandidate": {
-      "n": 7,
-      "of": 25,
-      "pct": 28.000000000000004
+      "n": 6,
+      "of": 30,
+      "pct": 20
     }
   },
   "nonDotSeparatorRepos": [
     "InteractionEngineer/PayForMe",
     "OMARVII/Shotnix",
     "codenameone/CodenameOne",
-    "mit-cml/appinventor-sources"
+    "firebase/FirebaseUI-iOS",
+    "gnachman/iTerm2",
+    "milanvarady/Applite",
+    "mit-cml/appinventor-sources",
+    "mrkai77/Loop",
+    "objective-see/LuLu"
   ],
   "partialReadRepos": [],
-  "placeholderRepos": 10,
+  "placeholderRepos": 11,
   "presentation": {
     "compactContainer": 2,
     "dottedWithNested": 1,
@@ -129,8 +144,8 @@
     "adapter-threw": 0,
     "chrome-key": 0,
     "json-parse": 0,
-    "key-collision": 21,
-    "leaf-type": 1,
+    "key-collision": 22,
+    "leaf-type": 68,
     "non-literal-value": 0,
     "non-object-root": 0,
     "other": 0
@@ -138,14 +153,14 @@
   "repoCount": 48,
   "roundtrip": {
     "byteFixpointSame": {
-      "n": 25,
-      "of": 25,
+      "n": 30,
+      "of": 30,
       "pct": 100
     },
-    "notRun": 23,
+    "notRun": 18,
     "semanticSame": {
-      "n": 25,
-      "of": 25,
+      "n": 30,
+      "of": 30,
       "pct": 100
     }
   },
@@ -153,8 +168,8 @@
   "surgicalEdit": {
     "multiHunkRepos": [],
     "oneHunk": {
-      "n": 11,
-      "of": 11,
+      "n": 16,
+      "of": 16,
       "pct": 100
     }
   },

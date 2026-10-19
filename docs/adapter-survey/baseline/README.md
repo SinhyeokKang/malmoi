@@ -1,13 +1,14 @@
-# adapter-survey 회귀 기준선 (apple-strings 뒤, 2026-10-19)
+# adapter-survey 회귀 기준선 (apple-xcstrings 뒤, 2026-10-19)
 
 머신을 옮겨도 다음 어댑터 스펙이 같은 기준으로 회귀를 잴 수 있도록 **리포별 1순위와 `metrics`만** 커밋한다. 원자료 JSON은 크고 머신에 묶여 있어서
 (`.scratch/`) 커밋하지 않는다. 필요하면 아래 명령으로 다시 만든다 — 핀이 있어 같은 SHA에서 돈다.
 
-- 코드: apple-strings 배치 A(`apple-strings` 포함 — arb-catalog 뒤). 출처는 그 배치의 고정 SHA 재측정이다(T2.3).
-- `learning`·`heldout`: 학습 109 · 홀드아웃 20. 리포별 1순위와 `metrics`가 arb 뒤 기준선과 **바이트 단위로 같다** — ARB·Apple strings는 기존 코퍼스를 한 칸도 바꾸지 않았다.
-- `mobile`·`mobile-heldout`: 모바일 학습 48 · 홀드아웃 12. **arb 뒤 기준선과 다르다** — 바뀐 1순위 16개(학습 12 · 홀드아웃 4)가 전부 `apple-strings`다. 그중 정답 경로가 `.strings`인 리포 8개 중 7개는 정답이 됐고(Telegram-iOS는 정답이 2순위다),
-  나머지 8개는 `-`(또는 이미 오탐)에서 Apple 후보로 바뀐 리포다(정답이 xcstrings·Android이거나 카탈로그 없음 — ARCHITECTURE §1.9 27차). **ARB 정답 14개는 1순위가 ARB 그대로다.**
-  arb 뒤 기준선(M0 → ARB 14개 변경)은 git 이력에 있다.
+- 코드: apple-strings 배치 X(`apple-xcstrings` 포함 — `apple-strings` 뒤). 출처는 그 배치의 고정 SHA 재측정이다(T4.3).
+- `learning`·`heldout`: 학습 109 · 홀드아웃 20. 리포별 1순위와 `metrics`가 arb 뒤 기준선과 **바이트 단위로 같다** — ARB·Apple strings·String Catalog는 기존 코퍼스를 한 칸도 바꾸지 않았다.
+- `mobile`·`mobile-heldout`: 모바일 학습 48 · 홀드아웃 12. **apple-strings 뒤 기준선과 다르다** — 바뀐 1순위 8개(학습 7 · 홀드아웃 1)가 전부 정답이 xcstrings인 리포이고 새 1순위가
+  그 정답 경로다(FirebaseUI-iOS · Loop · xliffie는 `.strings` 후보에서, HealthGPT · SwiftUIKit · iTerm2 · Applite · LuLu는 `-`에서). xcstrings 정답 9개 중 Shotnix만 정답이 8순위다 —
+  1순위는 기준선부터 같은 json 오탐(`Localization/translations/app.{locale}.json`, i18n 신호)이고 그대로다. **ARB 정답 14개와 `.strings` 정답 8개의 1순위는 그대로다.**
+  arb 뒤(M0 → ARB 14개)·apple-strings 뒤(`.strings`·Apple 후보 16개) 기준선은 git 이력에 있다.
 
 ## 파일
 
