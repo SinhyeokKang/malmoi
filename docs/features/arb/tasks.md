@@ -29,15 +29,15 @@
       검증: 껍데기 테스트가 `.arb`를 내려받는다, `pnpm gate` green(`banned-terms`·`dictionary-consistency` 포함). 커밋: `feat(adapters): wire the ARB adapter`
 - [x] **T1.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
       `resource-limit` 거부 수 보고. 커밋 없음(결과는 T5.2에 기록).
-- [ ] **T1.5 실물 (수동)** — `/roundtrip`으로 폐기용 Flutter 리포 왕복. 전제: Flutter SDK 설치, 폐기용 리포는 roundtrip 전제 조건 1의 목록에 없으면 새로 만든다.
+- [x] **T1.5 실물 (수동)** — `/roundtrip`으로 폐기용 Flutter 리포 왕복. 전제: Flutter SDK 설치, 폐기용 리포는 roundtrip 전제 조건 1의 목록에 없으면 새로 만든다.
       검증: 첫 Publish는 고친 셀 + 허용 정규화(spec 완료 조건 1) 외 diff 0, 두 번째 Publish는 고친 셀 외 diff 0, `flutter gen-l10n` 통과.
 
 ## 5. 문서 (문서별 커밋)
 
-- [ ] **T5.1 `docs(PRODUCT)`** — §0 포맷 수, §2 포지셔닝 문구, §4.1 지원 포맷, §7.2 언어 추가·제거 지원 포맷 목록에 ARB.
-- [ ] **T5.2 `docs(ARCHITECTURE)`** — §1.9에 재측정 표·판정, 값 표현(design §3), §0 불변식 2·4에 "소스 키 메타데이터(ARB `@key`)도 원본이 준다",
+- [x] **T5.1 `docs(PRODUCT)`** — §0 포맷 수, §2 포지셔닝 문구, §4.1 지원 포맷, §7.2 언어 추가·제거 지원 포맷 목록에 ARB.
+- [x] **T5.2 `docs(ARCHITECTURE)`** — §1.9에 재측정 표·판정, 값 표현(design §3), §0 불변식 2·4에 "소스 키 메타데이터(ARB `@key`)도 원본이 준다",
       `contract.ts` 표 예외 행의 근거. 같은 커밋 밖에서 CLAUDE.md 코어 원칙 문구도 맞춘다(`docs(CLAUDE)`, 미러 `pnpm sync:agents`).
-- [ ] **T5.3 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록.
+- [x] **T5.3 `docs(ACTIONS)`·`docs(DIRECTORY)`·README·가이드**(`/guide` — en·ko·es 같은 커밋) — 지원 포맷 목록.
 - 폴더 정리는 이 스펙에서 하지 않는다 — apple-strings·android-strings가 T1.3·표기 규칙을 계속 참조한다. 네 폴더를 android-strings T5.5에서 함께 지운다.
 - T5 공통 검증: `pnpm test`(가이드 게이트·`no-korean-ui`) green · `pnpm sync:agents:check` green.
 - action·GitLab CI 원본 태그 릴리스는 이 스펙에서 하지 않는다 — android-strings T5에서 세 스펙 합동으로 처리한다(기능 머지 → 새 태그 → SHA 후속 패치).
