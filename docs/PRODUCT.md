@@ -16,7 +16,7 @@
 ## 0. 문제
 
 크롬 확장의 번역 파일(`_locales/<locale>/messages.json`)을 비개발자 동료가 편집할 수 있게 만드는 데서
-시작했다. 지금은 포맷 여섯을 가로지른다.
+시작했다. 지금은 포맷 여덟을 가로지른다.
 
 - **개발자는 1명** (나)
 - **첫 번역 편집자는 사내 비개발자 동료**이고, 그 다음은 같은 문제를 가진 팀이다
@@ -50,7 +50,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 - 번역 값과 소스 키의 소유권을 분리해 **병합 로직을 제거**한다.
 - 같은 DB 상태와 같은 원본 파일에서 같은 바이트를 만든다.
 - 변경된 파일만 고정 PR 하나에 반영한다.
-- JSON·YAML·TS/JS 딕셔너리·Flutter ARB의 **구조와 표현을 보존**한다.
+- JSON·YAML·TS/JS 딕셔너리·Flutter ARB·Apple `.strings`·String Catalog의 **구조와 표현을 보존**한다.
 
 **GitHub이 주이고 GitLab.com을 병기한다** (2026-10-12, gitlab-repositories). GitLab.com 리포도 같은 왕복을 돈다 —
 연결은 개발자가 붙여 넣는 레거시 PAT(스코프 `api`)이고, 재사용되는 리뷰 요청은 merge request(`!128`)이며, CI는 생성된
@@ -327,6 +327,16 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   풀지 않으므로 §4.2의 "ICU 복수형"에 들지 않는다. 키 메타데이터 `@key`와 전역 항목 `@@*`는 편집 대상이 아니고 원본 파일에서 그대로
   나른다(`@@locale`은 원본에 그 줄이 있을 때만 경로의 언어 코드로 쓴다). 새로 만든 언어 파일에는 `@key`가 없다 — `flutter gen-l10n`은
   템플릿의 메타데이터만 읽는다.
+- **Apple strings file · Apple String Catalog** (2026-10-19, apple-strings) — 일곱째·여덟째 포맷이다. 둘 다 수술적 치환이라
+  값 리터럴 밖의 바이트(주석·빈 줄·키 순서)를 건드리지 않는다.
+  - `apple-strings`(언어마다 파일, 예 `ios/App/{locale}.lproj/Localizable.strings`) — `"key" = "value";` 엔트리가 번역 대상이고 값은 이스케이프를
+    푼 문자열로 보인다(`%@`·`%1$s` 그대로). **UTF-8과 UTF-16(LE·BE, BOM 유무)을 받고 원본 인코딩·BOM 그대로 돌려쓴다** — 무손실로 디코드되지
+    않는 파일은 대체 문자로 바꾸지 않고 명시 실패한다. 같은 키가 두 번 있으면 Apple처럼 나중 값이 이기고 가려진 앞 줄은 고치지 않는다. 비기준
+    언어 파일에 없는 키를 번역하면 그 파일에 엔트리 줄을 삽입한다(기준 파일에는 삽입하지 않는다 — 키 존재는 코드가 정한다). `.stringsdict`는
+    읽지 않는다(복수형, §4.2). 테이블(`Localizable`·`InfoPlist` 등)마다 소스 하나다.
+  - `apple-xcstrings`(모든 언어가 든 JSON 하나, 예 `ios/App/Localizable.xcstrings`) — 기준 언어는 파일의 `sourceLanguage`다. `stringUnit` 값만 번역
+    대상이고 `variations`(복수형·기기별)와 `shouldTranslate: false` 키는 **보존만** 한다. 번역이 없는 언어 셀은 Xcode 서식으로 삽입한다.
+    SwiftUI가 만든 키처럼 원문 셀이 없는 키는 **키 문자열을 원문으로** 읽고, 원문을 키와 다르게 고쳤을 때만 원문 셀을 쓴다.
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
 - **Publish 경험** — 미배포 수, PR 상태, 버린 값 보고. **범위가 2026-09-16에 확정됐다**:
   `[Publish]`는 **언제나 나갈 것을 목록으로 먼저 보이고**(키 × 로케일 diff + 열린 PR 삼상태),
@@ -505,6 +515,9 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
 - **범용 알림 시스템** — 멤버 초대 메일(§4.1) 밖의 발송은 없다(ARCHITECTURE §6.00). 발송 이력·배달·발송물(메일)의 열람 추적, 자동 재시도·작업 큐, 캠페인 발송도 만들지 않는다.
   ⚠️ **Inbox(헤더 드롭다운 · `/inbox` 페이지)는 이것이 아니다** — 발송 없이 현재 상태를 모으며 읽음은 사용자당 시각 하나다. 항목별 읽음·발송·구독·사건 기반 알림을 더하는 순간 이 비범위에 든다.
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
+- **Apple 포맷의 확장** (2026-10-19, apple-strings) — `Base.lproj`가 기준인 리포(Base Internationalization — `Base`는 언어 코드가 아니라 후보 언어에서
+  뺀다. 모바일 코퍼스 실측 1리포) · `.stringsdict`·xcstrings `variations` 편집(위 "ICU 복수형") · UTF-8·UTF-16 밖의 인코딩과 `.strings` 밖 파일의 UTF-16 ·
+  테이블 여러 개를 한 소스로 묶기 · Xcode 생성물 갱신.
 - **화면 언어(§4.1)의 확장** (2026-10-05, ui-locales) — 로케일 URL(`/ko/...`)·`hreflang`·언어별 색인(크롤러는 영어만 본다), `Accept-Language`·지역 기반
   자동 감지, changelog 본문 번역, 방침 es 본(법적 문서를 원어민 검수 없이 낼 수 없다), 언어별 가이드 스크린샷(ko 원고는 `게시`, 그림 속 버튼은
   `Publish` — 수용한 대가), 다른 탭의 언어 동기화(다음 새로고침에서 풀린다), en·ko·es 밖의 언어와 RTL. 테마·타임존은 비범위가 아니라
@@ -673,7 +686,7 @@ orphaned를 제외한 활성 키·언어 수다. 워크플로의 SHA 없는 소�
 ⚠️ **OWNER는 UI·MCP에서 언어 추가·제거를 요청할 수 있다** (2026-10-14, locale-add — 이전 "추가·삭제하지 않는다"를 해제했다).
 요청은 리포를 직접 바꾸지 않고 **기존 Publish PR/MR로 파일 집합 변경을 제안**할 뿐이다. 범위는 좁다:
 
-- **지원 포맷**: `json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`·`arb-catalog`(언어마다 파일이 따로인 어댑터)다. `ts-dict`의 공유 파일 안 로케일 객체 추가·삭제는 하지 않는다.
+- **지원 포맷**: `json-catalog`·`chrome-locales`·`yaml-catalog`·`code-dict`·`arb-catalog`·`apple-strings`(언어마다 파일이 따로인 어댑터)다. `ts-dict`·`apple-xcstrings`의 공유 파일 안 로케일 객체 추가·삭제는 하지 않는다.
 - **비지원 포맷의 화면**: 역할과 무관하게 새 추가·제거 동작과 카드 설명을 숨긴다. 남아 있는 Adding·Removing 요청의 취소는 유지한다. 지원 포맷에서 권한·기준 언어·전달 미확정으로 막힌 동작은 비활성과 사유를 유지한다(DESIGN §6.66).
 - **단위**: 소스별 언어 하나씩 추가·제거·취소. **기준 언어는 제거할 수 없다** — 다른 활성 언어로 기준을 바꾼 뒤 제거한다.
 - **권한**: OWNER(`project:settings`), 비보관 프로젝트. 웹과 MCP가 같은 코어를 쓴다.
