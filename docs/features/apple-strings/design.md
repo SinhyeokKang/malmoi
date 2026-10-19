@@ -33,7 +33,9 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add(creat
 - **비기준 파일의 누락 키는 삽입한다**(결정 2026-10-19 사용자, Codex 피어 검수). create는 값 있는 키만 쓰므로, 언어 파일을 만든 뒤 다른 키를 번역하면 그 파일에
   자리가 없다. 지금 계약대로면 per-locale `write-slot-missing`이 blocking이라(`lib/pull/undeliverable.ts:31`) Publish 전체가 거부된다 — 원본이 있으면
   create가 아니라 write로 간다(`lib/pull/render.ts:157`). 그래서 비기준 언어 파일에서는 기준 파일의 키 순서상 바로 앞 키의 엔트리 뒤(없으면 파일 끝)에
-  `"key" = "value";` 줄을 삽입하고, 줄바꿈·들여쓰기는 그 파일의 이웃 엔트리에서 빌린다. **기준 파일에는 삽입하지 않는다**(키 존재는 코드가 정한다 —
+  `"key" = "value";` 줄을 삽입하고, 줄바꿈·들여쓰기는 그 파일의 이웃 엔트리에서 빌린다. 기준 순서는 `LocaleEntry.order`(렌더가 base `sortIndex`로 싣는다)로
+  충분하다 — 새 `WriteInput` 필드를 만들지 않는다. arb가 더한 `WriteInput.untranslated`(비-base에서 값 없는 살아 있는 키)·`orphaned`는 이미 있으니
+  필요하면 그것을 읽는다(`lib/pull/render.ts` `untranslatedOf`). **기준 파일에는 삽입하지 않는다**(키 존재는 코드가 정한다 —
   기준 파일에 없는 키는 쓰지 않는다). 삽입도 값 범위 치환과 같은 뒤→앞 적용에 든다(§4).
 - create: 기준 언어 파일의 인코딩·BOM만 빌리고 **값·주석은 빌리지 않는다**(§5.10.4). 값 있는 활성 키만 쓴다. 선례: Weblate도 새 파일에 기준 값을
   복사하지 않는다(빈 파일 또는 값을 비운 template).
@@ -61,7 +63,8 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 모든 언어가 든 JSON 하나다(결정 2026-10-19 사용자 — 이 spec의 마지막 배치로 둔다). `ts-dict`와 같은 multi-locale이라 **언어 추가·제거는 비지원**이다
 (화면 분기는 `supportsLocaleChanges`에서 파생되므로 따로 만들 것이 없다 — `lib/locales/add-plan.ts:13-16` → `lib/sources/query.ts:87`).
 
-- 기준 언어: 파일의 `sourceLanguage`. 로케일 집합: `strings.*.localizations`의 키 합집합 + `sourceLanguage`.
+- 기준 언어: 파일의 `sourceLanguage`. **`DetectedFormat.templateLocale`(arb가 `l10n.yaml` `template-arb-file`용으로 더한 필드, `lib/adapters/types.ts`)에 실어
+  요약·확정의 기본 기준 언어로 쓴다**(`lib/onboarding/detect.ts` — `templateLocale ?? pickBaseLocale(locales)`). 새 필드를 만들지 않는다. 로케일 집합: `strings.*.localizations`의 키 합집합 + `sourceLanguage`.
 - 엔트리: `localizations.<code>.stringUnit.value`가 있는 셀. `shouldTranslate: false`인 키는 엔트리가 아니고 보존된다. `variations`(복수형·기기별)는
   읽지 않고 보존된다(unmanaged). `extractionState`는 해석하지 않는다 — 파일에 있는 키는 `stale`이어도 엔트리다(키 존재의 정본은 파일).
 - **키 = 원문**(결정 2026-10-19 사용자): SwiftUI가 만든 키는 원문 자체이고 `sourceLanguage` 셀이 없는 경우가 흔하다. 이때 **키 문자열을 기준 값으로
@@ -104,6 +107,13 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - 버킷: `rest` 버킷에서 기존 4포맷과 같은 `rankTemplates`를 지난다. 경로 모양(`.lproj/`·`.xcstrings`)이 겹치지 않아 기존 리포의 1순위를
   뺏을 경로가 원리적으로 좁다. 그래도 완료 조건 3이 기준선 대조로 확인한다.
 - 경로 신호가 강해 1패스 후보를 낸다. probe는 내용 검증(`.strings` 문법, xcstrings JSON 구조)에만 쓴다.
+- ⚠️ **probe 예산 밖으로 밀린 정답 후보는 조용히 사라진다**(arb 리뷰 R1). 온보딩은 1패스 순위 상위 `PROBE_LIMITS.jsonLike`(5)개 후보만 내려받고,
+  `verifySamples`가 내용 없이 만난 후보를 미검증으로 떨어뜨린다. iOS 리포는 테이블(`Localizable`·`InfoPlist`·`Main`·스토리보드별)과 `fastlane/` 메타데이터로
+  `.strings` 후보가 많다 — 정답 `Localizable.strings`가 6번째면 화면에 후보가 없다. survey·CLI는 모든 파일을 읽어 이 실패를 못 본다(코퍼스 통과가 보장이 아니다).
+  그래서 후보 순위에서 `Localizable`을 앞세우고, 실제 `detectFormats` + 읽은 경로를 기록하는 가짜 reader로 시나리오 테스트를 둔다
+  (본보기 `lib/onboarding-run/__tests__/detect-arb.test.ts`). 예산을 늘려야 하면 합계 바이트 예산은 한 번만 잰다(`readFiles(…, prior)` — arb 재리뷰 Y1).
+- 로케일 코드는 `.lproj` 디렉터리 이름 그대로다(`en`·`en-GB`·`zh-Hans`·`pt-BR`, raw 코드 정책). `Base`는 뺀다. ⚠️ arb에서 `looksLikeLocale`이 `app_en`을 통과해
+  파일명 해석이 틀렸다(리뷰 R2·재리뷰 Y3) — 디렉터리 이름 해석도 진입점 테스트로 고정한다.
 - `fastlane/`(스토어 메타데이터 `.strings`)·`Pods/`·`build/`는 곁가지여야 한다. ⚠️ 지금 `ASIDE_HINT`(`lib/adapters/shared.ts:172-173`)에 셋이 없다 —
   더하면 기존 어댑터 순위에도 닿으므로 완료 조건 3의 재측정 대상이다. 가능하면 이 어댑터의 후보 판정 안에서만 거른다.
 
@@ -135,3 +145,8 @@ M3로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
 - 2026-09-14 설정 YAML이 확정 어댑터를 생략 — 생성 워크플로(GitHub·GitLab)가 새 어댑터 이름을 박는지.
 - 2026-09-16 YAML range 치환 — §4.
 - 2026-10-07 쓰기 성공과 값 전달을 같게 셌다 — 중복 키(§2.1).
+- arb 런(2026-10-19, `docs/features/arb/orch.md`)의 리뷰가 찾은 부류 — 다음 어댑터에서 먼저 테스트로 막는다:
+  probe 예산 밖 후보 탈락(§5) · 파일·디렉터리 이름의 로케일 오해석(§5) · 설정·표본을 따로 읽어 합계 예산이 두 번 시작됨 · 진입점 시나리오 부재
+  (확정 → 첫 적재 → 언어 추가·제거 → Publish 미리보기·바이트를 격리 Postgres로 — 본보기 `lib/pull/__tests__/arb-publish.integration.ts`) ·
+  **첫 Publish가 리포에 있던 것을 지움**(arb는 비-base `@key` 수천 줄 — 결정 10·13). 수술적 어댑터는 원리상 지우지 않지만, 누락 키 삽입(§2.1)·xcstrings 셀 삽입(§2.3)이
+  기존 줄을 건드리지 않는지 실제 코퍼스 리포로 잰다(T2.3·T4.3).
