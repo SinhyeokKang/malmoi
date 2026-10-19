@@ -37,6 +37,6 @@ The supported setup is Docker Compose on a single Linux server: one app instance
 - An address that your GitHub Actions or GitLab CI runners can reach. Target repositories send updates to your `MALMOI_ORIGIN` from those runners, so an IP allowlist, firewall, or VPN in front of the server stops every update.
 - A privacy policy page of your own, on another site. The [privacy materials](troubleshooting.md#privacy) list what the installation stores.
 
-GitHub repositories' workflows run the upstream action tag `malmoi-i18n-push-v3` from `SinhyeokKang/malmoi`, and the project's `PUSH_TOKEN` and `GITHUB_TOKEN` go into that step. That tag can move regardless of the version you installed. If that's not acceptable, fork the upstream repository and point `uses:` at a commit SHA in your fork.
+GitHub repositories' workflows run the upstream action tag `malmoi-i18n-push-v4` from `SinhyeokKang/malmoi`, and the project's `PUSH_TOKEN` and `GITHUB_TOKEN` go into that step. That tag can move regardless of the version you installed. If that's not acceptable, fork the upstream repository and point `uses:` at a commit SHA in your fork.
 
 GitLab CI jobs fetch the upstream tag `malmoi-i18n-push-gitlab-v2` and check its commit against the generated `MALMOI_I18N_PUSH_SHA` before running the sync script with `PUSH_TOKEN`. Keep that SHA check. Store `PUSH_TOKEN` as a protected, masked CI variable and protect the base branch; the runner must reach both GitHub to fetch the script and your installation to send updates.
