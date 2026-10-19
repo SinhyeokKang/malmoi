@@ -60,7 +60,7 @@ M3 리뷰가 이 스펙으로 넘긴 것(지금은 `.strings` 어댑터가 없�
       기준 언어는 `sourceLanguage`를 `DetectedFormat.templateLocale`로 싣는다(design §2.3). 화면 비지원 분기는
       `supportsLocaleChanges`에서 파생되므로 만들지 않는다. 검증: `pnpm test` green → 껍데기 테스트 → `pnpm gate` green.
       커밋: `feat(adapters): add Apple xcstrings adapter`
-- [ ] **T4.3 재측정 + 실물 (수동)** — 재측정 검증은 T2.3과 같은 기준(기준선 갱신 포함) + 원문 셀 없는 키 비율 보고. `/roundtrip`: Malmoi PR 머지 뒤 Xcode에서 열어 저장해도
+- [x] **T4.3 재측정 + 실물 (수동)** — 재측정 검증은 T2.3과 같은 기준(기준선 갱신 포함) + 원문 셀 없는 키 비율 보고. `/roundtrip`: Malmoi PR 머지 뒤 Xcode에서 열어 저장해도
       diff 0인지까지(전제: macOS + Xcode).
 
 ## 5. 문서 (문서별 커밋)
