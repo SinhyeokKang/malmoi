@@ -680,6 +680,9 @@ lib/
                         MIT 리포 원본 — 출처는 그 README)가 골든 바이트를, lib/onboarding-run/__tests__/detect-apple-xcstrings.test.ts가 씨앗·probe 예산·큰 카탈로그 건너뛰기를,
                         lib/pull/__tests__/apple-xcstrings-delivery.test.ts가 cellSlot 판정의 일치를, lib/pull/__tests__/apple-xcstrings-publish.integration.ts가
                         확정 → 첫 적재 → 미리보기·PR 바이트·토큰 해제 → 다음 Publish를 잰다
+                        · android-strings(Android `strings.xml`, 2026-10-19 — surgical. `@xml-tools/parser` CST는 `<string>` 안쪽 범위를 얻는 데만 쓰고
+                        XML을 다시 직렬화하지 않는다. 기준 언어 파일 values/strings.xml은 basePath로 받고(base-path), 비-base 파일에만 누락 키를 삽입한다.
+                        이스케이프는 풀고 인라인 태그는 문자열 그대로 둔다) — 근거는 ARCHITECTURE §1.46
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼).
                         __tests__/create.test.ts는 yaml-catalog·code-dict의 ADD create·revive 새 파일 규약·read 왕복·재적용 고정점을 직접 검사한다
@@ -789,6 +792,8 @@ lib/
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다. 조립 assembleProjectListRows는 I/O가 없고
                         메타 넷과 할 일을 만들어 planProjectRow 결과만 행에 싣는다) ·
                         save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
+                        android-inline-tags(androidInlineTagsMatch — Android 값의 인라인 태그가 기준 언어 값과 같은 집합인지. 어댑터 토크나이저에 기대지 않는
+                        순수 문자열 판정이라 lib/adapters 밖에 있고, save가 웹·MCP 공통 저장 거부에 쓴다 — ARCHITECTURE §1.46) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
                         · search(글로벌 Keys 서버 조회 — 세션 userId의 비보관 멤버 프로젝트만 SQL 안에서 확정, 최대2문장,
