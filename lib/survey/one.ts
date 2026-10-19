@@ -63,6 +63,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     configFiles: [...input.configFiles],
     ms: 0,
   };
+  if (input.commit !== undefined) survey.commit = input.commit;
   if (input.failure !== undefined) {
     survey.failure = input.failure;
     survey.ms = Date.now() - started;

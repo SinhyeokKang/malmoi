@@ -144,6 +144,8 @@ export type SurveyInput = {
   failure?: string;
   /** 선택이 예산에 걸려 잘렸는가 — 숫자를 읽는 사람이 알아야 한다. */
   truncated?: boolean;
+  /** 측정한 커밋 SHA — 고정 입력이면 그 값, 아니면 해석된 HEAD. 기준선 고정의 원료다. */
+  commit?: string;
 };
 
 export type RepoSurvey = {
@@ -233,6 +235,8 @@ export type RepoSurvey = {
   configFiles: string[];
 
   failure?: string;
+  /** 측정한 커밋 SHA (`SurveyInput.commit`) — 실패 전에 해석됐으면 실패 리포에도 남는다. */
+  commit?: string;
   ms: number;
 };
 
