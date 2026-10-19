@@ -84,3 +84,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **E-fix2 완료** — `6bec5b58` test · `7a7d0145` fix(저장 판정이 A의 `androidValueTags`를 쓴다 — 결정 17·21, 결정 15 갱신) · `c78fdd01` test(옛 잘못된 기준 값은 DB에 직접 심는다). `gate: ok`(17154 + 격리 938). cherry-pick 때 A-fix2와 `android-strings-publish.integration.ts`가 충돌 — 지휘자는 풀지 않고 abort, E-fix3 `ctx_bfebfe3db39b`(E 터미널 재사용 — rebase 후 두 의도 모두 보존).
 - **RBC 완료** — 🔴0 · 🟡5(Y1 서버 적재가 Android 비언어 한정자를 언어로 · Y2 Android 라벨·slug가 전부 `res` · Y3 `androidInvalid` 문구가 화면에 없는 목록을 가리킨다 · Y4 basePath 표시·응답 테스트 0, `DISPLAY_ONLY` 낡음, 재추가 시나리오가 DB 행에서 멈춤 · Y5 C의 Android 코드 술어가 손 사본) · ⚪8. R3 아홉 경로 모두 닫힘, Y3(A 리뷰) 닫힘, 병합 없음 위반 없음. 사본 `handoffs/review-BC.md`. RBC 해제. 결정 23–26.
 
+- C 로컬 dev cherry-pick(`c4c7ed2a`·`85f1c917`, 충돌 없음). C-fix1 `ctx_62f567288168`(C 터미널 — Y5·W7·W8) ∥ B-fix1 `ctx_9b92bcb5873f`(B 터미널 — Y1–Y4·결정 23–26·W3–W5, 마지막에 dev rebase).
