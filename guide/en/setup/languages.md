@@ -2,7 +2,7 @@
 
 Add a language to a source or remove one from the source's details, then publish the change to your repository as a file.
 
-Project owners change a source's languages; translators (Editor role) can see each language's status but not change it. Adding and removing work for **JSON catalog**, **YAML catalog**, **Chrome extension messages**, and **Code dictionary (one file per language)** sources. For a code dictionary containing all languages in one file, change the language objects in the repository; Malmoi reads the change on the next update.
+Project owners change a source's languages; translators (Editor role) can see each language's status but not change it. Adding and removing work for **JSON catalog**, **YAML catalog**, **Chrome extension messages**, **Code dictionary (one file per language)**, and **Flutter ARB** sources. For a code dictionary containing all languages in one file, change the language objects in the repository; Malmoi reads the change on the next update.
 
 ## Open the Languages card {#languages}
 
@@ -25,7 +25,7 @@ For an all-languages code dictionary, the card has no description or new add or 
 ## Add a language {#add}
 
 1. In the **Languages** card, choose **Add language**.
-2. For a JSON or YAML catalog or a code dictionary with one file per language, choose a language from **Common languages** or type a code in **Language code**: a lowercase language with an optional region, such as `fr`, `pt-BR`, or `zh_TW`. Languages that were in this source before are listed first, under **Previously in this source**. For Chrome extension messages, choose from **Language**; Chrome supports a fixed list of codes.
+2. For a JSON or YAML catalog, a Flutter ARB file, or a code dictionary with one file per language, choose a language from **Common languages** or type a code in **Language code**: a lowercase language with an optional region, such as `fr`, `pt-BR`, or `zh_TW`. Languages that were in this source before are listed first, under **Previously in this source**. For Chrome extension messages, choose from **Language**; Chrome supports a fixed list of codes.
 3. Check **File to create**, the path the file will have. Choose **Add language** again to confirm.
 
 ![The Add a language dialog over the source details, with es chosen as the language code and i18n/emails/es.json under File to create](/guide/language-add.webp "Choose a language and check the file Malmoi will create.")
@@ -34,7 +34,7 @@ Malmoi refuses a language that is already in the source, one whose file path mat
 
 The new language appears with **Adding**, and translators can open it and translate right away. The file doesn't exist in your repository yet: Publish creates it, once the language has at least one translation. Until then Publish lists the language as **Not included**.
 
-New YAML and per-language code files follow the base file's root, key structure, export, and formatting conventions where applicable. They contain translated keys only, without the base file's comments, `import` statements, or type declarations. If those conventions can't be used safely, Publish stops; cancel the addition or create the file in the repository. See [New language files](../reference/formats.md#languages) for the limits, including later dotted-key insertions. Register the language in your app's code where needed.
+New YAML and per-language code files follow the base file's root, key structure, export, and formatting conventions where applicable. They contain translated keys only, without the base file's comments, `import` statements, or type declarations. If those conventions can't be used safely, Publish stops; cancel the addition or create the file in the repository. See [New language files](../reference/formats.md#languages) for the limits, including later dotted-key insertions. New Flutter ARB files contain `@@locale` and translated keys only, without `@key` metadata. Register the language in your app's code where needed.
 
 If you add a language that was in this source before, Malmoi brings back its saved translations as unsent edits, so the next Publish sends them.
 
