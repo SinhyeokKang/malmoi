@@ -1,7 +1,7 @@
 import { parse as parseYaml } from "yaml";
 import { localeFromPath } from "./chrome-locales";
 import { observeJsonStyle, quote, stripBom } from "./json-style";
-import { compareKeys, hasStrongLocale, looksLikeLocale, orderedEntries, rankTemplateCandidates, splitLocaleSuffix, verifySamples, type CatalogVerdict } from "./shared";
+import { compareKeys, hasStrongLocale, looksLikeLocale, orderedEntries, rankTemplateCandidates, verifySamples, type CatalogVerdict } from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 import { causeMessage } from "@/lib/cause";
 
@@ -153,19 +153,57 @@ function matchesConfig(pathTemplate: string, config: L10nConfig): boolean {
   return localeFromPath(pathTemplate, `${dir === "" ? "" : `${dir}/`}${config.templateFile}`) !== undefined;
 }
 
+type Reading = { prefix: string; locale: string };
+
+/** 파일 이름 하나를 `접두사 + 로케일`로 읽는 방법 전부 — 접두사 없음(맨 로케일)도 하나다. 구분자는 `splitLocaleSuffix`와 같은 셋이다. */
+function readingsOf(base: string): Reading[] {
+  const out: Reading[] = looksLikeLocale(base) ? [{ prefix: "", locale: base }] : [];
+  for (let i = 1; i < base.length - 1; i += 1) {
+    const ch = base[i];
+    if (ch !== "." && ch !== "-" && ch !== "_") continue;
+    const locale = base.slice(i + 1);
+    if (looksLikeLocale(locale)) out.push({ prefix: base.slice(0, i + 1), locale });
+  }
+  return out;
+}
+
+/**
+ * 디렉터리 하나의 파일 이름 → 고른 해석.
+ *
+ * ⚠️ **파일 하나로는 못 가른다** (리뷰 R2). `app_en`은 그 자체로 `looksLikeLocale`(3글자 + `_` + 2글자)을 통과하고, `en_gb`는 접두사 `en_` +
+ * `gb`로도 읽힌다. 그래서 **형제가 가장 많이 공유하는 접두사**를 고른다 — `app_en`·`app_ko`는 `app_`, `en`·`en_gb`·`ko`는 맨 로케일이다.
+ * 동률이면 모양으로 가른다: 접두사 몸통이 2글자 언어 코드(`en_`)면 맨 로케일 쪽이고, 아니면(`app_`·`intl_`) 접두사 쪽이며, 접두사끼리는
+ * 짧은 쪽이다(`app_en_gb` → `app_` + `en_gb`). raw 코드 정책이라 고른 로케일은 파일명 조각 그대로다(`en_gb`·`en_GB`).
+ */
+function readDirectory(bases: readonly string[]): Map<string, Reading> {
+  const options = new Map(bases.map((b) => [b, readingsOf(b)]));
+  const score = new Map<string, number>();
+  for (const list of options.values()) for (const prefix of new Set(list.map((r) => r.prefix))) score.set(prefix, (score.get(prefix) ?? 0) + 1);
+  const shape = (base: string, r: Reading): number =>
+    r.prefix === "" ? Number(/^[a-z]{2}[-._]/.test(base)) : Number(!/^[a-z]{2}$/.test(r.prefix.slice(0, -1)));
+  const out = new Map<string, Reading>();
+  for (const [base, list] of options) {
+    const best = list.slice().sort((a, b) =>
+      (score.get(b.prefix) ?? 0) - (score.get(a.prefix) ?? 0) || shape(base, b) - shape(base, a) || a.prefix.length - b.prefix.length)[0];
+    if (best !== undefined) out.set(base, best);
+  }
+  return out;
+}
+
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
-  const byTemplate = new Map<string, Set<string>>();
+  const byDir = new Map<string, string[]>();
   for (const path of paths) {
     const m = ARB_FILE.exec(path);
     if (!m) continue;
     const [, dir = "", base = ""] = m;
-    // ⚠️ **접두사 분리를 먼저 본다.** `app_en`은 그 자체로 `looksLikeLocale`(3글자 + `_` + 2글자)을 통과해, 통째 판정을 먼저 하면
-    // Flutter 기본 이름(`app_en.arb`)이 전부 `{locale}.arb`의 로케일 `app_en`으로 잡힌다. `en_US`는 오른쪽 조각(`US`)이 로케일 모양이
-    // 아니라 분리가 실패하고 통째로 남는다. 대가: 소문자 지역(`en_gb.arb`)은 접두사 `en_`으로 읽힌다 — gen-l10n 관례가 아니다.
-    const split = splitLocaleSuffix(base) ?? (looksLikeLocale(base) ? { prefix: "", locale: base } : undefined);
-    if (split === undefined) continue;
-    const template = `${dir}${split.prefix}{locale}.arb`;
-    (byTemplate.get(template) ?? byTemplate.set(template, new Set()).get(template)!).add(split.locale);
+    (byDir.get(dir) ?? byDir.set(dir, []).get(dir)!).push(base);
+  }
+  const byTemplate = new Map<string, Set<string>>();
+  for (const [dir, bases] of byDir) {
+    for (const { prefix, locale } of readDirectory(bases).values()) {
+      const template = `${dir}${prefix}{locale}.arb`;
+      (byTemplate.get(template) ?? byTemplate.set(template, new Set()).get(template)!).add(locale);
+    }
   }
   // `.arb` 확장자가 신호라 i18n 경로 신호를 요구하지 않는다(Flutter 기본 `lib/l10n`은 `I18N_HINT`에 없다).
   const groups = [...byTemplate].filter(([, s]) => hasStrongLocale(s)).map(([pathTemplate, locales]) => ({ pathTemplate, locales }));

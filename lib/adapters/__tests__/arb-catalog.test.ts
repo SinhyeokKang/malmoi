@@ -382,6 +382,22 @@ describe("arb-catalog detect", () => {
     expect(arbCatalog.detectCandidates(["lib/l10n/intl_messages.arb", "pubspec.yaml"])).toEqual([]);
   });
 
+  /**
+   * 리뷰 R2 — `app_en`은 그 자체로 로케일 모양이고 `en_gb`는 접두사 `en_`으로도 읽힌다. 파일 하나로는 못 가르므로 **같은 디렉터리 형제가 공유하는
+   * 해석**을 고른다. raw 코드 정책(파일명 그대로가 로케일 코드)이라 `en_gb`·`en_GB`는 잘리지 않고 그대로 남는다. 진입점에서 잰다.
+   */
+  it.each([
+    ["Flutter 기본 이름", ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"], "lib/l10n/app_{locale}.arb", ["en", "ko"]],
+    ["접두사 + 소문자 지역", ["lib/l10n/app_en.arb", "lib/l10n/app_en_gb.arb"], "lib/l10n/app_{locale}.arb", ["en", "en_gb"]],
+    ["맨 로케일 + 소문자 지역", ["lib/l10n/en.arb", "lib/l10n/en_gb.arb", "lib/l10n/ko.arb"], "lib/l10n/{locale}.arb", ["en", "en_gb", "ko"]],
+    ["맨 로케일 + 대문자 지역", ["lib/l10n/en.arb", "lib/l10n/en_GB.arb"], "lib/l10n/{locale}.arb", ["en", "en_GB"]],
+    ["소문자 지역 하나뿐", ["lib/l10n/en_gb.arb"], "lib/l10n/{locale}.arb", ["en_gb"]],
+    ["접두사 + 지역 둘", ["lib/l10n/intl_en.arb", "lib/l10n/intl_zh_CN.arb", "lib/l10n/intl_pt_br.arb"], "lib/l10n/intl_{locale}.arb", ["en", "pt_br", "zh_CN"]],
+  ] as const)("%s → 한 후보, raw 코드 그대로", (_name, paths, template, locales) => {
+    const found = detectCandidatesAcross([...paths], () => arb);
+    expect(found.map((c) => [c.pathTemplate, [...c.locales].sort()])).toEqual([[template, [...locales]]]);
+  });
+
   it("probe가 카탈로그가 아니라고 하면 후보에서 뺀다", () => {
     const paths = ["lib/l10n/app_en.arb", "lib/l10n/app_ko.arb"];
     expect(arbCatalog.detectCandidates(paths, () => "[1]")).toEqual([]);
