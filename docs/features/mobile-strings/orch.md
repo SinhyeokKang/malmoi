@@ -59,3 +59,5 @@ tasks ↔ 배치 대조: M0→A · M1→D · M2a·M2b·M2c→B(M2b dev DB 적용
 - **push** `c46880fb..9c803572`(M2). B 워크트리·터미널 정리. C2 보냄 `ctx_704d779248e8`(C 터미널 재사용, dev rebase 후).
 - C2 범위 알림: `RepoReader.blob`/`GitClient.getBlobText`가 문자열만 돌려줘 공통 인터페이스·`lib/import/read.ts`·`lib/pull/run.ts`·`lib/publish/read.ts`·fake-client·smoke까지 고친다(필수 배선, 화면 변경 없음) — 지휘자 수용.
 - C2 알림: `lib/survey/select.ts`에 `.strings` 수집을 더했다(없으면 모바일 코퍼스에서 UTF-16 디코드를 잴 수 없다). 모바일 60리포 clone 실패 0, 바이너리 `.strings`(CodenameOne·Lifeslice)는 `parse-failed`로 명시 거부. ⚠️ select 변경은 기존 코퍼스 1순위 diff 0 확인과 RC 판정 대상.
+- **C2 완료** — 커밋 3개(`f6973b21` test · `1298c1c7` feat · `41c0dd48` docs) + rebase된 C1 둘(`15a4ccfa`·`12a83990`). gate ok(16321 + 격리 914). 기존 학습 109·홀드아웃 20 top-1 diff 0(i18n-ally 예제의 잘못된 UTF-8 두 파일이 파일별 실패로 새로 기록되지만 선택 결과는 같다). 모바일 60 clone 실패 0. M1의 UTF-16 후보 241파일: 바이트 왕복 219 성공, 22는 `bplist00` 바이너리 plist(M1 휴리스틱이 후보로 센 것) → 명시 실패. ⚠️ 동작 변화: `.strings` 밖 로케일 파일의 잘못된 UTF-8도 이제 손실 디코드가 아니라 `parse-failed`(design §3대로) → RC 판정. (b): 실제 GitHub/GitLab UTF-16 왕복 — `.strings` 어댑터가 없어 앱 경로로는 apple-strings 전까지 못 잰다. C 터미널 retain.
+- RC 시작 `ctx_3e6272c805f3`(claude-opus-5-5 high).
