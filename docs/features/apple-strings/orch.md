@@ -57,3 +57,4 @@ tasks ↔ 배치 대조: T2.0a→P(+문구 D2) · T2.0b→A · T2.0c→D · T2.1
 - **P·A dev 통합** — 14커밋 cherry-pick(`364b03fc..96f2711e`). main `pnpm gate` → `gate: ok`(격리 postgres 포함). tasks T2.0a–T2.3 체크(T2.0c는 D 문구).
 - **push** `166366f5..e8d9b97c`(P + A + D + README 배지). P 워크트리·브랜치 정리, P 해제.
 - 2파 시작: X `ctx_c1617a9a9844`(새 워크트리 `apple-X`, claude-opus-5-5 high — A 터미널은 컨텍스트가 찼고 Q1 결함용으로 남긴다) · Q1 `ctx_2cd29204845e`(main 체크아웃, claude-opus-5-5 medium — 폐기용 리포 `SinhyeokKang/i18n-strings-check` 생성 + GitLab `ox501501/malmoi-gitlab-test`에 UTF-16 파일) · D2 `ctx_a3c5956caef3`(D 터미널 재사용 — 시작 영수증은 `outcome_unknown`이었지만 터미널이 브리프 작업 중인 것을 확인). Q1이 main을 쓰는 동안 cherry-pick·build 금지.
+- `e8d9b97c` dev CI success(run 39232996535).
