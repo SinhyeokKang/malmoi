@@ -1186,6 +1186,7 @@ lib/
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
   viewport.ts           잎(타입 import 하나). 요청 UA → 루트 viewport(viewportFor) — iOS에만 maximumScale 1. 근거는 ARCHITECTURE §6.358.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
+  file-encoding.ts      잎. .strings만 UTF-16 BOM·NUL 판별, 원본 엔디언·BOM 왕복. 잘못된 바이트는 명시 실패하고 리더 경계는 parse-failed로 전달한다.
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 

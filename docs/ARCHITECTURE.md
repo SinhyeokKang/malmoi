@@ -908,7 +908,7 @@ autovacuum off · statement_timeout=5000, 통계 없음/ANALYZE 뒤 × 네 질�
 sha1("blob " + byteLength + "\0" + content)
 ```
 
-**`byteLength`는 문자 수가 아니라 UTF-8 바이트 수다.** 한국어·프랑스어 번역이 들어가므로 `content.length`를 쓰면 즉시 틀린다 — `Buffer.byteLength(content, "utf8")`.
+**`byteLength`는 실제 출력 바이트 수다.** 문자열 입력은 기존처럼 UTF-8이고, UTF-16 파일은 `encodeFileContent`가 만든 바이트로 `blobSha`를 계산한다. `content.length`는 문자 코드 유닛 수라 한글·이모지에서 틀린다.
 
 이 함수의 목적은 **API 호출을 건너뛰는 것**이다. base 트리의 blob SHA와 비교해 전부 같으면 GitHub API를 한 번도 더 부르지 않는다. 변경 없는 날이 대부분이라 이게 기본 경로다.
 
@@ -1259,6 +1259,8 @@ Action 밖으로 나와야 했다. `lib/onboarding`에 넣으면 그 루트의 "
   **`ts-dict` 씨앗 2 × 8**(2026-09-14) = **blob ≤ 37**. 온보딩 한 번의 호출은
   `ref 1 + commit 1 + tree 1 + blob ≤37`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
   그대로 응답 시간이고, `maxDuration`이 60초다.
+- **UTF-16 `.strings`의 Publish 쓰기 비용**: 변경 파일마다 GitHub `POST /git/blobs`(base64) 1회가 추가되고 트리에는 반환 SHA를 싣는다.
+  UTF-8은 기존 인라인 content 본문을 유지한다. 변경 없는 UTF-16 파일은 인코딩 바이트 SHA가 같아 추가 쓰기 0회다. GitLab은 해당 파일 action만 `encoding: "base64"`로 보낸다.
 - ⚠️ **`ts-dict` 씨앗만 입력의 성격이 다르다.** 앞의 둘은 1패스가 만든 **후보 그룹**인데 그 어댑터는
   내용을 봐야 판단할 수 있어 1패스 후보가 0이다 — `probeTargets`가 **리포 경로 전체**를 받아
   `tsDictProbePaths`로 씨앗을 만든다. 그 인자는 **기본값이 없다**: 있으면 안 넘긴 호출부가 조용히
