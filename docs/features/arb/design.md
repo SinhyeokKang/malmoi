@@ -34,7 +34,8 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add · su
   - **출력하지 않는 키의 `@key`는 버린다** — orphaned 키·DB에만 있는 보류 키의 `@foo`가 짝 없이 남지 않는다. **원본에만 있는 키**(B3.4)는
     원본 엔트리와 `@key`를 함께 그대로 낸다.
   - 원본의 `@@*`도 원본 위치(대개 맨 앞)와 순서를 지킨다.
-  - **`@@locale`은 원본에 그 줄이 있을 때만** 값을 경로의 로케일 코드로 생성한다 — 원본 값과 견주지 않는다. 원본에 없으면 넣지 않는다
+  - **`@@locale`은 원본에 그 줄이 있을 때만** 값을 경로의 로케일 코드로 생성한다 — 원본 값과 견주지 않는다. 원본 값이 경로 코드와 다르면
+    (`app_ko.arb`의 `ko-KR`) 첫 Publish에서 한 번 고쳐지고 그 뒤 고정점이다(spec 완료 조건 1의 허용 정규화). 원본에 없으면 넣지 않는다
     (첫 Publish에 셀 밖 diff를 만들지 않는다). **새로 만드는 파일에는 항상 넣는다**(복제된 표현이 기준 언어 코드를 들고 나가는 것을 막는다).
 - ⚠️ regenerate 계약 충돌: `contract.ts`의 regenerate 분기는 "원본이 있고 쓸 값이 0이면 출력이 `{}`"를 요구한다. ARB는 원본의 `@@*`를 나르므로
   `{}`가 아니다 — 매트릭스에 ARB 예외 행("쓸 값 0이면 `@@*`만 남은 객체")을 둔다.
@@ -77,7 +78,7 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add · su
 ## 8. 외부 계약
 
 - action `malmoi-i18n-push`는 자기 체크아웃의 CLI를 돈다(`github.action_path`) — 새 어댑터를 CI가 쓰려면 **action 태그 릴리스**가 필요하다.
-  세 스펙 합동 릴리스로 android-strings T5에서 한 번만 한다.
+  세 스펙 합동으로 android-strings T5에서 새 태그(v4·gitlab-v3)와 GitLab SHA 후속 패치로 낸다(그 design §8).
 - `docs/ACTIONS.md`의 `adapter` 입력 허용값 표.
 
 ## 9. 과거 함정 (POSTMORTEM)

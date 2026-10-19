@@ -34,6 +34,10 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
   읽지 않고 보존된다(unmanaged 보고 — 다음 Publish에서 살아남으므로 `partial-import`가 아니다, `ERROR_KIND` 규칙). 주석 안의 `<string>`은 엔트리가 아니다.
   `tools:` 네임스페이스 속성은 보존만 한다. self-closing `<string name="x"/>`는 빈 값 엔트리다. 빈 `<resources/>`는 0엔트리다.
 - 중복 `name`은 aapt 오류다 — read가 `duplicate-key` failure로 거부한다. 키 대입은 `Object.create(null)`(`name="__proto__"`).
+- **비기준 파일의 누락 키는 삽입한다**(결정 2026-10-19 사용자, Codex 피어 검수). create는 값 있는 키만 쓰므로 언어 파일을 만든 뒤 다른 키를 번역하면
+  그 파일에 자리가 없고, per-locale `write-slot-missing`이 blocking이라(`lib/pull/undeliverable.ts:31`) Publish 전체가 거부된다. 그래서 비기준 `values-*/strings.xml`에서는
+  기준 파일의 키 순서상 바로 앞 키의 `<string>` 뒤(없으면 `</resources>` 앞)에 `<string name="…">…</string>`을 삽입하고, 들여쓰기·줄바꿈은 이웃 엔트리에서
+  빌린다. **기준 파일(`basePath`)에는 삽입하지 않는다.** 삽입도 뒤→앞 적용에 든다(§4).
 
 ### 2.2 로케일 코드
 
@@ -92,6 +96,9 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 - **(결정 2026-10-19 사용자) 온보딩 ③에서 코드를 입력받는다.** Android 소스가 있으면 ③ 라디오 목록 맨 위에 "base 파일 행 + 코드 입력"을 둔다.
   수동 지정 폼의 `manual.baseLocale` Input을 재사용한다. 서버 검증은 `isLocaleShaped`이고, 관측된 다른 로케일과 겹치면 거부한다.
   `next-enabled.ts:46`·`confirm.ts`가 따라 바뀐다. 수동 지정에서는 `values-{locale}` → `values` 관례로 서버가 `basePath`를 유도하고 입력란은 늘리지 않는다.
+- **기존 프로젝트의 소스 추가에도 같은 입력을 둔다**(Codex 피어 검수, 2026-10-19 사용자). Add sources 모달은 공통 `SurfaceBaseLocales`에 adapter·`basePath` 없이
+  `pathTemplate`·`locales`·`baseLocale`만 넘긴다(`components/sources/add-sources-modal.tsx:195-198`). 그대로면 `values/`만 있는 소스를 기존 프로젝트에 추가할 길이
+  없고, 아래 "잘못 넣으면 제거 후 재추가" 복구도 같은 모달을 지난다. `BaseLocaleState`와 두 소비자(온보딩 ③·Add sources)에 같은 Android 분기를 배선한다.
 - **단일 언어 리포**(`values/`만 있다)도 후보로 낸다 — v1.1.8부터 다른 포맷은 단일 언어 카탈로그를 받는다. 코드는 같은 ③ 입력으로 받는다.
   조상 승격이 설정 파일을 앞세우지 않는지 본다(POSTMORTEM 2026-10-03).
 - **CLI는 Android 표면에서 `--base`가 없으면 거부한다** — 지금은 `pickBaseLocale`(`lib/push/assemble.ts:50`, en 우선)이 `values/`의 실제 언어와
@@ -138,7 +145,7 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 
 새 프리미티브·토큰 없이 기존 조립으로 끝난다(design-brief 없음). 태그 하이라이트는 비목표다(§4.1 mono 예외·`surface-rules.test.ts`가 막는다).
 
-- 온보딩 ③ 기준 언어 코드 입력(§2.4) · ③ 근거 경로와 `naming.info`가 base 행에서 `basePath`를 보여 준다.
+- 온보딩 ③과 Add sources 모달의 기준 언어 코드 입력(§2.4) · ③ 근거 경로와 `naming.info`가 base 행에서 `basePath`를 보여 준다.
 - Sources "Path pattern"에 `basePath`가 있으면 base 파일 줄을 하나 더 둔다. `surface-selector.tsx:20-26` `surfaceLabel`이 Android 소스 둘(`app`·`feature`)을
   같은 라벨로 접지 않는지 본다.
 - 언어 추가 Dialog의 Android 프리셋 철자(§2.5) · 언어 이름·국기의 `-r` 정규화(§2.2).
@@ -184,8 +191,14 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 ## 8. 외부 계약 (세 스펙 합동)
 
 - action `malmoi-i18n-push`는 자기 체크아웃의 CLI를 돈다(`github.action_path`) — 세 스펙의 새 어댑터를 CI가 쓰려면 **action 태그 릴리스**가 필요하다.
-  릴리스는 **한 번**이다(결정 2026-10-19 사용자). `@malmoi-i18n-push-v3`을 옮길지 v4를 낼지 — 기존 소비자의 1순위 불변(완료 조건 3)과 prod 등록 표면의
-  읽기 전용 재확인(T5.1)이 통과하면 v3 이동이 가능하다. GitLab CI 원본 태그 `malmoi-i18n-push-gitlab-vN`도 같은 축. 절차는 OPERATIONS.
+- **순서(결정 2026-10-19 사용자, Codex 피어 검수)**: GitLab 생성 job은 태그 clone의 HEAD를 박힌 40자 SHA와 대조하고(`lib/onboarding/gitlab-ci.ts:15-18·66-74`),
+  SHA는 태그 커밋 자신에 들어갈 수 없어 "main 머지 → 태그 → SHA 후속 커밋 → 다음 앱 릴리스"가 구조적으로 필요하다(OPERATIONS "GitLab CI 원본 릴리스" 1~3).
+  그래서 "머지 한 번"은 **기능 머지 한 번**이다.
+  1. 세 스펙이 dev에 다 들어간 뒤 기능 `/merge`. GitHub 생성기(`renderProjectWorkflowYaml`)는 이 머지에서 미리 `@malmoi-i18n-push-v4`를 가리킨다
+     (태그 발행까지 수 분 공백 — 그 사이 새로 생성한 워크플로는 태그가 없어 실패할 수 있다).
+  2. 그 squash 커밋에 **새 태그** `malmoi-i18n-push-v4`·`malmoi-i18n-push-gitlab-v3`를 발행한다. **기존 v3·gitlab-v2는 옮기지 않는다** — GitLab은 옮기는 순간
+     옛 SHA를 박은 기존 job이 전부 red이고(OPERATIONS 3항), GitHub은 기존 소비자가 곧바로 새 코드를 받는다. 새 어댑터는 새 소비자만 필요하다.
+  3. 후속 커밋 하나로 `GITLAB_CI_RELEASE`(tag·sha)와 ACTIONS §5 `<!-- gitlab-ci -->` 블록을 함께 갱신 → 패치 `/merge`. 이 릴리스가 나가야 GitLab 화면이 템플릿을 낸다.
 - `docs/ACTIONS.md`의 `adapter`·`base-locale` 입력 설명(Android는 `base-locale` 필수).
 
 ## 9. 과거 함정 (POSTMORTEM)

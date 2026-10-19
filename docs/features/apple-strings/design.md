@@ -29,8 +29,12 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지 · locale-add(creat
   `"a" = "b";`는 엔트리가 아니다. 키 대입은 `Object.create(null)`.
 - **중복 키**: Apple은 나중 값이 이긴다. read는 나중 값을 엔트리로 삼고 `duplicate-key`를 보고하며, write는 **가려진 앞 리터럴을 고치지 않는다**
   (POSTMORTEM 2026-10-07 — 쓰기 성공과 값 전달을 같게 셌다).
-- write(surgical): 값 범위만 다시 이스케이프한 리터럴로 치환한다. 원본에 없는 키는 쓰지 않는다(기존 수술적 어댑터와 같다 — `write-slot-missing`).
-  빈 값은 불변식 3의 수술적 규칙을 따른다(`planClearability` — 비울 수 없음).
+- write(surgical): 값 범위만 다시 이스케이프한 리터럴로 치환한다. 빈 값은 불변식 3의 수술적 규칙을 따른다(`planClearability` — 비울 수 없음).
+- **비기준 파일의 누락 키는 삽입한다**(결정 2026-10-19 사용자, Codex 피어 검수). create는 값 있는 키만 쓰므로, 언어 파일을 만든 뒤 다른 키를 번역하면 그 파일에
+  자리가 없다. 지금 계약대로면 per-locale `write-slot-missing`이 blocking이라(`lib/pull/undeliverable.ts:31`) Publish 전체가 거부된다 — 원본이 있으면
+  create가 아니라 write로 간다(`lib/pull/render.ts:157`). 그래서 비기준 언어 파일에서는 기준 파일의 키 순서상 바로 앞 키의 엔트리 뒤(없으면 파일 끝)에
+  `"key" = "value";` 줄을 삽입하고, 줄바꿈·들여쓰기는 그 파일의 이웃 엔트리에서 빌린다. **기준 파일에는 삽입하지 않는다**(키 존재는 코드가 정한다 —
+  기준 파일에 없는 키는 쓰지 않는다). 삽입도 값 범위 치환과 같은 뒤→앞 적용에 든다(§4).
 - create: 기준 언어 파일의 인코딩·BOM만 빌리고 **값·주석은 빌리지 않는다**(§5.10.4). 값 있는 활성 키만 쓴다. 선례: Weblate도 새 파일에 기준 값을
   복사하지 않는다(빈 파일 또는 값을 비운 template).
 - 인코딩: **UTF-8과 UTF-16(LE·BE, BOM 유무)을 지원한다**(결정 2026-10-19 사용자). 원본 인코딩·BOM을 그대로 돌려쓴다 — 아래 §2.2.
@@ -56,7 +60,9 @@ UTF-16 파일을 그대로 두면 깨진 문자열을 파싱하고(CI push는 st
   `encodeFileContent(content, encoding) → bytes`(원본 BOM 유무 포함). `encoding`은 `"utf-8" | "utf-16le" | "utf-16le-bom" | "utf-16be" | "utf-16be-bom"`.
   ⚠️ 지금 UTF-8 BOM은 문자열 안의 `﻿`로 어댑터가 다룬다(`json-style.ts:57-62·142`·B7a) — **기존 동작을 바꾸지 않도록** UTF-8은 지금처럼 BOM을
   문자열에 남긴다. `encodeFileContent(s, "utf-8")`은 `Buffer.from(s, "utf8")`와 바이트까지 같아야 한다(테스트 이름으로 고정).
-- 판별 실패·비가역 입력(홀수 바이트 길이, 짝 없는 서로게이트, BOM 없는 짧은 ASCII, NUL이 섞인 UTF-8)은 UTF-8로 남고 기존 바이트·`blobSha`가 그대로다.
+- **유효한 인코딩만 왕복을 보장한다.** UTF-16 판별 신호가 없는 입력(BOM 없는 짧은 ASCII 등)은 지금처럼 UTF-8이다. UTF-16 신호는 있는데
+  무손실로 디코드되지 않는 입력(BOM + 짝 없는 서로게이트 `FF FE 00 D8`, BOM 뒤 홀수 바이트 길이)과 유효하지 않은 UTF-8은 **명시 실패**로 적재·쓰기를
+  막는다(`parse-failed` 부류) — UTF-8로 대신 읽으면 U+FFFD로 바뀌어 원본 바이트·`blobSha` 보존과 동시에 성립할 수 없다(Codex 피어 검수, 2026-10-19 사용자).
 - `AdapterFile`에 `encoding?`(없으면 UTF-8)을 싣는다. 리더 넷(GitHub ×2·GitLab·`scripts/format.ts`)과 survey가 `decodeFileBytes`를 지나고, 렌더 출력은
   그 파일의 원본 인코딩을 물려받는다(새 파일은 기준 언어 파일 인코딩 — 불변식 4의 "표현은 기준 언어 파일 하나에서만 빌린다").
 - 쓰기: GitHub은 UTF-16 파일만 `POST /git/blobs`(base64)로 blob을 먼저 만들고 트리에서 sha로 참조한다 — **UTF-16 파일 하나당 API 호출 하나가 늘어난다**
@@ -74,13 +80,19 @@ UTF-16 파일을 그대로 두면 깨진 문자열을 파싱하고(CI push는 st
 - 엔트리: `localizations.<code>.stringUnit.value`가 있는 셀. `shouldTranslate: false`인 키는 엔트리가 아니고 보존된다. `variations`(복수형·기기별)는
   읽지 않고 보존된다(unmanaged). `extractionState`는 해석하지 않는다 — 파일에 있는 키는 `stale`이어도 엔트리다(키 존재의 정본은 파일).
 - **키 = 원문**(결정 2026-10-19 사용자): SwiftUI가 만든 키는 원문 자체이고 `sourceLanguage` 셀이 없는 경우가 흔하다. 이때 **키 문자열을 기준 값으로
-  읽되 기준 셀은 쓰지 않는다**. 그런 키의 기준 값을 화면에서 고치면 쓸 자리가 없으므로 저장을 막는다(`write-slot-missing`과 같은 부류의 거부).
-  키는 여전히 코드(파일)가 정하므로 gettext와 달리 원칙 충돌이 없다. 선례: Tolgee도 원문 셀이 없으면 키를 원문 값으로 쓴다(`localizations` 자체가
+  읽는다**. 쓸 때는 **DB의 기준 값이 키 문자열과 같으면 기준 셀을 쓰지 않고**(첫 Publish diff 0), **다르면 원문 셀을 아래 삽입 규칙으로 넣는다**
+  (Xcode가 카탈로그에서 원문을 고칠 때 하는 것과 같다 — Codex 피어 검수로 "편집 거부"를 대체, 2026-10-19 사용자). 저장 코어는 실제 원문 셀이 있는 키와
+  키로 대신한 키를 구별할 수 없으므로(`lib/keys/save-key.ts:114·124·141`) 거부 판정을 두지 않는다 — 셀 존재 정보를 나를 스키마·오류 코드·UI가 필요 없다.
+  같은 DB → 같은 출력이고, 다음 push는 삽입된 셀의 값을 읽는다. 키는 여전히 코드(파일)가 정하므로 gettext와 달리 원칙 충돌이 없다. 선례: Tolgee도 원문 셀이 없으면 키를 원문 값으로 쓴다(`localizations` 자체가
   없는 키는 건너뛴다). `.strings`는 키가 무엇이든 기준 파일에 값이 있어 바뀌는 것이 없다.
 - write(surgical, JSON 텍스트 offset 치환): 값이 있는 셀은 `value` 리터럴 범위만 바꾼다. **셀이 없는 로케일**(번역되지 않음)은
   `"<code>" : { "stringUnit" : { "state" : "translated", "value" : "…" } }` 블록을 **삽입**한다 — 위치는 `localizations` 안 코드 유닛 순,
   서식은 Xcode 출력(2칸 들여쓰기, `" : "`, 콤마 규칙)과 같게 한다. 그래야 다음 Xcode 저장이 diff를 다시 만들지 않는다.
   ⚠️ ts-dict는 자리가 없으면 쓰지 않는다(`write-slot-missing`·`write-locale-object-missing`) — multi-locale 어댑터 사이의 규칙 차이라 ARCHITECTURE에 기록한다.
+- **전달 판정도 삽입을 따른다**(결정 2026-10-19 사용자, Codex 피어 검수). 지금 경로 선택(`lib/pull/run.ts:388-401`)과 Publish 미리보기(`lib/publish/read.ts:153-156`)는
+  multi-locale·surgical 원본에서 자리 없는 셀을 모두 보류로 본다 — 그대로면 `foo.fr`이 PR에는 삽입되는데 미리보기는 "보류"를 말하고 미전달 토큰도 남는다.
+  두 판정을 어댑터 성질(셀 삽입 가능)로 갈라, xcstrings는 **키가 파일에 있으면 어느 로케일 셀이든 전달 대상**으로 센다. ts-dict의 기존 보류는 그대로다.
+  경로 선택·미리보기·렌더·토큰 해제가 같은 판정을 보는지 통합 테스트가 고정한다.
 - `state`: Malmoi가 새로 쓴 셀은 `translated`. 기존 셀의 값을 바꿀 때 `state`는 건드리지 않는다(`needs_review`를 Malmoi가 풀지 않는다).
 - ⚠️ **Xcode 서식 고정점은 실물로만 잰다** — Malmoi 출력을 Xcode로 열어 저장해도 바이트가 같은지를 T4.3 `/roundtrip`이 본다. 다르면 그 차이를
   골든 테스트로 고정하고 삽입 서식을 맞춘다.
@@ -90,7 +102,7 @@ UTF-16 파일을 그대로 두면 깨진 문자열을 파싱하고(CI push는 st
 | 포맷 | 파일 표기 | DB·화면 값 | 저장 검증 |
 |---|---|---|---|
 | `.strings` | `"…"` 리터럴 | 이스케이프를 푼 문자열(`%@`·`%1$s` 그대로) | 없음 |
-| `.xcstrings` | JSON 문자열 | JSON 이스케이프를 푼 문자열 | 원문 셀 없는 키의 기준 값 편집 거부(§2.3) |
+| `.xcstrings` | JSON 문자열 | JSON 이스케이프를 푼 문자열(원문 셀 없는 키는 키 문자열) | 없음(§2.3 — 기준 값이 키와 다르면 원문 셀 삽입) |
 
 화면 라벨은 기존 형을 따르고 둘을 라벨로 가른다 — 예: "Apple strings file" / "Apple String Catalog"(예시 경로만으로는 구별되지 않는다, 내부 이름 미노출).
 
@@ -116,8 +128,9 @@ UTF-16 파일을 그대로 두면 깨진 문자열을 파싱하고(CI push는 st
 |---|---|---|
 | `decodeFileBytes` / `encodeFileContent` | `lib/file-encoding.ts`(잎) | `.strings`만 UTF-16 판별, 5 인코딩 왕복, UTF-8 기존 동작·바이트 불변 |
 | `blobSha(bytes)` | `lib/githash.ts` | 인코딩한 바이트로 잰다, UTF-8 문자열 입력과 같은 값 |
-| `tokenizeStrings` / `decodeStringsLiteral` / `encodeStringsLiteral` | `lib/adapters/apple-strings.ts` | 범위·왕복·중복 키·주석 속 가짜 엔트리 |
-| xcstrings `tokenize`·`insertLocalization` | `lib/adapters/apple-xcstrings.ts` | 값 범위 · 삽입 위치·Xcode 서식 · 키 = 원문 |
+| `tokenizeStrings` / `decodeStringsLiteral` / `encodeStringsLiteral` | `lib/adapters/apple-strings.ts` | 범위·왕복·중복 키·주석 속 가짜 엔트리·비기준 파일 누락 키 삽입 |
+| xcstrings `tokenize`·`insertLocalization` | `lib/adapters/apple-xcstrings.ts` | 값 범위 · 삽입 위치·Xcode 서식 · 키 = 원문(기준 값 ≠ 키일 때만 원문 셀) |
+| 셀 삽입 가능 판정 | `lib/pull/run.ts`·`lib/publish/read.ts`가 함께 부르는 자리 | xcstrings는 자리 없는 셀도 전달 대상, ts-dict는 보류 |
 | 각 어댑터 `detectCandidates` | 어댑터 파일 | `detect-candidates.test.ts` 계약 + `contract.ts` 매트릭스 편입 |
 
 ## 7. 스키마 · 환경변수 · 패키지
@@ -126,7 +139,7 @@ UTF-16 파일을 그대로 두면 깨진 문자열을 파싱하고(CI push는 st
 
 ## 8. 외부 계약
 
-- action·GitLab CI 원본 태그 릴리스는 세 스펙 합동으로 android-strings T5에서 한 번만 한다.
+- action·GitLab CI 원본은 세 스펙 합동으로 android-strings T5에서 새 태그(v4·gitlab-v3)와 GitLab SHA 후속 패치로 낸다(그 design §8).
 - `docs/ACTIONS.md`의 `adapter` 입력 허용값 표.
 
 ## 9. 과거 함정 (POSTMORTEM)
