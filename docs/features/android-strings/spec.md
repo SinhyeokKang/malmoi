@@ -19,7 +19,9 @@ Android `res/values*/strings.xml`을 지원 포맷에 더한다. 모바일 세 �
 - 모바일 세 생태계를 합치면 **지원 포맷이 하나도 없던 리포 49개(+12.4%p)**가 새로 덮인다(순증). 그중 Android가 **21개(+5.3%p)**다.
   Android 파일을 가진 리포 전체(보유)는 24개다. 두 생태계를 함께 가진 크로스플랫폼 리포는 순증 49개 중 6개다 — 세 스펙을 한 번에 출시하는 이유다.
 - 선례(2026-10-19 조사): Weblate·Tolgee 모두 `values/`의 언어를 파일에서 추론하지 않고 사람이 정한다. 둘 다 XML을 다시 직렬화해 원본 서식을 잃는다.
-- ⚠️ 이 수치는 정규식 추정이다. 지원 여부를 실제 탐지기로 재는 것은 모바일 코퍼스(mobile-strings M1)가 한다.
+- ⚠️ 이 수치는 정규식 추정이다. **mobile-strings M1 실측**(2026-10-19, `docs/adapter-survey/repos.md` "모바일 코퍼스"): 60리포 중 Android 보유 **30**,
+  정답 포맷 Android XML 19. 판정 JSON(`verdicts-mobile*.json`)이 Android 정답에 `basePath`를 싣는다. 경로 정규식(`res/values`)이 놓친 꼴이 둘 드러났다 —
+  Compose Multiplatform `composeResources/values-{locale}`(Meshtastic)와 `src/main` 없는 `<모듈>/res`(stripe-android 등).
 
 ## 완료 조건
 

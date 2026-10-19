@@ -52,6 +52,13 @@ push(적재·CI) · pull(Publish 렌더) · 온보딩 탐지·기준 언어 입�
 사전 작업 스펙 **mobile-strings** design §2가 정본이다(컬럼·읽는 자리·쓰는 자리·지문 자리·외부 계약·경로 안전·마이그레이션). 이 스펙은 그 위에서
 Android 어댑터가 `DetectedFormat.basePath`를 채우고, 언어 제거·화면 표시가 그 값을 쓴다.
 
+M2로 dev에 들어간 계약(2026-10-19 — 이 스펙은 소비만 한다):
+- **제거된 소스의 재추가(되살림)는 basePath를 보지 않는다**(2026-10-19 사용자) — 템플릿·어댑터가 같으면 옛 행(id·slug·번역·이력)을 되살리고 basePath는
+  재탐지값으로 덮는다(`lib/surfaces/plan-revival.ts`).
+- 온보딩·MCP pick(`create_project`·`add_sources`)이 optional `basePath`를 싣고 서버가 재탐지·서명 값과 대조한다. 생성 응답은 null basePath를 생략한다.
+- `probeTargets`는 basePath 후보에서 트리에 실재하는 경로만 낸다(없는 `values-en/` 치환을 내려받기 예산이 거부하던 결함 — M2 리뷰 R1).
+- 지문 넷은 basePath가 있을 때만 튜플에 덧붙인다(null 표면의 저장된 확인 지문 불변).
+
 ### 2.4 기준 언어 코드
 
 `values/`에는 코드가 없다. 지금 온보딩 ③은 탐지된 로케일 안에서만 고르고(`components/onboarding/new-project.tsx:175-176`,
@@ -61,6 +68,7 @@ Android 어댑터가 `DetectedFormat.basePath`를 채우고, 언어 제거·화�
 - **(결정 2026-10-19 사용자) 온보딩 ③에서 코드를 입력받는다.** Android 소스가 있으면 ③ 라디오 목록 맨 위에 "base 파일 행 + 코드 입력"을 둔다.
   수동 지정 폼의 `manual.baseLocale` Input을 재사용한다. 서버 검증은 `isLocaleShaped`이고, 관측된 다른 로케일과 겹치면 거부한다.
   `next-enabled.ts:46`·`confirm.ts`가 따라 바뀐다. 수동 지정에서는 `values-{locale}` → `values` 관례로 서버가 `basePath`를 유도하고 입력란은 늘리지 않는다.
+  ⚠️ M2는 수동 지정을 `templatePaths(..., null)`로 두었다(`confirmManualFormat`이 basePath를 받지 않는다) — 이 유도는 T3.2b가 새로 넣는다.
 - **기존 프로젝트의 소스 추가에도 같은 입력을 둔다**(Codex 피어 검수, 2026-10-19 사용자). Add sources 모달은 공통 `SurfaceBaseLocales`에 adapter·`basePath` 없이
   `pathTemplate`·`locales`·`baseLocale`만 넘긴다(`components/sources/add-sources-modal.tsx:195-198`). 그대로면 `values/`만 있는 소스를 기존 프로젝트에 추가할 길이
   없고, 아래 "잘못 넣으면 제거 후 재추가" 복구도 같은 모달을 지난다. `BaseLocaleState`와 두 소비자(온보딩 ③·Add sources)에 같은 Android 분기를 배선한다.
