@@ -27,7 +27,7 @@
       `detect-candidates.test.ts` `cases` · 아이콘 분기(`components/sources/sources-screen.tsx:130`) · `lib/openapi` 스냅숏(adapter enum이 실렸으면) ·
       사전 3벌 `newProject.formats` 라벨·예시(`/translate` 모드 ① — 기존 라벨 형, 내부 이름 미노출) · `unsupported-format` 문구(`messages/en.tsx:4528` 지원 포맷 나열).
       검증: 껍데기 테스트가 `.arb`를 내려받는다, `pnpm gate` green(`banned-terms`·`dictionary-consistency` 포함). 커밋: `feat(adapters): wire the ARB adapter`
-- [ ] **T1.4 재측정** — 모바일 + 기존 2코퍼스. 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
+- [ ] **T1.4 재측정** — 모바일 + 기존 2코퍼스, 전부 고정 SHA로 돈다(`--pins docs/adapter-survey/pins*.json` — 모바일은 `pins-mobile*.json`, 기준선 `.scratch/adapter-survey-baseline/*-1.json`). 검증: 기존 표 회귀 0 · mobile-strings M0 기준선과 리포별 1순위 diff 0 · ARB 고정점 100% · 조용한 손실 0 ·
       `resource-limit` 거부 수 보고. 커밋 없음(결과는 T5.2에 기록).
 - [ ] **T1.5 실물 (수동)** — `/roundtrip`으로 폐기용 Flutter 리포 왕복. 전제: Flutter SDK 설치, 폐기용 리포는 roundtrip 전제 조건 1의 목록에 없으면 새로 만든다.
       검증: 첫 Publish는 고친 셀 + 허용 정규화(spec 완료 조건 1) 외 diff 0, 두 번째 Publish는 고친 셀 외 diff 0, `flutter gen-l10n` 통과.
