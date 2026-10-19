@@ -1,5 +1,5 @@
 import { localeFromPath } from "./chrome-locales";
-import { compareKeys, hasStrongLocale, looksLikeLocale, orderedEntries, rankTemplateCandidates, verifySamples, type CatalogVerdict } from "./shared";
+import { compareKeys, hasStrongLocale, looksLikeLocale, orderedEntries, pathSignals, rankTemplateCandidates, verifySamples, type CatalogVerdict } from "./shared";
 import type { Adapter, AdapterError, AdapterFile, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
 /**
@@ -19,10 +19,11 @@ import type { Adapter, AdapterError, AdapterFile, DetectedFormat, FileProbe, Loc
 export const STRINGS_FILE = /^((?:[^/]*\/)*)([^/]+)\.lproj\/([^/]+)\.strings$/;
 
 /**
- * 후보가 아닌 디렉터리 — 스토어 메타데이터(`fastlane/`), 의존성(`Pods/`), 빌드 산출물(`build/`). 셋 다 공용 `ASIDE_HINT`에 없는데, 거기 더하면 기존
- * 어댑터의 순위까지 움직여 재측정 대상이 된다(design §5). 이 어댑터의 후보 판정 안에서만 거른다.
+ * 후보가 아닌 디렉터리 — 스토어 메타데이터(`fastlane/`), 의존성(`Pods/`), 빌드 산출물(`build/`), 그리고 번들 안(`*.framework/`·`*.app/` — 재측정에서
+ * iTerm2·Lifeslice가 벤더 `Sparkle.framework`의 사본을 1순위로 냈다). 공용 `ASIDE_HINT`에 더하면 기존 어댑터의 순위까지 움직여 재측정 대상이 된다
+ * (design §5) — 이 어댑터의 후보 판정 안에서만 거른다. `*.bundle/`은 거르지 않는다 — 리소스 번들이 정답인 리포가 있다(TwitchAdBlock).
  */
-const NOT_SOURCE = /(^|\/)(fastlane|Pods|build)\//;
+const NOT_SOURCE = /(^|\/)((fastlane|Pods|build)|[^/]+\.(framework|app))\//;
 
 /** Xcode가 `NSLocalizedString`의 기본 테이블로 쓰는 이름 — 같은 리포의 다른 테이블(스토리보드·`InfoPlist`)보다 앞선다. */
 const MAIN_TABLE = "Localizable.strings";
@@ -188,11 +189,23 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
   const groups = [...byTemplate].filter(([, s]) => hasStrongLocale(s)).map(([pathTemplate, locales]) => ({ pathTemplate, locales }));
   // `Localizable`을 앞세운다 — 테이블이 많은 리포에서 정답이 probe 예산(1패스 상위 5) 밖으로 밀리지 않게(design §5). 어댑터 간 정렬이 이 순서를
   // 지우므로 `detectCandidatesAcross`가 이 어댑터의 자리를 이 순서로 다시 채운다(`index.ts`).
+  // ⚠️ 예제·픽스처 감점이 먼저다 — 재측정에서 ResearchKit의 `samples/…/Localizable.strings`가 정답 테이블을 눌렀다.
   const ranked = rankTemplateCandidates(groups);
-  const ordered = [...ranked.filter((g) => g.pathTemplate.endsWith(`/${MAIN_TABLE}`)), ...ranked.filter((g) => !g.pathTemplate.endsWith(`/${MAIN_TABLE}`))];
+  const tier = (g: { pathTemplate: string }) => (pathSignals(g.pathTemplate).aside ? 2 : 0) + (g.pathTemplate.endsWith(`/${MAIN_TABLE}`) ? 0 : 1);
+  const ordered = ranked.map((g, i) => ({ g, i })).sort((a, b) => tier(a.g) - tier(b.g) || a.i - b.i).map(({ g }) => g);
   return ordered
     .filter((g) => !probe || verifySamples(g.pathTemplate, g.locales, probe, stringsVerdict))
     .map((g) => ({ adapter: "apple-strings" as const, pathTemplate: g.pathTemplate, locales: [...g.locales] }));
+}
+
+/**
+ * Flutter 앱의 iOS·macOS 셸인가 — 템플릿이 `<root>ios/`·`<root>macos/` 아래이고 `<root>pubspec.yaml`이 있다. 셸의 `.strings`는 권한 문구 같은 플랫폼
+ * 몫이고 앱 문자열은 ARB다. 재측정(T2.3)에서 smooth-app(ARB 128 · `ios/Runner` 129로케일)·Mono-Dash의 ARB 정답을 눌러 `detectCandidatesAcross`가
+ * 맨 뒤로 보낸다. 빼지 않는다 — 둘째 소스로 연결한 표면의 CI가 탐지 목록에서 자기 템플릿을 찾는다.
+ */
+export function isFlutterShell(pathTemplate: string, paths: ReadonlySet<string>): boolean {
+  const m = /^((?:[^/]*\/)*?)(?:ios|macos)\//.exec(pathTemplate);
+  return m !== null && paths.has(`${m[1] ?? ""}pubspec.yaml`);
 }
 
 function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {

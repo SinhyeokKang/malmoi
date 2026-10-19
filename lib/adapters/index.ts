@@ -1,4 +1,4 @@
-import { appleStrings } from "./apple-strings";
+import { appleStrings, isFlutterShell } from "./apple-strings";
 import { arbCatalog } from "./arb-catalog";
 import { chromeLocales } from "./chrome-locales";
 import { codeDict } from "./code-dict";
@@ -74,7 +74,11 @@ export function detectCandidatesAcross(paths: readonly string[], probe?: FilePro
   }
   const ownOf = (name: AdapterName) => own.find((a) => a.name === name)?.found ?? [];
   const ranked = keepOwnOrder([...rankTemplates(chromeFirst), ...rankTemplates(rest)], "arb-catalog", ownOf("arb-catalog"));
-  return keepOwnOrder(ranked, "apple-strings", ownOf("apple-strings"));
+  const ordered = keepOwnOrder(ranked, "apple-strings", ownOf("apple-strings"));
+  // Flutter 앱의 iOS·macOS 셸 `.strings`는 맨 뒤다 — 앱 문자열은 ARB이고, 로케일 수로는 셸이 이길 수 있다(`isFlutterShell`).
+  const repo = new Set(paths);
+  const shell = (c: DetectedFormat) => c.adapter === "apple-strings" && isFlutterShell(c.pathTemplate, repo);
+  return [...ordered.filter((c) => !shell(c)), ...ordered.filter(shell)];
 }
 
 /**

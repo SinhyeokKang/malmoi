@@ -284,6 +284,37 @@ describe("detect — `.lproj` 디렉터리 이름이 로케일이다", () => {
     expect(appleStrings.detectCandidates(paths, probe)).toEqual([]);
   });
 
+  /** 재측정(T2.3) — iTerm2·Lifeslice가 `Sparkle.framework`·`LifeSlice.app/Contents` 안의 사본을 1순위로 냈다. 빌드 산출물·벤더 프레임워크다. */
+  it("`.framework`·`.app` 번들 안은 후보가 아니다", () => {
+    const paths = ["en", "ko"].flatMap((l) => [`ThirdParty/Sparkle.framework/Versions/A/Resources/${l}.lproj/Sparkle.strings`, `Dist/My.app/Contents/Resources/${l}.lproj/Localizable.strings`]);
+    expect(appleStrings.detectCandidates(paths, probe)).toEqual([]);
+  });
+
+  /** 재측정(T2.3) — ResearchKit은 `samples/…/Localizable.strings`가 정답 `ResearchKit/Localized/…/ResearchKit.strings`를 눌렀다. 예제 감점이 먼저다. */
+  it("`Localizable` 우선은 예제·픽스처 감점을 넘지 않는다", () => {
+    const paths = ["en", "ko"].flatMap((l) => [`samples/Catalog/${l}.lproj/Localizable.strings`, `Kit/Localized/${l}.lproj/Kit.strings`]);
+    expect(detectCandidatesAcross(paths, probe).map((c) => c.pathTemplate)).toEqual(["Kit/Localized/{locale}.lproj/Kit.strings", "samples/Catalog/{locale}.lproj/Localizable.strings"]);
+  });
+
+  /**
+   * 재측정(T2.3) — smooth-app(ARB 128 · `ios/Runner` InfoPlist 129)과 Mono-Dash(위젯 확장)에서 Flutter 앱의 iOS 셸이 ARB 정답을 눌렀다. 같은 루트에
+   * `pubspec.yaml`이 있는 `ios/`·`macos/` 아래 후보는 Flutter 앱의 플랫폼 셸이라 어댑터 간 순위의 맨 뒤다(빼지 않는다 — 둘째 소스로 연결할 수 있다).
+   */
+  it("Flutter 앱의 `ios/`·`macos/` 셸은 다른 후보보다 뒤다 — 로케일이 더 많아도", () => {
+    const locales = ["en", "ko", "ja"];
+    const paths = [
+      "packages/app/pubspec.yaml",
+      ...locales.slice(0, 2).map((l) => `packages/app/lib/l10n/app_${l}.arb`),
+      ...locales.map((l) => `packages/app/ios/Runner/${l}.lproj/InfoPlist.strings`),
+      ...locales.map((l) => `packages/app/macos/Runner/${l}.lproj/InfoPlist.strings`),
+    ];
+    const files = (path: string) => (path.endsWith(".arb") ? '{"a":"A"}' : '"a" = "A";\n');
+    expect(detectCandidatesAcross(paths, files).map((c) => c.adapter)).toEqual(["arb-catalog", "apple-strings", "apple-strings"]);
+    // `pubspec.yaml`이 없는 네이티브 iOS 앱의 `ios/`는 셸이 아니다.
+    const native = paths.filter((p) => p !== "packages/app/pubspec.yaml");
+    expect(detectCandidatesAcross(native, files)[0]?.adapter).toBe("apple-strings");
+  });
+
   it("테이블마다 후보 하나이고 `Localizable`이 앞이다", () => {
     const paths = ["en", "ko"].flatMap((l) => ["InfoPlist", "Localizable", "LaunchScreen"].map((t) => `App/${l}.lproj/${t}.strings`));
     expect(appleStrings.detectCandidates(paths, probe).map((c) => c.pathTemplate)).toEqual([
