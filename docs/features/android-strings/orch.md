@@ -20,6 +20,7 @@
 10. **`resConfigs`·`localeFilters`로 언어를 좁힌 앱의 언어 추가는 개발자 몫으로 문서화한다** — 지휘자 판단(apple 결정 13 — `project.pbxproj` 등록 — 과 같은 부류). D가 문구를 쓰고 Q가 실물에서 확인한다.
 11. **DS 행 없음** — design-brief가 없고 시안 핸드오프가 없다(spec 비목표 — ③ 입력은 기존 프리미티브 조립). 화면 변화(③·Add sources 입력, Sources base 줄, 저장 거부 Alert, 언어 추가 프리셋)는 Q의 `/runtime-test` 항목으로 본다.
 12. **Q는 단일 워커다** — `/runtime-test`(T3.2b·T3.3 수동 항목) 뒤 `/roundtrip`(T3.5)을 한 터미널에서 잇는다(ego 세션 공유).
+13. **인라인 태그 비교 기준은 기준 언어 셀의 저장 후 값이다(같은 저장의 base 변경 포함, 비면 `sourceText` 폴백)** — 지휘자 판단(E 질문). design §3.1 "비교 기준이 그 셀이다"가 답한다.
 
 ## 배치
 
@@ -43,4 +44,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 
 ## 진행
 
-- (대기)
+- Run `run_5dd3cac02b8d`. 1파 시작(2026-10-19): A `ctx_71ce4ee6b0c2`(`android-A`, claude-opus-5-5 high) · E `ctx_ede863319b6b`(`android-E`, codex gpt-6-astra medium) · D `ctx_507e691701cf`(`android-D`, claude-opus-5-5 medium) — 세 `launch.effective`가 요청과 같다. 브리프: main `.scratch/orch-android/`.
