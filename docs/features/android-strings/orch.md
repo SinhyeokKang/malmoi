@@ -109,3 +109,4 @@ tasks ↔ 배치 대조: T3.0d·T3.1·T3.2·T3.4→A · T3.2b→B(+수동 Q) · 
 - **Q3 완료** — #306 Add sources·온보딩 모두 해소, 닫음. tasks T3.2b 체크 — **T3 체크 안 된 항목 0.** dev DB `rt-android` 원복·보관.
 - 정리: 워커 B·D·Q 해제, 워크트리 `android-B`·`android-D` 정리(cherry `+` 0). 남은 워커·워크트리 0. T5.0·T5.1·T5.5·T5.6·T5.7은 `/merge` 단계(결정 9).
 
+- **T5.0 (사용자 요청, 2026-10-20 — prod 읽기는 사용자 승인)** — prod 표면 6개(리포 5, 전부 본인 리포)를 READ ONLY로 읽고 현재 dev 탐지(`adapter-survey`, 등록 브랜치 HEAD 핀)로 대조: `bugshot-2`·`bugshot-i18n-test` 1순위 `chrome-locales` · 2순위 `ts-dict`(둘째 표면) — 등록과 같은 순서 · `malmoi` 1순위 `code-dict messages/{locale}.tsx`(3·4순위에 테스트 픽스처 `.xcstrings`가 새로 보이지만 1순위 불변). ⚠️ GitLab `ox501501/malmoi-gitlab-test`(`json-catalog`)는 미확인 — 비공개이고 로컬에 GitLab 토큰이 없다(prod 연결 PAT는 봉투라 꺼내지 않는다). 그 리포는 폐기용 테스트 리포다. prod에 `basePath` 열이 아직 없음도 확인(`/merge` 1단계 `db:deploy` 대상).
