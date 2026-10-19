@@ -33,3 +33,4 @@ tasks ↔ 배치 대조: T1.1·T1.2·T1.3·T1.4→A · T1.5→Q · T5.1→D · T
 
 ## 진행
 
+- Run `run_c66777ef86a4`. 1파 시작(2026-10-19): A `ctx_8c9849397b06`(워크트리 `arb-A`, claude-opus-5-5 high) · D `ctx_4bc57256ee52`(`arb-D`, claude-opus-5-5 medium) — 두 `launch.effective`가 요청과 같다. 브리프: main `.scratch/orch-arb/`.
