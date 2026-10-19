@@ -18,6 +18,17 @@ tasks.md의 `git clone --depth 1` 결정을 실측으로 한 겹 좁혔다: **`-
 **이 형태가 설계와 정확히 맞는다** — design.md의 껍데기 계약이 "경로 목록 먼저 → `selectSurveyFiles`가 고른 것만 물리화"인데, partial clone이 그 두 단계를 git 수준에서 그대로 준다. GitHub API `probe` 콜백이 "블롭 읽기가 비싸서 후보만 확인"하는 것과 같은 구조이기도 하다.
 
 
+## 커밋 고정 (2026-10-19, mobile-strings M0)
+
+위 수집은 매번 최신 HEAD를 받는다. 회귀 비교용으로 리포별 커밋 SHA를 사이드카 JSON에 고정했다 — `pins.json`(`repos.txt` 109개) · `pins-heldout.json`(`repos-heldout.txt` 20개). 목록 파일 자체는 그대로다.
+
+```sh
+pnpm adapter-survey docs/adapter-survey/repos.txt --verdicts docs/adapter-survey/verdicts.json --write-pins docs/adapter-survey/pins.json   # 기록(최신 HEAD)
+pnpm adapter-survey docs/adapter-survey/repos.txt --verdicts docs/adapter-survey/verdicts.json --pins docs/adapter-survey/pins.json         # 고정 SHA로 재측정
+```
+
+고정한 SHA를 fetch하지 못하거나 체크아웃에 실패한 리포는 HEAD로 물러나지 않고 `failure`다(`--write-pins`에도 안 들어간다). pins에 없는 리포(목록에 새로 더한 것)는 최신 HEAD로 돈다 — 새 리포를 더하면 `--write-pins`로 다시 기록한다.
+
 ## 분포 (태스크 0 검증 조건)
 
 | 조건 | 요구 | 실측 |
