@@ -30,8 +30,8 @@ export type RemoveOutcome =
  * ⚠️ **어느 효과인지(제거 요청/추가 취소)도 서버가 정한다** — 받는 동안의 설명만 행 상태로 짐작한다.
  * ⚠️ 제거는 미전달 편집을 마지막 전달 값으로 되돌리고(warning), 추가 취소는 값을 남기고 추적만 거둔다(neutral) — 톤이 갈리는 것이 의도다(D2).
  */
-export function RemoveLocaleDialog({ open, onOpenChange, slug, source, code, adding, pullRequest, onDone, onCloseAutoFocus }: {
-  open: boolean; onOpenChange: (open: boolean) => void; slug: string; source: string; code: string;
+export function RemoveLocaleDialog({ baseReason, open, onOpenChange, slug, source, code, adding, pullRequest, onDone, onCloseAutoFocus }: {
+  baseReason: string; open: boolean; onOpenChange: (open: boolean) => void; slug: string; source: string; code: string;
   /** 행이 Adding이다 — 받는 동안의 설명을 고르는 짐작일 뿐이다. */
   adding: boolean;
   /** 마지막 Publish의 호스트 표기 번호(`#128` · `!128`). 못 뽑았으면 `null`. */
@@ -63,7 +63,7 @@ export function RemoveLocaleDialog({ open, onOpenChange, slug, source, code, add
         else if (value.error === "unavailable") setPreview({ kind: "failed" });
         // Sync가 끝나면 풀린다 — 실패와 같은 자리에서 다시 받는다(D4 ②).
         else if (value.error === "sync-running") setPreview({ kind: "busy-sync" });
-        else setOutcome(refusal(m, value.error, code));
+        else setOutcome(refusal(m, value.error, code, baseReason));
       },
       () => { if (request.current === id) setPreview({ kind: "failed" }); },
     );
@@ -86,7 +86,7 @@ export function RemoveLocaleDialog({ open, onOpenChange, slug, source, code, add
         cancelRef.current?.focus();
         setAttempt(value => value + 1);
       } else if (result.error === "sync-running") setPreview({ kind: "busy-sync" });
-      else setOutcome(refusal(m, result.error, code));
+      else setOutcome(refusal(m, result.error, code, baseReason));
     } catch {
       // 응답을 잃은 제거는 서버가 끝냈을 수 있다 — 다시 실행하지 않는다. 결과는 호스트가 다시 읽어 말한다.
       busy.current = false;
@@ -170,11 +170,11 @@ function Facts({ m, code, path, translations, pullRequest }: { m: Messages; code
 }
 
 /** 결정적 거부 — 설명·확정을 걷고 문장 한 장이다. `baseline-*`은 Revert를 안내하지 않는다(같은 이유로 막힌다). */
-function refusal(m: Messages, error: string, code: string): Outcome {
+function refusal(m: Messages, error: string, code: string, baseReason: string): Outcome {
   const t = m.sources.locale;
   if (error === "publish-unsettled") return { kind: "unsettled" };
   if (error === "baseline-unknown" || error === "baseline-stale") return { kind: "refused", text: t.baselineUnknown(code) };
-  if (error === "base-locale") return { kind: "refused", text: t.baseReason };
+  if (error === "base-locale") return { kind: "refused", text: baseReason };
   if (error === "archived") return { kind: "refused", text: t.archived };
   return { kind: "refused", text: t.removeFailed(code) };
 }

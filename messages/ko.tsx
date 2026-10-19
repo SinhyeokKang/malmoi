@@ -2048,6 +2048,7 @@ export const ko = {
       removeLabel: (code: string): string => `${code} 제거`,
       cancelLabel: (code: string): string => `${code} 제거 취소`,
       baseReason: "이 언어를 제거하려면 먼저 다른 기준 언어를 고르세요.",
+      androidBaseReason: "Android 기준 언어는 고정되어 있으며 values/strings.xml은 제거할 수 없습니다. 코드를 바꾸려면 소스를 연결 해제한 뒤 다시 추가하세요.",
       noFileYet: "번역이 하나라도 생기면 게시할 때 파일이 만들어집니다.",
       readOnly: "제거가 게시되거나 취소될 때까지 읽기 전용입니다.",
       readOnlyDelivered: "PR이 머지되거나 제거가 취소될 때까지 읽기 전용입니다.",

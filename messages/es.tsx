@@ -2057,6 +2057,7 @@ export const es = {
       removeLabel: (code: string): string => `Quitar ${code}`,
       cancelLabel: (code: string): string => `Cancelar la eliminación de ${code}`,
       baseReason: "Elige otro idioma base antes de quitar este.",
+      androidBaseReason: "El idioma base de Android es fijo y no se puede quitar values/strings.xml. Desvincula esta fuente y vuelve a añadirla para cambiar el código.",
       noFileYet: "Al publicar se crea el archivo en cuanto tenga una traducción.",
       readOnly: "Solo lectura hasta que la eliminación se publique o se cancele.",
       readOnlyDelivered: "Solo lectura hasta que se fusione la pull request o se cancele la eliminación.",

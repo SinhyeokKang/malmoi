@@ -3771,6 +3771,7 @@ export const en = {
       removeLabel: (code: string): string => `Remove ${code}`,
       cancelLabel: (code: string): string => `Cancel removing ${code}`,
       baseReason: "Choose another base language before removing this one.",
+      androidBaseReason: "The Android base language is fixed, and values/strings.xml can't be removed. Detach this source and add it again to change the code.",
       noFileYet: "Publishing creates the file once it has a translation.",
       readOnly: "Read-only until the removal is published or cancelled.",
       /** 제거가 이미 PR에 실렸다 — 남은 일은 머지(또는 취소)다(RT4 #285). */
