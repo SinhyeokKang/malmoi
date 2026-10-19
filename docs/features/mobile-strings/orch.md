@@ -15,7 +15,8 @@
 5. **M2와 M3는 직렬, 단 M3의 순수 잎은 앞당긴다** — 지휘자 판단. 두 배치가 `lib/adapters/types.ts`·`lib/pull/plan.ts`·`scripts/ingest.ts`·`scripts/format.ts`·`lib/survey/`를 같이 고친다. C는 겹치지 않는 몫(M3a 테스트 + `lib/file-encoding.ts` + `lib/githash.ts`)만 먼저 하고, 배선(M3b)은 B가 dev에 들어간 뒤 새 Dispatch로 받는다.
 6. **`lib/survey/`는 A(M0)가 먼저 소유한다** — B의 survey 다섯 줄·C의 `run.ts:63` NUL 스킵 교체는 A가 dev에 들어간 뒤로 미룬다(인계의 "미룬 항목").
 7. **M1 후보는 다시 모은다** — 지휘자 판단. 10-19 보급률 표본(1,397개)의 원 리포 목록이 리포·`.scratch` 어디에도 남지 않았다. D가 spec에 적힌 같은 기준(스타 구간·2026-04 이후 push·fork·보관 제외)으로 `gh` 검색해 보유 기준 비슷한 규모로 모으고, 검색식과 실제 수를 `repos.md`에 남긴다.
-8. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
+8. **M3는 계획대로 완전 왕복** (2026-10-19 사용자). M1에서 정답 카탈로그가 UTF-16인 리포가 0개였지만(판별+명시 실패로 축소를 추천했다), design §3대로 읽기·쓰기·바이트 `blobSha`·GitHub blobs·GitLab base64까지 간다.
+9. DS 행 없음 — design-brief·화면 변경이 없다(spec 비목표). 가이드 영향 없음. 런타임 QA는 인계의 (b) 목록이 생길 때만 둔다 — survey 재측정이 이 기능의 실물 검증이다.
 
 ## 배치
 
