@@ -7,19 +7,28 @@
   "configFileRepos": 3,
   "detect": {
     "all": {
-      "n": 30,
+      "n": 44,
       "of": 48,
-      "pct": 62.5
+      "pct": 91.66666666666666
     },
     "supported": {
-      "n": 27,
+      "n": 40,
       "of": 40,
-      "pct": 67.5
+      "pct": 100
     }
   },
   "diff": {
     "approximateRepos": [],
     "byAdapter": {
+      "android-strings": {
+        "median": 0,
+        "overTarget": {
+          "n": 0,
+          "of": 15,
+          "pct": 0
+        },
+        "repos": 15
+      },
       "apple-strings": {
         "median": 0,
         "overTarget": {
@@ -48,13 +57,13 @@
         "repos": 10
       },
       "json-catalog": {
-        "median": 0.23529411764705888,
+        "median": 0.3422454830682679,
         "overTarget": {
-          "n": 2,
-          "of": 3,
-          "pct": 66.66666666666666
+          "n": 1,
+          "of": 2,
+          "pct": 50
         },
-        "repos": 3
+        "repos": 2
       }
     },
     "clean": {
@@ -70,17 +79,17 @@
     "nonBaseMedian": 0,
     "overHalf": {
       "n": 2,
-      "of": 30,
-      "pct": 6.666666666666667
+      "of": 44,
+      "pct": 4.545454545454546
     },
     "overTarget": {
-      "n": 4,
-      "of": 30,
-      "pct": 13.333333333333334
+      "n": 3,
+      "of": 44,
+      "pct": 6.8181818181818175
     }
   },
   "diffCauses": {
-    "emptyValues": 3,
+    "emptyValues": 2,
     "integerKeys": 0,
     "sparseArray": 0
   },
@@ -88,13 +97,13 @@
   "icuPluralRepos": 6,
   "indent": {
     "distribution": {
-      "space-2": 11,
+      "space-2": 10,
       "space-4": 2
     },
     "twoSpace": {
-      "n": 11,
-      "of": 13,
-      "pct": 84.61538461538461
+      "n": 10,
+      "of": 12,
+      "pct": 83.33333333333334
     }
   },
   "keyCollisions": 22,
@@ -105,20 +114,20 @@
   "measuredCount": 48,
   "misdetect": {
     "correctRank": {
-      "1": 24,
+      "1": 37,
+      "2": 1,
       "3": 1,
-      "8": 1,
-      "\uc5c6\uc74c": 14
+      "8": 1
     },
     "supported": {
       "n": 3,
-      "of": 27,
-      "pct": 11.11111111111111
+      "of": 40,
+      "pct": 7.5
     },
     "withCandidate": {
-      "n": 6,
-      "of": 30,
-      "pct": 20
+      "n": 7,
+      "of": 44,
+      "pct": 15.909090909090908
     }
   },
   "nonDotSeparatorRepos": [
@@ -133,7 +142,7 @@
     "objective-see/LuLu"
   ],
   "partialReadRepos": [],
-  "placeholderRepos": 11,
+  "placeholderRepos": 12,
   "presentation": {
     "compactContainer": 2,
     "dottedWithNested": 1,
@@ -145,7 +154,7 @@
     "chrome-key": 0,
     "json-parse": 0,
     "key-collision": 22,
-    "leaf-type": 68,
+    "leaf-type": 374,
     "non-literal-value": 0,
     "non-object-root": 0,
     "other": 0
@@ -153,14 +162,14 @@
   "repoCount": 48,
   "roundtrip": {
     "byteFixpointSame": {
-      "n": 30,
-      "of": 30,
+      "n": 44,
+      "of": 44,
       "pct": 100
     },
-    "notRun": 18,
+    "notRun": 4,
     "semanticSame": {
-      "n": 30,
-      "of": 30,
+      "n": 44,
+      "of": 44,
       "pct": 100
     }
   },
@@ -168,8 +177,8 @@
   "surgicalEdit": {
     "multiHunkRepos": [],
     "oneHunk": {
-      "n": 16,
-      "of": 16,
+      "n": 31,
+      "of": 31,
       "pct": 100
     }
   },
