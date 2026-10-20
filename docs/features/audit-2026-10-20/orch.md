@@ -77,3 +77,5 @@
   - B6 워커 release 완료.
 - **B5 완료** — `b6b5684d` → dev `13fef25b`. 지휘자 diff 확인: 13번 `format` 교체는 `lib/push/payload.ts:140`이 같은 보정을 해 페이로드 `locales`가 같다. 워커 gate는 병렬 부하로 test 타임아웃 red(재실행 시 2693건 통과) → **통합 게이트는 지휘자가 부하가 줄었을 때 main에서 돈다(미완)**. 워커 release·워크트리 삭제.
 - **B2 완료** — `9a56bd4c` → dev `534f8c65`(워커 gate도 부하 타임아웃 red, build 미검증 → 통합 게이트에서 확인). 미룬 항목: 가이드 세 언어 `self-hosting/README.md`의 gitlab-v2 → **fix1**(`brief-B2-fix1.md`)로 같은 워커에 재사용. `gitlab-ci-file` 컷 재촬영 → GS 행 신설.
+- **B2 fix1 완료** — `3b11196b` → dev `7898134a`. 워커 release·워크트리 삭제.
+- **B3 완료** — `9ccd2856` → dev `784c1b81`. 지휘자 diff 확인: `filesForFormat`이 `selectLocaleFiles`를 그대로 부른다(파일 순서만 `format.locales` 순으로 바뀜 — 테스트 고정), pull 두 곳은 `localeFilePath`(무효 템플릿·코드는 fail-closed). 미룬 항목 `surveyLocalePath`의 라벨용 치환 1곳은 프로덕션에 base 분기 경로 함수가 따로 없어 남긴다(지휘자 판단 — 라벨이고 파일 선택은 프로덕션을 지난다). 워커 gate 부하 타임아웃 red → 통합 게이트로. release·워크트리 삭제.
