@@ -74,3 +74,4 @@
   - bugshot-i18n-test(비공개): 지휘자가 `gh repo clone`으로 보충 — 1순위 chrome-locales·2순위 ts-dict, prod와 일치. 워크플로는 두 스텝 모두 `@malmoi-i18n-push-v1` 태그 고정이고 ts-dict 스텝은 `adapter: ts-dict`를 박아 탐지 변화의 영향이 없다.
   - ox501501/malmoi-gitlab-test(GitLab, json-catalog): 사용자가 ego에 GitLab 로그인 → 지휘자가 ego로 `main`의 `locales/{en,fr,ko}.json`을 읽어 새 탐지 실행 — 1순위 json-catalog · `locales/{locale}.json`, prod와 일치. 리포에 `.gitlab-ci.yml`이 없다(트리 전수: README + 로케일 3) — CI 소비자 아님.
   - B6 워커 release 완료.
+- **B5 완료** — `b6b5684d` → dev `13fef25b`. 지휘자 diff 확인: 13번 `format` 교체는 `lib/push/payload.ts:140`이 같은 보정을 해 페이로드 `locales`가 같다. 워커 gate는 병렬 부하로 test 타임아웃 red(재실행 시 2693건 통과) → **통합 게이트는 지휘자가 부하가 줄었을 때 main에서 돈다(미완)**. 워커 release·워크트리 삭제.
