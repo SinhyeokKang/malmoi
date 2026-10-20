@@ -95,6 +95,8 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
+  // 수동 지정·표면 라벨이 읽는 Android 기준 경로 규칙 — import 0인 잎이다. 어댑터 디렉터리 밖에 둔 이유: 표면 선택 그래프는 `/adapters/`를 물지 않는다.
+  "lib/android-paths.ts",
   // LNB Changelog 배지가 읽는 버전 문자열 — import 0인 잎이다. `package.json`은 `next.config`의 `env`가 빌드 때 문자열로 박는다.
   "lib/app-version.ts",
   "lib/auth/email.ts",

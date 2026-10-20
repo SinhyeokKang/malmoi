@@ -173,8 +173,6 @@ function judge(state: ChangeState, request: LocaleChangeRequest, approval: Appro
   const inCurrent = row?.operation === "REMOVE" || (row?.operation === "ADD" && state.valueCount > 0);
   const verdict = planLocaleChange({
     request,
-    // 인가는 잠금(실행)·진입 판정(미리보기)이 이미 봤다 — 여기 닿으면 OWNER다.
-    canManage: true,
     projectArchived: state.project === null || state.project.archivedAt !== null,
     // ⚠️ **확인이 무효화된 동안(`delivered: null`)은 효과가 현재 목록에 있는 취소를 막는다** (design §3, R-B1 🔴 R1). 무효화는 시간으로 풀리지 않고
     // 다음 성공 확인만 푼다 — 그 사이 취소를 받으면 작업이 0으로 접혀 Publish가 돌지 않고 열린 PR의 stale 파일이 남는다. 행이 남아 있으면 작업이

@@ -31,7 +31,7 @@ export type DetectedFormat = {
   templateLocale?: string;
   /**
    * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
-   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
+   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`·`android-strings`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
    *   없으면 치환할 대상이 없어 파일을 안 낸다.
    * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
    *   읽는다. 없으면 기본값으로 계속 만든다. ⚠️ `arb-catalog`만 예외로 소스 키 메타데이터(`@key`·`@@*`)의 텍스트 구간도 나른다(값은 아니다).
@@ -121,7 +121,7 @@ export type LocaleEntry = {
    *
    * **처리가 writer 방식마다 다르다** (ARCHITECTURE §1.1):
    * - 재생성(`chrome-locales`·`json-catalog`·`arb-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
-   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
+   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`·`apple-strings`·`apple-xcstrings`·`android-strings`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
    * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
@@ -282,7 +282,7 @@ export type Adapter = {
    * 로케일 파일 경로를 만드는 방식. 어댑터마다 구조가 다르다:
    *
    * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
-   *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict`, `apple-strings` — ⚠️ 뒤 셋은 per-locale인데
+   *   (`chrome-locales`, `json-catalog`, `arb-catalog`, `yaml-catalog`, `code-dict`, `apple-strings`, `android-strings` — ⚠️ 뒤 넷은 per-locale인데
    *   **수술적**이다. 경로 모양과 write 기계는 별개 축이다).
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
    *   (`ts-dict` — `apple-xcstrings`는 와일드카드 없는 파일 경로 하나다). write도 파일별로 불러야 한다.
@@ -294,7 +294,7 @@ export type Adapter = {
    * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `orderedEntries`의 결정성 규칙(§1.1)을
    *   지나야 한다 (`chrome-locales`·`json-catalog`·`arb-catalog`).
    * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
-   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`·`apple-strings`·`apple-xcstrings`).
+   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`·`apple-strings`·`apple-xcstrings`·`android-strings`).
    *
    * ⚠️ **pull이 "원본 blob 내용을 받아야 하나"를 이 값으로 판단한다.** 전에는 `layout`으로
    * 갈랐는데 `per-locale` + `surgical` 조합(YAML·코드 딕셔너리)이 생겨 성립하지 않는다 —

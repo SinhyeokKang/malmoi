@@ -28,7 +28,7 @@ const keysWith = (fr: Record<string, string>): RenderKey[] => [
   { key: "title", sourceText: "Home", sortIndex: 0, orphaned: false, cells: { en: { value: "Home" }, ...(fr.title === undefined ? {} : { fr: { value: fr.title } }) } },
   { key: "logout", sourceText: "Log out", sortIndex: 1, orphaned: false, cells: { en: { value: "Log out" }, ...(fr.logout === undefined ? {} : { fr: { value: fr.logout } }) } },
 ];
-const wrapped = (files: ReturnType<typeof renderLocaleFiles>) => [{ surfaceId: "s", surfaceSlug: "app", baseLocale: "en", files }];
+const wrapped = (files: ReturnType<typeof renderLocaleFiles>) => [{ surfaceId: "s", surfaceSlug: "app", baseLocale: "en", adapter: "android-strings" as const, files }];
 
 describe("android-strings — 저장된 표면의 포맷", () => {
   it("formatFromProject가 basePath와 그 파일의 언어(templateLocale)를 싣고, 기준 언어 경로가 basePath다", () => {
@@ -94,5 +94,35 @@ describe("android-strings — 누락 키 삽입이 기준 파일의 formatted를
     const out = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map([[BASE_PATH, base], [FR_PATH, fr]]));
     expect(out.find((f) => f.path === FR_PATH)?.content).toBe(fr.replace("</resources>", '    <string name="logout" formatted="false">%s – %s</string>\n</resources>'));
     expect(out.find((f) => f.path === BASE_PATH)?.content).toBe(base);
+  });
+});
+
+/**
+ * audit 2026-10-20 #1 — 비기준 파일에 쓸 자리가 없는 셀. 전달 판정(`planDelivery`)은 per-locale 표면에서 기준 파일만 읽으므로 렌더 오류가 판정 입력이다.
+ * 같은 이름 둘(aapt2 빌드 오류)은 blocking이다. 리소스 참조·`translatable="false"`는 그 셀만 보류하고 같은 파일의 다른 셀은 쓴다(리뷰 Y1 · 결정 D9) —
+ * 렌더는 편집과 옛 DB 값을 가르지 않으므로, 옛 값이 프로젝트를 막지 않는 것이 이 판정의 요지다. 진입점부터 잇는 시나리오는 격리 Postgres
+ * (`android-strings-publish.integration.ts`)가 든다.
+ */
+describe("android-strings — 비기준 파일에 쓸 자리가 없는 셀", () => {
+  const frWith = (slot: string) => `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n${slot}\n    <string name="logout">Déconnexion</string>\n</resources>\n`;
+  const render = (fr: string) =>
+    renderLocaleFiles(format, "per-locale", paths, keysWith({ title: "Début", logout: "Se déconnecter" }), "en", new Map([[BASE_PATH, BASE], [FR_PATH, fr]]));
+
+  it("같은 이름 둘 — blocking이고 fr 파일은 원본 그대로다", () => {
+    const fr = frWith('    <string name="title">Accueil</string>\n    <string name="title">Maison</string>');
+    const out = render(fr);
+    expect(out.find((f) => f.path === FR_PATH)?.content).toBe(fr);
+    expect(blockingErrors(wrapped(out)).map(({ error }) => [error.path, error.code, error.key])).toEqual([[FR_PATH, "key-shadowed", "title"]]);
+  });
+
+  it.each([
+    ["translatable=false", '    <string name="title" translatable="false">Accueil</string>'],
+    ["리소스 참조", '    <string name="title">@string/app_name</string>'],
+  ] as const)("%s — 그 셀만 보류(blocking 0)이고 같은 파일의 다른 편집은 쓴다", (_, slot) => {
+    const fr = frWith(slot);
+    const out = render(fr);
+    expect(out.find((f) => f.path === FR_PATH)?.content).toBe(fr.replace(">Déconnexion<", ">Se déconnecter<"));
+    expect(blockingErrors(wrapped(out))).toEqual([]);
+    expect(withheldCoordinates(wrapped(out))).toEqual({ locales: new Set(), cells: new Set(["s\0fr\0title"]) });
   });
 });

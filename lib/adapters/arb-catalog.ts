@@ -34,7 +34,7 @@ export type ArbMember = { name: string; value: string };
  *
  * ⚠️ **`JSON.parse`로 먼저 검증하고 그다음 훑는다.** 훑기는 값의 경계만 찾고 해석은 하지 않으므로, 검증된 입력에서만 경계가 참이다.
  */
-export function parseArb(text: string): ArbMember[] | undefined {
+function parseArb(text: string): ArbMember[] | undefined {
   const t = stripBom(text);
   let parsed: unknown;
   try {

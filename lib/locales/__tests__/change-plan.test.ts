@@ -11,7 +11,6 @@ const initial: State = { locales: [{ code: "en", orphaned: false }, { code: "ko"
 function input(request: LocaleChangeRequest, state: State = initial, overrides: Partial<LocaleChangeInput> = {}): LocaleChangeInput {
   return {
     request,
-    canManage: true,
     projectArchived: false,
     publishUnsettled: false,
     surface,
@@ -99,14 +98,10 @@ describe("planLocaleChange — refusals write nothing", () => {
   const adding: State = { locales: [...initial.locales, { code: "fr", orphaned: false }], changes: [{ localeCode: "fr", operation: "ADD" }] };
 
   it.each<[string, LocaleChangeInput, string]>([
-    ["EDITOR adds", input({ kind: "add", code: "fr" }, initial, { canManage: false }), "forbidden"],
-    // 거부 순서 고정 — 권한이 보관보다, 보관이 미확정 Publish보다 앞이다(R-A1 M4).
-    ["EDITOR on an archived project", input({ kind: "add", code: "fr" }, initial, { canManage: false, projectArchived: true }), "forbidden"],
+    // 거부 순서 고정 — 보관이 미확정 Publish보다 앞이다(R-A1 M4).
     ["archived with an unsettled publish", input({ kind: "add", code: "fr" }, initial, { projectArchived: true, publishUnsettled: true }), "archived"],
     // 기준 언어를 모르는 소스는 어느 언어든 기준일 수 있다 — 제거를 기준 언어 거부로 막는다(R-A1 ⚪).
     ["remove on a source without a base locale", input({ kind: "remove", code: "ko" }, initial, { surface: { ...surface, baseLocale: null } }), "base-locale"],
-    ["EDITOR removes", input({ kind: "remove", code: "ko" }, initial, { canManage: false }), "forbidden"],
-    ["EDITOR cancels a removal", input({ kind: "cancel-removal", code: "ko" }, removing, { canManage: false }), "forbidden"],
     ["archived add", input({ kind: "add", code: "fr" }, initial, { projectArchived: true }), "archived"],
     ["archived cancel", input({ kind: "cancel-removal", code: "ko" }, removing, { projectArchived: true }), "archived"],
     ["unsettled publish add", input({ kind: "add", code: "fr" }, initial, { publishUnsettled: true }), "publish-unsettled"],

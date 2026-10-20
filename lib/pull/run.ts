@@ -1,6 +1,7 @@
 import { LocaleFileParseError, type FileEncoding } from "@/lib/file-encoding";
 import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
+import { localeFilePath } from "@/lib/locales/add-plan";
 import type { AdapterError } from "@/lib/adapters/types";
 import type { GitClient, GitTreeEntry } from "./client";
 import { PR_TITLE, bodyNeedsRefresh, pullRequestBody, withSkipMarker, type PublishedFile } from "./payload";
@@ -19,7 +20,7 @@ import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { countFileChangedValues } from "./changed-values";
-import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
+import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates, type RenderedSurface } from "./undeliverable";
 import type { LocaleEffect } from "@/lib/locales/effects";
 import {
   NO_LOCALE_PLAN, capturedBySurface, deliverableLocaleWork, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, observedLocalesOf, planProjectLocales, withdrawnLocalesOf,
@@ -336,13 +337,13 @@ export async function renderProject(
     }));
   }
 
-  const rendered = resolved.map(item => {
+  const rendered: RenderedSurface[] = resolved.map(item => {
     const creates = new Set(planBySurface.get(item.surface.id)?.creates.map(c => c.localeCode) ?? []);
     const basePath = item.paths.find(p => p.locale === item.baseLocale)?.path;
     // 새 언어 파일의 표현 출처는 **그 소스의 기준 언어 파일 하나**다(design §4) — 형제 파일 중 아무것이나 고르지 않는다.
     const represent = creates.size === 0 ? undefined : { locales: creates, source: basePath === undefined ? undefined : current.get(basePath) };
     return {
-      surfaceId: item.surface.id, surfaceSlug: item.surface.slug, baseLocale: item.baseLocale,
+      surfaceId: item.surface.id, surfaceSlug: item.surface.slug, baseLocale: item.baseLocale, adapter: item.format.adapter,
       files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current, represent).map(file => {
         // 원본 부재와 디코드 실패는 다르다 — 실패한 파일을 재생성하거나 새 파일로 내보내지 않는다.
         if (unreadable.has(file.path)) return { ...file, content: null, errors: [{ path: file.path, code: "parse-failed" as const }] };
@@ -365,7 +366,7 @@ function assertLocalePlanOwned(formats: ProjectFormats, plan: ProjectLocalePlan)
     const item = formats.find(format => format.surface.id === surface.surfaceId);
     const rows = item?.surface.localeChanges?.rows ?? [];
     const owned = (operation: "ADD" | "REMOVE") => ({ localeCode, path }: { localeCode: string; path: string }) =>
-      rows.some(row => row.localeCode === localeCode && row.operation === operation) && item?.surface.pathTemplate?.replaceAll("{locale}", localeCode) === path;
+      rows.some(row => row.localeCode === localeCode && row.operation === operation) && (item?.surface.pathTemplate == null ? null : localeFilePath(item.surface.pathTemplate, localeCode)) === path;
     if (!surface.deletes.every(owned("REMOVE")) || !surface.creates.every(owned("ADD"))) {
       fail(`unreachable: locale plan outside REMOVE/ADD rows (${surface.surfaceSlug})`);
     }

@@ -5,7 +5,7 @@ import { stripBom } from "../adapters/json-style";
 import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
-import { pickBaseLocale } from "../push/payload";
+import { pickBaseLocale, selectLocaleFiles } from "../push/payload";
 import { buildWriteEntries, type LocalePath } from "../pull/plan";
 import { renderLocaleFiles, rowsForLocale, type RenderKey } from "../pull/render";
 import { candidatesFor } from "./merge";
@@ -185,28 +185,13 @@ export function surveyLocalePath(fmt: DetectedFormat, locale: string, base: stri
   return locale === base ? baseFilePath(fmt, locale) : fmt.pathTemplate.replaceAll("{locale}", locale);
 }
 
-/** 1순위 후보가 가리키는 파일들을 골라온다. `layout`에 따라 규칙이 다르다. */
-function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] {
-  const out: AdapterFile[] = [];
-  // 축은 `layout`이다 — 프로덕션(`push/payload.ts`·`pull/plan.ts`)과 같은 판정. 템플릿 문자열을
-  // 보고 갈랐던 것은 그 축의 복제였다 (2026-09-04 audit #19).
-  if (adapterFor(fmt).layout === "per-locale") {
-    // 기준 언어는 아래 `pickBase(read1 로케일)`과 같은 판정이다 — read 전이라 탐지 로케일로 고른다.
-    const base = baseOf(fmt, fmt.locales);
-    for (const locale of [...fmt.locales].sort(compareKeys)) {
-      const path = surveyLocalePath(fmt, locale, base);
-      const content = input.files.get(path);
-      if (content !== undefined) out.push({ path, content });
-    }
-    return out;
-  }
-  // `multi-locale` — pathTemplate이 글롭이다. **push·pull과 같은 함수로 매칭한다** (2026-09-04):
-  // 측정 층이 자기 규칙을 들면 프로덕션이 고르지 않는 파일을 재게 된다.
-  for (const path of matchGlobPaths(fmt.pathTemplate, [...input.files.keys()])) {
-    const content = input.files.get(path);
-    if (content !== undefined) out.push({ path, content });
-  }
-  return out;
+/**
+ * 1순위 후보가 가리키는 파일들을 골라온다. **프로덕션의 `selectLocaleFiles`를 그대로 지난다** — per-locale의 파일 선택·순서와 multi-locale의 글롭 매칭을
+ * 여기서 다시 짜면 측정이 프로덕션이 고르지 않는 파일·순서를 잰다(POSTMORTEM 2026-09-02, 2026-09-04 audit #19). 기준 언어는 read 전이라 탐지 로케일로 고른다.
+ */
+export function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] {
+  const base = baseOf(fmt, fmt.locales) ?? "";
+  return selectLocaleFiles(adapterFor(fmt).layout, fmt, [...input.files.keys()], (path) => input.files.get(path), base);
 }
 
 /**

@@ -180,7 +180,7 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
  * 언어 수는 모르므로 가장 흔한 셋이다.
  */
 export function LocalePanelSkeleton({ head = true }: {
-  /** 작업 화면 안에서는 `false`다 — 머리 줄은 Workspace가 들고(진입 착지의 제목이 같은 노드여야 한다), 그 안에 `DetailHeadSkeleton`이 선다. */
+  /** 작업 화면 안에서는 `false`다 — 머리 줄은 Workspace가 직접 든다(진입 착지의 제목이 같은 노드여야 한다). */
   head?: boolean;
 }) {
   return (
@@ -218,7 +218,7 @@ export function LocalePanelSkeleton({ head = true }: {
 }
 
 /** 상세 머리의 골격 조각 — 경로와 언어 메뉴 자리. */
-export function DetailHeadSkeleton() {
+function DetailHeadSkeleton() {
   return <>
     <Skeleton className="size-4 shrink-0 rounded" />
     <Skeleton size="sm" className="w-32" />

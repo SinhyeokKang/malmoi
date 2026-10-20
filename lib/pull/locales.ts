@@ -267,8 +267,8 @@ export function localeFingerprintInput(plan: ProjectLocalePlan, formats: readonl
   const targets: [string, string | null][] = [];
   for (const item of formats) {
     for (const row of item.surface.localeChanges?.rows ?? []) {
-      const path = item.surface.pathTemplate?.replaceAll("{locale}", row.localeCode);
-      if (path !== undefined) targets.push([path, shaByPath.get(path) ?? null]);
+      const path = item.surface.pathTemplate == null ? null : localeFilePath(item.surface.pathTemplate, row.localeCode);
+      if (path !== null) targets.push([path, shaByPath.get(path) ?? null]);
     }
   }
   return {

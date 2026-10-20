@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { DetectedFormat } from "../../adapters/types";
-import { surveyLocalePath } from "../one";
+import { selectLocaleFiles } from "../../push/payload";
+import type { SurveyInput } from "../types";
+import { filesForFormat, surveyLocalePath } from "../one";
 
 /**
  * survey도 프로덕션과 같은 경로를 잰다 (mobile-strings design §2) — 측정 층이 기준 언어 파일을 치환으로 찾으면 Android 리포의
@@ -24,5 +26,23 @@ describe("surveyLocalePath", () => {
     expect(surveyLocalePath(format, "en", undefined)).toBe("res/values-en/strings.json");
     const { basePath: _, ...plain } = format;
     expect(surveyLocalePath(plain, "en", "en")).toBe("res/values-en/strings.json");
+  });
+});
+
+describe("filesForFormat — 프로덕션 selectLocaleFiles와 같은 선택", () => {
+  const files = new Map([
+    ["res/values/strings.json", "{}"],
+    ["res/values-ko/strings.json", "{}"],
+    ["res/values-en/strings.json", "{}"],
+    ["res/values-fr/strings.json", "{}"],
+  ]);
+  const input = { paths: [...files.keys()], files } as unknown as SurveyInput;
+  const withBase: DetectedFormat = { ...format, locales: ["ko", "fr", "en"], templateLocale: "en" };
+
+  it("per-locale은 selectLocaleFiles의 경로·순서를 그대로 낸다", () => {
+    const expected = selectLocaleFiles("per-locale", withBase, input.paths, (p) => files.get(p), "en");
+    expect(filesForFormat(withBase, input)).toEqual(expected);
+    // basePath가 기준 언어 파일이고 `values-en/`은 읽지 않는다. 순서는 format.locales다(정렬하지 않는다).
+    expect(expected.map((f) => f.path)).toEqual(["res/values-ko/strings.json", "res/values-fr/strings.json", "res/values/strings.json"]);
   });
 });

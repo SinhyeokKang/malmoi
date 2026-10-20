@@ -67,7 +67,7 @@ export const NOT_STARTED_REASONS = [
 export type NotStartedReason = (typeof NOT_STARTED_REASONS)[number];
 
 /** 실행을 시작한 자리. `reported-failure`는 `/api/push/failure`가 받은 보고다. */
-export const IMPORT_SOURCES = ["ci", "manual", "first", "reported-failure", "nightly"] as const;
+const IMPORT_SOURCES = ["ci", "manual", "first", "reported-failure", "nightly"] as const;
 
 export type ImportSource = (typeof IMPORT_SOURCES)[number];
 
@@ -122,7 +122,7 @@ export type LocaleChangeDetail = {
   via: LocaleChangeVia | null;
 };
 
-export const LOCALE_CHANGE_VIAS = ["publish", "sync", "nightly", "ci"] as const;
+const LOCALE_CHANGE_VIAS = ["publish", "sync", "nightly", "ci"] as const;
 export type LocaleChangeVia = (typeof LOCALE_CHANGE_VIAS)[number];
 
 /** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
@@ -245,7 +245,7 @@ export function normalizeSurfaceIds(ids: readonly string[]): string[] {
 }
 
 /** 사건 당시 대상 소스의 성격. ⚠️ **빈 배열 하나로는 "전역"과 "모른다"가 같은 모양이 된다.** */
-export const SURFACE_SCOPES = ["sources", "project-wide", "not-recorded"] as const;
+const SURFACE_SCOPES = ["sources", "project-wide", "not-recorded"] as const;
 
 export type SurfaceScope = (typeof SURFACE_SCOPES)[number];
 

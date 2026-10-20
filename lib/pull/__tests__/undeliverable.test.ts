@@ -62,6 +62,43 @@ describe("withheldCoordinates · blockingErrors — ts-dict", () => {
   });
 });
 
+/**
+ * Android 비기준 파일의 쓸 수 없는 자리(리소스 참조·`translatable="false"`) — 셀 보류다(audit 2026-10-20 리뷰 Y1 · 사용자 결정 D9). 편집이 아닌 옛 DB 값은
+ * 토큰이 없어 아무 효과가 없고, 편집은 토큰을 남긴 채 그 셀만 빠진다. 같은 이름 둘(`key-shadowed` — aapt2 빌드 오류)은 프로젝트 차단 그대로다.
+ * 다른 어댑터(code-dict)의 같은 코드와 기준 파일은 바뀌지 않는다 — 표면의 어댑터가 판정 입력이다.
+ */
+describe("withheldCoordinates · blockingErrors — android-strings 비기준 파일", () => {
+  const ko = (errors: NonNullable<RenderedSurface["files"][number]["errors"]>) =>
+    ({ path: "app/res/values-ko/strings.xml", locale: "ko", content: "<resources/>", errors });
+  const unwritable = { path: "app/res/values-ko/strings.xml", code: "write-slot-not-string-literal" as const, key: "title", detail: "resource reference" };
+
+  it("write-slot-not-string-literal(ko, title) → 셀 좌표 (s1, ko, title) · blocking 0", () => {
+    const rendered = [surface([ko([unwritable])], { adapter: "android-strings" })];
+    expect([...withheldCoordinates(rendered).cells]).toEqual(["s1\0ko\0title"]);
+    expect(blockingErrors(rendered)).toEqual([]);
+  });
+
+  it("key-shadowed(같은 이름 둘)는 blocking 그대로다", () => {
+    const rendered = [surface([ko([{ path: unwritable.path, code: "key-shadowed", key: "title" }])], { adapter: "android-strings" })];
+    expect(withheldCoordinates(rendered).cells.size).toBe(0);
+    expect(blockingErrors(rendered)).toHaveLength(1);
+  });
+
+  it("기준 언어 파일·키 없는 오류·다른 어댑터(code-dict)·어댑터를 모르는 표면은 blocking 그대로다", () => {
+    const base = { path: "app/res/values/strings.xml", locale: "en", content: "<resources/>", errors: [{ ...unwritable, path: "app/res/values/strings.xml" }] };
+    const { key: _, ...keyless } = unwritable;
+    for (const rendered of [
+      [surface([base], { adapter: "android-strings" })],
+      [surface([ko([keyless])], { adapter: "android-strings" })],
+      [surface([ko([unwritable])], { adapter: "code-dict" })],
+      [surface([ko([unwritable])])],
+    ]) {
+      expect(withheldCoordinates(rendered).cells.size).toBe(0);
+      expect(blockingErrors(rendered)).toHaveLength(1);
+    }
+  });
+});
+
 describe("blockingErrors — 그 밖의 writer 경고는 그대로 reject다", () => {
   it("per-locale(code-dict)의 write-slot-missing은 blocking이다 — 구조상 삽입 포기라 셀 보류 대상이 아니다 (C는 ts-dict만)", () => {
     const rendered = [surface([
