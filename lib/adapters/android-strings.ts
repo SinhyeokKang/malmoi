@@ -805,10 +805,19 @@ function writeWithErrors(format: DetectedFormat, input: WriteInput): { content: 
   for (const entry of input.entries) {
     // orphaned·빈 값은 원본 값을 남긴다(불변식 3 — 수술적 표면은 비울 수 없다).
     if (entry.orphaned === true || entry.message === "") continue;
-    // 같은 이름이 둘이면(aapt2 오류) 어느 사본도 고치지 않는다 — 가려진 사본을 고치고 전달로 세지 않는다(POSTMORTEM 2026-10-07).
-    if (counts.has(entry.key) && !slots.has(entry.key)) continue;
+    // ⚠️ **비기준 파일에서 쓸 자리가 없는 셀은 키가 붙은 실패다** (audit 2026-10-20 #1) — 전달 판정(`planDelivery`)은 per-locale 표면에서 기준 파일만
+    // 읽어 이 셀을 전달로 센다. 건너뛰기만 하면 값이 PR에 없는데 토큰이 지워진다(POSTMORTEM 2026-10-07). 기준 파일은 알리지 않는다 — read가 그 키를
+    // 내지 않아 판정이 이미 보류로 센다(B3.4). 같은 이름이 둘이면(aapt2 오류) 어느 사본도 고치지 않는다.
+    if (counts.has(entry.key) && !slots.has(entry.key)) {
+      if (!isBase) failed.push({ path: file.path, code: "key-shadowed", key: entry.key });
+      continue;
+    }
     const slot = slots.get(entry.key);
-    if (slot !== undefined && (!slot.translatable || slot.reference || slot.value === entry.message)) continue;
+    if (slot !== undefined && slot.value === entry.message) continue;
+    if (slot !== undefined && (!slot.translatable || slot.reference)) {
+      if (!isBase) failed.push({ path: file.path, code: "write-slot-not-string-literal", key: entry.key, detail: slot.translatable ? "resource reference" : 'translatable="false"' });
+      continue;
+    }
     const raw = encodeAndroidValue(entry.message, slot?.form, dialect);
     if (raw === undefined) {
       failed.push({ path: file.path, code: "write-parse-failed", key: entry.key, detail: UNWRITABLE });
