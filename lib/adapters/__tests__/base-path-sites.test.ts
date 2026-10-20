@@ -29,8 +29,6 @@ const SITES: Record<string, { count: number; kind: Kind }> = {
   "app/(edit)/projects/actions.ts": { count: 1, kind: "branched" },
 
   "lib/locales/add-plan.ts": { count: 1, kind: "change-row" },
-  "lib/pull/locales.ts": { count: 1, kind: "change-row" },
-  "lib/pull/run.ts": { count: 1, kind: "change-row" },
 
   "lib/adapters/chrome-locales.ts": { count: 1, kind: "adapter" },
   "lib/adapters/json-catalog.ts": { count: 1, kind: "adapter" },

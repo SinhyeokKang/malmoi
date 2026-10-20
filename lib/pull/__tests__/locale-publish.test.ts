@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, localeNotesOf, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
+import { NO_LOCALE_PLAN, afterExpiry, localeFingerprintInput, expiringLocalesOf, expiryCheckApplies, localeNotesOf, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { reachedRepository } from "@/lib/locales/reached";
 import { awaitsResolution } from "@/lib/locales/work";
 import { pullRequestBody, removedFilesStated } from "../payload";
@@ -752,4 +752,16 @@ it("UTF-16 원본과 DB가 같으면 Publish의 외부 쓰기는 0회다", async
   ] }, blobs: { [e]: EN, [k]: KO }, blobEncodings: { [e]: "utf-16le-bom", [k]: "utf-16be" } });
   expect(await runPull(deps(loaded, made).deps)).toMatchObject({ status: "skipped", reason: "no-changes" });
   expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+});
+
+describe("localeFingerprintInput — 행의 경로는 localeFilePath와 같은 판정이다", () => {
+  it("행마다 템플릿 치환 경로와 그 경로의 base blob SHA를 경로 순으로 낸다", () => {
+    const formats = projectFormats([{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS, localeChanges: changes([["ko", "ADD"], ["fr", "REMOVE"]]) }]);
+    const tree = [{ path: "i18n/fr.json", sha: "sha-fr", mode: "100644" }];
+    const plan = planProjectLocales(formats, tree);
+    if (!plan.ok) throw new Error("plan refused");
+    expect(localeFingerprintInput(plan.plan, formats, tree)).toMatchObject({
+      targets: [["i18n/fr.json", "sha-fr"], ["i18n/ko.json", null]],
+    });
+  });
 });

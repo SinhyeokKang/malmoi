@@ -1,6 +1,7 @@
 import { LocaleFileParseError, type FileEncoding } from "@/lib/file-encoding";
 import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
+import { localeFilePath } from "@/lib/locales/add-plan";
 import type { AdapterError } from "@/lib/adapters/types";
 import type { GitClient, GitTreeEntry } from "./client";
 import { PR_TITLE, bodyNeedsRefresh, pullRequestBody, withSkipMarker, type PublishedFile } from "./payload";
@@ -365,7 +366,7 @@ function assertLocalePlanOwned(formats: ProjectFormats, plan: ProjectLocalePlan)
     const item = formats.find(format => format.surface.id === surface.surfaceId);
     const rows = item?.surface.localeChanges?.rows ?? [];
     const owned = (operation: "ADD" | "REMOVE") => ({ localeCode, path }: { localeCode: string; path: string }) =>
-      rows.some(row => row.localeCode === localeCode && row.operation === operation) && item?.surface.pathTemplate?.replaceAll("{locale}", localeCode) === path;
+      rows.some(row => row.localeCode === localeCode && row.operation === operation) && (item?.surface.pathTemplate == null ? null : localeFilePath(item.surface.pathTemplate, localeCode)) === path;
     if (!surface.deletes.every(owned("REMOVE")) || !surface.creates.every(owned("ADD"))) {
       fail(`unreachable: locale plan outside REMOVE/ADD rows (${surface.surfaceSlug})`);
     }
