@@ -47,6 +47,7 @@
 | B4 | 7 | `lib/onboarding/base-input.ts` · `lib/surfaces/plan.ts` · `lib/adapters/android-strings.ts:26` 부근(기준 경로 규칙) | **B1 dev 통합 뒤** | Claude Sonnet · medium | 새 워크트리 | 새 단위 테스트 · `pnpm gate --base dev` | 대기 |
 | B5 | 12, 13, 14 | `lib/locales/change.ts` · `lib/locales/change-plan.ts` · `lib/onboarding/ingest.ts` · `lib/adapters/{arb-catalog,code-dict,yaml-catalog,shared}.ts`(export 키워드만) · `lib/events/payload.ts` · `lib/projects/list.ts` · `components/translations/workspace/locale-panel.tsx` | — | Claude Sonnet · low (기계적 정리) | 새 워크트리 | `pnpm gate --base dev` | 대기 |
 | B6 | T5.0 | 코드 수정 없음 — 리포트 `.scratch/handoff-B6.md` | — | Claude Sonnet · medium (ego-browser 읽기 전용) | main 체크아웃 | prod 표면별 1순위 불변 표 | 대기 |
+| GS | B2가 바꾼 `gitlab-ci.ts` → `gitlab-ci-file` 컷(job의 태그·SHA가 보인다) 등 `pnpm guide:check` stale | `public/guide/**` · `guide/SHOOTING.md` | 모든 코드 배치 dev 통합 뒤 | Claude Sonnet · medium (`/guide-shots`, ego) | main 체크아웃 | `pnpm guide:check` stale 0 | 대기 |
 | 문서 | 3, 4, 5, 8, 15, 16 | `CLAUDE.md` · `docs/PRODUCT.md` · `docs/DIRECTORY.md` · `docs/features/*` 삭제 | 8은 B2·B6 뒤, 15는 B4 뒤 | 지휘자 | main 체크아웃 | `pnpm sync:agents:check` | 대기 |
 
 ### 파일 겹침
@@ -75,3 +76,4 @@
   - ox501501/malmoi-gitlab-test(GitLab, json-catalog): 사용자가 ego에 GitLab 로그인 → 지휘자가 ego로 `main`의 `locales/{en,fr,ko}.json`을 읽어 새 탐지 실행 — 1순위 json-catalog · `locales/{locale}.json`, prod와 일치. 리포에 `.gitlab-ci.yml`이 없다(트리 전수: README + 로케일 3) — CI 소비자 아님.
   - B6 워커 release 완료.
 - **B5 완료** — `b6b5684d` → dev `13fef25b`. 지휘자 diff 확인: 13번 `format` 교체는 `lib/push/payload.ts:140`이 같은 보정을 해 페이로드 `locales`가 같다. 워커 gate는 병렬 부하로 test 타임아웃 red(재실행 시 2693건 통과) → **통합 게이트는 지휘자가 부하가 줄었을 때 main에서 돈다(미완)**. 워커 release·워크트리 삭제.
+- **B2 완료** — `9a56bd4c` → dev `534f8c65`(워커 gate도 부하 타임아웃 red, build 미검증 → 통합 게이트에서 확인). 미룬 항목: 가이드 세 언어 `self-hosting/README.md`의 gitlab-v2 → **fix1**(`brief-B2-fix1.md`)로 같은 워커에 재사용. `gitlab-ci-file` 컷 재촬영 → GS 행 신설.
