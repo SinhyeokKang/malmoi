@@ -3026,3 +3026,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep `rg -n 'repository/files|repository/blobs' lib scripts app -g '!**/__tests__/**'` — 2026-10-19 실행: 로케일 내용을 읽는 호출은 `client.ts:129`의 `/raw` 하나뿐이다. JSON blob·files 엔드포인트로 파일 **내용**을 읽는 호출이 생기면 그 자리에서 막는다(메타데이터만 읽는 호출은 괜찮다).
   - GitHub 쪽 `GET /git/blobs/{sha}`(`lib/github.ts:323·408`)는 변환하지 않는다는 것을 Q1이 실물로 확인했다(원격 blob = 로컬 `git hash-object`). 호스트를 늘리면 같은 실측(UTF-16 파일 하나를 올리고 API로 읽은 바이트를 `xxd`로 대조)을 먼저 한다.
   - 호스트 가짜에 새 엔드포인트를 더할 때는 실제 응답을 한 번 채록해 그 변환을 재현한다. 저장 바이트를 그대로 돌려주는 가짜로 인코딩 계약을 증명하지 않는다.
+
+### 2026-10-20 — Android writer가 비기준 파일에서 쓸 자리가 없는 셀을 조용히 건너뛰어 편집이 전달로 기록됐다
+
+- **영역**: `lib/adapters/android-strings.ts`(`writeWithErrors`) · 전달 판정 `lib/pull/run.ts`(`planDelivery`) · 미리보기 `lib/publish/read.ts`.
+- **증상**: 2026-10-20 `/audit`이 코드에서 찾았다(실물 관측 아님). 비기준 언어 파일(`values-ko/strings.xml`)에서 그 키가 ① 같은 이름 두 번 ② `translatable="false"` ③ 리소스 참조(`@string/app_name`)이면 writer가 그 셀을 오류 없이 `continue`했다. 그 셀을 편집하고 미리보기 없이 Publish(야간·MCP)를 돌리면 `no-changes`로 끝나고 편집의 미전달 토큰이 지워졌다. 값은 PR에 없었다. 미리보기는 ③·①에서는 read 오류로 막혔지만 ②에서는 "보낸다"고 약속했다.
+- **근본 원인**: per-locale 표면의 전달 판정은 **기준 파일만** 읽어 키 자리를 본다(B3.4). 비기준 파일의 자리 유무는 writer만 안다. 그런데 writer는 "쓸 수 없다"를 알리지 않고 건너뛰었다. 2026-10-07 항목("파일 쓰기 성공과 요청한 값 전달을 같은 것으로 셌다")과 같은 부류다. xcstrings는 같은 자리에서 `write-slot-not-scalar`를 냈지만 Android 어댑터가 그 규약을 옮기지 않았다. 기존 테스트 "중복 키는 어느 사본도 고치지 않는다"는 `content`만 봐서 오류가 없다는 사실을 고정했다.
+- **그물**: `/audit` 불변식 차원(전달 판정 ↔ writer 대조)이 잡았다. 단위·격리 테스트는 놓쳤다 — 비기준 파일의 쓸 수 없는 자리를 편집한 시나리오가 없었다. 수정은 그 셋을 키가 붙은 실패(①`key-shadowed` · ②③`write-slot-not-string-literal`, `detail`로 구분)로 알린다. 렌더 blocking이라 실행은 `writer-warnings`(Git 쓰기 0 · 전달 확인 0 · 토큰 유지)이고 미리보기도 같은 렌더로 막힌다. 기준 파일은 알리지 않는다 — read가 그 키를 내지 않아 판정이 이미 보류로 센다. `android-strings-publish.integration.ts`의 세 경우가 수정 전 red였다.
+- **재발 방지**:
+  - 수술적 writer의 건너뜀을 전수로 본다: `rg -n 'continue;' lib/adapters/*.ts` 중 `writeWithErrors` 안에서 orphaned·빈 값·값 같음 밖의 이유로 건너뛰는 자리. 2026-10-20 실행: `apple-strings`·`apple-xcstrings`·`yaml-catalog`에는 그런 자리가 없다(넣거나 오류를 낸다).
+  - 새 수술적 per-locale 어댑터를 들일 때 "비기준 파일에서 쓸 수 없는 자리"를 편집한 셀이 미리보기·실행에서 같은 결과(막힘 또는 보류)인지 격리 Postgres 시나리오로 잰다. 전달 판정이 읽지 않는 파일의 자리는 writer가 알려야 한다.
+  - 대가: 그 셀에 편집이 아닌 옛 DB 값이 남아 있어도 값이 파일과 다르면 프로젝트 Publish 전체가 막힌다(xcstrings·yaml과 같다). 대상 리포가 자리를 고치거나 값이 파일과 같아져야 풀린다.
