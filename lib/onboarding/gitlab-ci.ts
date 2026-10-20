@@ -13,8 +13,8 @@ import type { WorkflowSurface } from "./workflow";
  * (fail-closed — 박힌 SHA 없이 태그 코드를 돌리는 길을 만들지 않는다).
  */
 export const GITLAB_CI_RELEASE: { readonly tag: string; readonly sha: string | null } = {
-  tag: "malmoi-i18n-push-gitlab-v2",
-  sha: "325ae01adcfc631003c45e93c15ea8f9e7e84e82",
+  tag: "malmoi-i18n-push-gitlab-v3",
+  sha: "753901bc11667cfbf4f7ac8151dc0cc67adfe7ef",
 };
 
 /**
