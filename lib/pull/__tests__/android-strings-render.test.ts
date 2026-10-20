@@ -96,3 +96,22 @@ describe("android-strings — 누락 키 삽입이 기준 파일의 formatted를
     expect(out.find((f) => f.path === BASE_PATH)?.content).toBe(base);
   });
 });
+
+/**
+ * audit 2026-10-20 #1 — 비기준 파일에 쓸 자리가 없는 셀(같은 이름 둘 · `translatable="false"` · 리소스 참조). 전달 판정(`planDelivery`)은 per-locale
+ * 표면에서 기준 파일만 읽어 이 셀을 전달로 센다. 그래서 렌더가 blocking으로 막아야 실행이 writer-warnings로 끝나고(Git 쓰기 0 · 전달 확인 0) 토큰이 남는다.
+ * 진입점(미리보기·`runSync`)부터 잇는 시나리오는 격리 Postgres(`android-strings-publish.integration.ts`)가 든다.
+ */
+describe("android-strings — 비기준 파일에 쓸 자리가 없는 셀은 렌더 blocking이다", () => {
+  it.each([
+    ["같은 이름 둘", '    <string name="title">Accueil</string>\n    <string name="title">Maison</string>', "key-shadowed"],
+    ["translatable=false", '    <string name="title" translatable="false">Accueil</string>', "write-slot-not-string-literal"],
+    ["리소스 참조", '    <string name="title">@string/app_name</string>', "write-slot-not-string-literal"],
+  ] as const)("%s — fr title 편집이 blocking이고 fr 파일은 원본 그대로다", (_, slot, code) => {
+    const fr = `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n${slot}\n</resources>\n`;
+    const out = renderLocaleFiles(format, "per-locale", paths, keysWith({ title: "Début" }), "en", new Map([[BASE_PATH, BASE], [FR_PATH, fr]]));
+    expect(out.find((f) => f.path === FR_PATH)?.content).toBe(fr);
+    expect(blockingErrors(wrapped(out)).map(({ error }) => [error.path, error.code, error.key])).toEqual([[FR_PATH, code, "title"]]);
+    expect(withheldCoordinates(wrapped(out))).toEqual({ locales: new Set(), cells: new Set() });
+  });
+});

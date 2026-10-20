@@ -281,6 +281,32 @@ describe("Android — 쓸 수 없는 태그", () => {
   });
 });
 
+/**
+ * audit 2026-10-20 #1 — 적재 뒤 리포의 ko 파일에서 그 키의 자리가 쓸 수 없게 바뀌었다(같은 이름 둘 · `translatable="false"` · 리소스 참조). 전에는 writer가
+ * 조용히 건너뛰고 전달 판정은 기준 파일만 봐서, 미리보기 없이 돈 Publish(야간·MCP)가 `no-changes`로 끝나며 편집을 전달로 기록했다(POSTMORTEM 2026-10-07).
+ */
+describe("Android — 비기준 파일에 쓸 자리가 없는 셀", () => {
+  const TITLE = '    <string name="title">홈</string>';
+  it.each([
+    ["같은 이름 둘", `${TITLE}\r\n    <string name="title">홈2</string>`, "key-shadowed"],
+    ["translatable=false", '    <string name="title" translatable="false">홈</string>', "write-slot-not-string-literal"],
+    ["리소스 참조", '    <string name="title">@string/app_name</string>', "write-slot-not-string-literal"],
+  ])("%s — 미리보기 blocked · 실행 writer-warnings · 쓰기 0 · 전달 확인 0 · 토큰이 남는다", async (_, slot, code) => {
+    expect(await save("title", "ko", "시작")).toMatchObject({ ok: true });
+    const files = { ...FILES, [KO_PATH]: KO.replace(TITLE, slot) };
+    fake(files);
+    expect(await loadPreview(prisma, OWNER, { slug: "fixture" })).toMatchObject({
+      status: "blocked", warnings: [expect.objectContaining({ path: KO_PATH, code, key: "title" })],
+    });
+    const made = fake(files);
+    expect(await publish()).toMatchObject({ status: "skipped", reason: "writer-warnings", warnings: [expect.objectContaining({ path: KO_PATH, code, key: "title" })] });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await prisma.deliveryConfirmation.count({ where: { projectId: "p" } })).toBe(0);
+    const ko = await prisma.translation.findFirstOrThrow({ where: { surfaceId: "s", localeCode: "ko", stringKey: { key: "title" } } });
+    expect(ko.pendingEditToken).not.toBeNull();
+  });
+});
+
 /** MCP 진입점에서 서명 소비·첫 적재를 거쳐 Publish가 보내는 파일까지 잇는다. */
 describe("Android 생성·추가 진입점", () => {
   async function context() {
