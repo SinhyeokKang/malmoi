@@ -13,6 +13,7 @@
 | D4 | 12번은 `planLocaleChange`의 `canManage` 입력과 `forbidden` 분기를 지운다(refusal union에서 `forbidden`이 다른 곳에 쓰이면 union은 둔다) | 지휘자 판단 — 인가는 잠금·진입 판정이 이미 보고 상수 true만 들어온다. 사용자가 ⚪까지 범위로 잡았다(D1) |
 | D5 | 16번(MCP 도구 이름 변경)은 코드 변경 없이 지휘자가 Release 노트 기재 여부만 확인한다 | 지휘자 판단 — 의도된 변경이다 |
 | D7 | `docs/features/{mobile-strings,arb,apple-strings,android-strings}/` 제거(8번 = T5.5)를 이 지휘 세션이 맡는다 | 사용자 2026-10-20 |
+| D8 | GS는 이번 런 몫만이 아니라 쌓인 `guide:check` stale을 전부 촬영한다 | 사용자 2026-10-20 |
 | D6 | B2는 `docs/features/android-strings/tasks.md` T5.7과 같은 작업이다(태그 `malmoi-i18n-push-gitlab-v3` = `753901bc…`는 이미 원격에 있다) | 지휘자 판단 — git ls-remote 확인 |
 
 ## 항목 → 배치
@@ -47,7 +48,7 @@
 | B4 | 7 | `lib/onboarding/base-input.ts` · `lib/surfaces/plan.ts` · `lib/adapters/android-strings.ts:26` 부근(기준 경로 규칙) | **B1 dev 통합 뒤** | Claude Sonnet · medium | 새 워크트리 | 새 단위 테스트 · `pnpm gate --base dev` | 대기 |
 | B5 | 12, 13, 14 | `lib/locales/change.ts` · `lib/locales/change-plan.ts` · `lib/onboarding/ingest.ts` · `lib/adapters/{arb-catalog,code-dict,yaml-catalog,shared}.ts`(export 키워드만) · `lib/events/payload.ts` · `lib/projects/list.ts` · `components/translations/workspace/locale-panel.tsx` | — | Claude Sonnet · low (기계적 정리) | 새 워크트리 | `pnpm gate --base dev` | 대기 |
 | B6 | T5.0 | 코드 수정 없음 — 리포트 `.scratch/handoff-B6.md` | — | Claude Sonnet · medium (ego-browser 읽기 전용) | main 체크아웃 | prod 표면별 1순위 불변 표 | 대기 |
-| GS | B2가 바꾼 `gitlab-ci.ts` → `gitlab-ci-file` 컷(job의 태그·SHA가 보인다) 등 `pnpm guide:check` stale | `public/guide/**` · `guide/SHOOTING.md` | 모든 코드 배치 dev 통합 뒤 | Claude Sonnet · medium (`/guide-shots`, ego) | main 체크아웃 | `pnpm guide:check` stale 0 | 대기 |
+| GS | `pnpm guide:check` stale **전부**(2026-10-20 시점 25컷 29건 — 이번 런 전부터 쌓인 것 포함, 사용자 결정 D8). 이번 런 몫은 `gitlab-ci-file`(job의 태그·SHA가 보인다) · `gitlab-ci-variable` · `gitlab-protected-branch` · `translation-edit` | `public/guide/**` · `guide/SHOOTING.md` | 모든 코드 배치 dev 통합 뒤 | Claude Sonnet · medium (`/guide-shots`, ego) | main 체크아웃 | `pnpm guide:check` stale 0 | 대기 |
 | 문서 | 3, 4, 5, 8, 15, 16 | `CLAUDE.md` · `docs/PRODUCT.md` · `docs/DIRECTORY.md` · `docs/features/*` 삭제 | 8은 B2·B6 뒤, 15는 B4 뒤 | 지휘자 | main 체크아웃 | `pnpm sync:agents:check` | 대기 |
 
 ### 파일 겹침
