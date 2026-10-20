@@ -83,3 +83,6 @@
 - **B2 완료** — `9a56bd4c` → dev `534f8c65`(워커 gate도 부하 타임아웃 red, build 미검증 → 통합 게이트에서 확인). 미룬 항목: 가이드 세 언어 `self-hosting/README.md`의 gitlab-v2 → **fix1**(`brief-B2-fix1.md`)로 같은 워커에 재사용. `gitlab-ci-file` 컷 재촬영 → GS 행 신설.
 - **B2 fix1 완료** — `3b11196b` → dev `7898134a`. 워커 release·워크트리 삭제.
 - **B3 완료** — `9ccd2856` → dev `784c1b81`. 지휘자 diff 확인: `filesForFormat`이 `selectLocaleFiles`를 그대로 부른다(파일 순서만 `format.locales` 순으로 바뀜 — 테스트 고정), pull 두 곳은 `localeFilePath`(무효 템플릿·코드는 fail-closed). 미룬 항목 `surveyLocalePath`의 라벨용 치환 1곳은 프로덕션에 base 분기 경로 함수가 따로 없어 남긴다(지휘자 판단 — 라벨이고 파일 선택은 프로덕션을 지난다). 워커 gate 부하 타임아웃 red → 통합 게이트로. release·워크트리 삭제.
+- 통합 게이트(B2·B3·B5) `gate: ok` → push `126c9cb3`, dev CI success(run 39376941079).
+- **B1** — 1차(writer가 세 경우를 키 붙은 실패로) → 독립 리뷰 Y1(낡은 비-base DB 값이 프로젝트 Publish를 영구 차단) → 사용자 결정 D9(셀 보류) → fix1(`classify` 셀 보류 + writer 부분 쓰기 + 미리보기 정렬 + §1.46) → 재리뷰 🔴0 → fix2(POSTMORTEM 미발행 항목 정정 D11 · §1.46 알려진 한계 D10). dev `f2bd3d51..986c6b9c`(8커밋). 워커 release·워크트리 삭제. 후속 후보: 보류 사유별 집계 + 전용 문구(D10으로 보류).
+- **B4 착수** — `ctx_a1274801092e`, 워크트리 `audit-b4`(B1 포함 dev `986c6b9c`에서 분기).
