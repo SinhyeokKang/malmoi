@@ -1103,6 +1103,9 @@ lib/
                         GitLab CI 생성기(onboarding/workflow.ts의 짝, 2026-10-12 D5) — 대상 리포의 `.gitlab-ci.yml` job과 원본 릴리스 축
                         GITLAB_CI_RELEASE(태그 malmoi-i18n-push-gitlab-vN + 40자 SHA). ⚠️ sha가 null(발행 전)이면 job이 "unreleased"를 박아 대조에서
                         실패하고(fail-closed) 화면은 템플릿 대신 "아직 없다"를 말한다. 이미지는 Node 24 태그 + 인덱스 digest 고정.
+  onboarding/base-input.ts
+                        기준 언어 입력 판정(클라이언트 잎) — validBaseInput(basePath가 있으면 관측된 번역 코드를 기준으로 재사용하지 않는다) ·
+                        manualBasePath(수동 지정의 Android 기준 파일 — 규칙은 lib/android-paths). 실재 여부는 서버 재탐지가 본다
   onboarding/ci-file.ts ciFileOf·gitlabCiReleased·경로 상수 둘(GITHUB_WORKFLOW_PATH·GITLAB_CI_PATH) — 리포 호스트별 CI 파일(server-only).
                         화면(설정 CI 모달·온보딩 ⑤)과 MCP 도구(get_workflow·create_project)가 둘 다 여기를 import한다 — MCP 층에 있던 옛 집은 걷었다.
                         ⚠️ GitLab은 릴리스 SHA가 40자 hex일 때만 파일을 낸다(null이면 호출부가 not-ready·workflow-unavailable을 고른다)
@@ -1172,6 +1175,9 @@ lib/
   openapi/              document(openApiDocument(version) — CI push API의 OpenAPI 3.1. 스키마는 서버 검증 Zod에서 z.toJSONSchema(io: "input")로
                         생성하고 의미는 docs/ACTIONS.md가 정본이다 — agent-readiness 2026-10-15, ARCHITECTURE §8.1). __tests__/__snapshots__/openapi.json이
                         골든이다 — 계약이 바뀌면 이 파일의 diff로 드러난다
+  android-paths.ts      ⚠️ 잎(import 0). **Android 기준 경로 규칙의 유일한 집** — ANDROID_STRINGS_FILE·androidResourceDir·androidBasePath
+                        (`res`·`composeResources` 아래 `values[-<qualifier>]/strings.xml`). 탐지·survey·수동 지정(onboarding/base-input)·표면 라벨이
+                        같이 쓴다. lib/adapters/ 밖인 이유는 클라이언트 그래프 — 표면 선택 모듈이 `/adapters/`를 물면 `@xml-tools/parser`가 번들에 실린다
   app-version.ts        ⚠️ 잎. 현재 앱 버전 `x.y.z` — `next.config`의 `env`가 `package.json`의 version을 빌드 때 박은 `APP_VERSION`을 읽는다
                         (LNB Changelog 배지). `package.json`을 import하지 않는다 — 사이드바(클라이언트)가 의존성 목록까지 싣는다
   links.ts              외부 링크(GitHub 리포 좌표 GITHUB_REPO 하나에서 리포·Releases·API·releaseTagUrl을 파생)와 푸터 링크 목록 —
