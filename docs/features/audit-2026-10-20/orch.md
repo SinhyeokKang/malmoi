@@ -69,3 +69,8 @@
 
 - Run `run_9fbd23a2331b`. 착수 dispatch: B1 `ctx_7612663ac064`(opus·high) · B2 `ctx_1f07fe4be710` · B3 `ctx_6f5699a9f462` · B5 `ctx_fa19a0527a42`(sonnet) · B6 `ctx_d66a9e899332`(sonnet·medium, main 체크아웃). 워크트리 `~/orca/workspaces/malmoi/audit-b{1,2,3,5}`.
 - B6: 사용자가 ego를 재시작 → 재연결 지시 전달, B6가 인용해 응답(ego 수집은 그 전에 끝남).
+- **B6 완료(T5.0)** — prod 프로젝트 4·소스 6. 새 탐지 1순위 불일치 0.
+  - bugshot-2(chrome-locales·ts-dict)·malmoi(code-dict): 공개 clone으로 일치 확인. bugshot-2의 ts-dict가 2순위인 것은 v1.4.7 이전부터의 동작이고 두 리포엔 Malmoi CI가 없다.
+  - bugshot-i18n-test(비공개): 지휘자가 `gh repo clone`으로 보충 — 1순위 chrome-locales·2순위 ts-dict, prod와 일치. 워크플로는 두 스텝 모두 `@malmoi-i18n-push-v1` 태그 고정이고 ts-dict 스텝은 `adapter: ts-dict`를 박아 탐지 변화의 영향이 없다.
+  - ox501501/malmoi-gitlab-test(GitLab, json-catalog 3키): 확인 불가(`glab`·자격증명 없음). 생성 job이 gitlab-v2 SHA에 고정돼 있어 새 탐지 코드를 돌지 않는다 — 영향 경로 없음으로 판단.
+  - B6 워커 release 완료.
