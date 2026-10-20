@@ -601,7 +601,7 @@ function locate(start: unknown, segments: readonly string[]): Located {
 }
 
 /** 원본 없는 ADD만 별도로 만든다. 기존 write에 빈 골격을 넘기면 중첩 경로가 점 리터럴로 바뀐다. */
-export function createYamlCatalogFile(
+function createYamlCatalogFile(
   format: DetectedFormat,
   input: WriteInput & { baseLocale: string },
 ): { content: string | null; errors: AdapterError[] } {

@@ -214,7 +214,7 @@ export function rankCandidates<T extends { dir: string; locales: Set<string> }>(
  * ⚠️ **로케일 수보다 뒤에 둔다.** 앞에 두면 discourse의 `themes/foundation/locales/{locale}.yml`
  * (49로케일 · **1키**)이 진짜 `config/locales/client.{locale}.yml`을 이긴다.
  */
-export function templateShapeRank(pathTemplate: string): number {
+function templateShapeRank(pathTemplate: string): number {
   const at = pathTemplate.lastIndexOf("/");
   const base = at === -1 ? pathTemplate : pathTemplate.slice(at + 1);
   if (/^\{locale\}\.[^.]+$/.test(base)) return 0;

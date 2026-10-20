@@ -108,7 +108,7 @@ export function prepareFirstSnapshot(input: FirstSnapshotInput) {
   for (const [path, content] of input.blobs) totalBytes = checkContentBudget(path, content, totalBytes);
   const missing = input.targets.filter((p) => !input.blobs.has(p));
 
-  const { read, baseLocale } = assemblePushInput({
+  const { read, baseLocale, format } = assemblePushInput({
     paths: input.paths.filter((p) => input.blobs.has(p)),
     probe: makeProbe(input.blobs),
     format: input.format,
@@ -123,7 +123,7 @@ export function prepareFirstSnapshot(input: FirstSnapshotInput) {
     executionId: null,
     commitSha: input.headSha,
     commitAt: input.headCommittedAt,
-    format: input.format,
+    format,
     read,
     baseLocale,
     // ⚠️ **서버는 리포를 체크아웃하지 않아 ts-morph를 돌릴 수 없다.** `applyPush`가 refs를 전체 교체하므로

@@ -27,7 +27,7 @@ import type { StateKey } from "@/lib/status/canon";
  * ⚠️ **`Active`가 앞이고 `Archived`가 끝이다.** 가운데 셋은 "손볼 것"이고, 보관은 의도적으로 멈춘
  * 것이라 훑는 눈에서 가장 멀어야 한다.
  */
-export const PROJECT_STATUSES = ["active", "setup", "awaiting_first_sync", "needs_reconnect", "archived"] as const;
+const PROJECT_STATUSES = ["active", "setup", "awaiting_first_sync", "needs_reconnect", "archived"] as const;
 
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 

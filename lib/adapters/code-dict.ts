@@ -564,7 +564,7 @@ function quoteName(name: string, quote: Quote, obj: ObjectLiteralExpression): st
 }
 
 /** 새 파일에는 기준 파일의 규약만 쓰고 값·import·타입 주석은 복사하지 않는다. */
-export function createCodeDictFile(
+function createCodeDictFile(
   format: DetectedFormat,
   input: WriteInput & { baseLocale: string },
 ): { content: string | null; errors: AdapterError[] } {

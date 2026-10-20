@@ -23,7 +23,6 @@ export type ApprovalState = "valid" | "stale" | "missing";
 export type LocaleChangeInput = {
   request: LocaleChangeRequest;
   /** `project:settings` — OWNER만. */
-  canManage: boolean;
   projectArchived: boolean;
   /** 결과 미확정 Publish(`publish-unsettled` 장벽·RUNNING 실행권)가 있다. 그 사이 변경은 PR에 stale diff를 남긴다. */
   publishUnsettled: boolean;
@@ -43,7 +42,6 @@ export type LocaleTransition =
   | { kind: "cancel-removal"; code: string };
 
 export type LocaleChangeRefusal =
-  | "forbidden"
   | "archived"
   | "publish-unsettled"
   | LocaleAddRefusal
@@ -57,7 +55,6 @@ export type LocaleChangeRefusal =
 export type LocaleChangeVerdict = { ok: true; transition: LocaleTransition } | { ok: false; error: LocaleChangeRefusal };
 
 export function planLocaleChange(input: LocaleChangeInput): LocaleChangeVerdict {
-  if (!input.canManage) return { ok: false, error: "forbidden" };
   if (input.projectArchived) return { ok: false, error: "archived" };
   if (input.publishUnsettled) return { ok: false, error: "publish-unsettled" };
   const { request } = input;

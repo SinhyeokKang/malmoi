@@ -14,7 +14,7 @@ const BASE = "res/values/strings.json";
 const at = (code: string) => `res/values-${code}/strings.json`;
 
 const change = (request: LocaleChangeInput["request"]): LocaleChangeInput => ({
-  request, canManage: true, projectArchived: false, publishUnsettled: false,
+  request, projectArchived: false, publishUnsettled: false,
   surface: { id: "s1", adapterName: "json-catalog", pathTemplate: TEMPLATE, baseLocale: "en" },
   locales: [{ code: "en", orphaned: false }, { code: "ko", orphaned: false }],
   changes: [], otherSurfaces: [], approval: "valid",
