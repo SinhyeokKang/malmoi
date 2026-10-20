@@ -10,7 +10,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
-import { blockingErrors, cellSlot, keySlot } from "@/lib/pull/undeliverable";
+import { blockingErrors, cellSlot, keySlot, withheldCoordinates } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { planDelivery, planLocales, projectFormats, renderProject } from "@/lib/pull/run";
 import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, withdrawnLocalesOf } from "@/lib/pull/locales";
@@ -71,6 +71,11 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     }
   }
   const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered, locales: localePlan });
+  /**
+   * 렌더가 셀 보류로 분류한 셀(Android 비기준 파일의 리소스 참조·`translatable="false"` — 리뷰 Y1) — 실행의 `planDelivery`가 같은 좌표로 보류한다.
+   * 읽기 오류로 막지도, 보낸다고 약속하지도 않는다.
+   */
+  const renderWithheld = withheldCoordinates(rendered).cells;
   /** 렌더에서 뺀 언어(REMOVE · 경로가 이미 있는 ADD · 값 0개 ADD) — 그 셀은 실행이 보류하므로 표에 약속하지 않는다. */
   const excluded = new Set(localePlan.surfaces.flatMap(plan => plan.exclude.map(code => `${plan.surfaceId}\0${code}`)));
   const creates = new Set(localePlan.surfaces.flatMap(plan => plan.creates.map(item => `${plan.surfaceId}\0${item.localeCode}`)));
@@ -113,7 +118,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         // `{ hello: "hi", b: someFn }`·`precision: 3` 파일의 Publish가 화면에서 영영 열리지 않는다. 편집 대상 키가 그 자리이거나 그 밖의 읽기 오류는 막는다.
         const edited = new Set(surfaceRows.map(r => r.stringKey.key));
         // 경고(`duplicate-property`)도 막지 않는다 — 실행이 마지막 값을 싣고 그 자리를 고친다(B7a r1). `read.locales`가 이미 그 값이다.
-        const preserved = (e: (typeof read.errors)[number]) => adapterErrorKind(e.code) === "unmanaged" && !(e.key !== undefined && edited.has(e.key));
+        // 렌더가 셀 보류로 분류한 편집 키의 자리(참조의 `value-not-string`)도 막지 않는다 — 실행은 그 셀만 빼고 나머지를 싣는다.
+        const withheldKey = (e: (typeof read.errors)[number]) => e.key !== undefined && renderWithheld.has(`${surface.id}\0${p.locale ?? ""}\0${e.key}`);
+        const preserved = (e: (typeof read.errors)[number]) => adapterErrorKind(e.code) === "unmanaged" && (!(e.key !== undefined && edited.has(e.key)) || withheldKey(e));
         const errors = onlyForKeySet ? [] : read.errors.filter(e => adapterErrorKind(e.code) !== "warning" && !preserved(e));
         // 실행이 쓸 수 있는 키여도 같은 파일의 불확실한 read는 보수적으로 막는다. 장애 재시도가 아닌 파일 수정 경고다.
         if (errors.length > 0) throw new PreviewWriterWarnings(errors.map(error => ({ ...error, surfaceSlug: surface.slug })));
@@ -137,6 +144,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       if (!surface.localeCodes.includes(row.localeCode)) throw new Error("Preview path unavailable");
       // 실행의 `planDelivery`와 같은 판정이다 — 언어 통째 보류는 파일 보류로 센다(결과의 `withheld.file`).
       if (excluded.has(`${surface.id}\0${row.localeCode}`)) { withoutFile++; withoutFileLanguage++; heldKeys.add(row.keyId); continue; }
+      // 렌더가 셀 보류로 분류한 셀 — 실행의 `withheld.key`와 같은 판정이다.
+      if (renderWithheld.has(`${surface.id}\0${row.localeCode}\0${row.stringKey.key}`)) { withoutKey++; heldKeys.add(row.keyId); continue; }
       // 수술적 치환의 원본 부재는 보류하되, ADD 계획의 생성·복구는 실행이 새 파일을 내므로 포함한다.
       if (surgicalPerLocale && !creates.has(`${surface.id}\0${row.localeCode}`)) {
         const target = paths.find(p => p.locale === row.localeCode);

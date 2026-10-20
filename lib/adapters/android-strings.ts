@@ -801,21 +801,26 @@ function writeWithErrors(format: DetectedFormat, input: WriteInput): { content: 
 
   const edits: Edit[] = [];
   const failed: AdapterError[] = [];
+  /** 그 셀만 빠지는 오류 — 렌더가 셀 보류로 분류하고(`lib/pull/undeliverable.ts`) 같은 파일의 다른 셀은 쓴다. */
+  const skipped: AdapterError[] = [];
   const missing: { entry: LocaleEntry; raw: string }[] = [];
   for (const entry of input.entries) {
     // orphaned·빈 값은 원본 값을 남긴다(불변식 3 — 수술적 표면은 비울 수 없다).
     if (entry.orphaned === true || entry.message === "") continue;
-    // ⚠️ **비기준 파일에서 쓸 자리가 없는 셀은 키가 붙은 실패다** (audit 2026-10-20 #1) — 전달 판정(`planDelivery`)은 per-locale 표면에서 기준 파일만
+    // ⚠️ **비기준 파일에서 쓸 자리가 없는 셀은 키가 붙은 오류다** (audit 2026-10-20 #1) — 전달 판정(`planDelivery`)은 per-locale 표면에서 기준 파일만
     // 읽어 이 셀을 전달로 센다. 건너뛰기만 하면 값이 PR에 없는데 토큰이 지워진다(POSTMORTEM 2026-10-07). 기준 파일은 알리지 않는다 — read가 그 키를
-    // 내지 않아 판정이 이미 보류로 센다(B3.4). 같은 이름이 둘이면(aapt2 오류) 어느 사본도 고치지 않는다.
+    // 내지 않아 판정이 이미 보류로 센다(B3.4). 같은 이름이 둘이면(aapt2 오류) 어느 사본도 고치지 않고 파일 전체가 실패다(프로젝트 차단).
     if (counts.has(entry.key) && !slots.has(entry.key)) {
       if (!isBase) failed.push({ path: file.path, code: "key-shadowed", key: entry.key });
       continue;
     }
     const slot = slots.get(entry.key);
+    // 값이 같으면 파일이 이미 그 값을 갖고 있다 — 전달로 세는 것이 참이다. 이 비교를 아래 보류보다 뒤에 두면 파일이 이미 가진 값의 편집이 보류로 남아
+    // 토큰이 풀리지 않는다(리뷰 W2). 값을 견줘 하나를 고르는 것이 아니라 "쓸 것이 없다"는 판정이다.
     if (slot !== undefined && slot.value === entry.message) continue;
+    // 참조·`translatable="false"`는 그 셀만 빠진다(리뷰 Y1 · 결정 D9) — 편집이 아닌 옛 DB 값은 토큰이 없어 아무것도 막지 않는다.
     if (slot !== undefined && (!slot.translatable || slot.reference)) {
-      if (!isBase) failed.push({ path: file.path, code: "write-slot-not-string-literal", key: entry.key, detail: slot.translatable ? "resource reference" : 'translatable="false"' });
+      if (!isBase) skipped.push({ path: file.path, code: "write-slot-not-string-literal", key: entry.key, detail: slot.translatable ? "resource reference" : 'translatable="false"' });
       continue;
     }
     const raw = encodeAndroidValue(entry.message, slot?.form, dialect);
@@ -838,7 +843,7 @@ function writeWithErrors(format: DetectedFormat, input: WriteInput): { content: 
   // 쓴 결과도 읽혀야 한다 — 값 하나하나를 검사해도 이어 붙인 결과가 XML이 아니면 PR이 깨진 파일을 싣는다(리뷰 R2의 마지막 그물).
   const check = tokenizeAndroid(out, dialect);
   if (!check.ok) return { content: text, errors: [{ path: file.path, code: "write-parse-failed", detail: `the written file is not valid XML: ${check.detail}` }] };
-  return { content: out, errors: [] };
+  return { content: out, errors: skipped };
 }
 
 const UNWRITABLE = "the value has a < that does not start a well-formed XML tag";

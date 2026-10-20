@@ -1,4 +1,4 @@
-import type { Adapter, AdapterFile, DetectedFormat } from "@/lib/adapters/types";
+import type { Adapter, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
 import type { LocalFile, RenderError } from "./plan";
 import type { PendingEdit } from "./run";
 
@@ -14,7 +14,11 @@ import type { PendingEdit } from "./run";
  * ⚠️ 판정 입력은 "원본 파일이 트리에 있는가"와 "그 키의 자리가 파일에 있는가"뿐이다 — 값을 보지 않는다(ARCHITECTURE §0 불변식 1).
  */
 
-export type RenderedSurface = { surfaceId: string; surfaceSlug: string; baseLocale: string; files: readonly LocalFile[] };
+/**
+ * `adapter` — 셀 보류 갈래 하나(Android 비기준 파일의 쓸 수 없는 자리)가 판정 입력으로 쓴다. 운영 렌더(`renderProject`)는 늘 싣는다. 없으면 그 갈래가
+ * 열리지 않아 거부 쪽이다(fail-closed).
+ */
+export type RenderedSurface = { surfaceId: string; surfaceSlug: string; baseLocale: string; adapter?: AdapterName; files: readonly LocalFile[] };
 /** 로케일 통째(`${surfaceId}\0${locale}`)와 셀(`${surfaceId}\0${locale}\0${key}`). */
 /**
  * `languages` — `locales` 중 언어 변경 계획이 뺀 언어(`ProjectLocalePlan.exclude` — 보류된 ADD 등)다. 파일 보류로 세되 따로도 센다: 화면이 그 수를
@@ -32,6 +36,13 @@ function classify(surface: RenderedSurface, file: LocalFile, error: RenderError)
   // 구조 충돌이라 파일을 고쳐야 풀리고, 결과 문구("키가 아직 파일에 없다")도 거짓이 된다 — 그대로 거부한다.
   if (error.code === "write-slot-missing" && file.locale === undefined && error.locale !== undefined && error.key !== undefined) {
     return { kind: "cell", coordinate: `${surface.surfaceId}\0${error.locale}\0${error.key}` };
+  }
+  // Android 비기준 파일의 리소스 참조·`translatable="false"` 자리는 그 셀만 보류다(audit 2026-10-20 리뷰 Y1 · 결정 D9) — 렌더는 편집과 적재가 남긴 옛 DB
+  // 값을 가르지 않으므로 거부하면 옛 값 하나가 프로젝트 Publish 전체를 앱 안에서 풀 수 없게 막는다(비기준 수술적 셀은 비울 수 없다). 같은 이름 둘
+  // (`key-shadowed` — aapt2 빌드 오류)은 거부 그대로다. ⚠️ **어댑터로 좁힌다** — per-locale code-dict도 같은 코드를 내지만 이 판정을 정한 대상이 아니다.
+  if (error.code === "write-slot-not-string-literal" && surface.adapter === "android-strings" && file.locale !== undefined && file.locale !== surface.baseLocale
+    && error.key !== undefined) {
+    return { kind: "cell", coordinate: `${surface.surfaceId}\0${file.locale}\0${error.key}` };
   }
   return { kind: "blocking" };
 }
