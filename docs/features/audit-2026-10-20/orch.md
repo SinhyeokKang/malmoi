@@ -15,6 +15,8 @@
 | D7 | `docs/features/{mobile-strings,arb,apple-strings,android-strings}/` 제거(8번 = T5.5)를 이 지휘 세션이 맡는다 | 사용자 2026-10-20 |
 | D8 | GS는 이번 런 몫만이 아니라 쌓인 `guide:check` stale을 전부 촬영한다 | 사용자 2026-10-20 |
 | D9 | B1 리뷰 Y1: Android 비-base 파일의 참조·`translatable="false"` 자리는 프로젝트 차단이 아니라 **셀 보류**로 분류한다(같은 이름 둘은 차단 유지) → B1 fix1, `lib/pull/undeliverable.ts`는 B3 종료 뒤 B1 소유 | 사용자 2026-10-20 |
+| D10 | 보류된 Android 참조·`translatable="false"` 셀에도 기존 키 보류 문장("키가 언어 파일에 없어")을 그대로 쓴다 — 사전은 건드리지 않고 ARCHITECTURE §1.46에 알려진 한계로 적는다 | 사용자 2026-10-20 |
+| D11 | B1의 POSTMORTEM 새 항목(`f181ae2e`)은 아직 push 전이므로 append-only 위반이 아니다 — fix1 결과에 맞게 그 항목 안에서 "대가"·"그물" 서술을 고친다 | 지휘자 판단 — 공개된 기록을 고치는 것이 아니라 같은 미발행 항목의 초안 정정이다 |
 | D6 | B2는 `docs/features/android-strings/tasks.md` T5.7과 같은 작업이다(태그 `malmoi-i18n-push-gitlab-v3` = `753901bc…`는 이미 원격에 있다) | 지휘자 판단 — git ls-remote 확인 |
 
 ## 항목 → 배치
