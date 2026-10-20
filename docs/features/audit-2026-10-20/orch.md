@@ -89,4 +89,5 @@
 - 통합 게이트(B1) `gate: ok` → push `876a5ac9`, dev CI success(run 39379553388).
 - **B4 완료** — 규칙 정본을 잎 `lib/android-paths.ts`로(어댑터 디렉터리 밖 — client-graph 가드), base-input·plan·android-strings가 쓴다. 수동 지정이 `res`·`composeResources` 밖 경로를 더 일찍 거부(최종 코드 `manual-no-match` 동일). dev `00fa0256..d40ac544`. 통합 게이트 `gate: ok`. release·워크트리 삭제.
 - **지휘자 문서** — 3·4 `docs(CLAUDE)` `5166d03c` · 5 `docs(PRODUCT)` `9862c8cc` · 15 `docs(DIRECTORY)` `6f884d7f`(base-input + android-paths) · 8 스펙 넷 삭제 `e0060e0f`(T5.2~T5.4 정본 반영 확인, 미체크 T5.0·T5.1·T5.6·T5.7은 이 런에서 끝남 — T5.0=B6, T5.7=B2, T5.1·T5.6은 v1.4.7 머지·태그로 완료) · 16 확인: v1.4.3 Release 노트에 "Remove source → Detach source … in MCP tools"가 있다 → 처리 없음.
-- 남은 것: GS(stale 전부 촬영).
+- **GS 완료** — `dc30dab8`: 재촬영 21 · SHA만 4(외부 화면). `gitlab-ci-file`이 gitlab-v3·`753901bc`를 보인다(지휘자 육안 확인). `guide:check` stale 0. dev DB 전후 대조 SHOOTING 기록. 통합 게이트 `gate: ok`.
+- 모든 배치 완료 → 이 폴더 삭제 후 push, 사용자 지시로 `/merge`(patch).
