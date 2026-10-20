@@ -12,6 +12,7 @@
 | D3 | 11번(POSTMORTEM 2026-10-14 grep 기대 목록)은 고치지 않는다 | 지휘자 판단 — POSTMORTEM은 append-only이고 동작은 ARCHITECTURE §5.10.2대로다 |
 | D4 | 12번은 `planLocaleChange`의 `canManage` 입력과 `forbidden` 분기를 지운다(refusal union에서 `forbidden`이 다른 곳에 쓰이면 union은 둔다) | 지휘자 판단 — 인가는 잠금·진입 판정이 이미 보고 상수 true만 들어온다. 사용자가 ⚪까지 범위로 잡았다(D1) |
 | D5 | 16번(MCP 도구 이름 변경)은 코드 변경 없이 지휘자가 Release 노트 기재 여부만 확인한다 | 지휘자 판단 — 의도된 변경이다 |
+| D7 | `docs/features/{mobile-strings,arb,apple-strings,android-strings}/` 제거(8번 = T5.5)를 이 지휘 세션이 맡는다 | 사용자 2026-10-20 |
 | D6 | B2는 `docs/features/android-strings/tasks.md` T5.7과 같은 작업이다(태그 `malmoi-i18n-push-gitlab-v3` = `753901bc…`는 이미 원격에 있다) | 지휘자 판단 — git ls-remote 확인 |
 
 ## 항목 → 배치
@@ -65,3 +66,6 @@
 ## 진행 기록
 
 (지휘자가 갱신한다)
+
+- Run `run_9fbd23a2331b`. 착수 dispatch: B1 `ctx_7612663ac064`(opus·high) · B2 `ctx_1f07fe4be710` · B3 `ctx_6f5699a9f462` · B5 `ctx_fa19a0527a42`(sonnet) · B6 `ctx_d66a9e899332`(sonnet·medium, main 체크아웃). 워크트리 `~/orca/workspaces/malmoi/audit-b{1,2,3,5}`.
+- B6: 사용자가 ego를 재시작 → 재연결 지시 전달, B6가 인용해 응답(ego 수집은 그 전에 끝남).
