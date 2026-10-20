@@ -86,3 +86,7 @@
 - 통합 게이트(B2·B3·B5) `gate: ok` → push `126c9cb3`, dev CI success(run 39376941079).
 - **B1** — 1차(writer가 세 경우를 키 붙은 실패로) → 독립 리뷰 Y1(낡은 비-base DB 값이 프로젝트 Publish를 영구 차단) → 사용자 결정 D9(셀 보류) → fix1(`classify` 셀 보류 + writer 부분 쓰기 + 미리보기 정렬 + §1.46) → 재리뷰 🔴0 → fix2(POSTMORTEM 미발행 항목 정정 D11 · §1.46 알려진 한계 D10). dev `f2bd3d51..986c6b9c`(8커밋). 워커 release·워크트리 삭제. 후속 후보: 보류 사유별 집계 + 전용 문구(D10으로 보류).
 - **B4 착수** — `ctx_a1274801092e`, 워크트리 `audit-b4`(B1 포함 dev `986c6b9c`에서 분기).
+- 통합 게이트(B1) `gate: ok` → push `876a5ac9`, dev CI success(run 39379553388).
+- **B4 완료** — 규칙 정본을 잎 `lib/android-paths.ts`로(어댑터 디렉터리 밖 — client-graph 가드), base-input·plan·android-strings가 쓴다. 수동 지정이 `res`·`composeResources` 밖 경로를 더 일찍 거부(최종 코드 `manual-no-match` 동일). dev `00fa0256..d40ac544`. 통합 게이트 `gate: ok`. release·워크트리 삭제.
+- **지휘자 문서** — 3·4 `docs(CLAUDE)` `5166d03c` · 5 `docs(PRODUCT)` `9862c8cc` · 15 `docs(DIRECTORY)` `6f884d7f`(base-input + android-paths) · 8 스펙 넷 삭제 `e0060e0f`(T5.2~T5.4 정본 반영 확인, 미체크 T5.0·T5.1·T5.6·T5.7은 이 런에서 끝남 — T5.0=B6, T5.7=B2, T5.1·T5.6은 v1.4.7 머지·태그로 완료) · 16 확인: v1.4.3 Release 노트에 "Remove source → Detach source … in MCP tools"가 있다 → 처리 없음.
+- 남은 것: GS(stale 전부 촬영).
