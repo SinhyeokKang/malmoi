@@ -93,3 +93,7 @@ it.each([
   expect(surfaceLabel(path)).toBe(label);
   expect(planSurfaceSlug(path, [])).toBe(label);
 });
+
+it("res·composeResources 밖의 values-{locale} 경로는 Android가 아니라 일반 템플릿 라벨이다", () => {
+  expect(surfaceLabel("app/other/values-{locale}/strings.xml")).toBe("other");
+});
