@@ -6,6 +6,7 @@ export { isAndroidLocale } from "@/lib/locale-code";
 import { localeFromPath } from "./chrome-locales";
 import { compareKeys, orderedEntries, pathSignals, rankTemplateCandidates } from "./shared";
 import type { Adapter, AdapterError, AdapterFile, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
+import { ANDROID_STRINGS_FILE } from "./android-paths";
 
 /**
  * Android `res/values*​/strings.xml` (android-strings design §2) — Compose Multiplatform `composeResources/values*​/strings.xml`도 같다(orch 결정 2).
@@ -22,8 +23,8 @@ import type { Adapter, AdapterError, AdapterFile, DetectedFormat, FileProbe, Loc
  * `lt;`·`amp;`일 때만 `&amp;`다(파일 `&amp;lt;`와 `&lt;`가 다른 값이 되게). 그 밖의 엔티티·문자 참조와 aapt2 이스케이프·공백 규칙은 푼다.
  */
 
-/** `<prefix>(res|composeResources)/values[-<qualifier>]/strings.xml`. 1은 리소스 디렉터리까지(끝 `/` 포함), 2는 한정자. */
-export const ANDROID_STRINGS_FILE = /^((?:[^/]+\/)*(?:res|composeResources)\/)values(?:-([^/]+))?\/strings\.xml$/;
+/** 기준 경로 규칙의 정본은 `android-paths.ts`다 — 클라이언트 모듈도 쓰는 잎이라 어댑터 그래프 밖에 둔다. */
+export { ANDROID_STRINGS_FILE };
 
 /** 빌드 산출물 — 커밋돼 있어도 소스가 아니다. survey 선택(`lib/survey/select.ts`)도 같은 거름을 쓴다. */
 export const ANDROID_NOT_SOURCE = /(^|\/)build\//;

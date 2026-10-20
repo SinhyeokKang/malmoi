@@ -1,4 +1,5 @@
 import { normalizeProjectSlug, planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
+import { androidResourceDir } from "@/lib/adapters/android-paths";
 import { compareCodeUnits } from "@/lib/compare";
 
 export function compareSurfaces(a: string | number, b: string | number): number {
@@ -10,8 +11,11 @@ export function selectDefaultSurface<T>(candidates: readonly T[]): T | null {
 }
 
 export function surfaceLabel(pathTemplate: string): string {
-  const android = pathTemplate.match(/^(?:(.*)\/)?(?:res|composeResources)\/values-\{locale\}\/strings\.xml$/);
-  if (android) return (android[1] ?? "").replace(/(?:^|\/)src\/[^/]+$/, "").split("/").filter(Boolean).at(-1) ?? "default";
+  const androidDir = androidResourceDir(pathTemplate);
+  if (androidDir !== undefined) {
+    const prefix = androidDir.replace(/(?:^|\/)(?:res|composeResources)\/$/, "");
+    return prefix.replace(/(?:^|\/)src\/[^/]+$/, "").split("/").filter(Boolean).at(-1) ?? "default";
+  }
   return pathTemplate.split("/").slice(0, -1).filter(part => !/[{}*?]/.test(part)).at(-1) ?? "default";
 }
 
