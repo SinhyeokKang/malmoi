@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ANDROID_STRINGS_FILE, ANDROID_STRINGS_TEMPLATE, androidBasePath, androidResourceDir } from "../android-paths";
-import { ANDROID_STRINGS_FILE as FROM_ADAPTER } from "../android-strings";
+import { ANDROID_STRINGS_FILE as FROM_ADAPTER } from "../adapters/android-strings";
 
 describe("Android 기준 경로 규칙", () => {
   it("어댑터가 같은 정규식을 다시 내보낸다", () => {

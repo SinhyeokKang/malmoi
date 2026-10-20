@@ -1,5 +1,5 @@
 import { normalizeProjectSlug, planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
-import { androidResourceDir } from "@/lib/adapters/android-paths";
+import { androidResourceDir } from "@/lib/android-paths";
 import { compareCodeUnits } from "@/lib/compare";
 
 export function compareSurfaces(a: string | number, b: string | number): number {
