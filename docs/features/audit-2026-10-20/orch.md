@@ -14,6 +14,7 @@
 | D5 | 16번(MCP 도구 이름 변경)은 코드 변경 없이 지휘자가 Release 노트 기재 여부만 확인한다 | 지휘자 판단 — 의도된 변경이다 |
 | D7 | `docs/features/{mobile-strings,arb,apple-strings,android-strings}/` 제거(8번 = T5.5)를 이 지휘 세션이 맡는다 | 사용자 2026-10-20 |
 | D8 | GS는 이번 런 몫만이 아니라 쌓인 `guide:check` stale을 전부 촬영한다 | 사용자 2026-10-20 |
+| D9 | B1 리뷰 Y1: Android 비-base 파일의 참조·`translatable="false"` 자리는 프로젝트 차단이 아니라 **셀 보류**로 분류한다(같은 이름 둘은 차단 유지) → B1 fix1, `lib/pull/undeliverable.ts`는 B3 종료 뒤 B1 소유 | 사용자 2026-10-20 |
 | D6 | B2는 `docs/features/android-strings/tasks.md` T5.7과 같은 작업이다(태그 `malmoi-i18n-push-gitlab-v3` = `753901bc…`는 이미 원격에 있다) | 지휘자 판단 — git ls-remote 확인 |
 
 ## 항목 → 배치
