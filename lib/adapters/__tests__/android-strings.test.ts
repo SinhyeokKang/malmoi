@@ -374,7 +374,8 @@ describe("write — 수술적 치환", () => {
 /**
  * 비기준 파일에 그 키의 **쓸 자리가 없는** 셀 (audit 2026-10-20 #1). 전달 판정(`lib/pull/run.ts` `planDelivery`)은 per-locale 표면에서 기준 파일만 읽어
  * 자리를 보므로, writer가 이 셀을 조용히 건너뛰면 편집이 PR에 없는데 전달로 세져 미전달 토큰이 지워진다(POSTMORTEM 2026-10-07). 그래서 키가 붙은
- * 실패로 알린다 — 렌더의 blocking이라 실행은 writer-warnings로 Git 쓰기 0 · 전달 확인 0이고 미리보기도 같은 렌더로 막힌다(xcstrings `write-slot-not-scalar`와 같다).
+ * 오류로 알린다. 리소스 참조·`translatable="false"`는 **그 셀만** 빠지고 같은 파일의 다른 셀은 쓴다 — 렌더가 셀 보류로 분류한다(리뷰 Y1 · 결정 D9).
+ * 같은 이름 둘(aapt2 빌드 오류)은 파일 전체를 원본 그대로 두는 실패다 — 렌더가 프로젝트를 막는다.
  */
 describe("write — 비기준 파일에 쓸 자리가 없는 셀은 키가 붙은 실패다", () => {
   const KO = xml(
@@ -385,14 +386,18 @@ describe("write — 비기준 파일에 쓸 자리가 없는 셀은 키가 붙�
     '    <string name="ok">확인</string>',
   );
 
+  it("같은 이름 둘 — 원본 그대로 + key-shadowed(failure), 같은 파일의 다른 셀도 쓰지 않는다", () => {
+    const out = writeOne("ko", KO, [{ key: "dup", message: "새 값" }, { key: "ok", message: "좋아" }]);
+    expect(out).toEqual({ content: KO, errors: [{ path: pathOf("ko"), code: "key-shadowed", key: "dup" }] });
+    expect(adapterErrorKind("key-shadowed")).toBe("failure");
+  });
+
   it.each([
-    ["dup", "key-shadowed", undefined],
-    ["fixed", "write-slot-not-string-literal", 'translatable="false"'],
-    ["alias", "write-slot-not-string-literal", "resource reference"],
-  ] as const)("%s — 원본 그대로 + %s(failure), 같은 파일의 다른 셀도 쓰지 않는다", (key, code, detail) => {
+    ["fixed", 'translatable="false"'],
+    ["alias", "resource reference"],
+  ] as const)("%s — 그 셀만 원본 그대로 + 키가 붙은 write-slot-not-string-literal, 같은 파일의 다른 셀은 쓴다", (key, detail) => {
     const out = writeOne("ko", KO, [{ key, message: "새 값" }, { key: "ok", message: "좋아" }]);
-    expect(out).toEqual({ content: KO, errors: [{ path: pathOf("ko"), code, key, ...(detail === undefined ? {} : { detail }) }] });
-    expect(adapterErrorKind(code)).toBe("failure");
+    expect(out).toEqual({ content: KO.replace(">확인<", ">좋아<"), errors: [{ path: pathOf("ko"), code: "write-slot-not-string-literal", key, detail }] });
   });
 
   it("값이 원본과 같으면 쓸 것이 없다 — 알리지 않는다(translatable=false·참조)", () => {
